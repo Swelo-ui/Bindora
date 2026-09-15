@@ -3,6 +3,8 @@ import sys
 import json
 import traceback
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
@@ -258,5 +260,5 @@ def batch_docking():
         return jsonify({"error": f"Batch docking failed: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    print(f"Starting AnuDock Server on http://{HOST}:{PORT}")
+    print(f"Starting Bindora Server on http://{HOST}:{PORT}")
     app.run(host=HOST, port=PORT, debug=DEBUG)
