@@ -15,6 +15,7 @@ class MolecularViewer {
     this.measureAtoms = [];
     this.measureShapes = [];
     this.measureMarkers = [];
+    this.measureLabels = [];   // track only distance labels for selective removal
     this.isSpinning = false;
     
     // Default display settings
@@ -90,8 +91,12 @@ class MolecularViewer {
       try { this.viewer.removeShape(m); } catch (e) {}
     });
     this.measureMarkers = [];
+    // Remove only distance labels we added — not residue labels
+    this.measureLabels.forEach(lbl => {
+      try { this.viewer.removeLabel(lbl); } catch (e) {}
+    });
+    this.measureLabels = [];
     this.measureAtoms = [];
-    this.viewer.removeAllLabels();
     this.viewer.render();
   }
 
@@ -496,7 +501,18 @@ class MolecularViewer {
 
     if (!enable) {
       if (hud) hud.classList.add('hidden');
-      this.viewer.setClickable({}, false, null);
+
+      // Disable click handlers on all models
+      if (this.receptorModel) {
+        try { this.receptorModel.setClickable({}, false, null); } catch (e) {}
+      }
+      if (this.ligandModel) {
+        try { this.ligandModel.setClickable({}, false, null); } catch (e) {}
+      }
+      if (this.crystModel) {
+        try { this.crystModel.setClickable({}, false, null); } catch (e) {}
+      }
+
       this.measureMarkers.forEach(m => {
         try { this.viewer.removeShape(m); } catch (e) {}
       });
@@ -511,22 +527,32 @@ class MolecularViewer {
       if (hudText) hudText.textContent = 'Measure Mode: Click any atom to begin measurement...';
     }
 
-    this.viewer.setClickable({}, true, (atom) => {
+    // The atom click handler — shared across all models
+    const atomClickHandler = (atom) => {
       if (!this.measureMode || !atom) return;
+      // Ensure atom has valid coordinates
+      const ax = atom.x !== undefined ? atom.x : (atom.xyz ? atom.xyz[0] : null);
+      const ay = atom.y !== undefined ? atom.y : (atom.xyz ? atom.xyz[1] : null);
+      const az = atom.z !== undefined ? atom.z : (atom.xyz ? atom.xyz[2] : null);
+      if (ax === null || ay === null || az === null) return;
 
-      this.measureAtoms.push(atom);
+      const atomWithCoords = { ...atom, x: ax, y: ay, z: az };
+      this.measureAtoms.push(atomWithCoords);
 
       if (this.measureAtoms.length === 1) {
+        // First atom: show a red marker sphere
         const marker = this.viewer.addSphere({
-          center: { x: atom.x, y: atom.y, z: atom.z },
+          center: { x: ax, y: ay, z: az },
           radius: 0.45,
           color: '#f43f5e'
         });
         this.measureMarkers.push(marker);
         this.viewer.render();
 
-        const atomDesc = (atom.atom || atom.elem || 'Atom') + ' (' + (atom.resn || '') + (atom.resi || '') + ')';
-        if (hudText) hudText.textContent = 'Point 1: [' + atomDesc + '] selected. Click 2nd atom...';
+        const atomName = atom.atom || atom.elem || 'Atom';
+        const resName = (atom.resn || '') + (atom.resi !== undefined ? atom.resi : '');
+        if (hudText) hudText.textContent = `Point 1: [${atomName} ${resName}] selected. Now click 2nd atom...`;
+
       } else if (this.measureAtoms.length >= 2) {
         const a1 = this.measureAtoms[0];
         const a2 = this.measureAtoms[1];
@@ -535,36 +561,62 @@ class MolecularViewer {
         const dz = a1.z - a2.z;
         const dist = Math.sqrt(dx*dx + dy*dy + dz*dz).toFixed(2);
 
+        // Draw measurement cylinder
         const cyl = this.viewer.addCylinder({
-          start: { x: a1.x, y: a1.y, z: a1.z },
-          end: { x: a2.x, y: a2.y, z: a2.z },
+          start:  { x: a1.x, y: a1.y, z: a1.z },
+          end:    { x: a2.x, y: a2.y, z: a2.z },
           radius: 0.12,
-          color: '#f43f5e'
+          color: '#f43f5e',
+          dashed: false,
+          fromCap: 2,
+          toCap: 2
         });
         this.measureShapes.push(cyl);
 
-        const mid = { x: (a1.x + a2.x) / 2, y: (a1.y + a2.y) / 2, z: (a1.z + a2.z) / 2 };
-        this.viewer.addLabel(dist + ' A', {
+        // Label at midpoint — show distance in Å
+        const mid = {
+          x: (a1.x + a2.x) / 2,
+          y: (a1.y + a2.y) / 2 + 0.5,
+          z: (a1.z + a2.z) / 2
+        };
+        const lbl = this.viewer.addLabel(dist + ' Å', {
           position: mid,
           backgroundColor: 'rgba(244, 63, 94, 0.95)',
           fontColor: '#ffffff',
-          fontSize: 12,
+          fontSize: 13,
           borderThickness: 1,
-          borderColor: '#ffffff'
+          borderColor: '#ffffff',
+          showBackground: true,
+          inFront: true
         });
+        if (lbl) this.measureLabels.push(lbl);
 
+        // Clear first-atom marker
         this.measureMarkers.forEach(m => {
           try { this.viewer.removeShape(m); } catch (e) {}
         });
         this.measureMarkers = [];
         this.measureAtoms = [];
 
-        const desc1 = a1.atom || a1.elem || 'A1';
-        const desc2 = a2.atom || a2.elem || 'A2';
-        if (hudText) hudText.textContent = 'Measured: ' + dist + ' A (' + desc1 + ' - ' + desc2 + '). Click another pair to measure.';
+        const desc1 = (a1.atom || a1.elem || 'A') + (a1.resn ? ' ' + a1.resn + (a1.resi || '') : '');
+        const desc2 = (a2.atom || a2.elem || 'A') + (a2.resn ? ' ' + a2.resn + (a2.resi || '') : '');
+        if (hudText) hudText.textContent = `✓ ${dist} Å [${desc1} ↔ ${desc2}] — Click another pair to measure.`;
         this.viewer.render();
       }
-    });
+    };
+
+    // Apply clickable to ALL models with a generous click-sphere radius (0.8 Å)
+    if (this.receptorModel) {
+      this.receptorModel.setClickable({}, true, atomClickHandler);
+    }
+    if (this.ligandModel) {
+      this.ligandModel.setClickable({}, true, atomClickHandler);
+    }
+    if (this.crystModel) {
+      this.crystModel.setClickable({}, true, atomClickHandler);
+    }
+
+    this.viewer.render();
   }
 
   toggleSpin() {
