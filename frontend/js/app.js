@@ -487,6 +487,18 @@ class BindoraApp {
     if (closeAboutActionBtn && aboutModal) {
       closeAboutActionBtn.addEventListener("click", () => aboutModal.classList.add("hidden"));
     }
+
+    // Dark / Light Mode Toggle
+    const themeToggleBtn = document.getElementById("btn-theme-toggle");
+    if (themeToggleBtn) {
+      // Restore saved theme on startup
+      const savedTheme = localStorage.getItem('bindora-theme') || 'dark';
+      this.applyTheme(savedTheme);
+      themeToggleBtn.addEventListener("click", () => {
+        const isDark = document.documentElement.classList.contains('dark');
+        this.applyTheme(isDark ? 'light' : 'dark');
+      });
+    }
   }
 
   updateAuthModalView() {
@@ -593,6 +605,53 @@ class BindoraApp {
       toast.style.opacity = "0";
       setTimeout(() => toast.remove(), 300);
     }, 3500);
+  }
+
+  // Lightweight markdown → HTML renderer for AI narratives
+  renderMarkdown(text) {
+    if (!text) return '';
+    // Escape HTML entities first
+    let out = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    // Headers
+    out = out
+      .replace(/^### (.+)$/gm, '<h3 class="text-sm font-bold text-white mt-4 mb-1 pb-0.5 border-b border-slate-700/50">$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2 class="text-sm font-bold text-[#00C6FF] mt-5 mb-1 uppercase tracking-wide">$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1 class="text-base font-extrabold text-white mt-5 mb-2">$1</h1>');
+    // Bold and italic
+    out = out
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-white">$1</strong>')
+      .replace(/\*([^*]+?)\*/g, '<em class="italic text-slate-300">$1</em>');
+    // Inline code
+    out = out
+      .replace(/`(.+?)`/g, '<code class="font-mono text-[#00C6FF] bg-slate-800/70 px-1 py-0.5 rounded text-xs">$1</code>');
+    // Double newline = paragraph break
+    out = out.replace(/\n\n/g, '</p><p class="mt-2 text-slate-300">');
+    // Single newline
+    out = out.replace(/\n/g, '<br>');
+    return out;
+  }
+
+  // Apply dark/light theme across the page
+  applyTheme(theme) {
+    const html = document.documentElement;
+    const sunIcon = document.getElementById("icon-sun");
+    const moonIcon = document.getElementById("icon-moon");
+    if (theme === 'light') {
+      html.classList.remove('dark');
+      html.classList.add('light');
+      if (sunIcon) sunIcon.classList.add('hidden');
+      if (moonIcon) moonIcon.classList.remove('hidden');
+      localStorage.setItem('bindora-theme', 'light');
+    } else {
+      html.classList.remove('light');
+      html.classList.add('dark');
+      if (sunIcon) sunIcon.classList.remove('hidden');
+      if (moonIcon) moonIcon.classList.add('hidden');
+      localStorage.setItem('bindora-theme', 'dark');
+    }
   }
 
   renderBenchmarksUI() {
@@ -1252,26 +1311,68 @@ class BindoraApp {
     const badgeClass = isCorroborated ? "badge-verified" : "badge-computational";
     const statusIcon = isCorroborated ? "✓" : "⚠";
 
+    // Build ChEMBL verification links
+    const chemblMolUrl = data.chembl_compound_url || null;
+    const chemblTargetUrl = data.chembl_target_url || null;
+    const molId = data.molecule_chembl_id;
+    const targetId = data.target_chembl_id;
+
+    const searchedHtml = `
+      <div class="grid grid-cols-2 gap-2 text-xs font-mono mt-2">
+        <div class="p-2 rounded-lg bg-slate-900/60 border border-slate-800 space-y-1">
+          <div class="text-slate-400 text-[10px] uppercase tracking-wider font-sans font-semibold">Compound Searched</div>
+          <div class="text-white font-semibold">${data.drug_searched || "—"}</div>
+          ${molId ? `<div class="text-[11px] text-slate-400">${molId}
+            <a href="${chemblMolUrl}" target="_blank" rel="noopener" class="text-cyan-400 hover:underline ml-1">↗ ChEMBL</a></div>` : `<div class="text-[11px] text-rose-400">Not found in ChEMBL</div>`}
+        </div>
+        <div class="p-2 rounded-lg bg-slate-900/60 border border-slate-800 space-y-1">
+          <div class="text-slate-400 text-[10px] uppercase tracking-wider font-sans font-semibold">Target Searched</div>
+          <div class="text-white font-semibold">${data.target_searched || "—"}</div>
+          ${targetId ? `<div class="text-[11px] text-slate-400">${targetId}
+            <a href="${chemblTargetUrl}" target="_blank" rel="noopener" class="text-cyan-400 hover:underline ml-1">↗ ChEMBL</a></div>` : `<div class="text-[11px] text-rose-400">Not found in ChEMBL</div>`}
+        </div>
+      </div>
+    `;
+
+    // No records explanation panel (scientific context, not an error)
+    const noRecordsExplanationHtml = !isCorroborated ? `
+      <div class="mt-3 p-3 rounded-lg bg-slate-900/50 border border-amber-900/40 text-xs space-y-1">
+        <p class="font-semibold text-amber-300 text-[11px] uppercase tracking-wide">What does this mean scientifically?</p>
+        <p class="text-slate-400 leading-relaxed">
+          <strong class="text-slate-300">No ChEMBL records ≠ inactive compound.</strong> It means no curated wet-lab binding assay (IC50, Ki, Kd, EC50) has been deposited in the EMBL-EBI ChEMBL database for this exact drug-target pair. This is a common finding for:
+        </p>
+        <ul class="list-disc pl-4 text-slate-400 space-y-0.5">
+          <li>Novel or emerging drug candidates with unpublished experimental data</li>
+          <li>Target-ligand combinations studied under different assay conditions not yet curated</li>
+          <li>Computational lead compounds undergoing preclinical evaluation</li>
+        </ul>
+        <p class="text-slate-400">All displayed thermodynamic values (ΔG, Kd, LE) are <strong class="text-amber-300">computational predictions</strong> from AutoDock Vina and must be treated as hypothesis-generating. Wet-lab validation (SPR, ITC, fluorescence anisotropy) is required before drawing pharmacological conclusions.</p>
+      </div>
+    ` : '';
+
     let recordsHtml = "";
     if (isCorroborated && data.experimental_records?.length > 0) {
       recordsHtml = `
-        <div class="mt-4 overflow-x-auto">
-          <table class="w-full text-xs text-left border border-slate-700/60 rounded-lg">
+        <div class="mt-3 overflow-x-auto">
+          <div class="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold mb-1">Curated Experimental Bioactivity Records from ChEMBL</div>
+          <table class="w-full text-xs text-left border border-slate-700/60 rounded-lg overflow-hidden">
             <thead class="bg-slate-800/70 text-slate-300 font-semibold border-b border-slate-700">
               <tr>
-                <th class="p-2">Assay Parameter</th>
+                <th class="p-2">Assay Type</th>
                 <th class="p-2">Experimental Value</th>
                 <th class="p-2">Assay Description</th>
-                <th class="p-2">Database Source</th>
+                <th class="p-2">Source</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800 font-mono text-slate-300">
               ${data.experimental_records.map(r => `
-                <tr>
+                <tr class="hover:bg-slate-800/40">
                   <td class="p-2 font-bold text-emerald-400">${r.type}</td>
                   <td class="p-2 text-white">${r.relation} ${r.value} ${r.units}</td>
-                  <td class="p-2 font-sans text-slate-400">${r.assay_description}</td>
-                  <td class="p-2 font-sans text-slate-400">ChEMBL</td>
+                  <td class="p-2 font-sans text-slate-400 text-[11px]">${r.assay_description}</td>
+                  <td class="p-2 font-sans text-cyan-400 text-[11px]">
+                    <a href="https://www.ebi.ac.uk/chembl/" target="_blank" rel="noopener" class="hover:underline">ChEMBL</a>
+                  </td>
                 </tr>
               `).join("")}
             </tbody>
@@ -1282,14 +1383,19 @@ class BindoraApp {
 
     container.innerHTML = `
       <div class="p-4 rounded-xl border ${badgeClass} space-y-2">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between flex-wrap gap-2">
           <div class="flex items-center space-x-2">
             <span class="text-base font-bold">${statusIcon}</span>
             <span class="text-sm font-bold tracking-wide uppercase">${data.status_badge}</span>
           </div>
-          <span class="text-xs px-2 py-0.5 rounded bg-slate-900/60 font-mono">${data.target_organism || "Homo sapiens"}</span>
+          <div class="flex items-center gap-2">
+            <span class="text-xs px-2 py-0.5 rounded bg-slate-900/60 font-mono">${data.target_organism || "Homo sapiens"}</span>
+            ${chemblMolUrl ? `<a href="${chemblMolUrl}" target="_blank" rel="noopener" class="text-xs px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-800/50 text-cyan-400 hover:underline font-mono">Verify on ChEMBL ↗</a>` : ''}
+          </div>
         </div>
         <p class="text-xs text-slate-300 leading-relaxed">${data.summary_note}</p>
+        ${searchedHtml}
+        ${noRecordsExplanationHtml}
         ${recordsHtml}
       </div>
     `;
@@ -1362,14 +1468,17 @@ class BindoraApp {
       const res = await BindoraAPI.explainNarrative(payload);
       this.state.narrative = res;
       if (container) {
-        // Render markdown formatted text cleanly
+        // Render markdown formatted text properly (not raw with ** showing)
+        const renderedMarkdown = this.renderMarkdown(res.narrative || '');
         container.innerHTML = `
-          <div class="prose prose-invert prose-sm max-w-none space-y-4">
+          <div class="space-y-4">
             <div class="flex items-center justify-between pb-2 border-b border-slate-700/60 text-xs text-slate-400">
-              <span>Engine: <span class="text-cyan-400 font-semibold">${res.source}</span></span>
-              <span>Zero-Hallucination Verified ✓</span>
+              <span>Engine: <a href="https://openrouter.ai" target="_blank" rel="noopener" class="text-cyan-400 font-semibold hover:underline">${res.source}</a></span>
+              <span class="text-emerald-400 font-semibold">&#10003; Zero-Hallucination Verified</span>
             </div>
-            <div class="text-slate-200 text-xs sm:text-sm leading-relaxed whitespace-pre-line">${res.narrative}</div>
+            <div class="text-slate-300 text-xs sm:text-sm leading-relaxed narrative-md">
+              <p>${renderedMarkdown}</p>
+            </div>
           </div>
         `;
       }

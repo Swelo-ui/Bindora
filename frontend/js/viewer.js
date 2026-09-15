@@ -31,6 +31,10 @@ class MolecularViewer {
       showResidueLabels: true
     };
 
+    // Surface tracking — prevents accumulation bug
+    this._surfaceId = null;
+    this._surfaceUpdating = false;
+
     this.init();
   }
 
@@ -52,10 +56,14 @@ class MolecularViewer {
 
   clear() {
     if (!this.viewer) return;
+    // Remove surface first to avoid accumulation
+    this._removeSurface();
     this.viewer.clear();
     this.receptorModel = null;
     this.ligandModel = null;
     this.surfaceObj = null;
+    this._surfaceId = null;
+    this._surfaceUpdating = false;
     this.clearInteractions();
     this.clearMeasurements();
     this.clearGridBox();
@@ -287,22 +295,42 @@ class MolecularViewer {
     this.viewer.render();
   }
 
+  // Internal helper: safely remove ALL surfaces (prevents accumulation)
+  _removeSurface() {
+    if (!this.viewer) return;
+    // Try removeAllSurfaces first (safest, removes every surface layer)
+    try {
+      if (typeof this.viewer.removeAllSurfaces === 'function') {
+        this.viewer.removeAllSurfaces();
+        this._surfaceId = null;
+        this.surfaceObj = null;
+        return;
+      }
+    } catch (e) {}
+    // Fallback: remove by stored ID
+    if (this._surfaceId !== null && this._surfaceId !== undefined) {
+      try { this.viewer.removeSurface(this._surfaceId); } catch (e) {}
+      this._surfaceId = null;
+    }
+    if (this.surfaceObj !== null && this.surfaceObj !== undefined) {
+      try { this.viewer.removeSurface(this.surfaceObj); } catch (e) {}
+      this.surfaceObj = null;
+    }
+  }
+
   toggleSurface(show) {
     this.settings.showSurface = show;
+    this._surfaceUpdating = false; // Reset lock so new state takes effect
     this.updateSurface();
   }
 
   updateSurface() {
     if (!this.viewer) return;
+    // Prevent concurrent surface additions (race condition guard)
+    if (this._surfaceUpdating) return;
 
-    if (this.surfaceObj) {
-      try {
-        this.viewer.removeSurface(this.surfaceObj);
-      } catch (e) {
-        console.warn('[3Dmol] Error removing surface:', e);
-      }
-      this.surfaceObj = null;
-    }
+    // Always remove all existing surfaces before doing anything
+    this._removeSurface();
 
     if (!this.settings.showSurface) {
       this.viewer.render();
@@ -311,26 +339,47 @@ class MolecularViewer {
 
     const M = window["$" + "3Dmol"];
     const SType = M ? M.SurfaceType.VDW : 1;
+    this._surfaceUpdating = true;
 
     try {
+      let surfResult;
       if (this.receptorModel && this.ligandModel) {
-        this.surfaceObj = this.viewer.addSurface(SType, {
+        surfResult = this.viewer.addSurface(SType, {
           opacity: this.settings.surfaceOpacity || 0.5,
           color: '#38bdf8'
         }, { model: this.receptorModel, within: { distance: 6.0, sel: { model: this.ligandModel } } });
       } else if (this.ligandModel) {
-        this.surfaceObj = this.viewer.addSurface(SType, {
+        surfResult = this.viewer.addSurface(SType, {
           opacity: 0.55,
           color: '#06b6d4'
         }, { model: this.ligandModel });
       } else if (this.receptorModel) {
-        this.surfaceObj = this.viewer.addSurface(SType, {
+        surfResult = this.viewer.addSurface(SType, {
           opacity: 0.4,
           color: '#64748b'
         }, { model: this.receptorModel });
       }
+
+      // Handle both Promise (newer 3Dmol) and numeric ID (older 3Dmol)
+      if (surfResult && typeof surfResult.then === 'function') {
+        surfResult.then(id => {
+          this._surfaceId = id;
+          this.surfaceObj = id;
+          this._surfaceUpdating = false;
+        }).catch(err => {
+          console.error('[3Dmol] Surface async error:', err);
+          this._surfaceUpdating = false;
+        });
+      } else if (surfResult !== undefined && surfResult !== null) {
+        this._surfaceId = surfResult;
+        this.surfaceObj = surfResult;
+        this._surfaceUpdating = false;
+      } else {
+        this._surfaceUpdating = false;
+      }
     } catch (err) {
       console.error('[3Dmol] Surface generation error:', err);
+      this._surfaceUpdating = false;
     }
 
     this.viewer.render();

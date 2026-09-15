@@ -182,3 +182,121 @@ body {
     color: #000000 !important;
   }
 }
+
+/* ==========================================================================
+   Narrative Markdown Rendered Content
+   ========================================================================== */
+.narrative-md p { margin-bottom: 0.5rem; }
+.narrative-md h1, .narrative-md h2, .narrative-md h3 { display: block; }
+.narrative-md strong { font-weight: 600; color: #f1f5f9; }
+
+/* ==========================================================================
+   Light Mode Theme Overrides
+   html.light = light mode active
+   ========================================================================== */
+html.light body {
+  background-color: #f0f4fa;
+  background-image:
+    radial-gradient(circle at 15% 10%, rgba(13, 110, 253, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 85% 20%, rgba(123, 92, 255, 0.04) 0%, transparent 45%),
+    radial-gradient(circle at 50% 80%, rgba(0, 198, 255, 0.03) 0%, transparent 50%);
+  color: #0f172a;
+}
+
+html.light #main-header {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(13, 110, 253, 0.2) !important;
+}
+
+html.light .glass-panel {
+  background: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(13, 110, 253, 0.18) !important;
+  color: #1e293b;
+}
+
+html.light .glass-panel:hover {
+  border-color: rgba(0, 198, 255, 0.4) !important;
+}
+
+html.light .text-slate-100 { color: #1e293b !important; }
+html.light .text-slate-200 { color: #1e293b !important; }
+html.light .text-slate-300 { color: #334155 !important; }
+html.light .text-slate-400 { color: #475569 !important; }
+html.light .text-slate-500 { color: #64748b !important; }
+html.light .text-white { color: #0f172a !important; }
+
+html.light .bg-\[#071326\], html.light .bg-\[#0B1F3B\] {
+  background-color: #e8edf5 !important;
+}
+html.light .bg-slate-950, html.light .bg-slate-900 {
+  background-color: #f1f5f9 !important;
+}
+html.light .bg-slate-800 {
+  background-color: #e2e8f0 !important;
+}
+
+html.light .border-slate-800, html.light .border-slate-700 {
+  border-color: #cbd5e1 !important;
+}
+html.light .border-\[#163252\] {
+  border-color: #bfdbfe !important;
+}
+
+html.light .nav-tab {
+  color: #334155;
+}
+html.light .nav-tab.active {
+  color: #0D6EFD !important;
+  background: linear-gradient(180deg, rgba(13, 110, 253, 0.1) 0%, rgba(0, 198, 255, 0.05) 100%) !important;
+  border-color: #0D6EFD !important;
+}
+html.light .nav-tab:hover {
+  color: #0D6EFD !important;
+  background: rgba(13, 110, 253, 0.07) !important;
+}
+
+html.light #backend-status-badge {
+  background: #f0f4fa !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light button:not(.btn-brand-primary):not([class*="bg-cyan"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-amber"]) {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+html.light input, html.light select, html.light textarea {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light #viewport-container {
+  background: radial-gradient(circle at center, #e2eaf5 0%, #c9d8ed 100%) !important;
+}
+
+html.light .bg-slate-900\/60 { background-color: rgba(248, 250, 252, 0.9) !important; }
+html.light .bg-slate-800\/40 { background-color: rgba(241, 245, 249, 0.9) !important; }
+
+html.light .text-cyan-300 { color: #0369a1 !important; }
+html.light .text-cyan-400 { color: #0284c7 !important; }
+html.light .text-[#00C6FF] { color: #0369a1 !important; }
+
+/* Light mode mobile sub-nav */
+html.light .lg\:hidden.bg-\[#0B1F3B\] {
+  background: #e8edf5 !important;
+  border-color: #bfdbfe !important;
+}
+
+/* Scrollbar in light mode */
+html.light ::-webkit-scrollbar-track { background: #f0f4fa; }
+html.light ::-webkit-scrollbar-thumb { background: #93c5fd; }
+html.light ::-webkit-scrollbar-thumb:hover { background: #0D6EFD; }
+
+/* narrative in light mode */
+html.light .narrative-md strong { color: #0f172a !important; }
+html.light .narrative-md h2 { color: #0369a1 !important; }
+html.light .narrative-md h3 { color: #0f172a !important; }
+html.light .narrative-md code { background: rgba(0,0,0,0.06) !important; color: #0369a1 !important; }
+
