@@ -1,5 +1,14 @@
 {
   "projects": {
     "default": "bindora-1db62"
+  },
+  "targets": {
+    "bindora-1db62": {
+      "hosting": {
+        "bindoradock": [
+          "bindoradock"
+        ]
+      }
+    }
   }
 }

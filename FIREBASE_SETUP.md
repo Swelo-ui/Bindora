@@ -39,21 +39,22 @@ This opens your browser to authorize your Google account.
 5. Default **Spark Plan (Free / $0/month)** select rehta hai. Click **Create Project**.
 
 ### Step 4: Link Project in Terminal
-In the `Bindora` project directory:
-```bash
-firebase use --add
-```
-Select the project you just created in the list and set the alias to `default`.
+Project ID `bindora-1db62` and site `bindoradock` are already configured in `.firebaserc` and `firebase.json`!
 
 ### Step 5: Deploy Frontend to Firebase Hosting
+Run either of these commands in your project terminal:
 ```bash
-firebase deploy --only hosting
+npx firebase-tools deploy --only hosting:bindoradock
 ```
-Once completed, Firebase will output your live URL:
+or:
+```bash
+npx firebase-tools deploy --only hosting
+```
+
+Once completed, your live site will be accessible at:
 ```
 ✔  Deploy complete!
-Project Console: https://console.firebase.google.com/project/bindora-app/overview
-Hosting URL: https://bindora-app.web.app
+Hosting URL: https://bindoradock.web.app
 ```
 
 ---

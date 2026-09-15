@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "bindoradock",
     "public": "frontend",
     "ignore": [
       "firebase.json",
