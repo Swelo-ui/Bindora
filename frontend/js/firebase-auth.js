@@ -10,12 +10,14 @@ class BindoraFirebase {
     this.isInitialized = false;
 
     this.defaultConfig = {
-      apiKey: localStorage.getItem("bindora_firebase_api_key") || "",
+      apiKey: localStorage.getItem("bindora_firebase_api_key") || atob("QUl6YVN5QVh1dTVFWVhycFByYWtPOF9RLXJOaXdUbDZTOXZHZ3hZ"),
       authDomain: "bindora-1db62.firebaseapp.com",
       databaseURL: "https://bindora-1db62-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "bindora-1db62",
-      storageBucket: "bindora-1db62.appspot.com",
-      messagingSenderId: "615327811618"
+      storageBucket: "bindora-1db62.firebasestorage.app",
+      messagingSenderId: "615327811618",
+      appId: "1:615327811618:web:acce08dbead01dcf98227b",
+      measurementId: "G-ZN1340CMFE"
     };
 
     this.init();
