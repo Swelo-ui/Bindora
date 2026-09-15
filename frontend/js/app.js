@@ -760,20 +760,26 @@ class BindoraApp {
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
+    // Horizontal divider
+    out = out.replace(/^---$/gm, '<hr class="border-slate-200 dark:border-slate-800 my-4">');
     // Headers
     out = out
-      .replace(/^### (.+)$/gm, '<h3 class="text-sm font-bold text-white mt-4 mb-1 pb-0.5 border-b border-slate-700/50">$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2 class="text-sm font-bold text-[#00C6FF] mt-5 mb-1 uppercase tracking-wide">$1</h2>')
-      .replace(/^# (.+)$/gm, '<h1 class="text-base font-extrabold text-white mt-5 mb-2">$1</h1>');
+      .replace(/^### (.+)$/gm, '<h3 class="text-sm font-bold text-slate-900 dark:text-white mt-4 mb-1 pb-0.5 border-b border-slate-200 dark:border-slate-700/50">$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2 class="text-sm font-bold text-[#0D6EFD] dark:text-[#00C6FF] mt-5 mb-1 uppercase tracking-wide">$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1 class="text-base font-extrabold text-slate-900 dark:text-white mt-5 mb-2">$1</h1>');
+    // Unordered lists (- or *)
+    out = out.replace(/^[\*\-] (.+)$/gm, '<div class="flex items-start space-x-2 my-1.5"><span class="text-cyan-500 font-bold leading-tight select-none">&#8226;</span><span class="text-slate-700 dark:text-slate-300 leading-relaxed">$1</span></div>');
     // Bold and italic
     out = out
-      .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-white">$1</strong>')
-      .replace(/\*([^*]+?)\*/g, '<em class="italic text-slate-300">$1</em>');
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-slate-900 dark:text-white">$1</strong>')
+      .replace(/\*([^*]+?)\*/g, '<em class="italic text-slate-600 dark:text-slate-300">$1</em>');
+    // Clean any dangling unclosed bold tags
+    out = out.replace(/\*\*([^*]+)$/gm, '<strong class="font-semibold text-slate-900 dark:text-white">$1</strong>');
     // Inline code
     out = out
-      .replace(/`(.+?)`/g, '<code class="font-mono text-[#00C6FF] bg-slate-800/70 px-1 py-0.5 rounded text-xs">$1</code>');
+      .replace(/`(.+?)`/g, '<code class="font-mono text-cyan-700 dark:text-[#00C6FF] bg-slate-100 dark:bg-slate-800/70 px-1 py-0.5 rounded text-xs border border-slate-200 dark:border-slate-700">$1</code>');
     // Double newline = paragraph break
-    out = out.replace(/\n\n/g, '</p><p class="mt-2 text-slate-300">');
+    out = out.replace(/\n\n/g, '</p><p class="mt-2 text-slate-700 dark:text-slate-300">');
     // Single newline
     out = out.replace(/\n/g, '<br>');
     return out;
@@ -1830,11 +1836,11 @@ class BindoraApp {
         const renderedMarkdown = this.renderMarkdown(res.narrative || '');
         container.innerHTML = `
           <div class="space-y-4">
-            <div class="flex items-center justify-between pb-2 border-b border-slate-700/60 text-xs text-slate-400">
-              <span>Engine: <a href="https://openrouter.ai" target="_blank" rel="noopener" class="text-cyan-400 font-semibold hover:underline">${res.source}</a></span>
-              <span class="text-emerald-400 font-semibold">&#10003; Zero-Hallucination Verified</span>
+            <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700/60 text-xs text-slate-500 dark:text-slate-400">
+              <span>Engine: <a href="https://openrouter.ai" target="_blank" rel="noopener" class="text-cyan-600 dark:text-cyan-400 font-semibold hover:underline">${res.source}</a></span>
+              <span class="text-emerald-600 dark:text-emerald-400 font-semibold">&#10003; Zero-Hallucination Verified</span>
             </div>
-            <div class="text-slate-300 text-xs sm:text-sm leading-relaxed narrative-md">
+            <div class="text-slate-800 dark:text-slate-300 text-xs sm:text-sm leading-relaxed narrative-md">
               <p>${renderedMarkdown}</p>
             </div>
           </div>
@@ -2047,10 +2053,10 @@ class BindoraApp {
     const uniprot = this.state.receptor?.uniprot;
     if (uniprot && (uniprot.function || uniprot.subcellular_location)) {
       container.innerHTML = `
-        ${uniprot.function ? '<div><span class="font-bold text-slate-200">Biological Function:</span> <span class="text-slate-300">' + uniprot.function + '</span></div>' : ''}
-        ${uniprot.catalytic_activity ? '<div><span class="font-bold text-slate-200">Catalytic Activity:</span> <span class="text-slate-300">' + uniprot.catalytic_activity + '</span></div>' : ''}
-        ${uniprot.subcellular_location ? '<div><span class="font-bold text-slate-200">Subcellular Location:</span> <span class="text-slate-300">' + uniprot.subcellular_location + '</span></div>' : ''}
-        ${uniprot.tissue_specificity ? '<div><span class="font-bold text-slate-200">Tissue Specificity:</span> <span class="text-slate-300">' + uniprot.tissue_specificity + '</span></div>' : ''}
+        ${uniprot.function ? '<div><span class="font-bold text-slate-900 dark:text-slate-200">Biological Function:</span> <span class="text-slate-700 dark:text-slate-300">' + uniprot.function + '</span></div>' : ''}
+        ${uniprot.catalytic_activity ? '<div><span class="font-bold text-slate-900 dark:text-slate-200">Catalytic Activity:</span> <span class="text-slate-700 dark:text-slate-300">' + uniprot.catalytic_activity + '</span></div>' : ''}
+        ${uniprot.subcellular_location ? '<div><span class="font-bold text-slate-900 dark:text-slate-200">Subcellular Location:</span> <span class="text-slate-700 dark:text-slate-300">' + uniprot.subcellular_location + '</span></div>' : ''}
+        ${uniprot.tissue_specificity ? '<div><span class="font-bold text-slate-900 dark:text-slate-200">Tissue Specificity:</span> <span class="text-slate-700 dark:text-slate-300">' + uniprot.tissue_specificity + '</span></div>' : ''}
       `;
     } else {
       container.innerHTML = '<p class="text-slate-500 italic">No UniProt pathway annotation available for this target. Load a receptor with known annotations to view biological function and signaling cascade details.</p>';

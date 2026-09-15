@@ -25,6 +25,36 @@ class NarrativeExplainer:
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
     @staticmethod
+    def _is_valid_narrative(content: str) -> bool:
+        """Validate that LLM response is complete, well-formed, and contains all required sections."""
+        if not content or not isinstance(content, str):
+            return False
+        trimmed = content.strip()
+        if len(trimmed) < 600:
+            return False
+        
+        # Check that it contains required sections
+        has_sections = ("1." in trimmed and "2." in trimmed and "3." in trimmed and "4." in trimmed)
+        if not has_sections:
+            return False
+
+        # Reject if model returned scratchpad thoughts
+        if "The user wants" in trimmed or "Let me structure" in trimmed or trimmed.startswith("Key data points:"):
+            return False
+
+        # Check for unclosed or truncated sentences
+        words = trimmed.split()
+        if words:
+            last_word = words[-1].lower().rstrip(".*_#`")
+            dangling_words = {"and", "or", "is", "the", "a", "an", "with", "at", "by", "of", "to", "in", "for", "as", "values"}
+            if last_word in dangling_words:
+                return False
+        if trimmed.endswith((",", "-", "(", "/", ":", "—", ";")):
+            return False
+
+        return True
+
+    @staticmethod
     def generate_explanation(report_data: Dict[str, Any], api_key: Optional[str] = None, provider: str = "auto") -> Dict[str, Any]:
         """Generate structured narrative explanation with strict grounding on real calculated data."""
         model_to_use = os.environ.get("OPENROUTER_MODEL", OPENROUTER_MODEL)
@@ -36,8 +66,17 @@ class NarrativeExplainer:
             try:
                 with open(cache_file, "r", encoding="utf-8") as f:
                     cached = json.load(f)
-                    cached["cached"] = True
-                    return cached
+                    narr = cached.get("narrative", "")
+                    # Only return from cache if it is a complete, valid narrative!
+                    if NarrativeExplainer._is_valid_narrative(narr) or cached.get("is_fallback", False):
+                        cached["cached"] = True
+                        return cached
+                    else:
+                        # Stale or corrupted cache file - delete it
+                        try:
+                            cache_file.unlink()
+                        except Exception:
+                            pass
             except Exception:
                 pass
 
@@ -45,11 +84,12 @@ class NarrativeExplainer:
         effective_key = api_key or OPENROUTER_API_KEY or GEMINI_API_KEY
         if effective_key:
             try:
-                llm_response = NarrativeExplainer._call_llm(report_data, effective_key, provider, model_to_use)
-                if llm_response:
+                llm_result = NarrativeExplainer._call_llm(report_data, effective_key, provider, model_to_use)
+                if llm_result:
+                    llm_response, actual_model = llm_result
                     result = {
                         "narrative": llm_response,
-                        "source": f"Bindora AI Explainer ({model_to_use} via OpenRouter)",
+                        "source": f"Bindora AI Explainer ({actual_model} via OpenRouter)",
                         "is_fallback": False,
                         "cached": False
                     }
@@ -72,8 +112,8 @@ class NarrativeExplainer:
         }
 
     @staticmethod
-    def _call_llm(data: Dict[str, Any], key: str, provider: str, model: str) -> Optional[str]:
-        """Call OpenRouter API with anti-hallucination prompt and DeepSeek model."""
+    def _call_llm(data: Dict[str, Any], key: str, provider: str, model: str) -> Optional[tuple]:
+        """Call OpenRouter API with anti-hallucination prompt, disabled reasoning overhead, and multi-model fallback."""
         system_prompt = (
             "You are a Senior Computational Pharmacologist providing an academic research dossier briefing.\n"
             "CRITICAL CONSTRAINTS:\n"
@@ -91,7 +131,7 @@ class NarrativeExplainer:
         user_content = (
             f"Here is the verified experimental and computational payload for the drug-target docking run:\n"
             f"```json\n{json.dumps(data, indent=2)}\n```\n"
-            f"Provide a concise, publication-grade pharmacological evaluation in 300-500 words. Begin directly with the report."
+            f"Provide a concise, publication-grade pharmacological evaluation in 350-500 words. Begin directly with the report."
         )
 
         # OpenRouter endpoint
@@ -103,31 +143,52 @@ class NarrativeExplainer:
                 "HTTP-Referer": "https://github.com/Swelo-ui/Bindora",
                 "X-Title": "Bindora 3D Drug-Receptor Analyzer"
             }
-            body = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_content}
-                ],
-                "temperature": 0.2,
-                "max_tokens": 2000
-            }
-            resp = requests.post(url, json=body, headers=headers, timeout=45)
-            if resp.status_code == 200:
-                res_json = resp.json()
-                choices = res_json.get("choices", [])
-                if choices:
-                    msg = choices[0].get("message", {})
-                    content = msg.get("content") or ""
-                    # Check if model returned scratchpad thoughts instead of final report
-                    if not content or "The user wants" in content or "Let me structure" in content or content.strip().startswith("Key data points:"):
-                        print("[NARRATIVE] Model returned internal reasoning scratchpad. Using clean deterministic engine.")
-                        return None
-                    if content and content.strip():
-                        return content.strip()
-            else:
-                print(f"[NARRATIVE] OpenRouter HTTP error {resp.status_code}: {resp.text[:200]}")
-        
+
+            # Try requested model first, then fallback to high-reliability models if truncated
+            candidate_models = [model, "google/gemini-2.0-flash-001", "meta-llama/llama-3.3-70b-instruct"]
+            seen_models = set()
+
+            for cand_model in candidate_models:
+                if not cand_model or cand_model in seen_models:
+                    continue
+                seen_models.add(cand_model)
+
+                body = {
+                    "model": cand_model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_content}
+                    ],
+                    "temperature": 0.2,
+                    "max_tokens": 3500,
+                    # Suppress reasoning token consumption so the completion is never truncated
+                    "reasoning": {"max_tokens": 0}
+                }
+
+                try:
+                    resp = requests.post(url, json=body, headers=headers, timeout=35)
+                    if resp.status_code == 200:
+                        res_json = resp.json()
+                        choices = res_json.get("choices", [])
+                        if choices:
+                            finish_reason = choices[0].get("finish_reason")
+                            # If finished due to length, it was truncated; skip
+                            if finish_reason == "length":
+                                print(f"[NARRATIVE] Model {cand_model} truncated by token limit. Trying fallback...")
+                                continue
+
+                            msg = choices[0].get("message", {})
+                            content = msg.get("content") or ""
+
+                            if NarrativeExplainer._is_valid_narrative(content):
+                                return content.strip(), cand_model
+                            else:
+                                print(f"[NARRATIVE] Model {cand_model} output incomplete or missing sections. Trying fallback...")
+                    else:
+                        print(f"[NARRATIVE] OpenRouter HTTP {resp.status_code} for {cand_model}: {resp.text[:150]}")
+                except Exception as ex:
+                    print(f"[NARRATIVE] Request error with model {cand_model}: {ex}")
+
         return None
 
     @staticmethod

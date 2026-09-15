@@ -168,18 +168,41 @@ body {
 @media print {
   body {
     background-color: #ffffff !important;
-    color: #000000 !important;
+    background-image: none !important;
+    color: #0f172a !important;
   }
-  .no-print {
+  header, #main-header, nav, .lg\:hidden, #viewport-container, #btn-export-dossier, .no-print {
     display: none !important;
   }
   .print-only {
     display: block !important;
   }
+  .tab-pane:not(#tab-dossier) {
+    display: none !important;
+  }
+  #tab-dossier {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
   .glass-panel {
-    background: transparent !important;
-    border: 1px solid #cccccc !important;
-    color: #000000 !important;
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    color: #0f172a !important;
+  }
+  h1, h2, h3, h4, strong {
+    color: #0f172a !important;
+  }
+  p, span, div {
+    color: #1e293b !important;
+  }
+  .text-cyan-400, .text-cyan-300, .text-[#00C6FF] {
+    color: #0284c7 !important;
+  }
+  .text-emerald-400 {
+    color: #059669 !important;
   }
 }
 
@@ -441,9 +464,13 @@ html.light ::-webkit-scrollbar-thumb:hover { background: #0D6EFD; }
 
 /* 15. Narrative in light mode */
 html.light .narrative-md strong { color: #0f172a !important; }
+html.light .narrative-md p { color: #334155 !important; }
+html.light .narrative-md em { color: #475569 !important; }
+html.light .narrative-md h1 { color: #0f172a !important; }
 html.light .narrative-md h2 { color: #0369a1 !important; }
-html.light .narrative-md h3 { color: #0f172a !important; }
-html.light .narrative-md code { background: rgba(0,0,0,0.06) !important; color: #0369a1 !important; }
+html.light .narrative-md h3 { color: #0f172a !important; border-color: #e2e8f0 !important; }
+html.light .narrative-md code { background: rgba(0,0,0,0.06) !important; color: #0369a1 !important; border-color: #cbd5e1 !important; }
+html.light .narrative-md hr { border-color: #e2e8f0 !important; }
 
 /* 16. Benchmark Case Cards (Tab 1) in Light Mode */
 html.light .benchmark-case-card {

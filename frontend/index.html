@@ -843,46 +843,46 @@
     <!-- ==================== TAB 3: PHARMACOKINETICS & ADME ==================== -->
     <section id="tab-adme" class="tab-pane hidden space-y-6">
       
-      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <h2 class="text-lg font-bold text-white">Pharmacokinetic (ADME) & Drug-Likeness Profiling</h2>
-          <p class="text-xs text-slate-400">Rigorous physicochemical and oral bioavailability calculations via RDKit Cheminformatics Engine</p>
+          <h2 class="text-lg font-bold text-slate-900 dark:text-white">Pharmacokinetic (ADME) &amp; Drug-Likeness Profiling</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Rigorous physicochemical and oral bioavailability calculations via RDKit Cheminformatics Engine</p>
         </div>
-        <div id="adme-lipinski-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700">
+        <div id="adme-lipinski-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700">
           Lipinski: Pending
         </div>
       </div>
 
       <!-- Physicochemical Descriptor Cards -->
       <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
-        <div class="glass-panel p-3 rounded-xl border border-slate-800 text-center">
-          <span class="text-[10px] uppercase tracking-wider text-slate-400 block font-semibold">MW</span>
-          <span id="adme-mw-val" class="text-lg font-extrabold text-cyan-400 font-mono mt-1 block">—</span>
+        <div class="glass-panel p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+          <span class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">MW</span>
+          <span id="adme-mw-val" class="text-lg font-extrabold text-cyan-600 dark:text-cyan-400 font-mono mt-1 block">—</span>
           <span class="text-[10px] text-slate-500">Da</span>
         </div>
-        <div class="glass-panel p-3 rounded-xl border border-slate-800 text-center">
-          <span class="text-[10px] uppercase tracking-wider text-slate-400 block font-semibold">LogP</span>
-          <span id="adme-logp-val" class="text-lg font-extrabold text-emerald-400 font-mono mt-1 block">—</span>
+        <div class="glass-panel p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+          <span class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">LogP</span>
+          <span id="adme-logp-val" class="text-lg font-extrabold text-emerald-600 dark:text-emerald-400 font-mono mt-1 block">—</span>
           <span class="text-[10px] text-slate-500">Partition</span>
         </div>
-        <div class="glass-panel p-3 rounded-xl border border-slate-800 text-center">
-          <span class="text-[10px] uppercase tracking-wider text-slate-400 block font-semibold">HBD</span>
-          <span id="adme-hbd-val" class="text-lg font-extrabold text-yellow-400 font-mono mt-1 block">—</span>
+        <div class="glass-panel p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+          <span class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">HBD</span>
+          <span id="adme-hbd-val" class="text-lg font-extrabold text-yellow-600 dark:text-yellow-400 font-mono mt-1 block">—</span>
           <span class="text-[10px] text-slate-500">Donors</span>
         </div>
-        <div class="glass-panel p-3 rounded-xl border border-slate-800 text-center">
-          <span class="text-[10px] uppercase tracking-wider text-slate-400 block font-semibold">HBA</span>
-          <span id="adme-hba-val" class="text-lg font-extrabold text-orange-400 font-mono mt-1 block">—</span>
+        <div class="glass-panel p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+          <span class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">HBA</span>
+          <span id="adme-hba-val" class="text-lg font-extrabold text-orange-600 dark:text-orange-400 font-mono mt-1 block">—</span>
           <span class="text-[10px] text-slate-500">Acceptors</span>
         </div>
-        <div class="glass-panel p-3 rounded-xl border border-slate-800 text-center">
-          <span class="text-[10px] uppercase tracking-wider text-slate-400 block font-semibold">RotB</span>
-          <span id="adme-rotb-val" class="text-lg font-extrabold text-purple-400 font-mono mt-1 block">—</span>
+        <div class="glass-panel p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+          <span class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">RotB</span>
+          <span id="adme-rotb-val" class="text-lg font-extrabold text-purple-600 dark:text-purple-400 font-mono mt-1 block">—</span>
           <span class="text-[10px] text-slate-500">Bonds</span>
         </div>
-        <div class="glass-panel p-3 rounded-xl border border-slate-800 text-center">
-          <span class="text-[10px] uppercase tracking-wider text-slate-400 block font-semibold">TPSA</span>
-          <span id="adme-tpsa-val" class="text-lg font-extrabold text-rose-400 font-mono mt-1 block">—</span>
+        <div class="glass-panel p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+          <span class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">TPSA</span>
+          <span id="adme-tpsa-val" class="text-lg font-extrabold text-rose-600 dark:text-rose-400 font-mono mt-1 block">—</span>
           <span class="text-[10px] text-slate-500">Å²</span>
         </div>
       </div>
@@ -890,9 +890,9 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         <!-- Left: Lipinski Radar Chart -->
-        <div class="glass-panel p-5 rounded-xl border border-slate-800 flex flex-col items-center">
-          <h3 class="font-bold text-sm text-white mb-2 self-start">Bioavailability Radar Space</h3>
-          <p class="text-xs text-slate-400 mb-4 self-start">Visualizing candidate compliance within the drug-like pharmaceutical boundary</p>
+        <div class="glass-panel p-5 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col items-center">
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white mb-2 self-start">Bioavailability Radar Space</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 self-start">Visualizing candidate compliance within the drug-like pharmaceutical boundary</p>
           <div class="w-full h-72 max-w-md relative">
             <canvas id="chart-lipinski-radar"></canvas>
           </div>
@@ -901,27 +901,27 @@
         <!-- Right: ADME Cards Grid -->
         <div class="grid grid-cols-2 gap-4">
           
-          <div class="glass-panel p-4 rounded-xl border border-slate-800">
-            <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">GI Absorption</span>
-            <span id="adme-gi-val" class="text-xl font-bold text-cyan-400 mt-1 block">—</span>
+          <div class="glass-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+            <span class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">GI Absorption</span>
+            <span id="adme-gi-val" class="text-xl font-bold text-cyan-600 dark:text-cyan-400 mt-1 block">—</span>
             <span class="text-[10px] text-slate-500">BOILED-Egg model (Egan et al.)</span>
           </div>
 
-          <div class="glass-panel p-4 rounded-xl border border-slate-800">
-            <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">BBB Permeability</span>
-            <span id="adme-bbb-val" class="text-xl font-bold text-purple-400 mt-1 block">—</span>
+          <div class="glass-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+            <span class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">BBB Permeability</span>
+            <span id="adme-bbb-val" class="text-xl font-bold text-purple-600 dark:text-purple-400 mt-1 block">—</span>
             <span class="text-[10px] text-slate-500">Clark CNS penetration heuristic</span>
           </div>
 
-          <div class="glass-panel p-4 rounded-xl border border-slate-800">
-            <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">Plasma Protein Binding</span>
-            <span id="adme-ppb-val" class="text-xl font-bold text-emerald-400 mt-1 block">—</span>
+          <div class="glass-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+            <span class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">Plasma Protein Binding</span>
+            <span id="adme-ppb-val" class="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 block">—</span>
             <span class="text-[10px] text-slate-500">Lipophilic albumin binding tier</span>
           </div>
 
-          <div class="glass-panel p-4 rounded-xl border border-slate-800">
-            <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">PAINS Filter</span>
-            <span id="adme-pains-val" class="text-xl font-bold text-emerald-400 mt-1 block">—</span>
+          <div class="glass-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+            <span class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">PAINS Filter</span>
+            <span id="adme-pains-val" class="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 block">—</span>
             <span class="text-[10px] text-slate-500">Pan-Assay interference alerts</span>
           </div>
 
@@ -930,11 +930,11 @@
       </div>
 
       <!-- Formula References -->
-      <div class="glass-panel p-4 rounded-xl border border-slate-800 text-xs text-slate-400 space-y-1">
-        <span class="font-bold text-slate-300 block mb-1">Scientific Methodology & Grounded Descriptors:</span>
+      <div class="glass-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-1">
+        <span class="font-bold text-slate-800 dark:text-slate-300 block mb-1">Scientific Methodology &amp; Grounded Descriptors:</span>
         <p>&bull; <strong>Lipinski's Rule of 5:</strong> MW &le; 500 Da, MolLogP &le; 5.0, H-Bond Donors &le; 5, H-Bond Acceptors &le; 10 (Pfizer, 1997).</p>
         <p>&bull; <strong>Veber Criteria:</strong> Rotatable Bonds &le; 10, Topological Polar Surface Area (TPSA) &le; 140 Å² (GSK, 2002).</p>
-        <p>&bull; <strong>Pan-Assay Interference (PAINS):</strong> Substructure catalog screening against frequent false-positive chemotypes (Baell & Holloway, 2010).</p>
+        <p>&bull; <strong>Pan-Assay Interference (PAINS):</strong> Substructure catalog screening against frequent false-positive chemotypes (Baell &amp; Holloway, 2010).</p>
       </div>
 
     </section>
@@ -942,25 +942,25 @@
     <!-- ==================== TAB 4: EXPERIMENTAL CROSS-CHECK & PD ==================== -->
     <section id="tab-crosscheck" class="tab-pane hidden space-y-6">
       
-      <div class="pb-2 border-b border-slate-800">
-        <h2 class="text-lg font-bold text-white">Experimental Bioactivity Cross-Check & Virtual Physiology</h2>
-        <p class="text-xs text-slate-400">Comparing computational predictions against curated wet-lab bioactivity records in ChEMBL and UniProt</p>
+      <div class="pb-2 border-b border-slate-200 dark:border-slate-800">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Experimental Bioactivity Cross-Check &amp; Virtual Physiology</h2>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Comparing computational predictions against curated wet-lab bioactivity records in ChEMBL and UniProt</p>
       </div>
 
       <!-- Crosscheck Badge & Details Container -->
       <div id="crosscheck-container">
-        <div class="p-6 rounded-xl border border-slate-800 bg-slate-900/50 text-center">
-          <p class="text-xs text-slate-400 italic">Execute docking or load a benchmark to trigger ChEMBL experimental verification.</p>
+        <div class="p-6 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/50 text-center">
+          <p class="text-xs text-slate-500 dark:text-slate-400 italic">Execute docking or load a benchmark to trigger ChEMBL experimental verification.</p>
         </div>
       </div>
 
       <!-- Virtual Physiology / Downstream Pathway Map -->
-      <div class="glass-panel p-5 rounded-xl border border-slate-800 space-y-3">
+      <div class="glass-panel p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-sm text-white">Target Pathway & Physiological Cascade</h3>
-          <span class="text-xs font-mono text-cyan-400">UniProt REST Annotation</span>
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">Target Pathway &amp; Physiological Cascade</h3>
+          <span class="text-xs font-mono text-cyan-600 dark:text-cyan-400">UniProt REST Annotation</span>
         </div>
-        <div id="pathway-info-container" class="text-xs text-slate-300 leading-relaxed space-y-2">
+        <div id="pathway-info-container" class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed space-y-2">
           <p class="text-slate-500 italic">Load a target receptor to view UniProt pathway annotation and physiological cascade information.</p>
         </div>
       </div>
@@ -978,8 +978,8 @@
             <span>•</span>
             <span>DeepSeek / LLM Synthesis (Non-Deterministic)</span>
           </div>
-          <h2 class="text-lg font-bold text-white">AI Research Pharmacologist</h2>
-          <p class="text-xs text-slate-400">Automated mechanistic interpretation synthesized from calculated docking metrics and literature</p>
+          <h2 class="text-lg font-bold text-slate-900 dark:text-white">AI Research Pharmacologist</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Automated mechanistic interpretation synthesized from calculated docking metrics and literature</p>
         </div>
         <div class="flex items-center space-x-2 text-xs text-amber-800 dark:text-amber-400 font-semibold px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/40">
           <span class="w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400 animate-pulse"></span>
@@ -999,9 +999,9 @@
       </div>
 
       <!-- Narrative Content -->
-      <div class="glass-panel p-6 rounded-xl border border-slate-800 space-y-4">
+      <div class="glass-panel p-6 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
         <div id="narrative-report-content">
-          <p class="text-xs text-slate-400 italic">Run docking to generate a comprehensive pharmacological narrative.</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 italic">Run docking to generate a comprehensive pharmacological narrative.</p>
         </div>
       </div>
 
@@ -1010,25 +1010,25 @@
     <!-- ==================== TAB 6: BATCH SCREENING ==================== -->
     <section id="tab-batch" class="tab-pane hidden space-y-6">
       
-      <div class="pb-2 border-b border-slate-800">
-        <h2 class="text-lg font-bold text-white">Multi-Ligand Comparative Batch Screening</h2>
-        <p class="text-xs text-slate-400">Screen candidate compound libraries against the current target receptor and rank by binding affinity &amp; consensus score</p>
+      <div class="pb-2 border-b border-slate-200 dark:border-slate-800">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Multi-Ligand Comparative Batch Screening</h2>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Screen candidate compound libraries against the current target receptor and rank by binding affinity &amp; consensus score</p>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         <!-- Candidate Library Input -->
-        <div class="glass-panel p-5 rounded-xl border border-slate-800 space-y-3">
+        <div class="glass-panel p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
           <div class="flex items-center justify-between">
-            <label class="text-xs font-bold text-white block">Candidate Library:</label>
-            <select id="select-batch-library" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] text-cyan-300 focus:outline-none focus:border-cyan-500">
+            <label class="text-xs font-bold text-slate-900 dark:text-white block">Candidate Library:</label>
+            <select id="select-batch-library" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-[11px] text-cyan-700 dark:text-cyan-300 focus:outline-none focus:border-cyan-500">
               <option value="nsaid">Preset: NSAIDs (4 compounds)</option>
               <option value="kinase">Preset: Kinase Inhibitors (4 compounds)</option>
               <option value="antiviral">Preset: Antivirals (4 compounds)</option>
               <option value="clear">Clear / Custom Input</option>
             </select>
           </div>
-          <textarea id="input-batch-candidates" rows="8" placeholder="Enter one candidate per line as:&#10;Drug Name, SMILES&#10;e.g. MyDrug, CC(=O)Oc1ccccc1C(=O)O" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500">Aspirin, CC(=O)Oc1ccccc1C(=O)O
+          <textarea id="input-batch-candidates" rows="8" placeholder="Enter one candidate per line as:&#10;Drug Name, SMILES&#10;e.g. MyDrug, CC(=O)Oc1ccccc1C(=O)O" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:border-cyan-500">Aspirin, CC(=O)Oc1ccccc1C(=O)O
 Ibuprofen, CC(C)Cc1ccc(cc1)C(C)C(=O)O
 Naproxen, COc1ccc2cc(ccc2c1)C(C)C(=O)O
 Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
@@ -1039,14 +1039,14 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
         </div>
 
         <!-- Ranked Leaderboard Table -->
-        <div class="lg:col-span-2 glass-panel p-5 rounded-xl border border-slate-800 space-y-3">
+        <div class="lg:col-span-2 glass-panel p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
           <div class="flex items-center justify-between">
-            <h3 class="font-bold text-sm text-white">Comparative Ranking Matrix</h3>
-            <span class="text-[11px] text-slate-400">Consensus = ΔG (50%) + LE (scaled) + H-Bond Bonus</span>
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white">Comparative Ranking Matrix</h3>
+            <span class="text-[11px] text-slate-500 dark:text-slate-400">Consensus = ΔG (50%) + LE (scaled) + H-Bond Bonus</span>
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full text-xs text-left border border-slate-800 rounded-lg">
-              <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-mono text-[11px]">
+            <table class="w-full text-xs text-left border border-slate-200 dark:border-slate-800 rounded-lg">
+              <thead class="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-mono text-[11px]">
                 <tr>
                   <th class="p-2.5 text-center">Rank</th>
                   <th class="p-2.5">Candidate</th>
@@ -1058,7 +1058,7 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
                   <th class="p-2.5">Status</th>
                 </tr>
               </thead>
-              <tbody id="batch-leaderboard-rows" class="divide-y divide-slate-800 font-mono text-xs">
+              <tbody id="batch-leaderboard-rows" class="divide-y divide-slate-200 dark:divide-slate-800 font-mono text-xs">
                 <tr><td colspan="8" class="text-center p-6 text-xs text-slate-500 italic">Click "Run Batch Virtual Screening" to dock candidate library.</td></tr>
               </tbody>
             </table>
@@ -1072,10 +1072,10 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
     <!-- ==================== TAB 7: RESEARCH DOSSIER & EXPORT ==================== -->
     <section id="tab-dossier" class="tab-pane hidden space-y-6">
       
-      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <h2 class="text-lg font-bold text-white">Academic Research Dossier</h2>
-          <p class="text-xs text-slate-400">Formal report suitable for M.Pharm coursework submission or early-stage computational citation</p>
+          <h2 class="text-lg font-bold text-slate-900 dark:text-white">Academic Research Dossier</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Formal report suitable for M.Pharm coursework submission or early-stage computational citation</p>
         </div>
         <button id="btn-export-dossier" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center space-x-2">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
@@ -1083,21 +1083,21 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
         </button>
       </div>
 
-      <div class="glass-panel p-8 rounded-xl border border-slate-800 space-y-6 text-slate-200">
-        <div class="border-b border-slate-700/80 pb-4">
-          <span class="text-xs font-mono text-cyan-400 uppercase tracking-widest">Bindora Computational Pharmacology Dossier</span>
-          <h1 class="text-2xl font-black text-white mt-1">3D Molecular Docking & Pharmacokinetic Evaluation</h1>
-          <p class="text-xs text-slate-400 mt-1">Generated via AutoDock Vina v1.2.7 & RDKit Cheminformatics Engine</p>
+      <div class="glass-panel p-8 rounded-xl border border-slate-200 dark:border-slate-800 space-y-6 text-slate-800 dark:text-slate-200">
+        <div class="border-b border-slate-200 dark:border-slate-700/80 pb-4">
+          <span class="text-xs font-mono text-cyan-600 dark:text-cyan-400 uppercase tracking-widest">Bindora Computational Pharmacology Dossier</span>
+          <h1 class="text-2xl font-black text-slate-900 dark:text-white mt-1">3D Molecular Docking &amp; Pharmacokinetic Evaluation</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Generated via AutoDock Vina v1.2.7 &amp; RDKit Cheminformatics Engine</p>
         </div>
 
         <div class="grid grid-cols-2 gap-4 text-xs font-mono">
-          <div class="p-3 bg-slate-900/60 rounded border border-slate-800">
-            <span class="text-slate-400 block">Investigational API / Ligand</span>
-            <span id="dossier-ligand-name" class="text-white font-bold text-sm">No drug loaded</span>
+          <div class="p-3 bg-slate-100/90 dark:bg-slate-900/60 rounded border border-slate-200 dark:border-slate-800">
+            <span class="text-slate-500 dark:text-slate-400 block">Investigational API / Ligand</span>
+            <span id="dossier-ligand-name" class="text-slate-900 dark:text-white font-bold text-sm">No drug loaded</span>
           </div>
-          <div class="p-3 bg-slate-900/60 rounded border border-slate-800">
-            <span class="text-slate-400 block">Biological Target</span>
-            <span id="dossier-target-name" class="text-white font-bold text-sm">No target loaded</span>
+          <div class="p-3 bg-slate-100/90 dark:bg-slate-900/60 rounded border border-slate-200 dark:border-slate-800">
+            <span class="text-slate-500 dark:text-slate-400 block">Biological Target</span>
+            <span id="dossier-target-name" class="text-slate-900 dark:text-white font-bold text-sm">No target loaded</span>
           </div>
         </div>
 
