@@ -149,29 +149,218 @@ class BindoraApp {
     const closeSettingsBtn = document.getElementById("btn-close-settings");
     const saveSettingsBtn = document.getElementById("btn-save-settings");
     const apiKeyInput = document.getElementById("input-api-key");
+    const firebaseKeyInput = document.getElementById("input-firebase-api-key");
 
     if (settingsBtn && settingsModal) {
       settingsBtn.addEventListener("click", () => {
         if (apiKeyInput) apiKeyInput.value = this.state.apiKey;
+        if (firebaseKeyInput) firebaseKeyInput.value = localStorage.getItem("bindora_firebase_api_key") || "";
         settingsModal.classList.remove("hidden");
       });
     }
     if (closeSettingsBtn && settingsModal) {
       closeSettingsBtn.addEventListener("click", () => settingsModal.classList.add("hidden"));
     }
-    if (saveSettingsBtn && settingsModal && apiKeyInput) {
+    if (saveSettingsBtn && settingsModal) {
       saveSettingsBtn.addEventListener("click", () => {
-        this.state.apiKey = apiKeyInput.value.trim();
-        localStorage.setItem("bindora_api_key", this.state.apiKey);
+        if (apiKeyInput) {
+          this.state.apiKey = apiKeyInput.value.trim();
+          localStorage.setItem("bindora_api_key", this.state.apiKey);
+        }
+        if (firebaseKeyInput && firebaseKeyInput.value.trim()) {
+          const fbKey = firebaseKeyInput.value.trim();
+          localStorage.setItem("bindora_firebase_api_key", fbKey);
+          if (window.bindoraFirebase) {
+            window.bindoraFirebase.setApiKey(fbKey);
+          }
+        }
         settingsModal.classList.add("hidden");
-        this.showToast("API Key preference saved.", "success");
+        this.showToast("Settings & API Keys saved successfully.", "success");
       });
+    }
+
+    // Firebase Auth Modal & Events
+    const authBtn = document.getElementById("btn-user-auth");
+    const authModal = document.getElementById("modal-firebase-auth");
+    const closeAuthBtn = document.getElementById("btn-close-auth-modal");
+    const googleAuthBtn = document.getElementById("btn-auth-google");
+    const emailAuthBtn = document.getElementById("btn-auth-email-submit");
+    const toggleAuthModeBtn = document.getElementById("btn-auth-toggle-mode");
+    const signoutBtn = document.getElementById("btn-auth-signout");
+    const saveCloudBtn = document.getElementById("btn-save-cloud");
+    const refreshSavedRunsBtn = document.getElementById("btn-refresh-saved-runs");
+
+    let isSignUpMode = false;
+
+    if (authBtn && authModal) {
+      authBtn.addEventListener("click", () => {
+        this.updateAuthModalView();
+        authModal.classList.remove("hidden");
+      });
+    }
+    if (closeAuthBtn && authModal) {
+      closeAuthBtn.addEventListener("click", () => authModal.classList.add("hidden"));
+    }
+
+    if (toggleAuthModeBtn) {
+      toggleAuthModeBtn.addEventListener("click", () => {
+        isSignUpMode = !isSignUpMode;
+        if (emailAuthBtn) emailAuthBtn.textContent = isSignUpMode ? "Create Account" : "Sign In";
+        toggleAuthModeBtn.textContent = isSignUpMode ? "Already have an account? Sign In" : "New user? Create an account";
+        const errorEl = document.getElementById("auth-error-msg");
+        if (errorEl) errorEl.classList.add("hidden");
+      });
+    }
+
+    if (googleAuthBtn) {
+      googleAuthBtn.addEventListener("click", async () => {
+        const errorEl = document.getElementById("auth-error-msg");
+        if (errorEl) errorEl.classList.add("hidden");
+        try {
+          await window.bindoraFirebase.signInWithGoogle();
+          this.showToast("Signed in with Google successfully!", "success");
+          this.updateAuthModalView();
+        } catch (e) {
+          if (errorEl) {
+            errorEl.textContent = e.message || "Google sign-in failed.";
+            errorEl.classList.remove("hidden");
+          }
+        }
+      });
+    }
+
+    if (emailAuthBtn) {
+      emailAuthBtn.addEventListener("click", async () => {
+        const email = document.getElementById("input-auth-email")?.value.trim();
+        const pass = document.getElementById("input-auth-password")?.value;
+        const errorEl = document.getElementById("auth-error-msg");
+        if (errorEl) errorEl.classList.add("hidden");
+
+        if (!email || !pass) {
+          if (errorEl) {
+            errorEl.textContent = "Please enter both email and password.";
+            errorEl.classList.remove("hidden");
+          }
+          return;
+        }
+
+        try {
+          if (isSignUpMode) {
+            await window.bindoraFirebase.signUpWithEmail(email, pass);
+            this.showToast("Account created and signed in!", "success");
+          } else {
+            await window.bindoraFirebase.signInWithEmail(email, pass);
+            this.showToast("Signed in successfully!", "success");
+          }
+          this.updateAuthModalView();
+        } catch (e) {
+          if (errorEl) {
+            errorEl.textContent = e.message;
+            errorEl.classList.remove("hidden");
+          }
+        }
+      });
+    }
+
+    if (signoutBtn) {
+      signoutBtn.addEventListener("click", async () => {
+        await window.bindoraFirebase.signOut();
+        this.showToast("Signed out of Firebase account.", "info");
+        this.updateAuthModalView();
+      });
+    }
+
+    if (saveCloudBtn) {
+      saveCloudBtn.addEventListener("click", async () => {
+        if (!this.state.docking) {
+          this.showToast("Please run docking first before saving.", "error");
+          return;
+        }
+        try {
+          const topPose = this.state.docking.top_pose || {};
+          const thermo = this.state.docking.thermodynamics || {};
+          const contacts = this.state.docking.interactions || {};
+          const adme = this.state.ligand?.adme || {};
+
+          await window.bindoraFirebase.saveDockingRun({
+            drugName: this.state.ligand?.name || "Drug Candidate",
+            targetName: this.state.receptor?.title || this.state.receptor?.pdb_id || "Target",
+            pdbId: this.state.receptor?.pdb_id || "N/A",
+            affinityKcal: topPose.affinity_kcal || 0.0,
+            theoreticalKdNm: thermo.theoretical_kd_nm || "N/A",
+            ligandEfficiency: thermo.ligand_efficiency?.value || 0.0,
+            hbondCount: contacts.total_hbond_count || 0,
+            lipinskiStatus: adme.drug_likeness?.lipinski?.status || "Pass",
+            crosscheckBadge: this.state.crosscheck?.status_badge || "Computational Prediction Only",
+            isCrossChecked: !!this.state.crosscheck?.is_cross_checked
+          });
+
+          this.showToast("Simulation saved to Firebase Realtime Database!", "success");
+          this.loadCloudHistory();
+        } catch (e) {
+          this.showToast(e.message, "error");
+        }
+      });
+    }
+
+    if (refreshSavedRunsBtn) {
+      refreshSavedRunsBtn.addEventListener("click", () => this.loadCloudHistory());
     }
 
     // Export Dossier
     const exportBtn = document.getElementById("btn-export-dossier");
     if (exportBtn) {
       exportBtn.addEventListener("click", () => window.print());
+    }
+  }
+
+  updateAuthModalView() {
+    const user = window.bindoraFirebase ? window.bindoraFirebase.currentUser : null;
+    const loggedOutView = document.getElementById("auth-logged-out-view");
+    const loggedInView = document.getElementById("auth-logged-in-view");
+    const profileName = document.getElementById("user-profile-name");
+    const profileEmail = document.getElementById("user-profile-email");
+    const profileImg = document.getElementById("user-profile-img");
+
+    if (user) {
+      if (loggedOutView) loggedOutView.classList.add("hidden");
+      if (loggedInView) loggedInView.classList.remove("hidden");
+      if (profileName) profileName.textContent = user.displayName || user.email.split("@")[0];
+      if (profileEmail) profileEmail.textContent = user.email;
+      if (profileImg) profileImg.src = user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`;
+      this.loadCloudHistory();
+    } else {
+      if (loggedOutView) loggedOutView.classList.remove("hidden");
+      if (loggedInView) loggedInView.classList.add("hidden");
+    }
+  }
+
+  async loadCloudHistory() {
+    const container = document.getElementById("saved-runs-list");
+    if (!container || !window.bindoraFirebase) return;
+
+    try {
+      const runs = await window.bindoraFirebase.fetchSavedRuns();
+      if (!runs || runs.length === 0) {
+        container.innerHTML = `<p class="text-slate-500 italic p-2 text-center text-xs">No saved docking runs in cloud database yet.</p>`;
+        return;
+      }
+
+      container.innerHTML = runs.map(r => `
+        <div class="p-2 flex items-center justify-between text-xs hover:bg-slate-900/60 rounded">
+          <div>
+            <div class="font-bold text-white">${r.drugName} <span class="text-slate-400 font-normal">vs</span> ${r.targetName} (${r.pdbId})</div>
+            <div class="font-mono text-[11px] text-cyan-300">
+              ΔG: ${r.affinityKcal} kcal/mol &bull; Kd: ${r.theoreticalKdNm} nM &bull; ${new Date(r.savedAt).toLocaleDateString()}
+            </div>
+          </div>
+          <span class="px-2 py-0.5 rounded text-[10px] ${r.isCrossChecked ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-slate-800 text-slate-400'}">
+            ${r.crosscheckBadge}
+          </span>
+        </div>
+      `).join("");
+    } catch (e) {
+      container.innerHTML = `<p class="text-rose-400 p-2 text-center text-xs">Could not load saved runs: ${e.message}</p>`;
     }
   }
 
