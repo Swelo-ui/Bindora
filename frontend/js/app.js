@@ -57,10 +57,8 @@ class BindoraApp {
       console.warn("Could not fetch benchmarks:", e);
     }
 
-    // 5. Load default benchmark (Imatinib / BCR-ABL) for instant exploration
-    if (this.state.benchmarks.length > 0) {
-      this.loadBenchmark(this.state.benchmarks[0].id);
-    }
+    // 5. Clean live state on startup (benchmarks are available above for 1-click exploration if user chooses)
+    this.updateStudioCards();
   }
 
   setupEventListeners() {
@@ -238,7 +236,11 @@ class BindoraApp {
       });
     }
 
-    // Settings removed — API keys are pre-configured server-side
+    // Workspace Reset / Clear Session
+    const resetBtn = document.getElementById("btn-reset-session");
+    if (resetBtn) {
+      resetBtn.addEventListener("click", () => this.resetWorkspace());
+    }
 
     // Firebase Auth Modal & Events
     const authBtn = document.getElementById("btn-user-auth");
@@ -543,6 +545,13 @@ class BindoraApp {
 
   async searchPubChem(query) {
     if (!query) return;
+    const ligCard = document.getElementById("card-ligand-info");
+    if (ligCard) {
+      ligCard.innerHTML = `<div class="p-6 text-center text-cyan-400 font-medium animate-pulse flex flex-col items-center justify-center space-y-2">
+        <svg class="animate-spin w-6 h-6 text-cyan-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        <span class="text-xs">Searching PubChem REST API for '${query}'...</span>
+      </div>`;
+    }
     this.showToast(`Searching PubChem for '${query}'...`, "info");
     try {
       const data = await BindoraAPI.searchPubChem(query);
@@ -552,14 +561,28 @@ class BindoraApp {
         ...ligPrep
       };
       this.updateStudioCards();
+      this.updateDossierView();
+      if (this.viewer && ligPrep.pdb_block) {
+        this.viewer.loadLigand(ligPrep.pdb_block);
+        const emptyState = document.getElementById("viewer-empty-state");
+        if (emptyState) emptyState.classList.add("hidden");
+      }
       this.showToast(`Found PubChem compound: ${data.name} (CID: ${data.cid})`, "success");
     } catch (e) {
+      this.updateStudioCards();
       this.showToast(`PubChem search failed: ${e.message}`, "error");
     }
   }
 
   async searchRCSB(query) {
     if (!query) return;
+    const recCard = document.getElementById("card-receptor-info");
+    if (recCard) {
+      recCard.innerHTML = `<div class="p-6 text-center text-emerald-400 font-medium animate-pulse flex flex-col items-center justify-center space-y-2">
+        <svg class="animate-spin w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        <span class="text-xs">Querying RCSB Protein Data Bank for '${query}'...</span>
+      </div>`;
+    }
     this.showToast(`Searching RCSB for '${query}'...`, "info");
     try {
       const data = await BindoraAPI.searchRCSB(query);
@@ -572,6 +595,7 @@ class BindoraApp {
         };
         this.updateStudioCards();
         this.updatePathwayInfo();
+        this.updateDossierView();
         if (this.viewer && recPrep.cleaned_pdb) {
           this.viewer.loadReceptor(recPrep.cleaned_pdb);
           const emptyState = document.getElementById("viewer-empty-state");
@@ -579,7 +603,6 @@ class BindoraApp {
         }
         this.showToast(`Loaded RCSB entry ${entry.pdb_id}: ${entry.title.substring(0, 30)}...`, "success");
       } else if (data.results && data.results.length > 0) {
-        // Show result picker
         const first = data.results[0];
         const recPrep = await BindoraAPI.prepareReceptor("", first.pdb_id);
         this.state.receptor = {
@@ -588,6 +611,7 @@ class BindoraApp {
         };
         this.updateStudioCards();
         this.updatePathwayInfo();
+        this.updateDossierView();
         if (this.viewer && recPrep.cleaned_pdb) {
           this.viewer.loadReceptor(recPrep.cleaned_pdb);
           const emptyState = document.getElementById("viewer-empty-state");
@@ -595,9 +619,11 @@ class BindoraApp {
         }
         this.showToast(`Selected top RCSB match: ${first.pdb_id}`, "success");
       } else {
+        this.updateStudioCards();
         this.showToast("No RCSB entries found for query", "error");
       }
     } catch (e) {
+      this.updateStudioCards();
       this.showToast(`RCSB query failed: ${e.message}`, "error");
     }
   }
@@ -608,6 +634,13 @@ class BindoraApp {
       return;
     }
     const displayName = name || "Custom Ligand";
+    const ligCard = document.getElementById("card-ligand-info");
+    if (ligCard) {
+      ligCard.innerHTML = `<div class="p-6 text-center text-cyan-400 font-medium animate-pulse flex flex-col items-center justify-center space-y-2">
+        <svg class="animate-spin w-6 h-6 text-cyan-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        <span class="text-xs">Parsing SMILES & generating 3D coordinates with RDKit...</span>
+      </div>`;
+    }
     this.showToast(`Preparing custom ligand: ${displayName}...`, "info");
     try {
       const ligPrep = await BindoraAPI.prepareLigand(smiles, false);
@@ -622,8 +655,14 @@ class BindoraApp {
       };
       this.updateStudioCards();
       this.updateDossierView();
+      if (this.viewer && ligPrep.pdb_block) {
+        this.viewer.loadLigand(ligPrep.pdb_block);
+        const emptyState = document.getElementById("viewer-empty-state");
+        if (emptyState) emptyState.classList.add("hidden");
+      }
       this.showToast(`Custom ligand loaded: ${displayName}`, "success");
     } catch (e) {
+      this.updateStudioCards();
       this.showToast(`Ligand preparation failed: ${e.message}`, "error");
     }
   }
@@ -631,14 +670,38 @@ class BindoraApp {
   async uploadLigandFile(file) {
     if (!file) return;
     const isSdf = file.name.toLowerCase().endsWith('.sdf') || file.name.toLowerCase().endsWith('.mol');
+    const ligCard = document.getElementById("card-ligand-info");
+    if (ligCard) {
+      ligCard.innerHTML = `<div class="p-6 text-center text-cyan-400 font-medium animate-pulse flex flex-col items-center justify-center space-y-2">
+        <svg class="animate-spin w-6 h-6 text-cyan-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        <span class="text-xs">Reading ${file.name} & calculating 3D conformer...</span>
+      </div>`;
+    }
+    this.showToast(`Processing ${file.name}...`, "info");
     const reader = new FileReader();
     reader.onload = async (e) => {
       const content = e.target.result;
-      this.showToast(`Processing ${file.name}...`, "info");
       try {
         const ligPrep = await BindoraAPI.prepareLigand(content, isSdf);
         const p = ligPrep.adme?.physicochemical || {};
-        const baseName = file.name.replace(/\.[^/.]+$/, "");
+        let baseName = file.name.replace(/\.[^/.]+$/, "");
+        
+        // Resolve PubChem CID if present in filename or content
+        const cidMatch = file.name.match(/COMPOUND_CID_(\d+)/i) || (content && content.match(/PUBCHEM_COMPOUND_CID[>\s\n\r]+(\d+)/i));
+        if (cidMatch) {
+          const cid = cidMatch[1];
+          try {
+            const cidData = await BindoraAPI.searchPubChemByCID(cid);
+            if (cidData && cidData.name) {
+              baseName = `${cidData.name} (CID: ${cid})`;
+            } else {
+              baseName = `PubChem Compound #${cid}`;
+            }
+          } catch (err) {
+            baseName = `PubChem Compound #${cid}`;
+          }
+        }
+
         this.state.ligand = {
           name: baseName,
           smiles: ligPrep.canonical_smiles,
@@ -649,8 +712,14 @@ class BindoraApp {
         };
         this.updateStudioCards();
         this.updateDossierView();
-        this.showToast(`Loaded ${file.name} successfully`, "success");
+        if (this.viewer && ligPrep.pdb_block) {
+          this.viewer.loadLigand(ligPrep.pdb_block);
+          const emptyState = document.getElementById("viewer-empty-state");
+          if (emptyState) emptyState.classList.add("hidden");
+        }
+        this.showToast(`Loaded ${baseName} successfully`, "success");
       } catch (err) {
+        this.updateStudioCards();
         this.showToast(`File preparation failed: ${err.message}`, "error");
       }
     };
@@ -663,6 +732,13 @@ class BindoraApp {
       return;
     }
     const displayName = name || "CUSTOM_RECEPTOR";
+    const recCard = document.getElementById("card-receptor-info");
+    if (recCard) {
+      recCard.innerHTML = `<div class="p-6 text-center text-emerald-400 font-medium animate-pulse flex flex-col items-center justify-center space-y-2">
+        <svg class="animate-spin w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        <span class="text-xs">Preparing receptor structure: ${displayName}...</span>
+      </div>`;
+    }
     this.showToast(`Preparing receptor structure: ${displayName}...`, "info");
     try {
       const recPrep = await BindoraAPI.prepareReceptor(pdbContent, "");
@@ -682,12 +758,20 @@ class BindoraApp {
       }
       this.showToast(`Loaded custom receptor: ${displayName}`, "success");
     } catch (e) {
+      this.updateStudioCards();
       this.showToast(`Receptor preparation failed: ${e.message}`, "error");
     }
   }
 
   async uploadReceptorFile(file) {
     if (!file) return;
+    const recCard = document.getElementById("card-receptor-info");
+    if (recCard) {
+      recCard.innerHTML = `<div class="p-6 text-center text-emerald-400 font-medium animate-pulse flex flex-col items-center justify-center space-y-2">
+        <svg class="animate-spin w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        <span class="text-xs">Reading ${file.name} & preparing structure...</span>
+      </div>`;
+    }
     const reader = new FileReader();
     reader.onload = async (e) => {
       const content = e.target.result;
@@ -695,6 +779,60 @@ class BindoraApp {
       await this.loadCustomReceptorPdb(baseName, content);
     };
     reader.readAsText(file);
+  }
+
+  resetWorkspace() {
+    this.state.ligand = null;
+    this.state.receptor = null;
+    this.state.docking = null;
+    this.state.crosscheck = null;
+    this.state.narrative = null;
+    this.state.currentPoseIdx = 0;
+
+    if (this.viewer) {
+      this.viewer.clear();
+      this.viewer.clearInteractions();
+    }
+    const emptyState = document.getElementById("viewer-empty-state");
+    if (emptyState) emptyState.classList.remove("hidden");
+
+    const statusBanner = document.getElementById("docking-status-banner");
+    if (statusBanner) statusBanner.classList.add("hidden");
+
+    const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+    setTxt("dock-affinity-score", "— kcal/mol");
+    setTxt("dock-kd-score", "— nM");
+    setTxt("dock-le-score", "—");
+    setTxt("dock-hbonds-count", "—");
+    setTxt("dock-current-mode-label", "Mode 1 / 9");
+    const resContainer = document.getElementById("dock-interacting-residues");
+    if (resContainer) resContainer.innerHTML = `<span class="text-xs text-slate-500 italic">Run docking to analyze active pocket contacts</span>`;
+
+    this.updateStudioCards();
+    this.updateDossierView();
+    this.updatePathwayInfo();
+    this.showToast("Workspace cleared. Ready for a new simulation.", "info");
+  }
+
+  proceedToDocking() {
+    this.switchTab("docking");
+    const statusBanner = document.getElementById("docking-status-banner");
+    if (!this.state.docking && statusBanner) {
+      if (this.state.ligand && this.state.receptor) {
+        statusBanner.classList.remove("hidden");
+        statusBanner.className = "glass-panel p-3.5 rounded-xl border border-cyan-500/40 bg-cyan-950/40 transition-all duration-300 mb-2";
+        const icon = document.getElementById("docking-status-icon");
+        if (icon) icon.innerHTML = `<span class="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center font-bold text-xs">READY</span>`;
+        const title = document.getElementById("docking-status-title");
+        if (title) title.textContent = `Ready: ${this.state.ligand.name} vs ${this.state.receptor.pdb_id}`;
+        const sub = document.getElementById("docking-status-subtitle");
+        if (sub) sub.textContent = "Click 'Execute 3D Molecular Docking' below to run the Scripps AutoDock Vina engine.";
+        const extra = document.getElementById("docking-status-extra");
+        if (extra) extra.textContent = "Awaiting execution";
+      } else {
+        statusBanner.classList.add("hidden");
+      }
+    }
   }
 
   updateStudioCards() {
@@ -778,6 +916,23 @@ class BindoraApp {
       dockBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Running AutoDock Vina...`;
     }
 
+    const statusBanner = document.getElementById("docking-status-banner");
+    const statusIcon = document.getElementById("docking-status-icon");
+    const statusTitle = document.getElementById("docking-status-title");
+    const statusSub = document.getElementById("docking-status-subtitle");
+    const statusExtra = document.getElementById("docking-status-extra");
+
+    const exhaustiveness = parseInt(document.getElementById("docking-exhaustiveness")?.value) || 8;
+
+    if (statusBanner) {
+      statusBanner.classList.remove("hidden");
+      statusBanner.className = "glass-panel p-3.5 rounded-xl border border-cyan-500/50 bg-cyan-950/80 transition-all duration-300 mb-2 animate-pulse";
+      if (statusIcon) statusIcon.innerHTML = `<svg class="animate-spin w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+      if (statusTitle) statusTitle.textContent = "AutoDock Vina Docking in Progress...";
+      if (statusSub) statusSub.textContent = `Sampling conformational space (exhaustiveness = ${exhaustiveness}, modes = 9) on CPU...`;
+      if (statusExtra) statusExtra.textContent = "Running Monte Carlo...";
+    }
+
     this.showToast("Launching AutoDock Vina docking engine...", "info");
 
     try {
@@ -785,7 +940,6 @@ class BindoraApp {
       const getVal = (id, def) => parseFloat(document.getElementById(id)?.value) || def;
       const center = { x: getVal("grid-cx", 0), y: getVal("grid-cy", 0), z: getVal("grid-cz", 0) };
       const size = { x: getVal("grid-sx", 22), y: getVal("grid-sy", 22), z: getVal("grid-sz", 22) };
-      const exhaustiveness = parseInt(document.getElementById("docking-exhaustiveness")?.value) || 8;
 
       const p = this.state.ligand.adme?.physicochemical || {};
 
@@ -821,6 +975,15 @@ class BindoraApp {
       // Render ADME charts
       this.updateADMEView();
 
+      // Update completion banner
+      if (statusBanner) {
+        statusBanner.className = "glass-panel p-3.5 rounded-xl border border-emerald-500/50 bg-emerald-950/80 transition-all duration-300 mb-2";
+        if (statusIcon) statusIcon.innerHTML = `<span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">✓</span>`;
+        if (statusTitle) statusTitle.textContent = `Docking Complete: ΔG = ${dockResult.top_pose.affinity_kcal} kcal/mol`;
+        if (statusSub) statusSub.textContent = `Theoretical Kd: ${dockResult.thermodynamics?.theoretical_kd_nm || "—"} nM | ${dockResult.interactions?.total_hbond_count || 0} H-Bonds | Top binding pose loaded.`;
+        if (statusExtra) statusExtra.textContent = "Finished";
+      }
+
       // Switch to 3D docking tab
       this.switchTab("docking");
       this.showToast(`Docking finished! Top ΔG: ${dockResult.top_pose.affinity_kcal} kcal/mol`, "success");
@@ -828,6 +991,13 @@ class BindoraApp {
 
     } catch (e) {
       console.error("Docking error:", e);
+      if (statusBanner) {
+        statusBanner.className = "glass-panel p-3.5 rounded-xl border border-rose-500/50 bg-rose-950/80 transition-all duration-300 mb-2";
+        if (statusIcon) statusIcon.innerHTML = `<span class="w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold text-sm">✕</span>`;
+        if (statusTitle) statusTitle.textContent = "Docking Execution Failed";
+        if (statusSub) statusSub.textContent = e.message;
+        if (statusExtra) statusExtra.textContent = "Error";
+      }
       this.showToast(`Docking execution failed: ${e.message}`, "error");
     } finally {
       if (dockBtn) {

@@ -41,6 +41,10 @@ class BindoraAPI {
     return this.request(`/api/search/pubchem?query=${encodeURIComponent(query)}`);
   }
 
+  static async searchPubChemByCID(cid) {
+    return this.request(`/api/search/pubchem/cid/${encodeURIComponent(cid)}`);
+  }
+
   static async searchRCSB(query) {
     return this.request(`/api/search/rcsb?query=${encodeURIComponent(query)}`);
   }

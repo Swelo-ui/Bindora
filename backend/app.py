@@ -79,6 +79,17 @@ def search_pubchem():
     
     return jsonify(result)
 
+@app.route("/api/search/pubchem/cid/<cid>", methods=["GET"])
+def search_pubchem_cid(cid):
+    result = StructureFetcher.fetch_pubchem_by_cid(cid)
+    if not result:
+        return jsonify({"error": f"No compound found in PubChem with CID '{cid}'"}), 404
+    
+    smiles = result.get("smiles")
+    adme_data = ADMEProfiler.calculate_adme(smiles) if smiles else {}
+    result["adme"] = adme_data
+    return jsonify(result)
+
 @app.route("/api/search/rcsb", methods=["GET"])
 def search_rcsb():
     query = request.args.get("query", "").strip()

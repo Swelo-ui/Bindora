@@ -99,6 +99,55 @@ class StructureFetcher:
         return result
 
     @staticmethod
+    def fetch_pubchem_by_cid(cid: str) -> Optional[Dict[str, Any]]:
+        """Fetch compound metadata, title, and properties by PubChem CID."""
+        cid = str(cid).strip()
+        if not cid.isdigit():
+            return None
+        cache_file = CACHE_DIR / f"pubchem_cid_{cid}.json"
+        if cache_file.exists():
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+
+        prop_url = (
+            f"{PUBCHEM_BASE_URL}/compound/cid/{cid}/property/"
+            f"Title,MolecularFormula,MolecularWeight,CanonicalSMILES,ConnectivitySMILES,IUPACName,"
+            f"XLogP,TPSA,HBondDonorCount,HBondAcceptorCount,RotatableBondCount/JSON"
+        )
+        data = _get_json(prop_url)
+        if not data or "PropertyTable" not in data or not data["PropertyTable"]["Properties"]:
+            return None
+
+        props = data["PropertyTable"]["Properties"][0]
+        smiles = props.get("CanonicalSMILES") or props.get("ConnectivitySMILES")
+        title = props.get("Title") or props.get("IUPACName") or f"Compound #{cid}"
+
+        result = {
+            "source": "PubChem",
+            "cid": int(cid),
+            "name": title,
+            "iupac_name": props.get("IUPACName", ""),
+            "formula": props.get("MolecularFormula", ""),
+            "weight": float(props.get("MolecularWeight", 0.0)),
+            "smiles": smiles,
+            "xlogp": float(props.get("XLogP", 0.0)) if props.get("XLogP") is not None else None,
+            "tpsa": float(props.get("TPSA", 0.0)) if props.get("TPSA") is not None else None,
+            "hbd": int(props.get("HBondDonorCount", 0)),
+            "hba": int(props.get("HBondAcceptorCount", 0)),
+            "rotb": int(props.get("RotatableBondCount", 0)),
+            "url": f"https://pubchem.ncbi.nlm.nih.gov/compound/{cid}"
+        }
+        try:
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2)
+        except Exception:
+            pass
+        return result
+
+    @staticmethod
     def fetch_rcsb_pdb(pdb_id: str) -> Optional[Dict[str, Any]]:
         """Fetch macromolecule PDB file and metadata by 4-letter PDB code."""
         pdb_id = pdb_id.strip().upper()
