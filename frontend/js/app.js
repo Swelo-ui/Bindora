@@ -432,7 +432,7 @@ class BindoraApp {
     if (signoutBtn) {
       signoutBtn.addEventListener("click", async () => {
         await window.bindoraFirebase.signOut();
-        this.showToast("Signed out of Firebase account.", "info");
+        this.showToast("Signed out of researcher account.", "info");
         this.updateAuthModalView();
       });
     }
@@ -462,7 +462,7 @@ class BindoraApp {
             isCrossChecked: !!this.state.crosscheck?.is_cross_checked
           });
 
-          this.showToast("Simulation saved to Firebase Realtime Database!", "success");
+          this.showToast("Simulation saved to cloud history!", "success");
           this.loadCloudHistory();
         } catch (e) {
           this.showToast(e.message, "error");
@@ -472,6 +472,104 @@ class BindoraApp {
 
     if (refreshSavedRunsBtn) {
       refreshSavedRunsBtn.addEventListener("click", () => this.loadCloudHistory());
+    }
+
+    // Profile Editing Events
+    const toggleEditProfileBtn = document.getElementById("btn-toggle-edit-profile");
+    const cancelEditProfileBtn = document.getElementById("btn-cancel-edit-profile");
+    const profileEditForm = document.getElementById("profile-edit-form");
+    const randomAvatarBtn = document.getElementById("btn-random-avatar");
+    const saveProfileBtn = document.getElementById("btn-save-profile");
+    const inputEditName = document.getElementById("input-edit-display-name");
+    const inputEditPhoto = document.getElementById("input-edit-photo-url");
+    const profileEditStatus = document.getElementById("profile-edit-status");
+
+    if (toggleEditProfileBtn && profileEditForm) {
+      toggleEditProfileBtn.addEventListener("click", () => {
+        const isHidden = profileEditForm.classList.contains("hidden");
+        if (isHidden) {
+          profileEditForm.classList.remove("hidden");
+          const user = window.bindoraFirebase ? window.bindoraFirebase.currentUser : null;
+          if (user) {
+            if (inputEditName) inputEditName.value = user.displayName || "";
+            if (inputEditPhoto) inputEditPhoto.value = user.photoURL || "";
+          }
+          if (profileEditStatus) profileEditStatus.classList.add("hidden");
+        } else {
+          profileEditForm.classList.add("hidden");
+        }
+      });
+    }
+
+    if (cancelEditProfileBtn && profileEditForm) {
+      cancelEditProfileBtn.addEventListener("click", () => {
+        profileEditForm.classList.add("hidden");
+        if (profileEditStatus) profileEditStatus.classList.add("hidden");
+      });
+    }
+
+    if (randomAvatarBtn && inputEditPhoto) {
+      randomAvatarBtn.addEventListener("click", () => {
+        const randomSeed = "Scientist-" + Math.floor(Math.random() * 90000 + 10000);
+        inputEditPhoto.value = `https://api.dicebear.com/7.x/bottts/svg?seed=${randomSeed}`;
+      });
+    }
+
+    // Avatar Presets
+    document.querySelectorAll(".preset-avatar-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const avatarUrl = btn.getAttribute("data-avatar");
+        if (avatarUrl && inputEditPhoto) {
+          inputEditPhoto.value = avatarUrl;
+        }
+      });
+    });
+
+    if (saveProfileBtn) {
+      saveProfileBtn.addEventListener("click", async () => {
+        const newName = inputEditName ? inputEditName.value.trim() : "";
+        const newPhoto = inputEditPhoto ? inputEditPhoto.value.trim() : "";
+        if (!newName && !newPhoto) {
+          if (profileEditStatus) {
+            profileEditStatus.textContent = "Please enter a display name or avatar URL.";
+            profileEditStatus.className = "text-xs text-rose-400";
+            profileEditStatus.classList.remove("hidden");
+          }
+          return;
+        }
+
+        const originalBtnHtml = saveProfileBtn.innerHTML;
+        saveProfileBtn.disabled = true;
+        saveProfileBtn.innerHTML = `
+          <svg class="animate-spin w-3.5 h-3.5 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          <span>Saving...</span>
+        `;
+
+        try {
+          await window.bindoraFirebase.updateUserProfile(newName, newPhoto);
+          if (profileEditStatus) {
+            profileEditStatus.textContent = "✓ Profile updated successfully!";
+            profileEditStatus.className = "text-xs text-emerald-400";
+            profileEditStatus.classList.remove("hidden");
+          }
+          this.showToast("Profile updated successfully!", "success");
+          this.updateAuthModalView();
+          setTimeout(() => {
+            if (profileEditForm) profileEditForm.classList.add("hidden");
+            if (profileEditStatus) profileEditStatus.classList.add("hidden");
+          }, 1200);
+        } catch (err) {
+          if (profileEditStatus) {
+            profileEditStatus.textContent = err.message || "Failed to update profile.";
+            profileEditStatus.className = "text-xs text-rose-400";
+            profileEditStatus.classList.remove("hidden");
+          }
+          this.showToast(err.message || "Failed to update profile.", "error");
+        } finally {
+          saveProfileBtn.disabled = false;
+          saveProfileBtn.innerHTML = originalBtnHtml;
+        }
+      });
     }
 
     // Export Dossier
@@ -525,6 +623,11 @@ class BindoraApp {
       if (profileEmail) profileEmail.textContent = user.email;
       if (profileImg) profileImg.src = user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`;
       
+      const inputEditName = document.getElementById("input-edit-display-name");
+      const inputEditPhoto = document.getElementById("input-edit-photo-url");
+      if (inputEditName) inputEditName.value = user.displayName || "";
+      if (inputEditPhoto) inputEditPhoto.value = user.photoURL || "";
+      
       // Update header auth button
       const headerName = document.getElementById("user-display-name");
       const headerAvatar = document.getElementById("user-avatar-img");
@@ -554,7 +657,7 @@ class BindoraApp {
     try {
       const runs = await window.bindoraFirebase.fetchSavedRuns();
       if (!runs || runs.length === 0) {
-        container.innerHTML = `<p class="text-slate-500 italic p-2 text-center text-xs">No saved docking runs in cloud database yet.</p>`;
+        container.innerHTML = `<p class="text-slate-500 italic p-2 text-center text-xs">No saved docking runs in cloud history yet.</p>`;
         return;
       }
 

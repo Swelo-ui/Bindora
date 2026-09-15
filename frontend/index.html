@@ -56,9 +56,9 @@
       <div class="flex-shrink-0">
         <a href="javascript:void(0)" onclick="window.app.switchTab('home')" class="flex items-center space-x-2 group cursor-pointer" title="Bindora Dock — Molecular Docking Simplified">
           <!-- Dark mode logo (shown by default in dark mode) -->
-          <img id="header-logo-dark" src="assets/branding/logo-header-dark.png" alt="Bindora Dock" class="h-9 sm:h-10 md:h-11 w-auto object-contain drop-shadow-[0_2px_12px_rgba(0,198,255,0.35)] group-hover:scale-[1.02] transition duration-200" />
+          <img id="header-logo-dark" src="assets/branding/logo-header-dark.png?v=4" alt="Bindora Dock" class="h-10 sm:h-11 md:h-12 w-auto object-contain drop-shadow-[0_2px_12px_rgba(0,198,255,0.35)] group-hover:scale-[1.02] transition duration-200" />
           <!-- Light mode logo (shown when light mode is active) -->
-          <img id="header-logo-light" src="assets/branding/logo-header-light.png" alt="Bindora Dock" class="h-9 sm:h-10 md:h-11 w-auto object-contain drop-shadow-[0_1px_6px_rgba(13,110,253,0.2)] group-hover:scale-[1.02] transition duration-200 hidden" />
+          <img id="header-logo-light" src="assets/branding/logo-header-light.png?v=4" alt="Bindora Dock" class="h-10 sm:h-11 md:h-12 w-auto object-contain drop-shadow-[0_1px_6px_rgba(13,110,253,0.2)] group-hover:scale-[1.02] transition duration-200 hidden" />
           <span id="header-version-badge" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-950/80 text-cyan-300 border border-cyan-500/30 flex-shrink-0">v1.0</span>
         </a>
       </div>
@@ -711,10 +711,10 @@
               <span>Execute 3D Molecular Docking</span>
             </button>
 
-            <!-- Save to Firebase Realtime Database Button -->
+            <!-- Save to Cloud History Button -->
             <button id="btn-save-cloud" class="w-full py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-semibold transition flex items-center justify-center space-x-2">
               <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-              <span>Save Run to Firebase Realtime DB</span>
+              <span>Save Run to Cloud History</span>
             </button>
           </div>
 
@@ -1004,20 +1004,20 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
 
   <!-- Settings removed — all API keys are pre-configured server-side -->
 
-  <!-- Firebase Authentication & User Modal -->
+  <!-- Researcher Account & Cloud History Modal -->
   <div id="modal-firebase-auth" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center hidden p-4">
     <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center space-x-2">
           <span class="w-3 h-3 rounded-full bg-cyan-400"></span>
-          <h3 id="auth-modal-title" class="font-bold text-base text-white">Firebase Account</h3>
+          <h3 id="auth-modal-title" class="font-bold text-base text-white">Researcher Account</h3>
         </div>
         <button id="btn-close-auth-modal" class="text-slate-400 hover:text-white">&times;</button>
       </div>
 
       <!-- Logged Out View -->
       <div id="auth-logged-out-view" class="space-y-4 text-xs">
-        <p class="text-slate-300">Sign in to sync your molecular docking runs, 3D poses, and ADME reports across devices to Firebase Realtime Database.</p>
+        <p class="text-slate-300">Sign in to securely sync your molecular docking simulations, 3D binding poses, and ADME dossiers across your workstations.</p>
         
         <!-- Google Sign In Button -->
         <button id="btn-auth-google" class="w-full py-2.5 px-4 rounded-lg bg-white hover:bg-slate-100 text-slate-900 font-semibold flex items-center justify-center space-x-2 shadow transition">
@@ -1040,7 +1040,7 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
         <div class="space-y-2">
           <div>
             <label class="font-medium text-slate-300 block mb-1">Email Address:</label>
-            <input id="input-auth-email" type="email" placeholder="student@pharmacy.edu" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500">
+            <input id="input-auth-email" type="email" placeholder="scientist@laboratory.org" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500">
           </div>
           <div>
             <label class="font-medium text-slate-300 block mb-1">Password:</label>
@@ -1058,21 +1058,79 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
 
       <!-- Logged In View -->
       <div id="auth-logged-in-view" class="space-y-4 text-xs hidden">
-        <div class="flex items-center space-x-3 p-3 rounded-lg bg-slate-950 border border-slate-800">
-          <img id="user-profile-img" class="w-10 h-10 rounded-full" src="" alt="Avatar">
-          <div>
-            <div id="user-profile-name" class="font-bold text-white text-sm">User</div>
-            <div id="user-profile-email" class="text-slate-400 text-xs font-mono">user@example.com</div>
+        <!-- Researcher Profile Card -->
+        <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <img id="user-profile-img" class="w-11 h-11 rounded-full border-2 border-cyan-500/50 object-cover shadow" src="" alt="Avatar">
+              <div>
+                <div id="user-profile-name" class="font-bold text-white text-sm">Researcher</div>
+                <div id="user-profile-email" class="text-slate-400 text-[11px] font-mono">user@example.com</div>
+              </div>
+            </div>
+            <button id="btn-toggle-edit-profile" class="px-2.5 py-1.5 rounded-lg bg-[#0e274a] hover:bg-[#133564] text-cyan-300 border border-cyan-700/40 text-xs font-medium flex items-center space-x-1.5 transition">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+              <span>Edit Profile</span>
+            </button>
+          </div>
+
+          <!-- Collapsible Profile Edit Form -->
+          <div id="profile-edit-form" class="hidden pt-3 border-t border-slate-800/80 space-y-3">
+            <div>
+              <label class="font-medium text-slate-300 block mb-1 text-[11px] uppercase tracking-wider">Display Name / Title</label>
+              <input id="input-edit-display-name" type="text" placeholder="e.g., Dr. Jane Doe / Senior Chemist" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-cyan-500">
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="font-medium text-slate-300 text-[11px] uppercase tracking-wider">Avatar / Picture</label>
+                <button type="button" id="btn-random-avatar" class="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center space-x-1">
+                  <span>🎲 Random Avatar</span>
+                </button>
+              </div>
+              <input id="input-edit-photo-url" type="text" placeholder="Custom image URL or click preset below" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs font-mono focus:outline-none focus:border-cyan-500">
+            </div>
+
+            <!-- Scientist Avatar Presets -->
+            <div>
+              <span class="text-[10px] uppercase tracking-wider text-slate-400 block mb-1.5 font-semibold">Avatar Presets:</span>
+              <div class="flex items-center space-x-2">
+                <button type="button" class="preset-avatar-btn p-1 rounded-full border border-slate-700 hover:border-cyan-400 transition" data-avatar="https://api.dicebear.com/7.x/bottts/svg?seed=Scientist-Alpha" title="Scientist Alpha">
+                  <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Scientist-Alpha" class="w-7 h-7 rounded-full" alt="Preset 1" />
+                </button>
+                <button type="button" class="preset-avatar-btn p-1 rounded-full border border-slate-700 hover:border-cyan-400 transition" data-avatar="https://api.dicebear.com/7.x/bottts/svg?seed=Chemist-Helix" title="Chemist Helix">
+                  <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Chemist-Helix" class="w-7 h-7 rounded-full" alt="Preset 2" />
+                </button>
+                <button type="button" class="preset-avatar-btn p-1 rounded-full border border-slate-700 hover:border-cyan-400 transition" data-avatar="https://api.dicebear.com/7.x/bottts/svg?seed=Pharmacologist-Vector" title="Pharmacologist Vector">
+                  <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Pharmacologist-Vector" class="w-7 h-7 rounded-full" alt="Preset 3" />
+                </button>
+                <button type="button" class="preset-avatar-btn p-1 rounded-full border border-slate-700 hover:border-cyan-400 transition" data-avatar="https://api.dicebear.com/7.x/bottts/svg?seed=Biologist-Quantum" title="Biologist Quantum">
+                  <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Biologist-Quantum" class="w-7 h-7 rounded-full" alt="Preset 4" />
+                </button>
+                <button type="button" class="preset-avatar-btn p-1 rounded-full border border-slate-700 hover:border-cyan-400 transition" data-avatar="https://api.dicebear.com/7.x/bottts/svg?seed=DockingMaster" title="Docking Master">
+                  <img src="https://api.dicebear.com/7.x/bottts/svg?seed=DockingMaster" class="w-7 h-7 rounded-full" alt="Preset 5" />
+                </button>
+              </div>
+            </div>
+
+            <div id="profile-edit-status" class="text-xs hidden"></div>
+
+            <div class="flex items-center justify-end space-x-2 pt-1">
+              <button id="btn-cancel-edit-profile" type="button" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition">Cancel</button>
+              <button id="btn-save-profile" type="button" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-semibold shadow transition flex items-center space-x-1.5">
+                <span>Save Profile</span>
+              </button>
+            </div>
           </div>
         </div>
 
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <span class="font-bold text-slate-300">Saved Cloud Simulations (Firebase RTDB):</span>
+            <span class="font-bold text-slate-300">Saved Cloud Docking History:</span>
             <button id="btn-refresh-saved-runs" class="text-[11px] text-cyan-400 hover:underline">Refresh</button>
           </div>
           <div id="saved-runs-list" class="max-h-48 overflow-y-auto divide-y divide-slate-800/80 rounded-lg border border-slate-800 bg-slate-950/60 p-2">
-            <p class="text-slate-500 italic p-2 text-center">No saved docking runs in cloud database yet.</p>
+            <p class="text-slate-500 italic p-2 text-center">No saved docking runs in cloud history yet.</p>
           </div>
         </div>
 

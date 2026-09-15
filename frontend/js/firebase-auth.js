@@ -112,6 +112,36 @@ class BindoraFirebase {
     await this.auth.signOut();
   }
 
+  async updateUserProfile(displayName, photoURL) {
+    if (!this.currentUser) {
+      throw new Error("No user currently signed in.");
+    }
+    const updateData = {};
+    if (displayName !== undefined && displayName !== null && displayName.trim()) {
+      updateData.displayName = displayName.trim();
+    }
+    if (photoURL !== undefined && photoURL !== null && photoURL.trim()) {
+      updateData.photoURL = photoURL.trim();
+    }
+    await this.currentUser.updateProfile(updateData);
+
+    // Also sync profile in cloud database
+    try {
+      if (this.db) {
+        await this.db.ref(`users/${this.currentUser.uid}/profile`).update({
+          displayName: this.currentUser.displayName,
+          photoURL: this.currentUser.photoURL,
+          updatedAt: Date.now()
+        });
+      }
+    } catch (e) {
+      console.warn("Could not sync profile to cloud DB:", e);
+    }
+
+    this.onUserChanged(this.currentUser);
+    return this.currentUser;
+  }
+
   // --- Realtime Database Methods ---
 
   async saveDockingRun(runData) {
@@ -143,7 +173,7 @@ class BindoraFirebase {
     };
 
     await runRef.set(payload);
-    console.log("[Firebase RTDB] Saved run to cloud:", runRef.key);
+    console.log("[Cloud History] Saved run to cloud:", runRef.key);
     return payload;
   }
 
