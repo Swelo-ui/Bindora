@@ -166,6 +166,8 @@ class MolecularViewer {
   loadLigand(pdbOrPdbqtContent, format = 'pdb') {
     if (!this.viewer || !pdbOrPdbqtContent) return;
 
+    this.clearRedockOverlay();
+
     if (this.ligandModel) {
       this.viewer.removeModel(this.ligandModel);
       this.ligandModel = null;
