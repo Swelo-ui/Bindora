@@ -60,8 +60,15 @@ class BindoraApp {
     // 5. Clean live state on startup (benchmarks are available above for 1-click exploration if user chooses)
     this.updateStudioCards();
 
-    // 6. Set active tab to Home page
-    this.switchTab("home");
+    // 6. Set active tab (supports ?tab=studio or #studio, default to home)
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialTab = urlParams.get("tab") || window.location.hash.replace("#", "") || "home";
+    this.switchTab(initialTab);
+
+    // Auto-open user guide if requested
+    if (urlParams.get("guide") === "true") {
+      document.getElementById("modal-about")?.classList.remove("hidden");
+    }
   }
 
   setupEventListeners() {
@@ -491,8 +498,10 @@ class BindoraApp {
     // Dark / Light Mode Toggle
     const themeToggleBtn = document.getElementById("btn-theme-toggle");
     if (themeToggleBtn) {
-      // Restore saved theme on startup
-      const savedTheme = localStorage.getItem('bindora-theme') || 'dark';
+      // Restore saved theme on startup (or via ?theme= url parameter)
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlTheme = urlParams.get('theme');
+      const savedTheme = urlTheme || localStorage.getItem('bindora-theme') || 'dark';
       this.applyTheme(savedTheme);
       themeToggleBtn.addEventListener("click", () => {
         const isDark = document.documentElement.classList.contains('dark');
@@ -639,18 +648,41 @@ class BindoraApp {
     const html = document.documentElement;
     const sunIcon = document.getElementById("icon-sun");
     const moonIcon = document.getElementById("icon-moon");
+    const logoDark = document.getElementById("header-logo-dark");
+    const logoLight = document.getElementById("header-logo-light");
+
     if (theme === 'light') {
       html.classList.remove('dark');
       html.classList.add('light');
       if (sunIcon) sunIcon.classList.add('hidden');
       if (moonIcon) moonIcon.classList.remove('hidden');
+      if (logoDark) logoDark.classList.add('hidden');
+      if (logoLight) logoLight.classList.remove('hidden');
       localStorage.setItem('bindora-theme', 'light');
+
+      // Update 3Dmol viewer background to soft light if active
+      if (this.viewer && this.viewer.viewer) {
+        try {
+          this.viewer.viewer.setBackgroundColor('0xf1f5f9');
+          this.viewer.viewer.render();
+        } catch (e) {}
+      }
     } else {
       html.classList.remove('light');
       html.classList.add('dark');
       if (sunIcon) sunIcon.classList.remove('hidden');
       if (moonIcon) moonIcon.classList.add('hidden');
+      if (logoDark) logoDark.classList.remove('hidden');
+      if (logoLight) logoLight.classList.add('hidden');
       localStorage.setItem('bindora-theme', 'dark');
+
+      // Update 3Dmol viewer background to dark navy if active
+      if (this.viewer && this.viewer.viewer) {
+        try {
+          this.viewer.viewer.setBackgroundColor('0x0f172a');
+          this.viewer.viewer.render();
+        } catch (e) {}
+      }
     }
   }
 
@@ -659,13 +691,13 @@ class BindoraApp {
     if (!container) return;
 
     container.innerHTML = this.state.benchmarks.map(bm => `
-      <div class="cursor-pointer p-3 rounded-lg border border-slate-700/60 bg-slate-800/40 hover:bg-slate-700/50 transition-all hover:border-cyan-500/50" onclick="window.app.loadBenchmark('${bm.id}')">
+      <div class="benchmark-case-card cursor-pointer p-3 rounded-xl border border-slate-700/60 bg-slate-800/40 hover:bg-slate-700/50 transition-all hover:border-cyan-500/50" onclick="window.app.loadBenchmark('${bm.id}')">
         <div class="flex items-center justify-between mb-1">
-          <span class="font-bold text-sm text-cyan-300">${bm.drug_name}</span>
-          <span class="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300 font-mono">${bm.pdb_id}</span>
+          <span class="benchmark-case-name font-bold text-sm text-cyan-300">${bm.drug_name}</span>
+          <span class="benchmark-case-badge text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300 font-mono">${bm.pdb_id}</span>
         </div>
-        <p class="text-xs text-slate-300 font-medium">${bm.target_name}</p>
-        <p class="text-[11px] text-slate-400 mt-1 line-clamp-2">${bm.mechanism}</p>
+        <p class="benchmark-case-target text-xs text-slate-300 font-medium">${bm.target_name}</p>
+        <p class="benchmark-case-desc text-[11px] text-slate-400 mt-1 line-clamp-2">${bm.mechanism}</p>
       </div>
     `).join("");
   }

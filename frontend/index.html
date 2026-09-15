@@ -49,23 +49,17 @@
 <body class="bg-[#071326] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-cyan-500 selection:text-black">
 
   <!-- Top Navigation Header -->
-  <header id="main-header" class="border-b border-[#163252] bg-[#0B1F3B]/90 backdrop-blur-md sticky top-0 z-40">
-    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-3">
+  <header id="main-header" class="border-b border-[#163252] bg-[#0B1F3B]/90 backdrop-blur-md sticky top-0 z-40 transition-colors duration-200">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
 
-      <!-- Brand logo image (name-inclusive, no separate text) -->
+      <!-- Brand logo (Single prominent logo, dark & light responsive) -->
       <div class="flex-shrink-0">
-        <a href="javascript:void(0)" onclick="window.app.switchTab('home')" class="flex items-center group cursor-pointer">
-          <!-- 3D icon always shown -->
-          <img src="assets/branding/logo-icon-3d.png" alt="Bindora Dock" class="w-9 h-9 object-contain drop-shadow-[0_2px_10px_rgba(0,198,255,0.45)] group-hover:scale-105 transition duration-200 flex-shrink-0" />
-          <!-- Horizontal logo with name — shown on sm+ -->
-          <img src="assets/branding/logo-horizontal.png" alt="Bindora Dock — Molecular Docking Simplified"
-               class="hidden sm:block h-7 object-contain ml-2 drop-shadow-[0_1px_6px_rgba(0,198,255,0.3)] group-hover:brightness-110 transition duration-200"
-               onerror="this.style.display='none'; document.getElementById('brand-text-fallback').style.display='flex';" />
-          <!-- Fallback text if horizontal logo fails to load -->
-          <div id="brand-text-fallback" class="hidden sm:hidden ml-2 flex-col">
-            <span class="font-black text-lg tracking-tight leading-none text-white">Bindora <span class="text-[#00C6FF]">Dock</span></span>
-          </div>
-          <span class="ml-2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-950/80 text-cyan-300 border border-cyan-500/30 flex-shrink-0">v1.0</span>
+        <a href="javascript:void(0)" onclick="window.app.switchTab('home')" class="flex items-center space-x-2 group cursor-pointer" title="Bindora Dock — Molecular Docking Simplified">
+          <!-- Dark mode logo (shown by default in dark mode) -->
+          <img id="header-logo-dark" src="assets/branding/logo-header-dark.png" alt="Bindora Dock" class="h-9 sm:h-10 md:h-11 w-auto object-contain drop-shadow-[0_2px_12px_rgba(0,198,255,0.35)] group-hover:scale-[1.02] transition duration-200" />
+          <!-- Light mode logo (shown when light mode is active) -->
+          <img id="header-logo-light" src="assets/branding/logo-header-light.png" alt="Bindora Dock" class="h-9 sm:h-10 md:h-11 w-auto object-contain drop-shadow-[0_1px_6px_rgba(13,110,253,0.2)] group-hover:scale-[1.02] transition duration-200 hidden" />
+          <span id="header-version-badge" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-950/80 text-cyan-300 border border-cyan-500/30 flex-shrink-0">v1.0</span>
         </a>
       </div>
 
@@ -1090,86 +1084,141 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
     </div>
   </div>
 
-  <!-- Brand Guide & Methodology Modal -->
-  <div id="modal-about" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center hidden p-4">
-    <div class="glass-panel border border-slate-700/80 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-5 shadow-2xl relative">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+  <!-- User Guide & Scientific Handbook Modal -->
+  <div id="modal-about" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center hidden p-4">
+    <div class="glass-panel border border-slate-700/80 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-7 space-y-6 shadow-2xl relative">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
         <div class="flex items-center space-x-3">
-          <img src="assets/branding/logo-icon-3d.png" alt="Bindora Dock" class="w-7 h-7 object-contain">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-blue-600/20 border border-cyan-500/40 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+            </svg>
+          </div>
           <div>
             <h3 class="font-bold text-base text-white flex items-center gap-2">
-              <span>Bindora Dock Brand &amp; Scientific Guide</span>
+              <span>Bindora Dock — User Guide &amp; Research Handbook</span>
               <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800 font-mono">v1.0</span>
             </h3>
-            <p class="text-[11px] text-slate-400">Molecular Docking Simplified &bull; 3D Simulation &amp; PK/PD Studio</p>
+            <p class="text-xs text-slate-400">Step-by-Step Computational Pharmacology &amp; 3D Molecular Simulation Manual</p>
           </div>
         </div>
-        <button id="btn-close-about" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition text-lg leading-none">&times;</button>
+        <button id="btn-close-about" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition text-xl leading-none" title="Close Guide">&times;</button>
       </div>
 
-      <!-- Brand Identity Sheet -->
-      <div class="space-y-2">
-        <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-400">Official Brand Identity &amp; Color Palette</h4>
-        <div class="rounded-xl overflow-hidden border border-slate-700/80 shadow-lg bg-slate-950">
-          <img src="assets/branding/brand-guide.png" alt="Bindora Brand Guide &amp; Color Palette" class="w-full object-cover">
+      <!-- Quick Start Overview -->
+      <div class="p-4 rounded-xl bg-gradient-to-r from-blue-950/40 via-cyan-950/30 to-slate-900/50 border border-cyan-800/40 space-y-1.5">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center space-x-1.5">
+          <span>⚡ Platform Overview</span>
+        </h4>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          <strong>Bindora Dock</strong> is an integrated preclinical computational pharmacology suite. It connects native <strong>AutoDock Vina</strong> molecular docking with <strong>RDKit</strong> ADME/drug-likeness profiling, <strong>EMBL-EBI ChEMBL</strong> wet-lab bioactivity cross-checking, and interactive <strong>3Dmol.js WebGL</strong> visualization. Follow the 7 tabs below to execute a complete study.
+        </p>
+      </div>
+
+      <!-- Step-by-Step Workflow Guide -->
+      <div class="space-y-3">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-1">
+          7-Step Preclinical Modeling Workflow
+        </h4>
+
+        <div class="grid grid-cols-1 gap-2.5 text-xs">
+          
+          <!-- Step 1 -->
+          <div class="p-3 rounded-lg bg-slate-900/60 border border-slate-800 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-cyan-400">Tab 1: Target &amp; Ligand Preparation</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">Ingestion</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              • <strong>Ligand:</strong> Search any drug by name in PubChem, input raw SMILES, or upload <code class="text-cyan-300 font-mono">.sdf</code>, <code class="text-cyan-300 font-mono">.mol2</code>, <code class="text-cyan-300 font-mono">.smi</code>, or <code class="text-cyan-300 font-mono">.pdbqt</code> files. Conformer generation (ETKDGv3) and Gasteiger partial charges are assigned automatically.<br>
+              • <strong>Receptor:</strong> Fetch crystallographic targets from RCSB PDB using a 4-letter ID (e.g., <code class="text-cyan-300 font-mono">1CX2</code>, <code class="text-cyan-300 font-mono">1IEP</code>) or upload <code class="text-cyan-300 font-mono">.pdb</code>, <code class="text-cyan-300 font-mono">.cif</code>, or <code class="text-cyan-300 font-mono">.pdbqt</code>. The engine automatically removes solvent/crystallographic waters and detects active pocket centroids.
+            </p>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="p-3 rounded-lg bg-slate-900/60 border border-slate-800 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-cyan-400">Tab 2: 3D Docking Simulation</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">Scripps Vina</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              • Verify search space coordinates (Center X, Y, Z and Box Size). Enable the <strong>Docking Grid Box</strong> checkbox to preview the 3D binding volume.<br>
+              • Select <strong>Exhaustiveness</strong> (4 for rapid screening, 8 for academic standard, 16 for publication-grade precision) and click <strong>Execute 3D Molecular Docking</strong>.<br>
+              • Browse all 9 calculated binding poses with the stepper or click table rows to inspect binding free energy (&Delta;G in kcal/mol), theoretical Kd, hydrogen bonds, and hydrophobic contacts in real-time.
+            </p>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="p-3 rounded-lg bg-slate-900/60 border border-slate-800 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-cyan-400">Tab 3: Pharmacokinetics &amp; ADME</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">RDKit Cheminformatics</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              • Evaluate the <strong>Lipinski Bioavailability Radar Chart</strong> covering MW, LogP, H-bond donors/acceptors, rotatable bonds, and TPSA.<br>
+              • Check GI absorption tier, Blood-Brain Barrier (BBB) permeability (Clark CNS heuristic), Plasma Protein Binding (PPB), and PAINS/Brenk pan-assay interference flags.
+            </p>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="p-3 rounded-lg bg-slate-900/60 border border-slate-800 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-cyan-400">Tab 4: ChEMBL Wet-Lab Cross-Check</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">EMBL-EBI REST</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              • The platform queries EMBL-EBI ChEMBL to check if wet-lab binding assays (IC50, Ki, Kd, EC50) exist for the drug-target pair.<br>
+              • <em>Note:</em> "Computational Prediction Only" is expected for novel or uncurated compounds—use the "Verify on ChEMBL ↗" links to inspect curated assay archives. UniProt biological signaling pathways are displayed below.
+            </p>
+          </div>
+
+          <!-- Step 5, 6, 7 -->
+          <div class="p-3 rounded-lg bg-slate-900/60 border border-slate-800 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-cyan-400">Tabs 5–7: AI Report, Virtual Screening &amp; Dossier</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">Synthesis &amp; Export</span>
+            </div>
+            <p class="text-slate-300 leading-relaxed">
+              • <strong>AI Pharmacologist (Tab 5):</strong> Generates an automated peer-reviewed scientific narrative detailing mechanism of action and interaction networks.<br>
+              • <strong>Batch Screening (Tab 6):</strong> Screen entire compound libraries against the receptor pocket to produce a ranked affinity leaderboard.<br>
+              • <strong>Research Dossier (Tab 7):</strong> Consolidates all parameters, thermodynamic constants, and citations into an academic dossier with 1-click PDF export.
+            </p>
+          </div>
+
         </div>
       </div>
 
-      <!-- Palette Color Swatches -->
-      <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
-        <div class="p-2.5 rounded-lg border border-slate-800 bg-[#0B1F3B]/80">
-          <div class="w-full h-6 rounded bg-[#0B1F3B] border border-slate-600 mb-1"></div>
-          <div class="font-bold text-white text-[11px]">Deep Navy</div>
-          <div class="font-mono text-[10px] text-slate-400">#0B1F3B</div>
-        </div>
-        <div class="p-2.5 rounded-lg border border-slate-800 bg-[#0D6EFD]/10">
-          <div class="w-full h-6 rounded bg-[#0D6EFD] mb-1"></div>
-          <div class="font-bold text-blue-400 text-[11px]">Electric Blue</div>
-          <div class="font-mono text-[10px] text-slate-400">#0D6EFD</div>
-        </div>
-        <div class="p-2.5 rounded-lg border border-slate-800 bg-[#00C6FF]/10">
-          <div class="w-full h-6 rounded bg-[#00C6FF] mb-1"></div>
-          <div class="font-bold text-cyan-300 text-[11px]">Vibrant Cyan</div>
-          <div class="font-mono text-[10px] text-slate-400">#00C6FF</div>
-        </div>
-        <div class="p-2.5 rounded-lg border border-slate-800 bg-[#00D1C1]/10">
-          <div class="w-full h-6 rounded bg-[#00D1C1] mb-1"></div>
-          <div class="font-bold text-teal-300 text-[11px]">Aqua Teal</div>
-          <div class="font-mono text-[10px] text-slate-400">#00D1C1</div>
-        </div>
-        <div class="p-2.5 rounded-lg border border-slate-800 bg-[#7B5CFF]/10">
-          <div class="w-full h-6 rounded bg-[#7B5CFF] mb-1"></div>
-          <div class="font-bold text-purple-300 text-[11px]">Bio-Purple</div>
-          <div class="font-mono text-[10px] text-slate-400">#7B5CFF</div>
-        </div>
-      </div>
-
-      <!-- Core Research Engines -->
+      <!-- 3D Viewer Interactive Controls Reference -->
       <div class="space-y-2 border-t border-slate-800 pt-4 text-xs">
-        <h4 class="font-bold uppercase tracking-wider text-slate-300">Methodology &amp; Computational Engines</h4>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div class="p-3 rounded-lg bg-slate-900/60 border border-slate-800">
-            <span class="font-bold text-cyan-300">AutoDock Vina Engine</span>
-            <p class="text-[11px] text-slate-400 mt-0.5">Iterated Local Search &amp; Broyden-Fletcher-Goldfarb-Shanno (BFGS) empirical scoring function developed by CCSB at The Scripps Research Institute.</p>
+        <h4 class="font-bold uppercase tracking-wider text-slate-300">3D Viewer Controls &amp; Shortcuts</h4>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
+          <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+            <span class="text-cyan-400 font-bold block">Left Click + Drag</span>
+            <span class="text-slate-400">Rotate 3D structure</span>
           </div>
-          <div class="p-3 rounded-lg bg-slate-900/60 border border-slate-800">
-            <span class="font-bold text-emerald-300">RDKit Cheminformatics</span>
-            <p class="text-[11px] text-slate-400 mt-0.5">3D conformer optimization via ETKDGv3, Gasteiger partial charge assignment, topological descriptors, and Lipinski / Veber compliance.</p>
+          <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+            <span class="text-cyan-400 font-bold block">Scroll Wheel</span>
+            <span class="text-slate-400">Zoom in / Zoom out</span>
           </div>
-          <div class="p-3 rounded-lg bg-slate-900/60 border border-slate-800">
-            <span class="font-bold text-purple-300">EMBL-EBI ChEMBL Bioactivity</span>
-            <p class="text-[11px] text-slate-400 mt-0.5">Live REST verification of experimental binding affinity assays (IC50, Ki, Kd) against the European Bioinformatics Institute database.</p>
+          <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+            <span class="text-cyan-400 font-bold block">Right Click + Drag</span>
+            <span class="text-slate-400">Pan camera translation</span>
           </div>
-          <div class="p-3 rounded-lg bg-slate-900/60 border border-slate-800">
-            <span class="font-bold text-amber-300">3Dmol.js WebGL Graphics</span>
-            <p class="text-[11px] text-slate-400 mt-0.5">Hardware-accelerated client-side molecular graphics with real-time Euclidean distance measurement, Connolly surface generation, and H-bond visualization.</p>
+          <div class="p-2 rounded bg-slate-900/60 border border-slate-800">
+            <span class="text-cyan-400 font-bold block">Measure Tool (Å)</span>
+            <span class="text-slate-400">Click 2 atoms for distance</span>
           </div>
         </div>
       </div>
 
-      <div class="flex justify-end pt-2 border-t border-slate-800">
-        <button id="btn-modal-close-action" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-lg text-xs transition">Close</button>
+      <!-- Scientific Engine Attributions -->
+      <div class="border-t border-slate-800 pt-3 text-[11px] text-slate-400 flex flex-wrap items-center justify-between gap-2">
+        <span>Powered by AutoDock Vina (Scripps CCSB) &bull; RDKit &bull; EMBL-EBI ChEMBL &bull; 3Dmol.js</span>
+        <button id="btn-modal-close-action" class="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-lg text-xs transition">Got it, Let's Dock!</button>
       </div>
+
     </div>
   </div>
 

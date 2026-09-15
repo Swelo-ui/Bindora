@@ -194,109 +194,389 @@ body {
    Light Mode Theme Overrides
    html.light = light mode active
    ========================================================================== */
+
+/* 1. Base Body & Typography */
 html.light body {
-  background-color: #f0f4fa;
-  background-image:
-    radial-gradient(circle at 15% 10%, rgba(13, 110, 253, 0.05) 0%, transparent 40%),
-    radial-gradient(circle at 85% 20%, rgba(123, 92, 255, 0.04) 0%, transparent 45%),
-    radial-gradient(circle at 50% 80%, rgba(0, 198, 255, 0.03) 0%, transparent 50%);
-  color: #0f172a;
-}
-
-html.light #main-header {
-  background: rgba(255, 255, 255, 0.92) !important;
-  border-color: rgba(13, 110, 253, 0.2) !important;
-}
-
-html.light .glass-panel {
-  background: rgba(255, 255, 255, 0.88) !important;
-  border-color: rgba(13, 110, 253, 0.18) !important;
-  color: #1e293b;
-}
-
-html.light .glass-panel:hover {
-  border-color: rgba(0, 198, 255, 0.4) !important;
-}
-
-html.light .text-slate-100 { color: #1e293b !important; }
-html.light .text-slate-200 { color: #1e293b !important; }
-html.light .text-slate-300 { color: #334155 !important; }
-html.light .text-slate-400 { color: #475569 !important; }
-html.light .text-slate-500 { color: #64748b !important; }
-html.light .text-white { color: #0f172a !important; }
-
-html.light .bg-\[#071326\], html.light .bg-\[#0B1F3B\] {
-  background-color: #e8edf5 !important;
-}
-html.light .bg-slate-950, html.light .bg-slate-900 {
-  background-color: #f1f5f9 !important;
-}
-html.light .bg-slate-800 {
-  background-color: #e2e8f0 !important;
-}
-
-html.light .border-slate-800, html.light .border-slate-700 {
-  border-color: #cbd5e1 !important;
-}
-html.light .border-\[#163252\] {
-  border-color: #bfdbfe !important;
-}
-
-html.light .nav-tab {
-  color: #334155;
-}
-html.light .nav-tab.active {
-  color: #0D6EFD !important;
-  background: linear-gradient(180deg, rgba(13, 110, 253, 0.1) 0%, rgba(0, 198, 255, 0.05) 100%) !important;
-  border-color: #0D6EFD !important;
-}
-html.light .nav-tab:hover {
-  color: #0D6EFD !important;
-  background: rgba(13, 110, 253, 0.07) !important;
-}
-
-html.light #backend-status-badge {
-  background: #f0f4fa !important;
-  border-color: #cbd5e1 !important;
-}
-
-html.light button:not(.btn-brand-primary):not([class*="bg-cyan"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-amber"]) {
-  background-color: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
-  color: #1e293b !important;
-}
-
-html.light input, html.light select, html.light textarea {
-  background-color: #f8fafc !important;
-  border-color: #cbd5e1 !important;
+  background-color: #f3f6fa !important;
+  background-image: 
+    radial-gradient(circle at 15% 10%, rgba(13, 110, 253, 0.07) 0%, transparent 40%),
+    radial-gradient(circle at 85% 20%, rgba(123, 92, 255, 0.05) 0%, transparent 45%),
+    radial-gradient(circle at 50% 80%, rgba(0, 198, 255, 0.04) 0%, transparent 50%) !important;
   color: #0f172a !important;
 }
 
+/* 2. Header & Branding */
+html.light #main-header {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 12px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light #header-version-badge {
+  background: rgba(13, 110, 253, 0.08) !important;
+  color: #0D6EFD !important;
+  border: 1px solid rgba(13, 110, 253, 0.25) !important;
+}
+
+/* 3. Navigation Tabs */
+html.light .nav-tab {
+  color: #475569 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+html.light .nav-tab:hover {
+  color: #0D6EFD !important;
+  background: rgba(13, 110, 253, 0.06) !important;
+}
+html.light .nav-tab.active {
+  color: #0D6EFD !important;
+  background: rgba(13, 110, 253, 0.12) !important;
+  border-color: #0D6EFD !important;
+  box-shadow: 0 2px 8px rgba(13, 110, 253, 0.16) !important;
+}
+
+/* 4. Glass Panels & Cards */
+html.light .glass-panel {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05) !important;
+  color: #1e293b !important;
+}
+html.light .glass-panel:hover {
+  border-color: rgba(13, 110, 253, 0.3) !important;
+}
+
+/* 5. Text Colors */
+html.light .text-white { color: #0f172a !important; }
+html.light .text-slate-100 { color: #1e293b !important; }
+html.light .text-slate-200 { color: #1e293b !important; }
+html.light .text-slate-300 { color: #334155 !important; }
+html.light .text-slate-400 { color: #64748b !important; }
+html.light .text-slate-500 { color: #64748b !important; }
+html.light .text-cyan-300 { color: #0284c7 !important; }
+html.light .text-cyan-400 { color: #0369a1 !important; }
+html.light .text-[#00C6FF] { color: #0284c7 !important; }
+
+/* 6. Backgrounds & Borders */
+html.light .bg-\[#071326\],
+html.light .bg-\[#0B1F3B\] {
+  background-color: #f3f6fa !important;
+}
+html.light .bg-slate-950,
+html.light .bg-slate-900 {
+  background-color: #ffffff !important;
+}
+html.light .bg-slate-900\/90,
+html.light .bg-slate-900\/80,
+html.light .bg-slate-900\/60,
+html.light .bg-slate-900\/50,
+html.light .bg-slate-900\/40 {
+  background-color: #f8fafc !important;
+}
+html.light .bg-slate-800,
+html.light .bg-slate-800\/70,
+html.light .bg-slate-800\/50,
+html.light .bg-slate-800\/40 {
+  background-color: #f1f5f9 !important;
+}
+html.light .bg-\[#0e274a\] {
+  background-color: #ffffff !important;
+}
+html.light .hover\:bg-\[#133564\]:hover {
+  background-color: #f1f5f9 !important;
+}
+
+html.light .border-slate-800,
+html.light .border-slate-700,
+html.light .border-slate-800\/80,
+html.light .border-slate-700\/60,
+html.light .border-\[#163252\] {
+  border-color: #e2e8f0 !important;
+}
+
+/* 7. Home Page Specifics */
+html.light #tab-home .inline-flex.rounded-full {
+  background: rgba(13, 110, 253, 0.08) !important;
+  border-color: rgba(13, 110, 253, 0.25) !important;
+  color: #0369a1 !important;
+}
+html.light #tab-home .inline-flex.rounded-full span {
+  color: #0369a1 !important;
+}
+
+html.light #tab-home .glass-panel {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 246, 255, 0.92) 100%) !important;
+}
+
+/* Feature icon containers */
+html.light .bg-cyan-950\/60,
+html.light .bg-cyan-950\/40,
+html.light .bg-cyan-950\/80,
+html.light .bg-cyan-950 {
+  background-color: rgba(0, 198, 255, 0.1) !important;
+  border-color: rgba(0, 198, 255, 0.3) !important;
+  color: #0284c7 !important;
+}
+html.light .bg-emerald-950,
+html.light .bg-emerald-950\/80,
+html.light .bg-emerald-950\/40 {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+  color: #059669 !important;
+}
+html.light .bg-purple-950,
+html.light .bg-purple-950\/80 {
+  background-color: rgba(123, 92, 255, 0.1) !important;
+  border-color: rgba(123, 92, 255, 0.3) !important;
+  color: #7c3aed !important;
+}
+html.light .bg-rose-950,
+html.light .bg-rose-950\/80 {
+  background-color: rgba(244, 63, 94, 0.1) !important;
+  border-color: rgba(244, 63, 94, 0.3) !important;
+  color: #e11d48 !important;
+}
+html.light .bg-amber-950,
+html.light .bg-amber-950\/80 {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+  color: #d97706 !important;
+}
+
+/* 8. Controls, Inputs, Dropdowns */
+html.light input:not([type="checkbox"]):not([type="radio"]),
+html.light select,
+html.light textarea {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+html.light input:focus,
+html.light select:focus,
+html.light textarea:focus {
+  border-color: #0D6EFD !important;
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15) !important;
+  outline: none !important;
+}
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Header utility buttons */
+html.light #btn-user-auth,
+html.light #btn-theme-toggle,
+html.light #btn-reset-session,
+html.light #btn-about {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+html.light #btn-user-auth:hover,
+html.light #btn-theme-toggle:hover,
+html.light #btn-reset-session:hover,
+html.light #btn-about:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+/* Status badge */
+html.light #backend-status-badge {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+/* 9. 3D Viewport in Light Mode */
 html.light #viewport-container {
-  background: radial-gradient(circle at center, #e2eaf5 0%, #c9d8ed 100%) !important;
+  background: radial-gradient(circle at center, #f0f4f9 0%, #dbe4ef 100%) !important;
+  border: 1px solid #cbd5e1 !important;
+}
+html.light #viewer-empty-state p {
+  color: #64748b !important;
 }
 
-html.light .bg-slate-900\/60 { background-color: rgba(248, 250, 252, 0.9) !important; }
-html.light .bg-slate-800\/40 { background-color: rgba(241, 245, 249, 0.9) !important; }
+/* 10. Tables */
+html.light table thead {
+  background-color: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+}
+html.light table tbody tr {
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #1e293b !important;
+}
+html.light table tbody tr:hover {
+  background-color: rgba(13, 110, 253, 0.04) !important;
+}
 
-html.light .text-cyan-300 { color: #0369a1 !important; }
-html.light .text-cyan-400 { color: #0284c7 !important; }
-html.light .text-[#00C6FF] { color: #0369a1 !important; }
+/* 11. Modals */
+html.light #modal-about .glass-panel,
+html.light #modal-firebase-auth > div {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+  color: #0f172a !important;
+}
 
-/* Light mode mobile sub-nav */
+/* 12. Mobile sub-nav */
 html.light .lg\:hidden.bg-\[#0B1F3B\] {
-  background: #e8edf5 !important;
-  border-color: #bfdbfe !important;
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
 }
 
-/* Scrollbar in light mode */
+/* 13. Footer */
+html.light footer {
+  background-color: #f8fafc !important;
+  border-top: 1px solid #e2e8f0 !important;
+  color: #64748b !important;
+}
+
+/* 14. Scrollbar in light mode */
 html.light ::-webkit-scrollbar-track { background: #f0f4fa; }
-html.light ::-webkit-scrollbar-thumb { background: #93c5fd; }
+html.light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
 html.light ::-webkit-scrollbar-thumb:hover { background: #0D6EFD; }
 
-/* narrative in light mode */
+/* 15. Narrative in light mode */
 html.light .narrative-md strong { color: #0f172a !important; }
 html.light .narrative-md h2 { color: #0369a1 !important; }
 html.light .narrative-md h3 { color: #0f172a !important; }
 html.light .narrative-md code { background: rgba(0,0,0,0.06) !important; color: #0369a1 !important; }
+
+/* 16. Benchmark Case Cards (Tab 1) in Light Mode */
+html.light .benchmark-case-card {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+}
+html.light .benchmark-case-card:hover {
+  border-color: #0D6EFD !important;
+  box-shadow: 0 4px 14px rgba(13, 110, 253, 0.12) !important;
+}
+html.light .benchmark-case-name {
+  color: #0284c7 !important;
+}
+html.light .benchmark-case-badge {
+  background-color: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border: 1px solid #bfdbfe !important;
+}
+html.light .benchmark-case-target {
+  color: #0f172a !important;
+}
+html.light .benchmark-case-desc {
+  color: #64748b !important;
+}
+
+/* 17. Tab 1 Ligand & Receptor Info Panels & Switchers */
+html.light #card-ligand-info,
+html.light #card-receptor-info {
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+}
+html.light #card-ligand-info p,
+html.light #card-receptor-info p {
+  color: #64748b !important;
+}
+html.light #tab-btn-ligand-pubchem,
+html.light #tab-btn-ligand-smiles,
+html.light #tab-btn-ligand-upload,
+html.light #tab-btn-receptor-rcsb,
+html.light #tab-btn-receptor-upload,
+html.light #tab-btn-receptor-paste {
+  color: #64748b !important;
+  background-color: transparent !important;
+}
+html.light #tab-btn-ligand-pubchem.bg-slate-800,
+html.light #tab-btn-receptor-rcsb.bg-slate-800 {
+  background-color: #ffffff !important;
+  color: #0D6EFD !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* 18. Tab 2 3D Docking Overlays, Stepper & Controls */
+html.light #viewport-container .bg-slate-950\/70,
+html.light #viewport-container [class*="bg-slate-950"] {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+html.light #dock-current-mode-label {
+  color: #0f172a !important;
+}
+html.light #btn-prev-pose,
+html.light #btn-next-pose {
+  background-color: #f1f5f9 !important;
+  color: #0284c7 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+html.light #btn-prev-pose:hover,
+html.light #btn-next-pose:hover {
+  background-color: #e2e8f0 !important;
+}
+html.light #measure-hud {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #f43f5e !important;
+  color: #e11d48 !important;
+}
+html.light #btn-save-cloud {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0369a1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+html.light #btn-save-cloud:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+html.light #select-protein-style,
+html.light #select-ligand-style,
+html.light #select-ligand-color,
+html.light #docking-exhaustiveness {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* 19. Tab 7 Research Dossier Paper Sheet in Light Mode */
+html.light #tab-dossier .glass-panel {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06) !important;
+}
+html.light #tab-dossier .bg-slate-900\/60,
+html.light #tab-dossier [class*="bg-slate-900"] {
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+html.light #tab-dossier #dossier-ligand-name,
+html.light #tab-dossier #dossier-target-name {
+  color: #0f172a !important;
+}
+
+/* 20. Tab 0 Case Studies Badges */
+html.light #tab-home [class*="bg-cyan-950"].text-cyan-300 {
+  background-color: #e0f2fe !important;
+  color: #0369a1 !important;
+  border-color: #bae6fd !important;
+}
+html.light #tab-home [class*="bg-blue-950"].text-blue-300 {
+  background-color: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-color: #bfdbfe !important;
+}
+html.light #tab-home [class*="bg-purple-950"].text-purple-300 {
+  background-color: #f5f3ff !important;
+  color: #6d28d9 !important;
+  border-color: #ddd6fe !important;
+}
+html.light #tab-home [class*="bg-teal-950"].text-teal-300 {
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
+}
+
 
