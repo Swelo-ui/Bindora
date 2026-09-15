@@ -53,13 +53,13 @@
     <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
 
       <!-- Brand logo (Single prominent logo, dark & light responsive) -->
-      <div class="flex-shrink-0">
-        <a href="javascript:void(0)" onclick="window.app.switchTab('home')" class="flex items-center space-x-2 group cursor-pointer" title="Bindora Dock — Molecular Docking Simplified">
+      <div class="flex-shrink-0 pl-1 overflow-visible">
+        <a href="javascript:void(0)" onclick="window.app.switchTab('home')" class="flex items-center space-x-2.5 group cursor-pointer" title="Bindora Dock — Molecular Docking Simplified">
           <!-- Dark mode logo (shown by default in dark mode) -->
-          <img id="header-logo-dark" src="assets/branding/logo-header-dark.png?v=4" alt="Bindora Dock" class="h-10 sm:h-11 md:h-12 w-auto object-contain drop-shadow-[0_2px_12px_rgba(0,198,255,0.35)] group-hover:scale-[1.02] transition duration-200" />
+          <img id="header-logo-dark" src="assets/branding/logo-header-dark.png?v=6" alt="Bindora Dock" class="h-10 sm:h-11 md:h-12 w-auto object-contain drop-shadow-[0_2px_12px_rgba(0,198,255,0.35)] group-hover:scale-[1.02] transition duration-200" />
           <!-- Light mode logo (shown when light mode is active) -->
-          <img id="header-logo-light" src="assets/branding/logo-header-light.png?v=4" alt="Bindora Dock" class="h-10 sm:h-11 md:h-12 w-auto object-contain drop-shadow-[0_1px_6px_rgba(13,110,253,0.2)] group-hover:scale-[1.02] transition duration-200 hidden" />
-          <span id="header-version-badge" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-950/80 text-cyan-300 border border-cyan-500/30 flex-shrink-0">v1.0</span>
+          <img id="header-logo-light" src="assets/branding/logo-header-light.png?v=6" alt="Bindora Dock" class="h-10 sm:h-11 md:h-12 w-auto object-contain drop-shadow-[0_1px_6px_rgba(13,110,253,0.2)] group-hover:scale-[1.02] transition duration-200 hidden" />
+          <span id="header-version-badge" class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-cyan-300 border border-blue-200 dark:border-cyan-500/30 flex-shrink-0">v1.0</span>
         </a>
       </div>
 
@@ -155,7 +155,7 @@
       
       <!-- Mobile Notice Banner (Displayed on small screens) -->
       <div class="lg:hidden p-4 rounded-xl border border-cyan-500/40 bg-cyan-950/40 text-xs text-cyan-200 flex items-start space-x-3 shadow-lg">
-        <span class="text-xl">💻</span>
+        <svg class="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
         <div>
           <strong class="font-bold text-white block mb-0.5">Desktop Workstation Recommended:</strong>
           <span>Bindora Dock's full 3D WebGL molecular visualizer, AutoDock Vina grid box, and multi-pose docking studio are engineered for desktop PC/laptop widescreen displays. Below you can explore software details, architecture, and benchmark case studies.</span>
@@ -630,7 +630,7 @@
             
             <!-- Floating Measure Tool HUD -->
             <div id="measure-hud" class="hidden absolute top-3 left-3 bg-slate-900/90 border border-rose-500/60 text-rose-200 px-3 py-1.5 rounded-lg text-xs font-mono shadow-xl flex items-center space-x-3 z-20 backdrop-blur">
-              <span id="measure-hud-text">📐 Click two atoms to measure distance in Å</span>
+              <span id="measure-hud-text" class="flex items-center space-x-1.5"><svg class="w-3.5 h-3.5 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.3 8.7 8.7 21.3c-1 1-2.5 1-3.4 0l-2.6-2.6c-1-1-1-2.5 0-3.4L15.3 2.7c1-1 2.5-1 3.4 0l2.6 2.6c1 1 1 2.5 0 3.4Z"/><path d="m14.5 3.5 2 2"/><path d="m11.5 6.5 2 2"/><path d="m8.5 9.5 2 2"/><path d="m5.5 12.5 2 2"/></svg><span>Click two atoms to measure distance in Å</span></span>
               <button id="btn-clear-measure" type="button" class="px-1.5 py-0.5 rounded bg-rose-950/60 border border-rose-800 hover:bg-rose-900 text-rose-300 text-[10px] transition">Clear</button>
             </div>
             
@@ -696,11 +696,13 @@
               </div>
               <!-- Quick Box Mode Buttons -->
               <div class="flex items-center space-x-2 pt-1">
-                <button id="btn-reset-pocket" type="button" class="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-[11px] text-cyan-300 rounded border border-cyan-800/40 transition flex items-center justify-center space-x-1" title="Reset grid box coordinates to the detected active pocket centroid">
-                  <span>🎯 Pocket Centroid</span>
+                <button id="btn-reset-pocket" type="button" class="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-[11px] text-cyan-300 rounded border border-cyan-800/40 transition flex items-center justify-center space-x-1.5" title="Reset grid box coordinates to the detected active pocket centroid">
+                  <svg class="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                  <span>Pocket Centroid</span>
                 </button>
-                <button id="btn-blind-docking" type="button" class="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-[11px] text-purple-300 rounded border border-purple-800/40 transition flex items-center justify-center space-x-1" title="Expand bounding box to encompass the entire protein surface (Blind Docking)">
-                  <span>🌐 Blind Docking (Surface)</span>
+                <button id="btn-blind-docking" type="button" class="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-[11px] text-purple-300 rounded border border-purple-800/40 transition flex items-center justify-center space-x-1.5" title="Expand bounding box to encompass the entire protein surface (Blind Docking)">
+                  <svg class="w-3.5 h-3.5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                  <span>Blind Docking (Surface)</span>
                 </button>
               </div>
             </div>
@@ -725,12 +727,12 @@
             </div>
 
             <!-- Weak-Binder Warning Banner (Dynamically Shown) -->
-            <div id="weak-binder-alert" class="hidden p-3 rounded-xl border border-amber-500/60 bg-amber-950/40 text-amber-200 text-xs space-y-1 shadow-lg animate-pulse">
-              <div class="flex items-center space-x-1.5 font-bold text-amber-300">
-                <span>⚠️</span>
+            <div id="weak-binder-alert" class="hidden p-3 rounded-xl border border-amber-300 dark:border-amber-500/60 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs space-y-1 shadow-lg animate-pulse">
+              <div class="flex items-center space-x-1.5 font-bold text-amber-800 dark:text-amber-300">
+                <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 <span>Sub-threshold / Weak Binding Alert</span>
               </div>
-              <p id="weak-binder-alert-text" class="text-[11px] text-amber-200/90 leading-relaxed"></p>
+              <p id="weak-binder-alert-text" class="text-[11px] text-amber-800/90 dark:text-amber-200/90 leading-relaxed"></p>
             </div>
 
             <!-- Replicate Statistics Banner (Shown when replicates > 1) -->
@@ -786,21 +788,21 @@
 
           <!-- Preparation Protocol Transparency Log Accordion -->
           <div class="glass-panel p-4 rounded-xl border border-slate-800 space-y-2">
-            <button type="button" id="btn-toggle-prep-log" class="w-full flex items-center justify-between text-xs font-bold text-slate-300 hover:text-white transition">
+            <button type="button" id="btn-toggle-prep-log" class="w-full flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-white transition">
               <span class="flex items-center space-x-1.5">
-                <span>📋</span>
+                <svg class="w-4 h-4 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>
                 <span>Preparation Protocol Transparency Log</span>
               </span>
-              <span id="prep-log-chevron" class="text-cyan-400 text-sm font-mono">+</span>
+              <span id="prep-log-chevron" class="text-cyan-500 font-mono text-sm font-bold">+</span>
             </button>
-            <div id="prep-log-content" class="hidden pt-2 border-t border-slate-800/80 space-y-2 text-[11px] font-mono leading-relaxed text-slate-300">
-              <div class="p-2 rounded bg-slate-950/80 border border-slate-800 space-y-1">
-                <span class="text-cyan-400 font-bold block font-sans">Receptor Ingestion Protocol:</span>
-                <div id="prep-log-receptor" class="text-slate-400 space-y-0.5">Load receptor to inspect water removal, pH 7.4 ionization, and AD4 atom typing.</div>
+            <div id="prep-log-content" class="hidden pt-2 border-t border-slate-200 dark:border-slate-800/80 space-y-2 text-[11px] font-mono leading-relaxed text-slate-700 dark:text-slate-300">
+              <div class="p-2.5 rounded-lg bg-slate-100/90 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 space-y-1">
+                <span class="text-cyan-600 dark:text-cyan-400 font-bold block font-sans">Receptor Ingestion Protocol:</span>
+                <div id="prep-log-receptor" class="text-slate-600 dark:text-slate-400 space-y-0.5">Load receptor to inspect water removal, pH 7.4 ionization, and AD4 atom typing.</div>
               </div>
-              <div class="p-2 rounded bg-slate-950/80 border border-slate-800 space-y-1">
-                <span class="text-cyan-400 font-bold block font-sans">Ligand Ingestion Protocol:</span>
-                <div id="prep-log-ligand" class="text-slate-400 space-y-0.5">Load ligand to inspect ETKDGv3 conformer generation, MMFF94 minimization, and Meeko torsions.</div>
+              <div class="p-2.5 rounded-lg bg-slate-100/90 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 space-y-1">
+                <span class="text-cyan-600 dark:text-cyan-400 font-bold block font-sans">Ligand Ingestion Protocol:</span>
+                <div id="prep-log-ligand" class="text-slate-600 dark:text-slate-400 space-y-0.5">Load ligand to inspect ETKDGv3 conformer generation, MMFF94 minimization, and Meeko torsions.</div>
               </div>
             </div>
           </div>
@@ -964,26 +966,28 @@
     <!-- ==================== TAB 5: AI RESEARCH PHARMACOLOGIST ==================== -->
     <section id="tab-ai-narrative" class="tab-pane hidden space-y-6">
       
-      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <div class="inline-flex items-center space-x-2 px-2.5 py-1 rounded-full bg-purple-950/80 border border-purple-500/40 text-[11px] text-purple-300 font-semibold mb-2">
-            <span>✨ AI-GENERATED INTERPRETATION</span>
+          <div class="inline-flex items-center space-x-2 px-2.5 py-1 rounded-full bg-purple-100 dark:bg-purple-950/80 border border-purple-300 dark:border-purple-500/40 text-[11px] text-purple-800 dark:text-purple-300 font-semibold mb-2">
+            <svg class="w-3.5 h-3.5 text-purple-600 dark:text-purple-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>
+            <span>AI-GENERATED INTERPRETATION</span>
             <span>•</span>
             <span>DeepSeek / LLM Synthesis (Non-Deterministic)</span>
           </div>
           <h2 class="text-lg font-bold text-white">AI Research Pharmacologist</h2>
           <p class="text-xs text-slate-400">Automated mechanistic interpretation synthesized from calculated docking metrics and literature</p>
         </div>
-        <div class="flex items-center space-x-2 text-xs text-amber-400 font-semibold px-2.5 py-1 rounded-lg bg-amber-950/40 border border-amber-800/40">
-          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+        <div class="flex items-center space-x-2 text-xs text-amber-800 dark:text-amber-400 font-semibold px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/40">
+          <span class="w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400 animate-pulse"></span>
           <span>In-Silico Hypothesis Only</span>
         </div>
       </div>
 
       <!-- Prominent Scientific Demarcation Banner -->
-      <div class="p-4 rounded-xl bg-amber-950/25 border border-amber-500/40 text-xs text-amber-200/95 space-y-1.5 leading-relaxed shadow-lg">
-        <strong class="text-amber-300 font-bold flex items-center space-x-2 text-xs uppercase tracking-wider">
-          <span>⚠️ Academic &amp; Pharmacological Disclaimer</span>
+      <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/25 border border-amber-300 dark:border-amber-500/40 text-xs text-amber-900 dark:text-amber-200/95 space-y-1.5 leading-relaxed shadow-lg">
+        <strong class="text-amber-800 dark:text-amber-300 font-bold flex items-center space-x-2 text-xs uppercase tracking-wider">
+          <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span>Academic &amp; Pharmacological Disclaimer</span>
         </strong>
         <p>
           The interpretations below are synthesized by an Artificial Intelligence Large Language Model (LLM) utilizing calculated AutoDock Vina affinities, RDKit physicochemical descriptors, and scientific pharmacophore literature. <strong>They represent preliminary in-silico screening hypotheses, NOT verified biological or clinical facts.</strong> Weak binding scores (e.g. &Delta;G &gt; -6.0 kcal/mol) frequently produce speculative narratives that require experimental wet-lab confirmation (ITC, SPR, crystallographic co-binding, cell-based IC50 assays).
@@ -1099,33 +1103,33 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
         </div>
 
         <!-- Academic Attribution & Software Reproducibility Metadata -->
-        <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5 text-[11px] font-mono">
-          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-            <span class="font-bold text-slate-300 uppercase tracking-wider font-sans text-xs flex items-center space-x-1.5">
-              <span>🔬</span>
+        <div class="p-4 rounded-xl bg-slate-100/90 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 space-y-2.5 text-[11px] font-mono">
+          <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+            <span class="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider font-sans text-xs flex items-center space-x-1.5">
+              <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2v7.31L4.16 20.25A1 1 0 0 0 5 21.6h14a1 1 0 0 0 .84-1.35L14 9.31V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
               <span>Academic Attribution &amp; Software Reproducibility</span>
             </span>
             <span id="dossier-timestamp" class="text-slate-500 text-[10px]">UTC: Synchronizing...</span>
           </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-slate-400">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-slate-600 dark:text-slate-400">
             <div>
               <span class="text-slate-500 block">Docking Engine:</span>
-              <span id="dossier-vina-ver" class="text-white font-semibold">AutoDock Vina v1.2.5</span>
+              <span id="dossier-vina-ver" class="text-slate-900 dark:text-white font-semibold">AutoDock Vina v1.2.5</span>
             </div>
             <div>
               <span class="text-slate-500 block">Cheminformatics:</span>
-              <span id="dossier-rdkit-ver" class="text-cyan-300 font-semibold">RDKit 2024+</span>
+              <span id="dossier-rdkit-ver" class="text-cyan-600 dark:text-cyan-300 font-semibold">RDKit 2024+</span>
             </div>
             <div>
               <span class="text-slate-500 block">Crystallography:</span>
-              <span id="dossier-gemmi-ver" class="text-cyan-300 font-semibold">Gemmi 0.7+</span>
+              <span id="dossier-gemmi-ver" class="text-cyan-600 dark:text-cyan-300 font-semibold">Gemmi 0.7+</span>
             </div>
             <div>
               <span class="text-slate-500 block">PDBQT Setup:</span>
-              <span id="dossier-meeko-ver" class="text-cyan-300 font-semibold">Meeko Flexible</span>
+              <span id="dossier-meeko-ver" class="text-cyan-600 dark:text-cyan-300 font-semibold">Meeko Flexible</span>
             </div>
           </div>
-          <div class="text-[10px] text-slate-500 pt-1 leading-normal border-t border-slate-900 font-sans">
+          <div class="text-[10px] text-slate-500 pt-1 leading-normal border-t border-slate-200 dark:border-slate-900 font-sans">
             <em>Citation Notice:</em> If referencing computational predictions generated by this studio in an academic dissertation or publication, cite AutoDock Vina (Trott &amp; Olson, 2010), RDKit (Landrum et al.), and EMBL-EBI ChEMBL (Gaulton et al., 2017).
           </div>
         </div>
@@ -1217,8 +1221,9 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
             <div>
               <div class="flex items-center justify-between mb-1">
                 <label class="font-medium text-slate-300 text-[11px] uppercase tracking-wider">Avatar / Picture</label>
-                <button type="button" id="btn-random-avatar" class="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center space-x-1">
-                  <span>🎲 Random Avatar</span>
+                <button type="button" id="btn-random-avatar" class="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center space-x-1.5 font-medium">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="8" cy="8" r="1" fill="currentColor"/><circle cx="16" cy="8" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="8" cy="16" r="1" fill="currentColor"/><circle cx="16" cy="16" r="1" fill="currentColor"/></svg>
+                  <span>Random Avatar</span>
                 </button>
               </div>
               <input id="input-edit-photo-url" type="text" placeholder="Custom image URL or click preset below" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-xs font-mono focus:outline-none focus:border-cyan-500">
@@ -1301,7 +1306,8 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
       <!-- Quick Start Overview -->
       <div class="p-4 rounded-xl bg-gradient-to-r from-blue-950/40 via-cyan-950/30 to-slate-900/50 border border-cyan-800/40 space-y-1.5">
         <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center space-x-1.5">
-          <span>⚡ Platform Overview</span>
+          <svg class="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Platform Overview</span>
         </h4>
         <p class="text-xs text-slate-300 leading-relaxed">
           <strong>Bindora Dock</strong> is an integrated preclinical computational pharmacology suite. It connects native <strong>AutoDock Vina</strong> molecular docking with <strong>RDKit</strong> ADME/drug-likeness profiling, <strong>EMBL-EBI ChEMBL</strong> wet-lab bioactivity cross-checking, and interactive <strong>3Dmol.js WebGL</strong> visualization. Follow the 7 tabs below to execute a complete study.

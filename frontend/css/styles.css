@@ -548,9 +548,12 @@ html.light #tab-dossier .glass-panel {
   box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06) !important;
 }
 html.light #tab-dossier .bg-slate-900\/60,
-html.light #tab-dossier [class*="bg-slate-900"] {
+html.light #tab-dossier [class*="bg-slate-900"],
+html.light #tab-dossier .bg-slate-950\/80,
+html.light #tab-dossier [class*="bg-slate-950"] {
   background-color: #f8fafc !important;
   border: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
 }
 html.light #tab-dossier #dossier-ligand-name,
 html.light #tab-dossier #dossier-target-name {
@@ -578,5 +581,87 @@ html.light #tab-home [class*="bg-teal-950"].text-teal-300 {
   color: #047857 !important;
   border-color: #a7f3d0 !important;
 }
+
+/* 21. Header & Navigation Light Theme */
+html.light #main-header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 6px rgba(15, 23, 42, 0.05) !important;
+}
+html.light #main-header .nav-tab {
+  color: #475569 !important;
+}
+html.light #main-header .nav-tab:hover {
+  color: #0D6EFD !important;
+  background-color: #f1f5f9 !important;
+}
+html.light #main-header .nav-tab.active {
+  color: #0D6EFD !important;
+  background-color: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  box-shadow: 0 1px 3px rgba(13, 110, 253, 0.15) !important;
+}
+html.light #header-version-badge {
+  background-color: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-color: #bfdbfe !important;
+}
+
+/* 22. Tab 2 Preparation Protocol Transparency Log & Redocking */
+html.light #prep-log-content {
+  border-top-color: #e2e8f0 !important;
+}
+html.light #prep-log-content .bg-slate-950\/80,
+html.light #prep-log-content [class*="bg-slate-950"] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+html.light #prep-log-receptor,
+html.light #prep-log-ligand {
+  color: #475569 !important;
+}
+html.light #redocking-results-panel {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+html.light #btn-run-redocking {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0284c7 !important;
+}
+html.light #btn-run-redocking:hover {
+  background-color: #f0f9ff !important;
+  border-color: #38bdf8 !important;
+}
+
+/* 23. Tab 5 AI Pharmacologist Report Light Mode */
+html.light #tab-ai-narrative .bg-purple-950\/80 {
+  background-color: #f3e8ff !important;
+  border-color: #d8b4fe !important;
+  color: #6b21a8 !important;
+}
+html.light #tab-ai-narrative .bg-amber-950\/40 {
+  background-color: #fef3c7 !important;
+  border-color: #fcd34d !important;
+  color: #92400e !important;
+}
+html.light #tab-ai-narrative .bg-amber-950\/25 {
+  background-color: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #78350f !important;
+}
+html.light #tab-ai-narrative .bg-amber-950\/25 strong {
+  color: #92400e !important;
+}
+
+/* 24. Tab 3 ADME Physicochemical Descriptors Light Mode */
+html.light #tab-adme .grid-cols-3 .glass-panel,
+html.light #tab-adme .grid-cols-6 .glass-panel {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+
 
 

@@ -262,7 +262,7 @@ class BindoraApp {
       clearMeasureBtn.addEventListener("click", () => {
         if (this.viewer) this.viewer.clearMeasurements();
         const hudText = document.getElementById("measure-hud-text");
-        if (hudText) hudText.textContent = "📐 Click any atom to begin measurement...";
+        if (hudText) hudText.innerHTML = '<svg class="w-3.5 h-3.5 text-rose-400 inline mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.3 8.7 8.7 21.3c-1 1-2.5 1-3.4 0l-2.6-2.6c-1-1-1-2.5 0-3.4L15.3 2.7c1-1 2.5-1 3.4 0l2.6 2.6c1 1 1 2.5 0 3.4Z"/><path d="m14.5 3.5 2 2"/><path d="m11.5 6.5 2 2"/><path d="m8.5 9.5 2 2"/><path d="m5.5 12.5 2 2"/></svg><span>Click any atom to begin measurement...</span>';
       });
     }
 
@@ -548,7 +548,7 @@ class BindoraApp {
         try {
           await window.bindoraFirebase.updateUserProfile(newName, newPhoto);
           if (profileEditStatus) {
-            profileEditStatus.textContent = "✓ Profile updated successfully!";
+            profileEditStatus.innerHTML = '<span class="inline-flex items-center space-x-1.5"><svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span>Profile updated successfully!</span></span>';
             profileEditStatus.className = "text-xs text-emerald-400";
             profileEditStatus.classList.remove("hidden");
           }
@@ -1399,9 +1399,9 @@ class BindoraApp {
 
       if (badgeBox) {
         if (res.is_validated) {
-          badgeBox.innerHTML = `<span class="px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 text-[11px] font-bold inline-flex items-center space-x-1"><span>✓</span> <span>${res.validation_badge}</span></span>`;
+          badgeBox.innerHTML = `<span class="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[11px] font-bold inline-flex items-center space-x-1.5"><svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <span>${res.validation_badge}</span></span>`;
         } else {
-          badgeBox.innerHTML = `<span class="px-2.5 py-1 rounded-full bg-amber-950 text-amber-300 border border-amber-800 text-[11px] font-bold inline-flex items-center space-x-1"><span>⚠</span> <span>${res.validation_badge}</span></span>`;
+          badgeBox.innerHTML = `<span class="px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-[11px] font-bold inline-flex items-center space-x-1.5"><svg class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> <span>${res.validation_badge}</span></span>`;
         }
       }
 
@@ -1521,8 +1521,8 @@ class BindoraApp {
 
       // Update completion banner
       if (statusBanner) {
-        statusBanner.className = "glass-panel p-3.5 rounded-xl border border-emerald-500/50 bg-emerald-950/80 transition-all duration-300 mb-2";
-        if (statusIcon) statusIcon.innerHTML = `<span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">✓</span>`;
+        statusBanner.className = "glass-panel p-3.5 rounded-xl border border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-100 transition-all duration-300 mb-2";
+        if (statusIcon) statusIcon.innerHTML = `<span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>`;
         if (statusTitle) statusTitle.textContent = `Docking Complete: ΔG = ${dockResult.top_pose.affinity_kcal} kcal/mol`;
         if (statusSub) statusSub.textContent = `Theoretical Kd: ${dockResult.thermodynamics?.theoretical_kd_nm || "—"} nM | ${dockResult.interactions?.total_hbond_count || 0} H-Bonds | Top binding pose loaded.`;
         if (statusExtra) statusExtra.textContent = "Finished";
@@ -1536,8 +1536,8 @@ class BindoraApp {
     } catch (e) {
       console.error("Docking error:", e);
       if (statusBanner) {
-        statusBanner.className = "glass-panel p-3.5 rounded-xl border border-rose-500/50 bg-rose-950/80 transition-all duration-300 mb-2";
-        if (statusIcon) statusIcon.innerHTML = `<span class="w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold text-sm">✕</span>`;
+        statusBanner.className = "glass-panel p-3.5 rounded-xl border border-rose-500/50 bg-rose-50 dark:bg-rose-950/80 text-rose-950 dark:text-rose-100 transition-all duration-300 mb-2";
+        if (statusIcon) statusIcon.innerHTML = `<span class="w-6 h-6 rounded-full bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold text-sm"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>`;
         if (statusTitle) statusTitle.textContent = "Docking Execution Failed";
         if (statusSub) statusSub.textContent = e.message;
         if (statusExtra) statusExtra.textContent = "Error";
@@ -1661,7 +1661,9 @@ class BindoraApp {
 
     const isCorroborated = data.is_cross_checked;
     const badgeClass = isCorroborated ? "badge-verified" : "badge-computational";
-    const statusIcon = isCorroborated ? "✓" : "⚠";
+    const statusIcon = isCorroborated
+      ? `<svg class="w-4 h-4 text-emerald-500 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`
+      : `<svg class="w-4 h-4 text-amber-500 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
 
     // Build ChEMBL verification links
     const chemblMolUrl = data.chembl_compound_url || null;
@@ -1671,27 +1673,27 @@ class BindoraApp {
 
     const searchedHtml = `
       <div class="grid grid-cols-2 gap-2 text-xs font-mono mt-2">
-        <div class="p-2 rounded-lg bg-slate-900/60 border border-slate-800 space-y-1">
-          <div class="text-slate-400 text-[10px] uppercase tracking-wider font-sans font-semibold">Compound Searched</div>
-          <div class="text-white font-semibold">${data.drug_searched || "—"}</div>
-          ${molId ? `<div class="text-[11px] text-slate-400">${molId}
-            <a href="${chemblMolUrl}" target="_blank" rel="noopener" class="text-cyan-400 hover:underline ml-1">↗ ChEMBL</a></div>` : `<div class="text-[11px] text-rose-400">Not found in ChEMBL</div>`}
+        <div class="p-2.5 rounded-lg bg-slate-100/90 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1">
+          <div class="text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-wider font-sans font-semibold">Compound Searched</div>
+          <div class="text-slate-900 dark:text-white font-semibold">${data.drug_searched || "—"}</div>
+          ${molId ? `<div class="text-[11px] text-slate-500 dark:text-slate-400">${molId}
+            <a href="${chemblMolUrl}" target="_blank" rel="noopener" class="text-cyan-600 dark:text-cyan-400 hover:underline ml-1">↗ ChEMBL</a></div>` : `<div class="text-[11px] text-rose-500 dark:text-rose-400">Not found in ChEMBL</div>`}
         </div>
-        <div class="p-2 rounded-lg bg-slate-900/60 border border-slate-800 space-y-1">
-          <div class="text-slate-400 text-[10px] uppercase tracking-wider font-sans font-semibold">Target Searched</div>
-          <div class="text-white font-semibold">${data.target_searched || "—"}</div>
-          ${targetId ? `<div class="text-[11px] text-slate-400">${targetId}
-            <a href="${chemblTargetUrl}" target="_blank" rel="noopener" class="text-cyan-400 hover:underline ml-1">↗ ChEMBL</a></div>` : `<div class="text-[11px] text-rose-400">Not found in ChEMBL</div>`}
+        <div class="p-2.5 rounded-lg bg-slate-100/90 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1">
+          <div class="text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-wider font-sans font-semibold">Target Searched</div>
+          <div class="text-slate-900 dark:text-white font-semibold">${data.target_searched || "—"}</div>
+          ${targetId ? `<div class="text-[11px] text-slate-500 dark:text-slate-400">${targetId}
+            <a href="${chemblTargetUrl}" target="_blank" rel="noopener" class="text-cyan-600 dark:text-cyan-400 hover:underline ml-1">↗ ChEMBL</a></div>` : `<div class="text-[11px] text-rose-500 dark:text-rose-400">Not found in ChEMBL</div>`}
         </div>
       </div>
     `;
 
     // No records explanation panel (scientific context, not an error)
     const noRecordsExplanationHtml = !isCorroborated ? `
-      <div class="mt-3 p-3 rounded-lg bg-slate-900/50 border border-amber-900/40 text-xs space-y-1">
-        <p class="font-semibold text-amber-300 text-[11px] uppercase tracking-wide">What does this mean scientifically?</p>
-        <p class="text-slate-400 leading-relaxed">
-          <strong class="text-slate-300">No ChEMBL records ≠ inactive compound.</strong> It means no curated wet-lab binding assay (IC50, Ki, Kd, EC50) has been deposited in the EMBL-EBI ChEMBL database for this exact drug-target pair. This is a common finding for:
+      <div class="mt-3 p-3 rounded-lg bg-amber-50/80 dark:bg-slate-900/50 border border-amber-200 dark:border-amber-900/40 text-xs space-y-1">
+        <p class="font-semibold text-amber-800 dark:text-amber-300 text-[11px] uppercase tracking-wide">What does this mean scientifically?</p>
+        <p class="text-slate-700 dark:text-slate-400 leading-relaxed">
+          <strong class="text-slate-900 dark:text-slate-300">No ChEMBL records ≠ inactive compound.</strong> It means no curated wet-lab binding assay (IC50, Ki, Kd, EC50) has been deposited in the EMBL-EBI ChEMBL database for this exact drug-target pair. This is a common finding for:
         </p>
         <ul class="list-disc pl-4 text-slate-400 space-y-0.5">
           <li>Novel or emerging drug candidates with unpublished experimental data</li>
@@ -1953,57 +1955,57 @@ class BindoraApp {
 
       resultsSummary.innerHTML = `
         <!-- SECTION A: Computed Quantitative Metrics (Deterministic) -->
-        <div class="space-y-3 p-4 rounded-xl border border-cyan-800/40 bg-slate-900/60">
-          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-            <span class="font-bold text-cyan-300 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
-              <span>🔬</span>
+        <div class="space-y-3 p-4 rounded-xl border border-cyan-200 dark:border-cyan-800/40 bg-slate-50/90 dark:bg-slate-900/60 shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+            <span class="font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
+              <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2v7.31L4.16 20.25A1 1 0 0 0 5 21.6h14a1 1 0 0 0 .84-1.35L14 9.31V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
               <span>Section A: Deterministic Physical Computations (AutoDock Vina &amp; RDKit)</span>
             </span>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">Physical Facts</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 font-semibold">Physical Facts</span>
           </div>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
-            <div class="p-2.5 bg-slate-950/80 rounded border border-slate-800">
-              <span class="text-slate-400 block font-sans text-[11px]">Binding Free Energy (ΔG)</span>
-              <span class="text-cyan-400 font-bold text-sm">${d.top_pose?.affinity_kcal || "—"} kcal/mol</span>
+            <div class="p-2.5 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+              <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px]">Binding Free Energy (ΔG)</span>
+              <span class="text-cyan-600 dark:text-cyan-400 font-bold text-sm">${d.top_pose?.affinity_kcal || "—"} kcal/mol</span>
             </div>
-            <div class="p-2.5 bg-slate-950/80 rounded border border-slate-800">
-              <span class="text-slate-400 block font-sans text-[11px]">Theoretical Dissociation (Kd)</span>
-              <span class="text-emerald-400 font-bold text-sm">${thermo.theoretical_kd_nm || "—"} nM</span>
+            <div class="p-2.5 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+              <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px]">Theoretical Dissociation (Kd)</span>
+              <span class="text-emerald-600 dark:text-emerald-400 font-bold text-sm">${thermo.theoretical_kd_nm || "—"} nM</span>
             </div>
-            <div class="p-2.5 bg-slate-950/80 rounded border border-slate-800">
-              <span class="text-slate-400 block font-sans text-[11px]">Ligand Efficiency (LE)</span>
-              <span class="text-yellow-400 font-bold text-sm">${thermo.ligand_efficiency?.value || "—"}</span>
+            <div class="p-2.5 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+              <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px]">Ligand Efficiency (LE)</span>
+              <span class="text-amber-600 dark:text-yellow-400 font-bold text-sm">${thermo.ligand_efficiency?.value || "—"}</span>
               <span class="text-[10px] text-slate-500 block">SILE: ${thermo.size_independent_le?.value || "—"}</span>
             </div>
-            <div class="p-2.5 bg-slate-950/80 rounded border border-slate-800">
-              <span class="text-slate-400 block font-sans text-[11px]">H-Bonds &amp; Contacts</span>
-              <span class="text-purple-400 font-bold text-sm">${contacts.total_hbond_count || 0} H-Bonds</span>
+            <div class="p-2.5 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+              <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px]">H-Bonds &amp; Contacts</span>
+              <span class="text-purple-600 dark:text-purple-400 font-bold text-sm">${contacts.total_hbond_count || 0} H-Bonds</span>
               <span class="text-[10px] text-slate-500 block">${contacts.total_hydrophobic_count || 0} Hydrophobic</span>
             </div>
           </div>
 
           ${repStats ? `
-            <div class="p-2.5 rounded bg-cyan-950/30 border border-cyan-800/40 text-xs font-mono flex items-center justify-between">
-              <span class="text-slate-300 font-sans">Multi-Seed Stochastic Replicates (N=${repStats.replicates_count}):</span>
-              <span class="text-cyan-300 font-bold">Mean ΔG = ${repStats.mean_affinity_kcal} ± ${repStats.sd_affinity_kcal} kcal/mol (95% CI: ±${repStats.confidence_interval_95} kcal/mol)</span>
+            <div class="p-2.5 rounded-lg bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800/40 text-xs font-mono flex items-center justify-between">
+              <span class="text-slate-700 dark:text-slate-300 font-sans">Multi-Seed Stochastic Replicates (N=${repStats.replicates_count}):</span>
+              <span class="text-cyan-700 dark:text-cyan-300 font-bold">Mean ΔG = ${repStats.mean_affinity_kcal} ± ${repStats.sd_affinity_kcal} kcal/mol (95% CI: ±${repStats.confidence_interval_95} kcal/mol)</span>
             </div>
           ` : ''}
 
           ${redock ? `
-            <div class="p-2.5 rounded ${redock.is_validated ? 'bg-emerald-950/30 border-emerald-800/40' : 'bg-amber-950/30 border-amber-800/40'} border text-xs font-mono flex items-center justify-between">
-              <span class="text-slate-300 font-sans">Protocol Self-Validation (Native Ligand Redocking):</span>
-              <span class="${redock.is_validated ? 'text-emerald-300' : 'text-amber-300'} font-bold">RMSD = ${redock.rmsd_angstroms} Å &bull; ${redock.benchmark_status}</span>
+            <div class="p-2.5 rounded-lg ${redock.is_validated ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40' : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/40'} border text-xs font-mono flex items-center justify-between">
+              <span class="text-slate-700 dark:text-slate-300 font-sans">Protocol Self-Validation (Native Ligand Redocking):</span>
+              <span class="${redock.is_validated ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'} font-bold">RMSD = ${redock.rmsd_angstroms} Å &bull; ${redock.benchmark_status}</span>
             </div>
           ` : ''}
 
           ${isWeak ? `
-            <div class="p-2.5 rounded bg-amber-950/40 border border-amber-600/50 text-xs text-amber-200 font-sans space-y-1">
-              <strong class="font-bold flex items-center space-x-1 text-amber-300">
-                <span>⚠️</span>
+            <div class="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-600/50 text-xs text-amber-900 dark:text-amber-200 font-sans space-y-1">
+              <strong class="font-bold flex items-center space-x-1.5 text-amber-800 dark:text-amber-300">
+                <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 <span>Scientific Qualification: Sub-threshold Binding Detected</span>
               </strong>
-              <p class="text-[11px] leading-relaxed text-amber-200/90">
+              <p class="text-[11px] leading-relaxed text-amber-800/90 dark:text-amber-200/90">
                 Calculated ΔG (${d.top_pose?.affinity_kcal} kcal/mol) corresponds to high micromolar or millimolar affinity (Kd ≈ ${thermo.theoretical_kd_um || '—'} µM). At this range, experimental wet-lab assays typically show non-specific surface adhesion or no inhibition. Do not interpret as a potent hit.
               </p>
             </div>
@@ -2011,23 +2013,23 @@ class BindoraApp {
         </div>
 
         <!-- SECTION B: AI-Generated Mechanistic Synthesis (Hypothesis Only) -->
-        <div class="space-y-3 p-4 rounded-xl border border-purple-800/40 bg-slate-900/60">
-          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-            <span class="font-bold text-purple-300 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
-              <span>✨</span>
+        <div class="space-y-3 p-4 rounded-xl border border-purple-200 dark:border-purple-800/40 bg-purple-50/40 dark:bg-slate-900/60 shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+            <span class="font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
+              <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>
               <span>Section B: AI Mechanistic Interpretation (DeepSeek/LLM Hypothesis)</span>
             </span>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800">Hypothesis Only</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800 font-semibold">Hypothesis Only</span>
           </div>
-          <div class="text-xs text-slate-300 leading-relaxed font-sans space-y-2">
-            <p class="text-slate-400 italic">
+          <div class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-sans space-y-2">
+            <p class="text-slate-500 dark:text-slate-400 italic">
               Computational docking identifies potential geometric fits within conformational sampling space. Biological efficacy requires secondary wet-lab verification (enzymatic IC50, SPR, cellular viability).
             </p>
             ${this.state.narrative ? `
-              <div class="p-3 bg-slate-950/60 rounded border border-slate-800/80 text-slate-300 text-xs leading-relaxed max-h-48 overflow-y-auto">
+              <div class="p-3 bg-white dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800/80 text-slate-800 dark:text-slate-300 text-xs leading-relaxed max-h-48 overflow-y-auto">
                 ${this.renderMarkdown(this.state.narrative.narrative || '')}
               </div>
-            ` : '<p class="text-slate-500 italic text-xs">Generate narrative report in Tab 5 to append comprehensive mechanistic explanation here.</p>'}
+            ` : '<p class="text-slate-400 dark:text-slate-500 italic text-xs">Generate narrative report in Tab 5 to append comprehensive mechanistic explanation here.</p>'}
           </div>
         </div>
       `;
