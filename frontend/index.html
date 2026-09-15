@@ -100,10 +100,9 @@
           <span id="user-display-name">Sign In</span>
         </button>
 
-        <button id="btn-settings" title="Settings" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+        <button id="btn-about" title="Bindora v1.0 — Research & Educational Computational Pharmacology" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
         </button>
       </div>
@@ -144,7 +143,7 @@
       <!-- Search & Import Section -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        <!-- Ligand Search Panel -->
+        <!-- Ligand Search & Custom Input Panel -->
         <div class="glass-panel p-5 rounded-xl border border-slate-800 space-y-4">
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
@@ -153,21 +152,46 @@
               </svg>
               <h3 class="font-bold text-sm text-white">Ligand / Small Molecule</h3>
             </div>
-            <span class="text-xs font-mono text-cyan-400">PubChem REST API</span>
+            <!-- Mode Switcher -->
+            <div class="flex bg-slate-900/80 p-0.5 rounded-lg border border-slate-700/60 text-[11px]">
+              <button id="tab-btn-ligand-pubchem" class="px-2.5 py-1 rounded-md font-medium text-cyan-300 bg-slate-800 transition">PubChem</button>
+              <button id="tab-btn-ligand-smiles" class="px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-white transition">Custom SMILES</button>
+              <button id="tab-btn-ligand-upload" class="px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-white transition">Upload File</button>
+            </div>
           </div>
 
-          <div class="flex space-x-2">
+          <!-- Mode 1: PubChem Search -->
+          <div id="mode-ligand-pubchem" class="flex space-x-2">
             <input id="input-search-pubchem" type="text" placeholder="Search drug name (e.g., Imatinib, Aspirin, Erlotinib)..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
-            <button id="btn-search-pubchem" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-medium transition">Search</button>
+            <button id="btn-search-pubchem" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-medium transition whitespace-nowrap">Search</button>
+          </div>
+
+          <!-- Mode 2: Custom SMILES -->
+          <div id="mode-ligand-smiles" class="space-y-2 hidden">
+            <input id="input-custom-ligand-name" type="text" placeholder="Compound Name (e.g., My Drug #1, Paracetamol)..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+            <div class="flex space-x-2">
+              <input id="input-custom-smiles" type="text" placeholder="Paste SMILES (e.g., CC(=O)Oc1ccccc1C(=O)O)..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-500">
+              <button id="btn-load-custom-smiles" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-medium transition whitespace-nowrap">Load SMILES</button>
+            </div>
+          </div>
+
+          <!-- Mode 3: File Upload -->
+          <div id="mode-ligand-upload" class="space-y-2 hidden">
+            <div class="border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-lg p-4 text-center cursor-pointer transition" onclick="document.getElementById('file-upload-ligand').click()">
+              <svg class="w-6 h-6 mx-auto text-slate-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+              <p class="text-xs text-slate-300 font-medium">Click to select compound file</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">Supports .sdf, .mol, .smi formats</p>
+              <input id="file-upload-ligand" type="file" accept=".sdf,.mol,.smi,.txt" class="hidden">
+            </div>
           </div>
 
           <!-- Ligand Live Preview Card -->
           <div id="card-ligand-info" class="p-4 rounded-lg bg-slate-900/70 border border-slate-800">
-            <p class="text-xs text-slate-400 italic">No ligand loaded yet.</p>
+            <p class="text-xs text-slate-400 italic">No ligand loaded yet. Search PubChem, enter a SMILES, or upload a file.</p>
           </div>
         </div>
 
-        <!-- Receptor Search Panel -->
+        <!-- Receptor Search & Custom Input Panel -->
         <div class="glass-panel p-5 rounded-xl border border-slate-800 space-y-4">
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
@@ -176,17 +200,40 @@
               </svg>
               <h3 class="font-bold text-sm text-white">Receptor / Target Protein</h3>
             </div>
-            <span class="text-xs font-mono text-emerald-400">RCSB PDB REST API</span>
+            <!-- Mode Switcher -->
+            <div class="flex bg-slate-900/80 p-0.5 rounded-lg border border-slate-700/60 text-[11px]">
+              <button id="tab-btn-receptor-rcsb" class="px-2.5 py-1 rounded-md font-medium text-emerald-300 bg-slate-800 transition">RCSB PDB</button>
+              <button id="tab-btn-receptor-upload" class="px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-white transition">Upload .PDB</button>
+              <button id="tab-btn-receptor-paste" class="px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-white transition">Paste PDB</button>
+            </div>
           </div>
 
-          <div class="flex space-x-2">
+          <!-- Mode 1: RCSB PDB Search -->
+          <div id="mode-receptor-rcsb" class="flex space-x-2">
             <input id="input-search-rcsb" type="text" placeholder="PDB code (e.g. 1IEP, 1CX2) or protein name..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
-            <button id="btn-search-rcsb" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition">Search</button>
+            <button id="btn-search-rcsb" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition whitespace-nowrap">Search</button>
+          </div>
+
+          <!-- Mode 2: Upload PDB File -->
+          <div id="mode-receptor-upload" class="space-y-2 hidden">
+            <div class="border-2 border-dashed border-slate-700 hover:border-emerald-500 rounded-lg p-4 text-center cursor-pointer transition" onclick="document.getElementById('file-upload-receptor').click()">
+              <svg class="w-6 h-6 mx-auto text-slate-500 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+              <p class="text-xs text-slate-300 font-medium">Click to select protein .pdb file</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">Supports AlphaFold, Swiss-Model, or RCSB .pdb</p>
+              <input id="file-upload-receptor" type="file" accept=".pdb" class="hidden">
+            </div>
+          </div>
+
+          <!-- Mode 3: Paste Raw PDB Text -->
+          <div id="mode-receptor-paste" class="space-y-2 hidden">
+            <input id="input-custom-receptor-name" type="text" placeholder="Target Name (e.g., Kinase Cleft, Spike RBD)..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            <textarea id="input-custom-pdb-text" rows="3" placeholder="Paste PDB coordinates here (ATOM / HETATM lines)..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"></textarea>
+            <button id="btn-load-custom-pdb" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition">Load &amp; Prepare PDB Structure</button>
           </div>
 
           <!-- Receptor Live Preview Card -->
           <div id="card-receptor-info" class="p-4 rounded-lg bg-slate-900/70 border border-slate-800">
-            <p class="text-xs text-slate-400 italic">No receptor loaded yet.</p>
+            <p class="text-xs text-slate-400 italic">No receptor loaded yet. Search RCSB PDB, upload a .pdb file, or paste coordinates.</p>
           </div>
         </div>
 
@@ -267,6 +314,14 @@
           <!-- 3Dmol Container -->
           <div id="viewport-container" class="border border-slate-800 shadow-2xl relative">
             <div id="gldiv"></div>
+            
+            <div id="viewer-empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none z-10">
+              <svg class="w-12 h-12 text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              <p class="text-sm text-slate-500 font-medium">No structure loaded</p>
+              <p class="text-xs text-slate-600 mt-1">Search a drug &amp; target in Tab 1, or pick a benchmark case study</p>
+            </div>
             
             <!-- Floating Pose Stepper on Top of Viewer -->
             <div class="absolute bottom-4 left-4 glass-panel px-3 py-1.5 rounded-lg border border-slate-700/80 flex items-center space-x-2 text-xs">
@@ -384,6 +439,40 @@
         </div>
       </div>
 
+      <!-- Physicochemical Descriptor Cards -->
+      <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
+        <div class="glass-panel p-3 rounded-xl border border-slate-800 text-center">
+          <span class="text-[10px] uppercase tracking-wider text-slate-400 block font-semibold">MW</span>
+          <span id="adme-mw-val" class="text-lg font-extrabold text-cyan-400 font-mono mt-1 block">—</span>
+          <span class="text-[10px] text-slate-500">Da</span>
+        </div>
+        <div class="glass-panel p-3 rounded-xl border border-slate-800 text-center">
+          <span class="text-[10px] uppercase tracking-wider text-slate-400 block font-semibold">LogP</span>
+          <span id="adme-logp-val" class="text-lg font-extrabold text-emerald-400 font-mono mt-1 block">—</span>
+          <span class="text-[10px] text-slate-500">Partition</span>
+        </div>
+        <div class="glass-panel p-3 rounded-xl border border-slate-800 text-center">
+          <span class="text-[10px] uppercase tracking-wider text-slate-400 block font-semibold">HBD</span>
+          <span id="adme-hbd-val" class="text-lg font-extrabold text-yellow-400 font-mono mt-1 block">—</span>
+          <span class="text-[10px] text-slate-500">Donors</span>
+        </div>
+        <div class="glass-panel p-3 rounded-xl border border-slate-800 text-center">
+          <span class="text-[10px] uppercase tracking-wider text-slate-400 block font-semibold">HBA</span>
+          <span id="adme-hba-val" class="text-lg font-extrabold text-orange-400 font-mono mt-1 block">—</span>
+          <span class="text-[10px] text-slate-500">Acceptors</span>
+        </div>
+        <div class="glass-panel p-3 rounded-xl border border-slate-800 text-center">
+          <span class="text-[10px] uppercase tracking-wider text-slate-400 block font-semibold">RotB</span>
+          <span id="adme-rotb-val" class="text-lg font-extrabold text-purple-400 font-mono mt-1 block">—</span>
+          <span class="text-[10px] text-slate-500">Bonds</span>
+        </div>
+        <div class="glass-panel p-3 rounded-xl border border-slate-800 text-center">
+          <span class="text-[10px] uppercase tracking-wider text-slate-400 block font-semibold">TPSA</span>
+          <span id="adme-tpsa-val" class="text-lg font-extrabold text-rose-400 font-mono mt-1 block">—</span>
+          <span class="text-[10px] text-slate-500">Å²</span>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         <!-- Left: Lipinski Radar Chart -->
@@ -457,10 +546,9 @@
           <h3 class="font-bold text-sm text-white">Target Pathway & Physiological Cascade</h3>
           <span class="text-xs font-mono text-cyan-400">UniProt REST Annotation</span>
         </div>
-        <p class="text-xs text-slate-300 leading-relaxed">
-          Computational modeling of downstream pharmacology approximates receptor occupancy effects without the requirement of live animal sacrifice.
-          Binding at the target cleft disrupts physiological catalytic phosphotransfer or endogenous agonist binding, propagating signal attenuation down canonical cascades.
-        </p>
+        <div id="pathway-info-container" class="text-xs text-slate-300 leading-relaxed space-y-2">
+          <p class="text-slate-500 italic">Load a target receptor to view UniProt pathway annotation and physiological cascade information.</p>
+        </div>
       </div>
 
     </section>
@@ -562,17 +650,22 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
         <div class="grid grid-cols-2 gap-4 text-xs font-mono">
           <div class="p-3 bg-slate-900/60 rounded border border-slate-800">
             <span class="text-slate-400 block">Investigational API / Ligand</span>
-            <span class="text-white font-bold text-sm">Aspirin (Acetylsalicylic acid)</span>
+            <span id="dossier-ligand-name" class="text-white font-bold text-sm">No drug loaded</span>
           </div>
           <div class="p-3 bg-slate-900/60 rounded border border-slate-800">
             <span class="text-slate-400 block">Biological Target</span>
-            <span class="text-white font-bold text-sm">Cyclooxygenase-2 (COX-2, PDB: 1CX2)</span>
+            <span id="dossier-target-name" class="text-white font-bold text-sm">No target loaded</span>
           </div>
         </div>
 
         <div class="text-xs space-y-2 leading-relaxed">
           <h4 class="font-bold text-slate-200 uppercase text-xs tracking-wider">Methodology & Attribution</h4>
-          <p>This report documents a computational docking simulation executed using AutoDock Vina (Scripps CCSB). Physicochemical descriptors were derived strictly using RDKit's topological and empirical rule catalogs. Bioactivity validation was cross-checked with the European Bioinformatics Institute (EMBL-EBI) ChEMBL repository.</p>
+          <p id="dossier-methodology">This report documents a computational docking simulation executed using AutoDock Vina (Scripps CCSB). Physicochemical descriptors were derived strictly using RDKit's topological and empirical rule catalogs. Bioactivity validation was cross-checked with the European Bioinformatics Institute (EMBL-EBI) ChEMBL repository.</p>
+        </div>
+
+        <!-- Dynamic Results Summary -->
+        <div id="dossier-results-summary" class="text-xs space-y-3 leading-relaxed">
+          <p class="text-slate-500 italic">Run a docking simulation to populate the results summary.</p>
         </div>
       </div>
 
@@ -580,37 +673,7 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
 
   </main>
 
-  <!-- Settings Modal -->
-  <div id="modal-settings" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center hidden p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h3 class="font-bold text-base text-white">Bindora Settings & AI Keys</h3>
-        <button id="btn-close-settings" class="text-slate-400 hover:text-white">&times;</button>
-      </div>
-
-      <div class="space-y-3 text-xs">
-        <div>
-          <label class="font-semibold text-slate-300 block mb-1">OpenRouter / Gemini API Key (Optional):</label>
-          <input id="input-api-key" type="password" placeholder="sk-or-v1-... or AIza..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-cyan-500">
-          <p class="text-[11px] text-slate-400 mt-1.5">
-            If left blank, Bindora automatically uses its built-in, deterministic, offline rule-based pharmacology reasoning engine at <strong>$0 recurring cost</strong>.
-          </p>
-        </div>
-
-        <div class="pt-2 border-t border-slate-800">
-          <label class="font-semibold text-slate-300 block mb-1">Firebase Web API Key (for Cloud Sync & Auth):</label>
-          <input id="input-firebase-api-key" type="password" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-cyan-500">
-          <p class="text-[11px] text-slate-400 mt-1.5">
-            From Firebase Console &rarr; Project settings &rarr; General &rarr; Web API Key.
-          </p>
-        </div>
-      </div>
-
-      <div class="flex justify-end space-x-2 pt-2 border-t border-slate-800">
-        <button id="btn-save-settings" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold transition">Save Settings</button>
-      </div>
-    </div>
-  </div>
+  <!-- Settings removed — all API keys are pre-configured server-side -->
 
   <!-- Firebase Authentication & User Modal -->
   <div id="modal-firebase-auth" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center hidden p-4">

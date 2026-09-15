@@ -1,8 +1,8 @@
-// Client API module for AnuDock backend communications
+// Client API module for Bindora backend communications
 
 const API_BASE = ""; // Relative path to match same-origin or proxied API
 
-class AnuDockAPI {
+class BindoraAPI {
   static async request(endpoint, options = {}) {
     const defaultHeaders = {
       "Content-Type": "application/json"
@@ -84,12 +84,11 @@ class AnuDockAPI {
     return this.request(`/api/pkpd/crosscheck?drug=${encodeURIComponent(drug)}&target=${encodeURIComponent(target)}`);
   }
 
-  static async explainNarrative(reportData, apiKey = "", provider = "auto") {
+  static async explainNarrative(reportData, provider = "auto") {
     return this.request("/api/narrative/explain", {
       method: "POST",
       body: JSON.stringify({
         ...reportData,
-        api_key: apiKey,
         provider: provider
       })
     });
@@ -103,5 +102,6 @@ class AnuDockAPI {
   }
 }
 
-window.BindoraAPI = AnuDockAPI;
-window.AnuDockAPI = AnuDockAPI;
+// Primary export + backward compatibility alias
+window.BindoraAPI = BindoraAPI;
+window.AnuDockAPI = BindoraAPI;

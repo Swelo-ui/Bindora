@@ -17,7 +17,6 @@ class BindoraApp {
       crosscheck: null,
       narrative: null,
       benchmarks: [],
-      apiKey: localStorage.getItem("bindora_api_key") || localStorage.getItem("anudock_api_key") || "",
       activeTab: "studio"
     };
   }
@@ -35,7 +34,7 @@ class BindoraApp {
 
     // 3. Check backend health
     try {
-      const health = await AnuDockAPI.checkHealth();
+      const health = await BindoraAPI.checkHealth();
       const statusBadge = document.getElementById("backend-status-badge");
       if (statusBadge) {
         if (health.vina_available) {
@@ -51,7 +50,7 @@ class BindoraApp {
 
     // 4. Fetch benchmarks
     try {
-      const bmData = await AnuDockAPI.getBenchmarks();
+      const bmData = await BindoraAPI.getBenchmarks();
       this.state.benchmarks = bmData.benchmarks || [];
       this.renderBenchmarksUI();
     } catch (e) {
@@ -83,6 +82,45 @@ class BindoraApp {
       });
     }
 
+    // Ligand Mode Switching (PubChem / SMILES / File Upload)
+    const setLigandMode = (mode) => {
+      ['pubchem', 'smiles', 'upload'].forEach(m => {
+        const el = document.getElementById(`mode-ligand-${m}`);
+        const btn = document.getElementById(`tab-btn-ligand-${m}`);
+        if (el) el.classList.toggle('hidden', m !== mode);
+        if (btn) {
+          btn.classList.toggle('text-cyan-300', m === mode);
+          btn.classList.toggle('bg-slate-800', m === mode);
+          btn.classList.toggle('text-slate-400', m !== mode);
+        }
+      });
+    };
+    document.getElementById("tab-btn-ligand-pubchem")?.addEventListener("click", () => setLigandMode('pubchem'));
+    document.getElementById("tab-btn-ligand-smiles")?.addEventListener("click", () => setLigandMode('smiles'));
+    document.getElementById("tab-btn-ligand-upload")?.addEventListener("click", () => setLigandMode('upload'));
+
+    // Custom SMILES load
+    const loadSmilesBtn = document.getElementById("btn-load-custom-smiles");
+    const customSmilesInput = document.getElementById("input-custom-smiles");
+    const customLigandNameInput = document.getElementById("input-custom-ligand-name");
+    if (loadSmilesBtn && customSmilesInput) {
+      loadSmilesBtn.addEventListener("click", () => {
+        this.loadCustomLigand(customLigandNameInput?.value.trim(), customSmilesInput.value.trim());
+      });
+      customSmilesInput.addEventListener("keydown", e => {
+        if (e.key === "Enter") this.loadCustomLigand(customLigandNameInput?.value.trim(), customSmilesInput.value.trim());
+      });
+    }
+
+    // Ligand File Upload (.sdf, .mol, .smi)
+    const ligandFileInput = document.getElementById("file-upload-ligand");
+    if (ligandFileInput) {
+      ligandFileInput.addEventListener("change", (e) => {
+        const file = e.target.files?.[0];
+        if (file) this.uploadLigandFile(file);
+      });
+    }
+
     // RCSB Search
     const rcsbBtn = document.getElementById("btn-search-rcsb");
     const rcsbInput = document.getElementById("input-search-rcsb");
@@ -90,6 +128,42 @@ class BindoraApp {
       rcsbBtn.addEventListener("click", () => this.searchRCSB(rcsbInput.value));
       rcsbInput.addEventListener("keydown", e => {
         if (e.key === "Enter") this.searchRCSB(rcsbInput.value);
+      });
+    }
+
+    // Receptor Mode Switching (RCSB / File Upload / Paste PDB)
+    const setReceptorMode = (mode) => {
+      ['rcsb', 'upload', 'paste'].forEach(m => {
+        const el = document.getElementById(`mode-receptor-${m}`);
+        const btn = document.getElementById(`tab-btn-receptor-${m}`);
+        if (el) el.classList.toggle('hidden', m !== mode);
+        if (btn) {
+          btn.classList.toggle('text-emerald-300', m === mode);
+          btn.classList.toggle('bg-slate-800', m === mode);
+          btn.classList.toggle('text-slate-400', m !== mode);
+        }
+      });
+    };
+    document.getElementById("tab-btn-receptor-rcsb")?.addEventListener("click", () => setReceptorMode('rcsb'));
+    document.getElementById("tab-btn-receptor-upload")?.addEventListener("click", () => setReceptorMode('upload'));
+    document.getElementById("tab-btn-receptor-paste")?.addEventListener("click", () => setReceptorMode('paste'));
+
+    // Receptor File Upload (.pdb)
+    const receptorFileInput = document.getElementById("file-upload-receptor");
+    if (receptorFileInput) {
+      receptorFileInput.addEventListener("change", (e) => {
+        const file = e.target.files?.[0];
+        if (file) this.uploadReceptorFile(file);
+      });
+    }
+
+    // Custom PDB Paste load
+    const loadPdbBtn = document.getElementById("btn-load-custom-pdb");
+    const customPdbTextInput = document.getElementById("input-custom-pdb-text");
+    const customReceptorNameInput = document.getElementById("input-custom-receptor-name");
+    if (loadPdbBtn && customPdbTextInput) {
+      loadPdbBtn.addEventListener("click", () => {
+        this.loadCustomReceptorPdb(customReceptorNameInput?.value.trim() || "CUSTOM", customPdbTextInput.value.trim());
       });
     }
 
@@ -143,41 +217,7 @@ class BindoraApp {
       batchBtn.addEventListener("click", () => this.runBatchScreening());
     }
 
-    // Settings Modal
-    const settingsBtn = document.getElementById("btn-settings");
-    const settingsModal = document.getElementById("modal-settings");
-    const closeSettingsBtn = document.getElementById("btn-close-settings");
-    const saveSettingsBtn = document.getElementById("btn-save-settings");
-    const apiKeyInput = document.getElementById("input-api-key");
-    const firebaseKeyInput = document.getElementById("input-firebase-api-key");
-
-    if (settingsBtn && settingsModal) {
-      settingsBtn.addEventListener("click", () => {
-        if (apiKeyInput) apiKeyInput.value = this.state.apiKey;
-        if (firebaseKeyInput) firebaseKeyInput.value = localStorage.getItem("bindora_firebase_api_key") || "";
-        settingsModal.classList.remove("hidden");
-      });
-    }
-    if (closeSettingsBtn && settingsModal) {
-      closeSettingsBtn.addEventListener("click", () => settingsModal.classList.add("hidden"));
-    }
-    if (saveSettingsBtn && settingsModal) {
-      saveSettingsBtn.addEventListener("click", () => {
-        if (apiKeyInput) {
-          this.state.apiKey = apiKeyInput.value.trim();
-          localStorage.setItem("bindora_api_key", this.state.apiKey);
-        }
-        if (firebaseKeyInput && firebaseKeyInput.value.trim()) {
-          const fbKey = firebaseKeyInput.value.trim();
-          localStorage.setItem("bindora_firebase_api_key", fbKey);
-          if (window.bindoraFirebase) {
-            window.bindoraFirebase.setApiKey(fbKey);
-          }
-        }
-        settingsModal.classList.add("hidden");
-        this.showToast("Settings & API Keys saved successfully.", "success");
-      });
-    }
+    // Settings removed — API keys are pre-configured server-side
 
     // Firebase Auth Modal & Events
     const authBtn = document.getElementById("btn-user-auth");
@@ -328,10 +368,26 @@ class BindoraApp {
       if (profileName) profileName.textContent = user.displayName || user.email.split("@")[0];
       if (profileEmail) profileEmail.textContent = user.email;
       if (profileImg) profileImg.src = user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`;
+      
+      // Update header auth button
+      const headerName = document.getElementById("user-display-name");
+      const headerAvatar = document.getElementById("user-avatar-img");
+      const headerIcon = document.getElementById("user-default-icon");
+      if (headerName) headerName.textContent = user.displayName || user.email.split("@")[0];
+      if (headerAvatar) { headerAvatar.src = user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`; headerAvatar.classList.remove("hidden"); }
+      if (headerIcon) headerIcon.classList.add("hidden");
+      
       this.loadCloudHistory();
     } else {
       if (loggedOutView) loggedOutView.classList.remove("hidden");
       if (loggedInView) loggedInView.classList.add("hidden");
+      
+      const headerName = document.getElementById("user-display-name");
+      const headerAvatar = document.getElementById("user-avatar-img");
+      const headerIcon = document.getElementById("user-default-icon");
+      if (headerName) headerName.textContent = "Sign In";
+      if (headerAvatar) headerAvatar.classList.add("hidden");
+      if (headerIcon) headerIcon.classList.remove("hidden");
     }
   }
 
@@ -428,7 +484,7 @@ class BindoraApp {
 
     try {
       // 1. Fetch drug from PubChem or use preset SMILES
-      const ligPrep = await AnuDockAPI.prepareLigand(bm.smiles, false);
+      const ligPrep = await BindoraAPI.prepareLigand(bm.smiles, false);
       this.state.ligand = {
         name: bm.drug_name,
         smiles: bm.smiles,
@@ -438,7 +494,7 @@ class BindoraApp {
       };
 
       // 2. Fetch PDB from RCSB
-      const recRes = await AnuDockAPI.prepareReceptor("", bm.pdb_id);
+      const recRes = await BindoraAPI.prepareReceptor("", bm.pdb_id);
       this.state.receptor = {
         pdb_id: bm.pdb_id,
         title: bm.target_name,
@@ -447,10 +503,14 @@ class BindoraApp {
 
       // 3. Update UI
       this.updateStudioCards();
+      this.updatePathwayInfo();
+      this.updateDossierView();
       
       // 4. Update 3D viewer with receptor
       if (this.viewer && recRes.cleaned_pdb) {
         this.viewer.loadReceptor(recRes.cleaned_pdb);
+        const emptyState = document.getElementById("viewer-empty-state");
+        if (emptyState) emptyState.classList.add("hidden");
       }
 
       this.showToast(`Loaded ${bm.drug_name} & ${bm.target_name} (${bm.pdb_id})`, "success");
@@ -464,8 +524,8 @@ class BindoraApp {
     if (!query) return;
     this.showToast(`Searching PubChem for '${query}'...`, "info");
     try {
-      const data = await AnuDockAPI.searchPubChem(query);
-      const ligPrep = await AnuDockAPI.prepareLigand(data.smiles || data.sdf, !data.smiles);
+      const data = await BindoraAPI.searchPubChem(query);
+      const ligPrep = await BindoraAPI.prepareLigand(data.smiles || data.sdf, !data.smiles);
       this.state.ligand = {
         ...data,
         ...ligPrep
@@ -481,30 +541,36 @@ class BindoraApp {
     if (!query) return;
     this.showToast(`Searching RCSB for '${query}'...`, "info");
     try {
-      const data = await AnuDockAPI.searchRCSB(query);
+      const data = await BindoraAPI.searchRCSB(query);
       if (data.direct && data.entry) {
         const entry = data.entry;
-        const recPrep = await AnuDockAPI.prepareReceptor(entry.pdb_content, entry.pdb_id);
+        const recPrep = await BindoraAPI.prepareReceptor(entry.pdb_content, entry.pdb_id);
         this.state.receptor = {
           ...entry,
           ...recPrep
         };
         this.updateStudioCards();
+        this.updatePathwayInfo();
         if (this.viewer && recPrep.cleaned_pdb) {
           this.viewer.loadReceptor(recPrep.cleaned_pdb);
+          const emptyState = document.getElementById("viewer-empty-state");
+          if (emptyState) emptyState.classList.add("hidden");
         }
         this.showToast(`Loaded RCSB entry ${entry.pdb_id}: ${entry.title.substring(0, 30)}...`, "success");
       } else if (data.results && data.results.length > 0) {
         // Show result picker
         const first = data.results[0];
-        const recPrep = await AnuDockAPI.prepareReceptor("", first.pdb_id);
+        const recPrep = await BindoraAPI.prepareReceptor("", first.pdb_id);
         this.state.receptor = {
           ...first,
           ...recPrep
         };
         this.updateStudioCards();
+        this.updatePathwayInfo();
         if (this.viewer && recPrep.cleaned_pdb) {
           this.viewer.loadReceptor(recPrep.cleaned_pdb);
+          const emptyState = document.getElementById("viewer-empty-state");
+          if (emptyState) emptyState.classList.add("hidden");
         }
         this.showToast(`Selected top RCSB match: ${first.pdb_id}`, "success");
       } else {
@@ -513,6 +579,101 @@ class BindoraApp {
     } catch (e) {
       this.showToast(`RCSB query failed: ${e.message}`, "error");
     }
+  }
+
+  async loadCustomLigand(name, smiles) {
+    if (!smiles) {
+      this.showToast("Please enter a valid SMILES string", "error");
+      return;
+    }
+    const displayName = name || "Custom Ligand";
+    this.showToast(`Preparing custom ligand: ${displayName}...`, "info");
+    try {
+      const ligPrep = await BindoraAPI.prepareLigand(smiles, false);
+      const p = ligPrep.adme?.physicochemical || {};
+      this.state.ligand = {
+        name: displayName,
+        smiles: smiles,
+        canonical_smiles: ligPrep.canonical_smiles || smiles,
+        weight: p.molecular_weight?.value,
+        formula: "",
+        ...ligPrep
+      };
+      this.updateStudioCards();
+      this.updateDossierView();
+      this.showToast(`Custom ligand loaded: ${displayName}`, "success");
+    } catch (e) {
+      this.showToast(`Ligand preparation failed: ${e.message}`, "error");
+    }
+  }
+
+  async uploadLigandFile(file) {
+    if (!file) return;
+    const isSdf = file.name.toLowerCase().endsWith('.sdf') || file.name.toLowerCase().endsWith('.mol');
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const content = e.target.result;
+      this.showToast(`Processing ${file.name}...`, "info");
+      try {
+        const ligPrep = await BindoraAPI.prepareLigand(content, isSdf);
+        const p = ligPrep.adme?.physicochemical || {};
+        const baseName = file.name.replace(/\.[^/.]+$/, "");
+        this.state.ligand = {
+          name: baseName,
+          smiles: ligPrep.canonical_smiles,
+          canonical_smiles: ligPrep.canonical_smiles,
+          weight: p.molecular_weight?.value,
+          formula: "",
+          ...ligPrep
+        };
+        this.updateStudioCards();
+        this.updateDossierView();
+        this.showToast(`Loaded ${file.name} successfully`, "success");
+      } catch (err) {
+        this.showToast(`File preparation failed: ${err.message}`, "error");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  async loadCustomReceptorPdb(name, pdbContent) {
+    if (!pdbContent || pdbContent.trim().length < 20) {
+      this.showToast("Please provide valid PDB coordinate text", "error");
+      return;
+    }
+    const displayName = name || "CUSTOM_RECEPTOR";
+    this.showToast(`Preparing receptor structure: ${displayName}...`, "info");
+    try {
+      const recPrep = await BindoraAPI.prepareReceptor(pdbContent, "");
+      this.state.receptor = {
+        pdb_id: displayName,
+        title: displayName,
+        pdb_content: pdbContent,
+        ...recPrep
+      };
+      this.updateStudioCards();
+      this.updatePathwayInfo();
+      this.updateDossierView();
+      if (this.viewer && recPrep.cleaned_pdb) {
+        this.viewer.loadReceptor(recPrep.cleaned_pdb);
+        const emptyState = document.getElementById("viewer-empty-state");
+        if (emptyState) emptyState.classList.add("hidden");
+      }
+      this.showToast(`Loaded custom receptor: ${displayName}`, "success");
+    } catch (e) {
+      this.showToast(`Receptor preparation failed: ${e.message}`, "error");
+    }
+  }
+
+  async uploadReceptorFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const content = e.target.result;
+      const baseName = file.name.replace(/\.[^/.]+$/, "").toUpperCase();
+      await this.loadCustomReceptorPdb(baseName, content);
+    };
+    reader.readAsText(file);
   }
 
   updateStudioCards() {
@@ -607,7 +768,7 @@ class BindoraApp {
 
       const p = this.state.ligand.adme?.physicochemical || {};
 
-      const dockResult = await AnuDockAPI.runDocking({
+      const dockResult = await BindoraAPI.runDocking({
         receptor_pdbqt: this.state.receptor.pdbqt_text,
         receptor_pdb: this.state.receptor.cleaned_pdb,
         ligand_pdbqt: this.state.ligand.pdbqt_text,
@@ -642,6 +803,7 @@ class BindoraApp {
       // Switch to 3D docking tab
       this.switchTab("docking");
       this.showToast(`Docking finished! Top ΔG: ${dockResult.top_pose.affinity_kcal} kcal/mol`, "success");
+      this.updateDossierView();
 
     } catch (e) {
       console.error("Docking error:", e);
@@ -712,7 +874,7 @@ class BindoraApp {
 
     // Re-analyze interactions for this pose
     try {
-      const contacts = await AnuDockAPI.analyzeInteractions(this.state.receptor.cleaned_pdb, pose.pdbqt_content);
+      const contacts = await BindoraAPI.analyzeInteractions(this.state.receptor.cleaned_pdb, pose.pdbqt_content);
       this.state.docking.interactions = contacts;
 
       if (this.viewer) {
@@ -743,9 +905,10 @@ class BindoraApp {
     }
 
     try {
-      const res = await AnuDockAPI.crosscheckBioactivity(drug, target);
+      const res = await BindoraAPI.crosscheckBioactivity(drug, target);
       this.state.crosscheck = res;
       this.renderCrosscheckUI(res);
+      this.updateDossierView();
       
       // Once crosscheck is done, generate educational AI narrative
       this.generateNarrativeReport();
@@ -830,6 +993,16 @@ class BindoraApp {
     // Update Pharmacokinetic Cards
     const pk = adme.pharmacokinetics || {};
     const setVal = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+    
+    // Physicochemical descriptor cards
+    const p = adme.physicochemical || {};
+    setVal("adme-mw-val", p.molecular_weight?.value ?? "—");
+    setVal("adme-logp-val", p.logp?.value ?? "—");
+    setVal("adme-hbd-val", p.hbd?.value ?? "—");
+    setVal("adme-hba-val", p.hba?.value ?? "—");
+    setVal("adme-rotb-val", p.rotatable_bonds?.value ?? "—");
+    setVal("adme-tpsa-val", p.tpsa?.value ?? "—");
+
     setVal("adme-gi-val", pk.gi_absorption?.level || "—");
     setVal("adme-bbb-val", pk.bbb_permeation?.status?.split(" ")[0] || "—");
     setVal("adme-ppb-val", pk.plasma_protein_binding?.tier?.split(" ")[0] || "—");
@@ -862,7 +1035,7 @@ class BindoraApp {
     };
 
     try {
-      const res = await AnuDockAPI.explainNarrative(payload, this.state.apiKey);
+      const res = await BindoraAPI.explainNarrative(payload);
       this.state.narrative = res;
       if (container) {
         // Render markdown formatted text cleanly
@@ -916,14 +1089,18 @@ class BindoraApp {
 
     this.showToast(`Starting batch screening for ${candidates.length} candidate(s)...`, "info");
     const btn = document.getElementById("btn-run-batch");
-    if (btn) btn.disabled = true;
+    const originalBtnText = btn ? btn.innerHTML : "";
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Screening...';
+    }
 
     try {
       const p = this.state.receptor.detected_pocket || {};
       const center = p.center || { x: 0, y: 0, z: 0 };
       const size = p.size || { x: 22, y: 22, z: 22 };
 
-      const batchResult = await AnuDockAPI.runBatchDocking({
+      const batchResult = await BindoraAPI.runBatchDocking({
         receptor_pdbqt: this.state.receptor.pdbqt_text,
         receptor_pdb: this.state.receptor.cleaned_pdb,
         center: center,
@@ -937,7 +1114,74 @@ class BindoraApp {
     } catch (e) {
       this.showToast(`Batch screening error: ${e.message}`, "error");
     } finally {
-      if (btn) btn.disabled = false;
+      if (btn) { btn.disabled = false; btn.innerHTML = originalBtnText || '<span>Run Batch Virtual Screening</span>'; }
+    }
+  }
+
+  updateDossierView() {
+    const ligName = document.getElementById("dossier-ligand-name");
+    const targetName = document.getElementById("dossier-target-name");
+    const resultsSummary = document.getElementById("dossier-results-summary");
+
+    if (ligName && this.state.ligand) {
+      const l = this.state.ligand;
+      ligName.textContent = `${l.name || "Custom Ligand"} (${l.formula || l.canonical_smiles || "Structure loaded"})`;
+    }
+    if (targetName && this.state.receptor) {
+      const r = this.state.receptor;
+      targetName.textContent = `${r.title || "Target Receptor"} (PDB: ${r.pdb_id || "N/A"})`;
+    }
+
+    if (resultsSummary && this.state.docking) {
+      const d = this.state.docking;
+      const thermo = d.thermodynamics || {};
+      const contacts = d.interactions || {};
+      const adme = this.state.ligand?.adme || {};
+      const lip = adme.drug_likeness?.lipinski || {};
+      const xcheck = this.state.crosscheck || {};
+
+      resultsSummary.innerHTML = `
+        <h4 class="font-bold text-slate-200 uppercase text-xs tracking-wider">Docking Results Summary</h4>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+          <div class="p-2 bg-slate-900/60 rounded border border-slate-800">
+            <span class="text-slate-400 block">Binding Free Energy</span>
+            <span class="text-cyan-400 font-bold">\${d.top_pose?.affinity_kcal || "—"} kcal/mol</span>
+          </div>
+          <div class="p-2 bg-slate-900/60 rounded border border-slate-800">
+            <span class="text-slate-400 block">Theoretical Kd</span>
+            <span class="text-emerald-400 font-bold">\${thermo.theoretical_kd_nm || "—"} nM</span>
+          </div>
+          <div class="p-2 bg-slate-900/60 rounded border border-slate-800">
+            <span class="text-slate-400 block">H-Bonds</span>
+            <span class="text-yellow-400 font-bold">\${contacts.total_hbond_count || 0}</span>
+          </div>
+          <div class="p-2 bg-slate-900/60 rounded border border-slate-800">
+            <span class="text-slate-400 block">Lipinski Status</span>
+            <span class="\${lip.status === 'Pass' ? 'text-emerald-400' : 'text-amber-400'} font-bold">\${lip.status || "—"} (\${lip.violations_count || 0} violations)</span>
+          </div>
+        </div>
+        <div class="mt-2 px-3 py-2 rounded border \${xcheck.is_cross_checked ? 'border-emerald-800 bg-emerald-950/30' : 'border-amber-800 bg-amber-950/30'} text-xs">
+          <span class="font-bold">\${xcheck.is_cross_checked ? '✓' : '⚠'} \${xcheck.status_badge || 'Computational Prediction Only'}</span>
+          \${xcheck.summary_note ? '<p class="text-slate-400 mt-1">' + xcheck.summary_note + '</p>' : ''}
+        </div>
+      `;
+    }
+  }
+
+  updatePathwayInfo() {
+    const container = document.getElementById("pathway-info-container");
+    if (!container) return;
+
+    const uniprot = this.state.receptor?.uniprot;
+    if (uniprot && (uniprot.function || uniprot.subcellular_location)) {
+      container.innerHTML = `
+        \${uniprot.function ? '<div><span class="font-bold text-slate-200">Biological Function:</span> <span class="text-slate-300">' + uniprot.function + '</span></div>' : ''}
+        \${uniprot.catalytic_activity ? '<div><span class="font-bold text-slate-200">Catalytic Activity:</span> <span class="text-slate-300">' + uniprot.catalytic_activity + '</span></div>' : ''}
+        \${uniprot.subcellular_location ? '<div><span class="font-bold text-slate-200">Subcellular Location:</span> <span class="text-slate-300">' + uniprot.subcellular_location + '</span></div>' : ''}
+        \${uniprot.tissue_specificity ? '<div><span class="font-bold text-slate-200">Tissue Specificity:</span> <span class="text-slate-300">' + uniprot.tissue_specificity + '</span></div>' : ''}
+      `;
+    } else {
+      container.innerHTML = '<p class="text-slate-500 italic">No UniProt pathway annotation available for this target. Load a receptor with known annotations to view biological function and signaling cascade details.</p>';
     }
   }
 

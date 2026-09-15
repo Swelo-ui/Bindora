@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scientific styling for AnuDock */
+/* Custom scientific styling for Bindora */
 :root {
   --primary: #2563eb;
   --primary-dark: #1d4ed8;
