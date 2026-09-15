@@ -113,3 +113,35 @@ def test_replicate_sampling():
     assert rs["mean_affinity_kcal"] < 0.0
     assert rs["sd_affinity_kcal"] >= 0.0
 
+def test_native_ligand_fractional_occupancy_7bv2():
+    # 7BV2 has native ligand F86 (Remdesivir metabolite) with fractional occupancy (0.50)
+    rec_meta = StructureFetcher.fetch_rcsb_pdb("7BV2")
+    assert rec_meta is not None
+    rec = DockingEngine.prepare_receptor(rec_meta["pdb_content"])
+    native = rec["native_ligand"]
+    assert native["has_native"] is True
+    assert native["name"] == "F86"
+
+    # Test dedicated prepare_native_ligand pipeline (PDB -> SDF -> AddHs -> Meeko PDBQT)
+    nat_prep = DockingEngine.prepare_native_ligand(native["pdb_block"])
+    assert "ROOT" in nat_prep["pdbqt_text"]
+    assert "ENDROOT" in nat_prep["pdbqt_text"]
+    assert "TORSDOF" in nat_prep["pdbqt_text"]
+    assert nat_prep["heavy_atom_count"] == 24
+
+    # Run redocking validation (exhaustiveness=1 for fast test)
+    result = DockingEngine.run_redocking_validation(
+        rec["pdbqt_text"],
+        native["pdb_block"],
+        rec["detected_pocket"]["center"],
+        rec["detected_pocket"]["size"],
+        exhaustiveness=1
+    )
+
+    assert "affinity_kcal" in result
+    assert result["affinity_kcal"] < 0.0
+    assert "rmsd_angstroms" in result
+    assert "validation_badge" in result
+    assert "docked_pdb" in result
+
+

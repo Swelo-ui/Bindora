@@ -1405,9 +1405,13 @@ class BindoraApp {
         }
       }
 
-      // Preview docked native pose in 3D viewer
+      // Preview 3D overlay of crystallographic reference vs redocked pose
       if (this.viewer && res.docked_pdb) {
-        this.viewer.loadLigand(res.docked_pdb);
+        if (res.cryst_pdb) {
+          this.viewer.loadRedockOverlay(res.cryst_pdb, res.docked_pdb);
+        } else {
+          this.viewer.loadLigand(res.docked_pdb);
+        }
       }
 
       this.updateDossierView();

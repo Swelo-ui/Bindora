@@ -7,6 +7,7 @@ class MolecularViewer {
     this.viewer = null;
     this.receptorModel = null;
     this.ligandModel = null;
+    this.crystModel = null;
     this.surfaceObj = null;
     this.interactionShapes = [];
     this.gridBoxShapes = [];
@@ -67,6 +68,7 @@ class MolecularViewer {
     this.clearInteractions();
     this.clearMeasurements();
     this.clearGridBox();
+    this.clearRedockOverlay();
   }
 
   clearInteractions() {
@@ -176,6 +178,53 @@ class MolecularViewer {
       }
     } catch (e) {
       console.error('[3Dmol] Failed to load ligand:', e);
+    }
+  }
+
+  loadRedockOverlay(crystPdb, dockedPdb) {
+    if (!this.viewer) return;
+
+    if (this.ligandModel) {
+      this.viewer.removeModel(this.ligandModel);
+      this.ligandModel = null;
+    }
+    if (this.crystModel) {
+      this.viewer.removeModel(this.crystModel);
+      this.crystModel = null;
+    }
+
+    try {
+      // 1. Crystal Reference Ligand (distinctive gold/amber stick representation)
+      if (crystPdb) {
+        this.crystModel = this.viewer.addModel(crystPdb, 'pdb');
+        this.crystModel.setStyle({}, {
+          stick: { radius: 0.22, color: 'goldenrod', opacity: 0.85 }
+        });
+      }
+
+      // 2. Vina Redocked Pose (cyan ball-and-stick)
+      if (dockedPdb) {
+        this.ligandModel = this.viewer.addModel(dockedPdb, 'pdb');
+        this.applyLigandStyle();
+      }
+
+      const focusModel = this.ligandModel || this.crystModel;
+      if (focusModel) {
+        this.viewer.zoomTo({ model: focusModel }, 600);
+      }
+      this.viewer.render();
+    } catch (e) {
+      console.error('[3Dmol] Failed to load redock overlay:', e);
+    }
+  }
+
+  clearRedockOverlay() {
+    if (this.crystModel && this.viewer) {
+      try {
+        this.viewer.removeModel(this.crystModel);
+      } catch (e) {}
+      this.crystModel = null;
+      this.viewer.render();
     }
   }
 
