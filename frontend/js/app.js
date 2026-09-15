@@ -17,7 +17,7 @@ class BindoraApp {
       crosscheck: null,
       narrative: null,
       benchmarks: [],
-      activeTab: "studio"
+      activeTab: "home"
     };
   }
 
@@ -59,6 +59,9 @@ class BindoraApp {
 
     // 5. Clean live state on startup (benchmarks are available above for 1-click exploration if user chooses)
     this.updateStudioCards();
+
+    // 6. Set active tab to Home page
+    this.switchTab("home");
   }
 
   setupEventListeners() {
@@ -468,6 +471,21 @@ class BindoraApp {
     const exportBtn = document.getElementById("btn-export-dossier");
     if (exportBtn) {
       exportBtn.addEventListener("click", () => window.print());
+    }
+
+    // Brand Guide / About Modal
+    const aboutBtn = document.getElementById("btn-about");
+    const aboutModal = document.getElementById("modal-about");
+    const closeAboutBtn = document.getElementById("btn-close-about");
+    const closeAboutActionBtn = document.getElementById("btn-modal-close-action");
+    if (aboutBtn && aboutModal) {
+      aboutBtn.addEventListener("click", () => aboutModal.classList.remove("hidden"));
+    }
+    if (closeAboutBtn && aboutModal) {
+      closeAboutBtn.addEventListener("click", () => aboutModal.classList.add("hidden"));
+    }
+    if (closeAboutActionBtn && aboutModal) {
+      closeAboutActionBtn.addEventListener("click", () => aboutModal.classList.add("hidden"));
     }
   }
 
