@@ -104,6 +104,17 @@ class BindoraAPI {
       body: JSON.stringify(batchParams)
     });
   }
+
+  static async redockValidate(params) {
+    return this.request("/api/docking/redock-validate", {
+      method: "POST",
+      body: JSON.stringify(params)
+    });
+  }
+
+  static async getReproducibilityVersions() {
+    return this.request("/api/reproducibility/versions");
+  }
 }
 
 // Primary export + backward compatibility alias

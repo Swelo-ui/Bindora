@@ -593,6 +593,39 @@ class BindoraApp {
       closeAboutActionBtn.addEventListener("click", () => aboutModal.classList.add("hidden"));
     }
 
+    // Blind Docking & Pocket Centroid Reset
+    const blindBtn = document.getElementById("btn-blind-docking");
+    if (blindBtn) {
+      blindBtn.addEventListener("click", () => this.applyBlindDockingBox());
+    }
+    const resetPocketBtn = document.getElementById("btn-reset-pocket");
+    if (resetPocketBtn) {
+      resetPocketBtn.addEventListener("click", () => this.resetToPocketCentroid());
+    }
+
+    // Redocking Self-Validation
+    const redockBtn = document.getElementById("btn-run-redock-validation");
+    if (redockBtn) {
+      redockBtn.addEventListener("click", () => this.runRedockingValidation());
+    }
+
+    // Preparation Protocol Log Accordion Toggle
+    const togglePrepBtn = document.getElementById("btn-toggle-prep-log");
+    const prepLogContent = document.getElementById("prep-log-content");
+    const prepLogChevron = document.getElementById("prep-log-chevron");
+    if (togglePrepBtn && prepLogContent) {
+      togglePrepBtn.addEventListener("click", () => {
+        const isHidden = prepLogContent.classList.contains("hidden");
+        if (isHidden) {
+          prepLogContent.classList.remove("hidden");
+          if (prepLogChevron) prepLogChevron.textContent = "−";
+        } else {
+          prepLogContent.classList.add("hidden");
+          if (prepLogChevron) prepLogChevron.textContent = "+";
+        }
+      });
+    }
+
     // Dark / Light Mode Toggle
     const themeToggleBtn = document.getElementById("btn-theme-toggle");
     if (themeToggleBtn) {
@@ -1228,6 +1261,167 @@ class BindoraApp {
         );
       }
     }
+
+    // Native Ligand Redocking Validation Status
+    const redockNameEl = document.getElementById("redock-native-name");
+    const redockBtn = document.getElementById("btn-run-redock-validation");
+    if (this.state.receptor?.native_ligand?.has_native) {
+      const nat = this.state.receptor.native_ligand;
+      if (redockNameEl) redockNameEl.textContent = `${nat.name} (Chain ${nat.chain || 'A'}, ${nat.atom_count} atoms)`;
+      if (redockBtn) {
+        redockBtn.disabled = false;
+        redockBtn.className = "w-full py-2 px-3 rounded-lg bg-cyan-900/40 hover:bg-cyan-800/60 text-cyan-300 border border-cyan-700/60 text-xs font-semibold transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-sm";
+      }
+    } else {
+      if (redockNameEl) redockNameEl.textContent = "No co-crystallized ligand detected";
+      if (redockBtn) {
+        redockBtn.disabled = true;
+        redockBtn.className = "w-full py-2 px-3 rounded-lg bg-slate-800 text-slate-500 border border-slate-700 text-xs font-semibold transition flex items-center justify-center space-x-1.5 cursor-not-allowed";
+      }
+    }
+
+    // Update Preparation Protocol Transparency Log
+    const prepRecEl = document.getElementById("prep-log-receptor");
+    if (prepRecEl && this.state.receptor?.prep_log) {
+      const pl = this.state.receptor.prep_log;
+      prepRecEl.innerHTML = `
+        <div>&bull; Stripped Waters: <span class="text-white font-bold">${pl.waters_removed}</span> atoms (HOH/WAT)</div>
+        <div>&bull; Filtered Ions/Buffer: <span class="text-white font-bold">${pl.ions_and_buffer_removed}</span> atoms</div>
+        <div>&bull; Retained Protein Atoms: <span class="text-white font-bold">${pl.protein_atoms_retained}</span> (${pl.selected_chain})</div>
+        <div>&bull; Ionization Model: <span class="text-slate-300">${pl.protonation_state}</span></div>
+        <div>&bull; Partial Charges: <span class="text-slate-300">${pl.charge_model}</span></div>
+        <div>&bull; Pocket Positioning: <span class="text-emerald-300">${pl.active_pocket_centering}</span></div>
+      `;
+    }
+    const prepLigEl = document.getElementById("prep-log-ligand");
+    if (prepLigEl && this.state.ligand?.prep_log) {
+      const pl = this.state.ligand.prep_log;
+      prepLigEl.innerHTML = `
+        <div>&bull; Input Format: <span class="text-white font-bold">${pl.input_format}</span> (${pl.heavy_atom_count} heavy atoms)</div>
+        <div>&bull; Protonation: <span class="text-slate-300">${pl.hydrogens_added}</span></div>
+        <div>&bull; Conformer Engine: <span class="text-slate-300">${pl.conformer_algorithm}</span></div>
+        <div>&bull; Energy Minimization: <span class="text-slate-300">${pl.energy_minimization}</span></div>
+        <div>&bull; Torsions: <span class="text-cyan-300">${pl.torsions_configured}</span></div>
+        <div>&bull; Charges: <span class="text-slate-300">${pl.partial_charges}</span></div>
+      `;
+    }
+  }
+
+  applyBlindDockingBox() {
+    if (!this.state.receptor) {
+      this.showToast("Load a target receptor first to enable Blind Docking.", "warning");
+      return;
+    }
+    const box = this.state.receptor.blind_docking_box;
+    if (!box) {
+      this.showToast("Blind docking bounding box not available for this structure.", "error");
+      return;
+    }
+
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    setVal("grid-cx", box.center.x);
+    setVal("grid-cy", box.center.y);
+    setVal("grid-cz", box.center.z);
+    setVal("grid-sx", box.size.x);
+    setVal("grid-sy", box.size.y);
+    setVal("grid-sz", box.size.z);
+
+    const gToggle = document.getElementById("toggle-gridbox");
+    if (gToggle) gToggle.checked = true;
+    if (this.viewer) {
+      this.viewer.renderGridBox(box.center, box.size, true);
+    }
+    this.showToast(`Grid box expanded to whole protein surface (${box.size.x}×${box.size.y}×${box.size.z} Å) for Blind Docking.`, "info");
+  }
+
+  resetToPocketCentroid() {
+    if (!this.state.receptor) {
+      this.showToast("Load a target receptor first.", "warning");
+      return;
+    }
+    const pocket = this.state.receptor.detected_pocket;
+    if (!pocket) return;
+
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    setVal("grid-cx", pocket.center.x);
+    setVal("grid-cy", pocket.center.y);
+    setVal("grid-cz", pocket.center.z);
+    setVal("grid-sx", pocket.size.x);
+    setVal("grid-sy", pocket.size.y);
+    setVal("grid-sz", pocket.size.z);
+
+    const gToggle = document.getElementById("toggle-gridbox");
+    if (gToggle) gToggle.checked = true;
+    if (this.viewer) {
+      this.viewer.renderGridBox(pocket.center, pocket.size, true);
+    }
+    this.showToast("Grid box restored to detected active pocket centroid.", "success");
+  }
+
+  async runRedockingValidation() {
+    if (!this.state.receptor || !this.state.receptor.native_ligand?.pdb_block) {
+      this.showToast("No co-crystallized native ligand found in current receptor.", "error");
+      return;
+    }
+    const nat = this.state.receptor.native_ligand;
+    const btn = document.getElementById("btn-run-redock-validation");
+    const resultsPanel = document.getElementById("redock-results-panel");
+    const affVal = document.getElementById("redock-aff-val");
+    const rmsdVal = document.getElementById("redock-rmsd-val");
+    const badgeBox = document.getElementById("redock-badge-container");
+
+    const originalBtnText = btn ? btn.innerHTML : "";
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-3.5 w-3.5 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Redocking ${nat.name}...`;
+    }
+
+    this.showToast(`Starting redocking validation of native ligand '${nat.name}'...`, "info");
+
+    try {
+      const getVal = (id, def) => parseFloat(document.getElementById(id)?.value) || def;
+      const center = { x: getVal("grid-cx", nat.center?.x || 0), y: getVal("grid-cy", nat.center?.y || 0), z: getVal("grid-cz", nat.center?.z || 0) };
+      const size = { x: getVal("grid-sx", 22), y: getVal("grid-sy", 22), z: getVal("grid-sz", 22) };
+
+      const res = await BindoraAPI.redockValidate({
+        receptor_pdbqt: this.state.receptor.pdbqt_text,
+        native_ligand_pdb: nat.pdb_block,
+        center: center,
+        size: size,
+        exhaustiveness: 8
+      });
+
+      this.state.redockingValidation = res;
+
+      if (resultsPanel) resultsPanel.classList.remove("hidden");
+      if (affVal) affVal.textContent = `${res.affinity_kcal} kcal/mol`;
+      if (rmsdVal) rmsdVal.textContent = `${res.rmsd_angstroms} Å`;
+
+      if (badgeBox) {
+        if (res.is_validated) {
+          badgeBox.innerHTML = `<span class="px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 text-[11px] font-bold inline-flex items-center space-x-1"><span>✓</span> <span>${res.validation_badge}</span></span>`;
+        } else {
+          badgeBox.innerHTML = `<span class="px-2.5 py-1 rounded-full bg-amber-950 text-amber-300 border border-amber-800 text-[11px] font-bold inline-flex items-center space-x-1"><span>⚠</span> <span>${res.validation_badge}</span></span>`;
+        }
+      }
+
+      // Preview docked native pose in 3D viewer
+      if (this.viewer && res.docked_pdb) {
+        this.viewer.loadLigand(res.docked_pdb);
+      }
+
+      this.updateDossierView();
+      this.showToast(`Redocking validation finished! RMSD = ${res.rmsd_angstroms} Å (${res.benchmark_status})`, res.is_validated ? "success" : "warning");
+
+    } catch (err) {
+      console.error("Redocking error:", err);
+      this.showToast(`Redocking validation failed: ${err.message}`, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalBtnText || "<span>Run Self-Validation (Redock Native Ligand)</span>";
+      }
+    }
   }
 
   async runDockingPipeline() {
@@ -1250,17 +1444,18 @@ class BindoraApp {
     const statusExtra = document.getElementById("docking-status-extra");
 
     const exhaustiveness = parseInt(document.getElementById("docking-exhaustiveness")?.value) || 8;
+    const replicates = parseInt(document.getElementById("docking-replicates")?.value) || 1;
 
     if (statusBanner) {
       statusBanner.classList.remove("hidden");
       statusBanner.className = "glass-panel p-3.5 rounded-xl border border-cyan-500/50 bg-cyan-950/80 transition-all duration-300 mb-2 animate-pulse";
       if (statusIcon) statusIcon.innerHTML = `<svg class="animate-spin w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
       if (statusTitle) statusTitle.textContent = "AutoDock Vina Docking in Progress...";
-      if (statusSub) statusSub.textContent = `Sampling conformational space (exhaustiveness = ${exhaustiveness}, modes = 9) on CPU...`;
-      if (statusExtra) statusExtra.textContent = "Running Monte Carlo...";
+      if (statusSub) statusSub.textContent = `Sampling conformational space (exhaustiveness = ${exhaustiveness}, modes = 9, ${replicates > 1 ? '3 replicate seeds' : 'single seed'}) on CPU...`;
+      if (statusExtra) statusExtra.textContent = replicates > 1 ? "Replicates Running..." : "Running Monte Carlo...";
     }
 
-    this.showToast("Launching AutoDock Vina docking engine...", "info");
+    this.showToast(`Launching AutoDock Vina (${replicates > 1 ? '3-seed replicate' : 'single run'})...`, "info");
 
     try {
       // Read grid parameters
@@ -1278,6 +1473,7 @@ class BindoraApp {
         size: size,
         exhaustiveness: exhaustiveness,
         num_modes: 9,
+        replicates: replicates,
         heavy_atoms: p.heavy_atoms?.value || this.state.ligand.heavy_atom_count || 20,
         molecular_weight: p.molecular_weight?.value || this.state.ligand.weight || 300.0
       });
@@ -1301,6 +1497,27 @@ class BindoraApp {
 
       // Render ADME charts
       this.updateADMEView();
+
+      // Replicate Statistics Display
+      const repBanner = document.getElementById("replicate-stats-banner");
+      const repVal = document.getElementById("replicate-stats-value");
+      if (dockResult.replicate_stats && replicates > 1) {
+        const rs = dockResult.replicate_stats;
+        if (repBanner) repBanner.classList.remove("hidden");
+        if (repVal) repVal.textContent = `Mean: ${rs.mean_affinity_kcal} ± ${rs.sd_affinity_kcal} kcal/mol (N=${rs.replicates_count} seeds)`;
+      } else {
+        if (repBanner) repBanner.classList.add("hidden");
+      }
+
+      // Weak-Binder Auto-Alert Banner
+      const weakAlert = document.getElementById("weak-binder-alert");
+      const weakText = document.getElementById("weak-binder-alert-text");
+      if (dockResult.thermodynamics?.is_weak_binder) {
+        if (weakAlert) weakAlert.classList.remove("hidden");
+        if (weakText) weakText.textContent = dockResult.thermodynamics.weak_binder_warning || "Calculated affinity falls above the -6.0 kcal/mol threshold (high micromolar/millimolar Kd). Such weak interactions usually indicate non-specific surface adhesion or numeric artifacts. Interpret with extreme caution.";
+      } else {
+        if (weakAlert) weakAlert.classList.add("hidden");
+      }
 
       // Update completion banner
       if (statusBanner) {
@@ -1686,10 +1903,28 @@ class BindoraApp {
     }
   }
 
+  async loadReproducibilityMetadata() {
+    try {
+      const data = await BindoraAPI.getReproducibilityVersions();
+      const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+      setTxt("dossier-vina-ver", data.autodock_vina || "AutoDock Vina v1.2.5");
+      setTxt("dossier-rdkit-ver", `RDKit v${data.rdkit || "2024+"}`);
+      setTxt("dossier-gemmi-ver", `Gemmi v${data.gemmi || "0.7+"}`);
+      setTxt("dossier-meeko-ver", data.meeko || "Meeko Flexible");
+      const ts = data.utc_timestamp ? new Date(data.utc_timestamp).toUTCString() : new Date().toUTCString();
+      setTxt("dossier-timestamp", `Calculation Timestamp: ${ts}`);
+    } catch (e) {
+      console.warn("Reproducibility version query notice:", e);
+    }
+  }
+
   updateDossierView() {
     const ligName = document.getElementById("dossier-ligand-name");
     const targetName = document.getElementById("dossier-target-name");
     const resultsSummary = document.getElementById("dossier-results-summary");
+
+    // Fetch reproducibility metadata in background if not already loaded
+    this.loadReproducibilityMetadata();
 
     if (ligName && this.state.ligand) {
       const l = this.state.ligand;
@@ -1711,30 +1946,89 @@ class BindoraApp {
       const adme = this.state.ligand?.adme || {};
       const lip = adme.drug_likeness?.lipinski || {};
       const xcheck = this.state.crosscheck || {};
+      const redock = this.state.redockingValidation;
+      const repStats = d.replicate_stats;
+
+      const isWeak = thermo.is_weak_binder || (d.top_pose?.affinity_kcal > -6.0);
 
       resultsSummary.innerHTML = `
-        <h4 class="font-bold text-slate-200 uppercase text-xs tracking-wider">Docking Results Summary</h4>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-          <div class="p-2 bg-slate-900/60 rounded border border-slate-800">
-            <span class="text-slate-400 block">Binding Free Energy</span>
-            <span class="text-cyan-400 font-bold">${d.top_pose?.affinity_kcal || "—"} kcal/mol</span>
+        <!-- SECTION A: Computed Quantitative Metrics (Deterministic) -->
+        <div class="space-y-3 p-4 rounded-xl border border-cyan-800/40 bg-slate-900/60">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="font-bold text-cyan-300 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
+              <span>🔬</span>
+              <span>Section A: Deterministic Physical Computations (AutoDock Vina &amp; RDKit)</span>
+            </span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">Physical Facts</span>
           </div>
-          <div class="p-2 bg-slate-900/60 rounded border border-slate-800">
-            <span class="text-slate-400 block">Theoretical Kd</span>
-            <span class="text-emerald-400 font-bold">${thermo.theoretical_kd_nm || "—"} nM</span>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
+            <div class="p-2.5 bg-slate-950/80 rounded border border-slate-800">
+              <span class="text-slate-400 block font-sans text-[11px]">Binding Free Energy (ΔG)</span>
+              <span class="text-cyan-400 font-bold text-sm">${d.top_pose?.affinity_kcal || "—"} kcal/mol</span>
+            </div>
+            <div class="p-2.5 bg-slate-950/80 rounded border border-slate-800">
+              <span class="text-slate-400 block font-sans text-[11px]">Theoretical Dissociation (Kd)</span>
+              <span class="text-emerald-400 font-bold text-sm">${thermo.theoretical_kd_nm || "—"} nM</span>
+            </div>
+            <div class="p-2.5 bg-slate-950/80 rounded border border-slate-800">
+              <span class="text-slate-400 block font-sans text-[11px]">Ligand Efficiency (LE)</span>
+              <span class="text-yellow-400 font-bold text-sm">${thermo.ligand_efficiency?.value || "—"}</span>
+              <span class="text-[10px] text-slate-500 block">SILE: ${thermo.size_independent_le?.value || "—"}</span>
+            </div>
+            <div class="p-2.5 bg-slate-950/80 rounded border border-slate-800">
+              <span class="text-slate-400 block font-sans text-[11px]">H-Bonds &amp; Contacts</span>
+              <span class="text-purple-400 font-bold text-sm">${contacts.total_hbond_count || 0} H-Bonds</span>
+              <span class="text-[10px] text-slate-500 block">${contacts.total_hydrophobic_count || 0} Hydrophobic</span>
+            </div>
           </div>
-          <div class="p-2 bg-slate-900/60 rounded border border-slate-800">
-            <span class="text-slate-400 block">H-Bonds</span>
-            <span class="text-yellow-400 font-bold">${contacts.total_hbond_count || 0}</span>
-          </div>
-          <div class="p-2 bg-slate-900/60 rounded border border-slate-800">
-            <span class="text-slate-400 block">Lipinski Status</span>
-            <span class="${lip.status === 'Pass' ? 'text-emerald-400' : 'text-amber-400'} font-bold">${lip.status || "—"} (${lip.violations_count || 0} violations)</span>
-          </div>
+
+          ${repStats ? `
+            <div class="p-2.5 rounded bg-cyan-950/30 border border-cyan-800/40 text-xs font-mono flex items-center justify-between">
+              <span class="text-slate-300 font-sans">Multi-Seed Stochastic Replicates (N=${repStats.replicates_count}):</span>
+              <span class="text-cyan-300 font-bold">Mean ΔG = ${repStats.mean_affinity_kcal} ± ${repStats.sd_affinity_kcal} kcal/mol (95% CI: ±${repStats.confidence_interval_95} kcal/mol)</span>
+            </div>
+          ` : ''}
+
+          ${redock ? `
+            <div class="p-2.5 rounded ${redock.is_validated ? 'bg-emerald-950/30 border-emerald-800/40' : 'bg-amber-950/30 border-amber-800/40'} border text-xs font-mono flex items-center justify-between">
+              <span class="text-slate-300 font-sans">Protocol Self-Validation (Native Ligand Redocking):</span>
+              <span class="${redock.is_validated ? 'text-emerald-300' : 'text-amber-300'} font-bold">RMSD = ${redock.rmsd_angstroms} Å &bull; ${redock.benchmark_status}</span>
+            </div>
+          ` : ''}
+
+          ${isWeak ? `
+            <div class="p-2.5 rounded bg-amber-950/40 border border-amber-600/50 text-xs text-amber-200 font-sans space-y-1">
+              <strong class="font-bold flex items-center space-x-1 text-amber-300">
+                <span>⚠️</span>
+                <span>Scientific Qualification: Sub-threshold Binding Detected</span>
+              </strong>
+              <p class="text-[11px] leading-relaxed text-amber-200/90">
+                Calculated ΔG (${d.top_pose?.affinity_kcal} kcal/mol) corresponds to high micromolar or millimolar affinity (Kd ≈ ${thermo.theoretical_kd_um || '—'} µM). At this range, experimental wet-lab assays typically show non-specific surface adhesion or no inhibition. Do not interpret as a potent hit.
+              </p>
+            </div>
+          ` : ''}
         </div>
-        <div class="mt-2 px-3 py-2 rounded border ${xcheck.is_cross_checked ? 'border-emerald-800 bg-emerald-950/30' : 'border-amber-800 bg-amber-950/30'} text-xs">
-          <span class="font-bold">${xcheck.is_cross_checked ? '✓' : '⚠'} ${xcheck.status_badge || 'Computational Prediction Only'}</span>
-          ${xcheck.summary_note ? '<p class="text-slate-400 mt-1">' + xcheck.summary_note + '</p>' : ''}
+
+        <!-- SECTION B: AI-Generated Mechanistic Synthesis (Hypothesis Only) -->
+        <div class="space-y-3 p-4 rounded-xl border border-purple-800/40 bg-slate-900/60">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="font-bold text-purple-300 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
+              <span>✨</span>
+              <span>Section B: AI Mechanistic Interpretation (DeepSeek/LLM Hypothesis)</span>
+            </span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800">Hypothesis Only</span>
+          </div>
+          <div class="text-xs text-slate-300 leading-relaxed font-sans space-y-2">
+            <p class="text-slate-400 italic">
+              Computational docking identifies potential geometric fits within conformational sampling space. Biological efficacy requires secondary wet-lab verification (enzymatic IC50, SPR, cellular viability).
+            </p>
+            ${this.state.narrative ? `
+              <div class="p-3 bg-slate-950/60 rounded border border-slate-800/80 text-slate-300 text-xs leading-relaxed max-h-48 overflow-y-auto">
+                ${this.renderMarkdown(this.state.narrative.narrative || '')}
+              </div>
+            ` : '<p class="text-slate-500 italic text-xs">Generate narrative report in Tab 5 to append comprehensive mechanistic explanation here.</p>'}
+          </div>
         </div>
       `;
     }
@@ -1762,24 +2056,48 @@ class BindoraApp {
     if (!tbody) return;
 
     if (leaderboard.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center p-4 text-xs text-slate-500 italic">No docking results produced.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center p-6 text-xs text-slate-500 italic">No docking results produced.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = leaderboard.map(item => `
-      <tr class="border-b border-slate-800 hover:bg-slate-800/50">
-        <td class="p-3 font-bold text-center text-cyan-400">#${item.rank}</td>
-        <td class="p-3 font-semibold text-white">${item.name}</td>
-        <td class="p-3 font-mono font-bold text-emerald-400">${item.affinity_kcal}</td>
-        <td class="p-3 font-mono text-slate-300">${item.theoretical_kd_nm}</td>
-        <td class="p-3 font-mono text-slate-300">${item.ligand_efficiency}</td>
-        <td class="p-3 font-mono text-slate-300">${item.hbond_count}</td>
-        <td class="p-3 text-xs">
-          <span class="px-2 py-0.5 rounded ${item.lipinski_status === 'Pass' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-amber-950 text-amber-300 border border-amber-800'}">
-            ${item.lipinski_status}
-          </span>
-        </td>
-      </tr>
-    `).join("");
+    tbody.innerHTML = leaderboard.map(item => {
+      if (item.valid === false) {
+        return `
+          <tr class="border-b border-rose-950/60 bg-rose-950/20 text-rose-300">
+            <td class="p-2.5 font-bold text-center text-slate-500">—</td>
+            <td class="p-2.5 font-semibold text-rose-300 font-sans" title="${item.smiles}">${item.name}</td>
+            <td class="p-2.5 text-slate-500">—</td>
+            <td class="p-2.5 text-slate-500">—</td>
+            <td class="p-2.5 text-slate-500">—</td>
+            <td class="p-2.5 text-slate-500">—</td>
+            <td class="p-2.5 text-slate-500">—</td>
+            <td class="p-2.5">
+              <span class="px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 text-[10px]" title="${item.error || 'Syntax error'}">
+                Failed SMILES
+              </span>
+            </td>
+          </tr>
+        `;
+      }
+
+      const isWeak = item.is_weak_binder || item.affinity_kcal > -6.0;
+      return `
+        <tr class="border-b border-slate-800 hover:bg-slate-800/50">
+          <td class="p-2.5 font-bold text-center text-cyan-400">#${item.rank}</td>
+          <td class="p-2.5 font-semibold text-white font-sans" title="${item.smiles}">${item.name}</td>
+          <td class="p-2.5 font-mono font-bold ${isWeak ? 'text-amber-400' : 'text-emerald-400'}">${item.affinity_kcal}</td>
+          <td class="p-2.5 font-mono font-bold text-cyan-300">${item.consensus_score ?? "—"}</td>
+          <td class="p-2.5 font-mono text-slate-300">${item.theoretical_kd_nm}</td>
+          <td class="p-2.5 font-mono text-slate-300">${item.ligand_efficiency}</td>
+          <td class="p-2.5 font-mono text-slate-300">${item.hbond_count}</td>
+          <td class="p-2.5 text-[10px]">
+            ${isWeak ? 
+              '<span class="px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800" title="ΔG > -6.0 kcal/mol: Sub-threshold/Weak binder">Weak Hit</span>' : 
+              '<span class="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800">Screened</span>'
+            }
+          </td>
+        </tr>
+      `;
+    }).join("");
   }
 }

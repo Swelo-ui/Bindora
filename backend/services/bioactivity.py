@@ -36,26 +36,54 @@ class BioactivityService:
         mw_kda = mw_da / 1000.0 if mw_da > 0 else 1.0
         bei = round(pkd / mw_kda, 2)
 
-        # Classification of predicted affinity
+        # Size-Independent Ligand Efficiency (SILE) = -delta G / (heavy_atoms ** 0.3)
+        sile = round(-affinity_kcal / (heavy_atoms ** 0.3), 3) if heavy_atoms > 0 else 0.0
+
+        # Fit Quality (FQ) = LE / LE_max, where LE_max ~ 0.073 + 5.14 / heavy_atoms (Reynolds et al.)
+        le_max = 0.073 + (5.14 / heavy_atoms) if heavy_atoms > 0 else 1.0
+        fit_quality = round(le / le_max, 3) if le_max > 0 else 0.0
+
+        # Classification of predicted affinity & Weak-Binder Alerting
+        is_weak = affinity_kcal > -6.0
         if affinity_kcal <= -9.0:
-            potency_class = "Sub-micromolar to Nanomolar (High Affinity)"
+            potency_class = "Sub-micromolar to Nanomolar (High Affinity Candidate)"
+            weak_warning = None
         elif affinity_kcal <= -7.0:
-            potency_class = "Low Micromolar (Moderate Affinity)"
-        elif affinity_kcal <= -5.0:
-            potency_class = "High Micromolar to Millimolar (Weak / Screening Hit)"
+            potency_class = "Low Micromolar (Moderate Affinity Hit)"
+            weak_warning = None
+        elif affinity_kcal <= -6.0:
+            potency_class = "High Micromolar (Weak Screening Hit)"
+            weak_warning = None
         else:
-            potency_class = "Sub-threshold / Minimal Specific Binding"
+            potency_class = "Sub-threshold / Marginal Binding (High Micromolar/Millimolar Kd)"
+            weak_warning = (
+                f"Sub-threshold / Weak Binding Alert (ΔG = {round(affinity_kcal, 2)} kcal/mol, Kd ≈ {round(kd_um, 1)} µM): "
+                "Calculated affinity falls above the -6.0 kcal/mol threshold. Such weak interactions typically reflect "
+                "superficial surface adhesion or numerical artifacts rather than biologically meaningful active-site inhibition. "
+                "Treat docking pose strictly as hypothesis-generating and interpret with extreme caution."
+            )
 
         return {
             "binding_affinity_kcal": round(affinity_kcal, 2),
             "theoretical_kd_nm": round(kd_nm, 2) if kd_nm < 1e6 else round(kd_nm, 0),
             "theoretical_kd_um": round(kd_um, 3),
             "pkd": round(pkd, 2),
+            "is_weak_binder": is_weak,
+            "weak_binder_warning": weak_warning,
             "ligand_efficiency": {
                 "value": le,
                 "unit": "kcal/mol/heavy atom",
                 "quality": "Optimal (> 0.30)" if le >= 0.3 else "Suboptimal (< 0.30)",
                 "citation": "Hopkins et al., Drug Discov. Today 2004"
+            },
+            "size_independent_le": {
+                "value": sile,
+                "citation": "Nissink, ChemMedChem 2009"
+            },
+            "fit_quality": {
+                "value": fit_quality,
+                "quality": "Optimal (>= 0.8)" if fit_quality >= 0.8 else "Suboptimal (< 0.8)",
+                "citation": "Reynolds et al., J. Med. Chem. 2008"
             },
             "binding_efficiency_index": {
                 "value": bei,

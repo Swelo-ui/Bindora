@@ -159,6 +159,7 @@ def run_docking():
     size = data.get("size")
     exhaustiveness = int(data.get("exhaustiveness", 8))
     num_modes = int(data.get("num_modes", 9))
+    replicates = int(data.get("replicates", 1))
     heavy_atoms = int(data.get("heavy_atoms", 20))
     mw = float(data.get("molecular_weight", 300.0))
 
@@ -173,7 +174,8 @@ def run_docking():
             center,
             size,
             exhaustiveness=exhaustiveness,
-            num_modes=num_modes
+            num_modes=num_modes,
+            replicates=replicates
         )
 
         if not poses:
@@ -181,6 +183,7 @@ def run_docking():
 
         best_pose = poses[0]
         affinity = best_pose["affinity_kcal"]
+        replicate_stats = best_pose.get("replicate_stats")
 
         # Calculate thermodynamics and Ligand Efficiency
         thermo = BioactivityService.calculate_thermodynamics(affinity, heavy_atoms, mw)
@@ -194,11 +197,55 @@ def run_docking():
             "poses": poses,
             "top_pose": best_pose,
             "thermodynamics": thermo,
-            "interactions": contacts
+            "interactions": contacts,
+            "replicate_stats": replicate_stats
         })
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": f"Docking execution failed: {str(e)}"}), 500
+
+@app.route("/api/docking/redock-validate", methods=["POST"])
+def redock_validate():
+    data = request.get_json() or {}
+    receptor_pdbqt = data.get("receptor_pdbqt")
+    native_ligand_pdb = data.get("native_ligand_pdb")
+    center = data.get("center")
+    size = data.get("size")
+    exhaustiveness = int(data.get("exhaustiveness", 8))
+
+    if not receptor_pdbqt or not native_ligand_pdb or not center or not size:
+        return jsonify({"error": "Missing required parameters for redocking validation (receptor_pdbqt, native_ligand_pdb, center, size)"}), 400
+
+    try:
+        validation_result = DockingEngine.run_redocking_validation(
+            receptor_pdbqt,
+            native_ligand_pdb,
+            center,
+            size,
+            exhaustiveness=exhaustiveness
+        )
+        return jsonify(validation_result)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": f"Redocking validation failed: {str(e)}"}), 500
+
+@app.route("/api/reproducibility/versions", methods=["GET"])
+def get_reproducibility_versions():
+    import gemmi
+    import rdkit
+    import datetime
+    return jsonify({
+        "autodock_vina": "AutoDock Vina 1.2.5 (Scripps CCSB)",
+        "rdkit": rdkit.__version__,
+        "gemmi": gemmi.__version__,
+        "meeko": "0.5.x (MoleculePreparation / PDBQTWriterLegacy)",
+        "python": sys.version.split()[0],
+        "platform": sys.platform,
+        "utc_timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "chembl_rest": "EMBL-EBI ChEMBL REST API v33",
+        "rcsb_pdb_rest": "RCSB PDB REST API v1",
+        "scoring_function": "AutoDock Vina Iterated Local Search & Monte Carlo"
+    })
 
 @app.route("/api/docking/interactions", methods=["POST"])
 def analyze_interactions():

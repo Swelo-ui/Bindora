@@ -694,15 +694,49 @@
                 <input id="grid-sy" type="number" step="1" value="22" class="bg-slate-900 border border-slate-700 rounded p-1.5 text-center text-white" title="Size Y">
                 <input id="grid-sz" type="number" step="1" value="22" class="bg-slate-900 border border-slate-700 rounded p-1.5 text-center text-white" title="Size Z">
               </div>
+              <!-- Quick Box Mode Buttons -->
+              <div class="flex items-center space-x-2 pt-1">
+                <button id="btn-reset-pocket" type="button" class="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-[11px] text-cyan-300 rounded border border-cyan-800/40 transition flex items-center justify-center space-x-1" title="Reset grid box coordinates to the detected active pocket centroid">
+                  <span>🎯 Pocket Centroid</span>
+                </button>
+                <button id="btn-blind-docking" type="button" class="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-[11px] text-purple-300 rounded border border-purple-800/40 transition flex items-center justify-center space-x-1" title="Expand bounding box to encompass the entire protein surface (Blind Docking)">
+                  <span>🌐 Blind Docking (Surface)</span>
+                </button>
+              </div>
             </div>
 
-            <div>
-              <label class="text-xs text-slate-400 font-medium">Exhaustiveness (Precision):</label>
-              <select id="docking-exhaustiveness" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
-                <option value="4">4 (Fast - Low-end hardware safe)</option>
-                <option value="8" selected>8 (Standard Academic Default)</option>
-                <option value="16">16 (High Precision Research)</option>
-              </select>
+            <!-- Precision & Replicates Configuration -->
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-xs text-slate-400 font-medium">Exhaustiveness:</label>
+                <select id="docking-exhaustiveness" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
+                  <option value="4">4 (Fast Screening)</option>
+                  <option value="8" selected>8 (Standard Academic)</option>
+                  <option value="16">16 (Publication Grade)</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-400 font-medium">Sampling Mode:</label>
+                <select id="docking-replicates" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
+                  <option value="1" selected>Single Seed</option>
+                  <option value="3">3 Seeds (Mean ± SD)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Weak-Binder Warning Banner (Dynamically Shown) -->
+            <div id="weak-binder-alert" class="hidden p-3 rounded-xl border border-amber-500/60 bg-amber-950/40 text-amber-200 text-xs space-y-1 shadow-lg animate-pulse">
+              <div class="flex items-center space-x-1.5 font-bold text-amber-300">
+                <span>⚠️</span>
+                <span>Sub-threshold / Weak Binding Alert</span>
+              </div>
+              <p id="weak-binder-alert-text" class="text-[11px] text-amber-200/90 leading-relaxed"></p>
+            </div>
+
+            <!-- Replicate Statistics Banner (Shown when replicates > 1) -->
+            <div id="replicate-stats-banner" class="hidden p-2.5 rounded-lg border border-cyan-800/60 bg-cyan-950/40 text-cyan-200 text-xs font-mono flex items-center justify-between">
+              <span class="text-slate-400">3-Seed Replicate Result:</span>
+              <span id="replicate-stats-value" class="text-cyan-300 font-bold">—</span>
             </div>
 
             <!-- Big Run Button -->
@@ -716,6 +750,59 @@
               <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
               <span>Save Run to Cloud History</span>
             </button>
+          </div>
+
+          <!-- Redocking Self-Validation Card -->
+          <div class="glass-panel p-4 rounded-xl border border-slate-800 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-1.5">
+                <span class="text-xs font-bold text-white">Redocking Self-Validation</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-950 text-cyan-300 border border-blue-800 font-mono">RMSD &lt; 2.0 Å Benchmark</span>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              Docks the co-crystallized native inhibitor back into the pocket to scientifically validate the grid box and scoring protocol.
+            </p>
+            <div class="flex items-center justify-between p-2 rounded bg-slate-900/80 border border-slate-800 text-xs font-mono">
+              <span class="text-slate-400 font-sans">Co-crystallized Ligand:</span>
+              <span id="redock-native-name" class="text-cyan-300 font-bold">No co-ligand loaded</span>
+            </div>
+            <button id="btn-run-redock-validation" disabled class="w-full py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-500 border border-slate-700 text-xs font-semibold transition flex items-center justify-center space-x-1.5 cursor-not-allowed">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <span>Run Self-Validation (Redock Native Ligand)</span>
+            </button>
+            <div id="redock-results-panel" class="hidden p-2.5 rounded-lg border border-slate-700 bg-slate-900/90 space-y-1.5 text-xs font-mono">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-sans">Redocked ΔG:</span>
+                <span id="redock-aff-val" class="text-cyan-400 font-bold">—</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400 font-sans">Heavy-Atom RMSD:</span>
+                <span id="redock-rmsd-val" class="text-white font-bold">—</span>
+              </div>
+              <div id="redock-badge-container" class="pt-1 text-center font-sans"></div>
+            </div>
+          </div>
+
+          <!-- Preparation Protocol Transparency Log Accordion -->
+          <div class="glass-panel p-4 rounded-xl border border-slate-800 space-y-2">
+            <button type="button" id="btn-toggle-prep-log" class="w-full flex items-center justify-between text-xs font-bold text-slate-300 hover:text-white transition">
+              <span class="flex items-center space-x-1.5">
+                <span>📋</span>
+                <span>Preparation Protocol Transparency Log</span>
+              </span>
+              <span id="prep-log-chevron" class="text-cyan-400 text-sm font-mono">+</span>
+            </button>
+            <div id="prep-log-content" class="hidden pt-2 border-t border-slate-800/80 space-y-2 text-[11px] font-mono leading-relaxed text-slate-300">
+              <div class="p-2 rounded bg-slate-950/80 border border-slate-800 space-y-1">
+                <span class="text-cyan-400 font-bold block font-sans">Receptor Ingestion Protocol:</span>
+                <div id="prep-log-receptor" class="text-slate-400 space-y-0.5">Load receptor to inspect water removal, pH 7.4 ionization, and AD4 atom typing.</div>
+              </div>
+              <div class="p-2 rounded bg-slate-950/80 border border-slate-800 space-y-1">
+                <span class="text-cyan-400 font-bold block font-sans">Ligand Ingestion Protocol:</span>
+                <div id="prep-log-ligand" class="text-slate-400 space-y-0.5">Load ligand to inspect ETKDGv3 conformer generation, MMFF94 minimization, and Meeko torsions.</div>
+              </div>
+            </div>
           </div>
 
           <!-- Poses Ranked Table -->
@@ -879,17 +966,32 @@
       
       <div class="flex items-center justify-between pb-2 border-b border-slate-800">
         <div>
+          <div class="inline-flex items-center space-x-2 px-2.5 py-1 rounded-full bg-purple-950/80 border border-purple-500/40 text-[11px] text-purple-300 font-semibold mb-2">
+            <span>✨ AI-GENERATED INTERPRETATION</span>
+            <span>•</span>
+            <span>DeepSeek / LLM Synthesis (Non-Deterministic)</span>
+          </div>
           <h2 class="text-lg font-bold text-white">AI Research Pharmacologist</h2>
-          <p class="text-xs text-slate-400">Pedagogical plain-language analysis strictly grounded on calculated scientific metrics</p>
+          <p class="text-xs text-slate-400">Automated mechanistic interpretation synthesized from calculated docking metrics and literature</p>
         </div>
-        <div class="flex items-center space-x-2 text-xs text-emerald-400 font-semibold">
-          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span>Zero-Hallucination Guardrails Active</span>
+        <div class="flex items-center space-x-2 text-xs text-amber-400 font-semibold px-2.5 py-1 rounded-lg bg-amber-950/40 border border-amber-800/40">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span>In-Silico Hypothesis Only</span>
         </div>
       </div>
 
+      <!-- Prominent Scientific Demarcation Banner -->
+      <div class="p-4 rounded-xl bg-amber-950/25 border border-amber-500/40 text-xs text-amber-200/95 space-y-1.5 leading-relaxed shadow-lg">
+        <strong class="text-amber-300 font-bold flex items-center space-x-2 text-xs uppercase tracking-wider">
+          <span>⚠️ Academic &amp; Pharmacological Disclaimer</span>
+        </strong>
+        <p>
+          The interpretations below are synthesized by an Artificial Intelligence Large Language Model (LLM) utilizing calculated AutoDock Vina affinities, RDKit physicochemical descriptors, and scientific pharmacophore literature. <strong>They represent preliminary in-silico screening hypotheses, NOT verified biological or clinical facts.</strong> Weak binding scores (e.g. &Delta;G &gt; -6.0 kcal/mol) frequently produce speculative narratives that require experimental wet-lab confirmation (ITC, SPR, crystallographic co-binding, cell-based IC50 assays).
+        </p>
+      </div>
+
       <!-- Narrative Content -->
-      <div class="glass-panel p-6 rounded-xl border border-slate-800">
+      <div class="glass-panel p-6 rounded-xl border border-slate-800 space-y-4">
         <div id="narrative-report-content">
           <p class="text-xs text-slate-400 italic">Run docking to generate a comprehensive pharmacological narrative.</p>
         </div>
@@ -902,7 +1004,7 @@
       
       <div class="pb-2 border-b border-slate-800">
         <h2 class="text-lg font-bold text-white">Multi-Ligand Comparative Batch Screening</h2>
-        <p class="text-xs text-slate-400">Screen candidate compound libraries against the current target receptor and rank by binding affinity</p>
+        <p class="text-xs text-slate-400">Screen candidate compound libraries against the current target receptor and rank by binding affinity &amp; consensus score</p>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -930,22 +1032,26 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
 
         <!-- Ranked Leaderboard Table -->
         <div class="lg:col-span-2 glass-panel p-5 rounded-xl border border-slate-800 space-y-3">
-          <h3 class="font-bold text-sm text-white">Comparative Ranking Matrix</h3>
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-sm text-white">Comparative Ranking Matrix</h3>
+            <span class="text-[11px] text-slate-400">Consensus = ΔG (50%) + LE (scaled) + H-Bond Bonus</span>
+          </div>
           <div class="overflow-x-auto">
             <table class="w-full text-xs text-left border border-slate-800 rounded-lg">
-              <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+              <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-mono text-[11px]">
                 <tr>
-                  <th class="p-3 text-center">Rank</th>
-                  <th class="p-3">Candidate</th>
-                  <th class="p-3">ΔG (kcal/mol)</th>
-                  <th class="p-3">Kd (nM)</th>
-                  <th class="p-3">LE (kcal/atom)</th>
-                  <th class="p-3">H-Bonds</th>
-                  <th class="p-3">Lipinski</th>
+                  <th class="p-2.5 text-center">Rank</th>
+                  <th class="p-2.5">Candidate</th>
+                  <th class="p-2.5">ΔG (kcal)</th>
+                  <th class="p-2.5">Consensus</th>
+                  <th class="p-2.5">Kd (nM)</th>
+                  <th class="p-2.5">LE</th>
+                  <th class="p-2.5">H-Bonds</th>
+                  <th class="p-2.5">Status</th>
                 </tr>
               </thead>
-              <tbody id="batch-leaderboard-rows" class="divide-y divide-slate-800 font-mono">
-                <tr><td colspan="7" class="text-center p-6 text-xs text-slate-500 italic">Click "Run Batch Virtual Screening" to dock candidate library.</td></tr>
+              <tbody id="batch-leaderboard-rows" class="divide-y divide-slate-800 font-mono text-xs">
+                <tr><td colspan="8" class="text-center p-6 text-xs text-slate-500 italic">Click "Run Batch Virtual Screening" to dock candidate library.</td></tr>
               </tbody>
             </table>
           </div>
@@ -987,14 +1093,41 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
           </div>
         </div>
 
-        <div class="text-xs space-y-2 leading-relaxed">
-          <h4 class="font-bold text-slate-200 uppercase text-xs tracking-wider">Methodology & Attribution</h4>
-          <p id="dossier-methodology">This report documents a computational docking simulation executed using AutoDock Vina (Scripps CCSB). Physicochemical descriptors were derived strictly using RDKit's topological and empirical rule catalogs. Bioactivity validation was cross-checked with the European Bioinformatics Institute (EMBL-EBI) ChEMBL repository.</p>
+        <!-- Dynamic Results Summary -->
+        <div id="dossier-results-summary" class="text-xs space-y-4 leading-relaxed">
+          <p class="text-slate-500 italic">Run a docking simulation to populate the results summary.</p>
         </div>
 
-        <!-- Dynamic Results Summary -->
-        <div id="dossier-results-summary" class="text-xs space-y-3 leading-relaxed">
-          <p class="text-slate-500 italic">Run a docking simulation to populate the results summary.</p>
+        <!-- Academic Attribution & Software Reproducibility Metadata -->
+        <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5 text-[11px] font-mono">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="font-bold text-slate-300 uppercase tracking-wider font-sans text-xs flex items-center space-x-1.5">
+              <span>🔬</span>
+              <span>Academic Attribution &amp; Software Reproducibility</span>
+            </span>
+            <span id="dossier-timestamp" class="text-slate-500 text-[10px]">UTC: Synchronizing...</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-slate-400">
+            <div>
+              <span class="text-slate-500 block">Docking Engine:</span>
+              <span id="dossier-vina-ver" class="text-white font-semibold">AutoDock Vina v1.2.5</span>
+            </div>
+            <div>
+              <span class="text-slate-500 block">Cheminformatics:</span>
+              <span id="dossier-rdkit-ver" class="text-cyan-300 font-semibold">RDKit 2024+</span>
+            </div>
+            <div>
+              <span class="text-slate-500 block">Crystallography:</span>
+              <span id="dossier-gemmi-ver" class="text-cyan-300 font-semibold">Gemmi 0.7+</span>
+            </div>
+            <div>
+              <span class="text-slate-500 block">PDBQT Setup:</span>
+              <span id="dossier-meeko-ver" class="text-cyan-300 font-semibold">Meeko Flexible</span>
+            </div>
+          </div>
+          <div class="text-[10px] text-slate-500 pt-1 leading-normal border-t border-slate-900 font-sans">
+            <em>Citation Notice:</em> If referencing computational predictions generated by this studio in an academic dissertation or publication, cite AutoDock Vina (Trott &amp; Olson, 2010), RDKit (Landrum et al.), and EMBL-EBI ChEMBL (Gaulton et al., 2017).
+          </div>
         </div>
       </div>
 

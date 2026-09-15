@@ -20,3 +20,18 @@ def test_chembl_crosscheck_imatinib():
     # Spot-check that measured value is within nanomolar range
     val = result["experimental_records"][0]["value"]
     assert val > 0
+
+def test_weak_binder_detection():
+    # delta G = -4.894 kcal/mol (chlorogenic acid example: weak binder)
+    result = BioactivityService.calculate_thermodynamics(-4.894, 25, 354.31)
+    assert result["is_weak_binder"] is True
+    assert result["weak_binder_warning"] is not None
+    assert "Sub-threshold / Weak Binding Alert" in result["weak_binder_warning"]
+    assert result["size_independent_le"]["value"] > 0
+    assert result["fit_quality"]["value"] > 0
+
+    # delta G = -9.2 kcal/mol (potent binder: should NOT be flagged as weak)
+    strong = BioactivityService.calculate_thermodynamics(-9.2, 30, 420.0)
+    assert strong["is_weak_binder"] is False
+    assert strong["weak_binder_warning"] is None
+
