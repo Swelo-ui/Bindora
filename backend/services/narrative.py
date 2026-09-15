@@ -286,7 +286,7 @@ class NarrativeExplainer:
             sec3 = (
                 f"### 3. Experimental Bioactivity Cross-Validation\n\n"
                 f"**Validation Status:** `[{badge}]` (Green Badge)\n\n"
-                f"AnuDock cross-referenced this drug-target pair against curated experimental bioactivity records in the **ChEMBL Database** ({crosscheck.get('target_organism', 'Homo sapiens')}).\n\n"
+                f"Bindora cross-referenced this drug-target pair against curated experimental bioactivity records in the **ChEMBL Database** ({crosscheck.get('target_organism', 'Homo sapiens')}).\n\n"
                 f"Found **{len(records)}** experimental assay record(s):\n"
                 f"{rec_str}\n\n"
                 f"The computational binding prediction aligns with wet-lab experimental affinity benchmarks, demonstrating that the docking pose captures realistic pharmacophore orientation."

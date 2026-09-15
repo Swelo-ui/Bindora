@@ -759,33 +759,33 @@
           <div class="glass-panel p-4 rounded-xl border border-slate-800 space-y-2.5">
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-1.5">
-                <span class="text-xs font-bold text-white">Redocking Self-Validation</span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-950 text-cyan-300 border border-blue-800 font-mono">RMSD &lt; 2.0 Å Benchmark</span>
+                <span class="text-xs font-bold text-slate-900 dark:text-white">Redocking Self-Validation</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-cyan-300 border border-blue-200 dark:border-blue-800 font-mono">RMSD &lt; 2.0 Å Benchmark</span>
               </div>
             </div>
-            <p class="text-[11px] text-slate-400 leading-relaxed">
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
               Docks the co-crystallized native inhibitor back into the pocket to scientifically validate the grid box and scoring protocol.
             </p>
-            <div class="flex items-center justify-between p-2 rounded bg-slate-900/80 border border-slate-800 text-xs font-mono">
-              <span class="text-slate-400 font-sans">Co-crystallized Ligand:</span>
-              <span id="redock-native-name" class="text-cyan-300 font-bold">No co-ligand loaded</span>
+            <div class="flex items-center justify-between p-2 rounded bg-slate-100/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-xs font-mono">
+              <span class="text-slate-600 dark:text-slate-400 font-sans">Co-crystallized Ligand:</span>
+              <span id="redock-native-name" class="text-cyan-700 dark:text-cyan-300 font-bold">No co-ligand loaded</span>
             </div>
-            <button id="btn-run-redock-validation" disabled class="w-full py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-500 border border-slate-700 text-xs font-semibold transition flex items-center justify-center space-x-1.5 cursor-not-allowed">
+            <button id="btn-run-redock-validation" disabled class="w-full py-2 px-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-700 text-xs font-semibold transition flex items-center justify-center space-x-1.5 cursor-not-allowed">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               <span>Run Self-Validation (Redock Native Ligand)</span>
             </button>
-            <div id="redock-results-panel" class="hidden p-2.5 rounded-lg border border-slate-700 bg-slate-900/90 space-y-1.5 text-xs font-mono">
+            <div id="redock-results-panel" class="hidden p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/90 space-y-1.5 text-xs font-mono">
               <div class="flex items-center justify-between">
-                <span class="text-slate-400 font-sans">Redocked ΔG:</span>
-                <span id="redock-aff-val" class="text-cyan-400 font-bold">—</span>
+                <span class="text-slate-600 dark:text-slate-400 font-sans">Redocked ΔG:</span>
+                <span id="redock-aff-val" class="text-cyan-600 dark:text-cyan-400 font-bold">—</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-slate-400 font-sans">Heavy-Atom RMSD:</span>
-                <span id="redock-rmsd-val" class="text-white font-bold">—</span>
+                <span class="text-slate-600 dark:text-slate-400 font-sans">Heavy-Atom RMSD:</span>
+                <span id="redock-rmsd-val" class="text-slate-900 dark:text-white font-bold">—</span>
               </div>
-              <div class="flex items-center justify-between text-[11px] pt-1 border-t border-slate-800">
-                <span class="text-slate-400 font-sans">3D Alignment:</span>
-                <span class="text-[10px]"><span class="text-amber-400 font-semibold">Amber: Crystal</span> &bull; <span class="text-cyan-400 font-semibold">Cyan: Redocked</span></span>
+              <div class="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200 dark:border-slate-800">
+                <span class="text-slate-600 dark:text-slate-400 font-sans">3D Alignment:</span>
+                <span class="text-[10px]"><span class="text-amber-600 dark:text-amber-400 font-semibold">Amber: Crystal</span> &bull; <span class="text-cyan-600 dark:text-cyan-400 font-semibold">Cyan: Redocked</span></span>
               </div>
               <div id="redock-badge-container" class="pt-1 text-center font-sans"></div>
             </div>

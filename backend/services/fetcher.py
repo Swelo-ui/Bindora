@@ -14,7 +14,7 @@ from backend.config import (
     UNIPROT_BASE_URL,
 )
 
-HEADERS = {"User-Agent": "AnuDock-Research-Tool/1.0 (academic; +https://github.com/AnuDock)"}
+HEADERS = {"User-Agent": "Bindora-Research-Tool/1.0 (academic; +https://github.com/Swelo-ui/Bindora)"}
 
 def _get_json(url: str, timeout: int = 15) -> Optional[Dict[str, Any]]:
     """Helper to fetch and parse JSON with error handling."""
@@ -246,7 +246,7 @@ class StructureFetcher:
             req = urllib.request.Request(
                 RCSB_SEARCH_URL,
                 data=json.dumps(query_payload).encode("utf-8"),
-                headers={"Content-Type": "application/json", "User-Agent": "AnuDock/1.0"}
+                headers={"Content-Type": "application/json", "User-Agent": "Bindora/1.0"}
             )
             with urllib.request.urlopen(req, timeout=15) as resp:
                 search_data = json.loads(resp.read().decode("utf-8"))

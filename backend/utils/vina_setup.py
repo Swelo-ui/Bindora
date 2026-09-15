@@ -19,7 +19,7 @@ def ensure_vina():
         
     print(f"[VINA] Downloading AutoDock Vina 1.2.7 for Windows from:\n  {VINA_URL}")
     try:
-        req = urllib.request.Request(VINA_URL, headers={"User-Agent": "AnuDock/1.0"})
+        req = urllib.request.Request(VINA_URL, headers={"User-Agent": "Bindora/1.0"})
         with urllib.request.urlopen(req, timeout=60) as response, open(VINA_EXE, "wb") as out_file:
             data = response.read()
             out_file.write(data)

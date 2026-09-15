@@ -5,7 +5,7 @@ import urllib.parse
 from typing import Dict, Any, List, Optional
 from backend.config import CACHE_DIR, CHEMBL_BASE_URL
 
-HEADERS = {"User-Agent": "AnuDock-Research-Tool/1.0 (academic; +https://github.com/AnuDock)"}
+HEADERS = {"User-Agent": "Bindora-Research-Tool/1.0 (academic; +https://github.com/Swelo-ui/Bindora)"}
 
 def _get_json(url: str, timeout: int = 15) -> Optional[Dict[str, Any]]:
     try:

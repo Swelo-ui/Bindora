@@ -826,6 +826,11 @@ class BindoraApp {
         } catch (e) {}
       }
     }
+
+    // Refresh radar chart colors if ADME is currently loaded
+    if (this.state.ligand?.adme) {
+      this.updateADMEView();
+    }
   }
 
   renderBenchmarksUI() {
@@ -1132,6 +1137,7 @@ class BindoraApp {
     this.state.docking = null;
     this.state.crosscheck = null;
     this.state.narrative = null;
+    this.state.redockingValidation = null;
     this.state.currentPoseIdx = 0;
 
     if (this.viewer) {
@@ -1139,12 +1145,28 @@ class BindoraApp {
       this.viewer.clearInteractions();
       this.viewer.clearMeasurements();
       this.viewer.clearGridBox();
+      this.viewer.clearRedockOverlay();
     }
     const emptyState = document.getElementById("viewer-empty-state");
     if (emptyState) emptyState.classList.remove("hidden");
 
     const statusBanner = document.getElementById("docking-status-banner");
     if (statusBanner) statusBanner.classList.add("hidden");
+
+    const weakAlert = document.getElementById("weak-binder-alert");
+    if (weakAlert) weakAlert.classList.add("hidden");
+
+    const repBanner = document.getElementById("replicate-stats-banner");
+    if (repBanner) repBanner.classList.add("hidden");
+
+    const redockPanel = document.getElementById("redock-results-panel");
+    if (redockPanel) redockPanel.classList.add("hidden");
+
+    const redockNative = document.getElementById("redock-native-name");
+    if (redockNative) redockNative.textContent = "No co-ligand loaded";
+
+    const poseTable = document.getElementById("pose-table-rows");
+    if (poseTable) poseTable.innerHTML = `<tr><td colspan="4" class="text-center p-6 text-xs text-slate-500 italic">No docking run loaded yet.</td></tr>`;
 
     // Reset toolbar toggle checkboxes
     const surfToggle = document.getElementById("toggle-surface");
@@ -1572,10 +1594,25 @@ class BindoraApp {
     if (elAffinity) elAffinity.textContent = `${currentPose.affinity_kcal} kcal/mol`;
 
     const elKd = document.getElementById("dock-kd-score");
-    if (elKd) elKd.textContent = `${thermodynamics.theoretical_kd_nm} nM`;
+    if (elKd) {
+      const rt = 0.5924847;
+      const aff = parseFloat(currentPose.affinity_kcal) || 0;
+      const kdMolar = Math.exp(aff / rt);
+      const kdNm = kdMolar * 1e9;
+      const kdDisplay = kdNm < 1000 ? `${kdNm.toFixed(2)} nM` : kdNm < 1e6 ? `${(kdNm / 1e3).toFixed(2)} µM` : `${(kdNm / 1e6).toFixed(2)} mM`;
+      elKd.textContent = kdDisplay;
+    }
 
     const elLE = document.getElementById("dock-le-score");
-    if (elLE) elLE.textContent = `${thermodynamics.ligand_efficiency?.value || "—"}`;
+    if (elLE) {
+      const ha = this.state.ligand?.heavy_atom_count || this.state.ligand?.adme?.physicochemical?.heavy_atoms?.value || 0;
+      if (ha > 0) {
+        const aff = parseFloat(currentPose.affinity_kcal) || 0;
+        elLE.textContent = (-aff / ha).toFixed(3);
+      } else {
+        elLE.textContent = `${thermodynamics.ligand_efficiency?.value || "—"}`;
+      }
+    }
 
     const elHbonds = document.getElementById("dock-hbonds-count");
     if (elHbonds) elHbonds.textContent = `${interactions.total_hbond_count || 0}`;
@@ -1588,11 +1625,11 @@ class BindoraApp {
     const poseTable = document.getElementById("pose-table-rows");
     if (poseTable) {
       poseTable.innerHTML = poses.map((p, idx) => `
-        <tr class="border-b border-slate-800 hover:bg-slate-800/40 cursor-pointer ${idx === this.state.currentPoseIdx ? 'bg-cyan-950/40 font-semibold' : ''}" onclick="window.app.selectPose(${idx})">
-          <td class="px-3 py-2 text-cyan-300">Mode ${p.mode}</td>
-          <td class="px-3 py-2 font-mono text-white">${p.affinity_kcal}</td>
-          <td class="px-3 py-2 font-mono text-slate-400">${p.rmsd_lb}</td>
-          <td class="px-3 py-2 font-mono text-slate-400">${p.rmsd_ub}</td>
+        <tr class="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40 cursor-pointer ${idx === this.state.currentPoseIdx ? 'bg-cyan-50 dark:bg-cyan-950/40 font-semibold' : ''}" onclick="window.app.selectPose(${idx})">
+          <td class="px-3 py-2 text-cyan-700 dark:text-cyan-300">Mode ${p.mode}</td>
+          <td class="px-3 py-2 font-mono text-slate-900 dark:text-white font-semibold">${p.affinity_kcal}</td>
+          <td class="px-3 py-2 font-mono text-slate-600 dark:text-slate-400">${p.rmsd_lb}</td>
+          <td class="px-3 py-2 font-mono text-slate-600 dark:text-slate-400">${p.rmsd_ub}</td>
         </tr>
       `).join("");
     }
@@ -1603,7 +1640,7 @@ class BindoraApp {
       const resList = interactions.interacting_residues || [];
       if (resList.length > 0) {
         resContainer.innerHTML = resList.map(r => `
-          <span class="inline-block px-2 py-0.5 rounded text-xs bg-slate-800 text-cyan-300 border border-slate-700 font-mono">${r}</span>
+          <span class="inline-block px-2 py-0.5 rounded text-xs bg-cyan-50 dark:bg-slate-800 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-slate-700 font-mono">${r}</span>
         `).join("");
       } else {
         resContainer.innerHTML = `<span class="text-xs text-slate-500 italic">No specific residues within contact threshold</span>`;

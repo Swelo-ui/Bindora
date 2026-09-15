@@ -46,6 +46,12 @@ class ADMECharts {
       `TPSA (${tpsa} Å²)`
     ];
 
+    const isLight = document.documentElement.classList.contains("light");
+    const gridColor = isLight ? "rgba(0, 0, 0, 0.12)" : "rgba(255, 255, 255, 0.08)";
+    const angleLineColor = isLight ? "rgba(0, 0, 0, 0.15)" : "rgba(255, 255, 255, 0.1)";
+    const labelColor = isLight ? "#0f172a" : "#cbd5e1";
+    const legendColor = isLight ? "#334155" : "#94a3b8";
+
     const ctx = canvas.getContext("2d");
     this.radarChartInstance = new Chart(ctx, {
       type: "radar",
@@ -55,17 +61,17 @@ class ADMECharts {
           {
             label: "Drug Candidate",
             data: [normMW, normLogP, normHBD, normHBA, normRotB, normTPSA],
-            backgroundColor: "rgba(56, 189, 248, 0.35)", // Cyan
-            borderColor: "#38bdf8",
+            backgroundColor: isLight ? "rgba(2, 132, 199, 0.25)" : "rgba(56, 189, 248, 0.35)",
+            borderColor: isLight ? "#0284c7" : "#38bdf8",
             borderWidth: 2,
-            pointBackgroundColor: "#0284c7",
+            pointBackgroundColor: isLight ? "#0369a1" : "#0284c7",
             pointBorderColor: "#ffffff",
             pointRadius: 4
           },
           {
             label: "Lipinski Rule Boundary (Threshold)",
             data: [100, 100, 100, 100, 100, 100],
-            backgroundColor: "rgba(16, 185, 129, 0.08)", // Emerald
+            backgroundColor: isLight ? "rgba(16, 185, 129, 0.12)" : "rgba(16, 185, 129, 0.08)",
             borderColor: "#10b981",
             borderDash: [4, 4],
             borderWidth: 1.5,
@@ -78,11 +84,11 @@ class ADMECharts {
         maintainAspectRatio: false,
         scales: {
           r: {
-            angleLines: { color: "rgba(255, 255, 255, 0.1)" },
-            grid: { color: "rgba(255, 255, 255, 0.08)" },
+            angleLines: { color: angleLineColor },
+            grid: { color: gridColor },
             pointLabels: {
-              color: "#cbd5e1",
-              font: { size: 11, family: "sans-serif" }
+              color: labelColor,
+              font: { size: 11, family: "sans-serif", weight: isLight ? "600" : "500" }
             },
             ticks: {
               display: false,
@@ -94,14 +100,16 @@ class ADMECharts {
         plugins: {
           legend: {
             labels: {
-              color: "#94a3b8",
-              font: { size: 11 }
+              color: legendColor,
+              font: { size: 11, weight: isLight ? "600" : "400" }
             }
           },
           tooltip: {
-            backgroundColor: "rgba(15, 23, 42, 0.9)",
-            titleColor: "#38bdf8",
-            bodyColor: "#ffffff"
+            backgroundColor: isLight ? "rgba(255, 255, 255, 0.95)" : "rgba(15, 23, 42, 0.9)",
+            titleColor: isLight ? "#0284c7" : "#38bdf8",
+            bodyColor: isLight ? "#0f172a" : "#ffffff",
+            borderColor: isLight ? "#cbd5e1" : "#334155",
+            borderWidth: 1
           }
         }
       }
