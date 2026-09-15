@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
+import gemmi
 from rdkit import Chem
 from rdkit.Chem import AllChem, Lipinski
 from meeko import MoleculePreparation, PDBQTWriterLegacy
@@ -25,12 +26,30 @@ class DockingEngine:
 
     @staticmethod
     def prepare_receptor(pdb_content: str, target_chain: Optional[str] = None) -> Dict[str, Any]:
-        """Clean receptor PDB, identify binding site / co-crystallized ligand, and produce PDBQT."""
+        """Clean receptor PDB, mmCIF, or PDBQT, identify binding site / co-crystallized ligand, and produce PDBQT."""
+        trimmed = pdb_content.strip()
+
+        # 1. Automatic mmCIF / CIF format detection & conversion to PDB via gemmi
+        if trimmed.startswith("data_") or "_atom_site." in pdb_content or "_entry.id" in pdb_content:
+            try:
+                st = gemmi.read_structure_string(pdb_content, format=gemmi.CoorFormat.Detect)
+                pdb_content = st.make_pdb_string()
+            except Exception as e:
+                print(f"[RECEPTOR PREP] gemmi mmCIF conversion notice: {e}")
+
         lines = pdb_content.splitlines()
         protein_lines = []
         hetatm_ligand_atoms = []
         all_ca_coords = []
         chains_found = set()
+
+        # 2. Check if input is already an AutoDock PDBQT file
+        is_already_pdbqt = any(
+            (line.startswith("ATOM  ") or line.startswith("HETATM")) and len(line) > 66 and (
+                " C " in line or " A " in line or " OA " in line or " HD " in line or " NA " in line or " SA " in line
+            )
+            for line in lines[:60]
+        )
 
         for line in lines:
             if line.startswith("ATOM  "):
@@ -67,7 +86,7 @@ class DockingEngine:
                         pass
 
         if not protein_lines:
-            raise ValueError("No standard amino acid protein atoms found in receptor PDB file.")
+            raise ValueError("No standard amino acid protein atoms found in receptor file.")
 
         # Determine grid box center
         has_co_ligand = len(hetatm_ligand_atoms) > 5
@@ -91,30 +110,35 @@ class DockingEngine:
             size_x, size_y, size_z = 24.0, 24.0, 24.0
             pocket_desc = "Default center"
 
-        # Generate PDBQT format lines for protein
-        pdbqt_lines = []
-        for line in protein_lines:
-            res_name = line[17:20].strip()
-            atom_name = line[12:16].strip()
-            elem = line[76:78].strip() or atom_name[0]
-            ad4_type = elem
-            if elem == "C":
-                ad4_type = "A" if res_name in ("PHE", "TYR", "TRP", "HIS") else "C"
-            elif elem == "O":
-                ad4_type = "OA"
-            elif elem == "N":
-                ad4_type = "NA" if res_name in ("HIS", "TRP") else "N"
-            elif elem == "S":
-                ad4_type = "SA"
-            elif elem == "H":
-                ad4_type = "HD"
+        # Generate cleaned PDB for 3Dmol viewer and PDBQT for Vina
+        if is_already_pdbqt:
+            cleaned_pdb_lines = [f"{l[:54]:<54}  1.00  0.00          {l[12:14].strip():>2}" for l in protein_lines]
+            cleaned_pdb = "\n".join(cleaned_pdb_lines) + "\nEND\n"
+            pdbqt_text = "\n".join(protein_lines) + "\nTER\nEND\n"
+        else:
+            pdbqt_lines = []
+            for line in protein_lines:
+                res_name = line[17:20].strip()
+                atom_name = line[12:16].strip()
+                elem = line[76:78].strip() or atom_name[0]
+                ad4_type = elem
+                if elem == "C":
+                    ad4_type = "A" if res_name in ("PHE", "TYR", "TRP", "HIS") else "C"
+                elif elem == "O":
+                    ad4_type = "OA"
+                elif elem == "N":
+                    ad4_type = "NA" if res_name in ("HIS", "TRP") else "N"
+                elif elem == "S":
+                    ad4_type = "SA"
+                elif elem == "H":
+                    ad4_type = "HD"
 
-            charge = 0.00
-            pdbqt_line = f"{line[:54]:<54}{0.00:>6.2f}{0.00:>6.2f}    {charge:>6.3f} {ad4_type:<2}"
-            pdbqt_lines.append(pdbqt_line)
+                charge = 0.00
+                pdbqt_line = f"{line[:54]:<54}{0.00:>6.2f}{0.00:>6.2f}    {charge:>6.3f} {ad4_type:<2}"
+                pdbqt_lines.append(pdbqt_line)
 
-        cleaned_pdb = "\n".join(protein_lines) + "\nEND\n"
-        pdbqt_text = "\n".join(pdbqt_lines) + "\nTER\nEND\n"
+            cleaned_pdb = "\n".join(protein_lines) + "\nEND\n"
+            pdbqt_text = "\n".join(pdbqt_lines) + "\nTER\nEND\n"
 
         return {
             "cleaned_pdb": cleaned_pdb,
@@ -132,19 +156,77 @@ class DockingEngine:
 
     @staticmethod
     def prepare_ligand(input_data: str, is_sdf: bool = False) -> Dict[str, Any]:
-        """Convert ligand SMILES or SDF into 3D conformer, energy-minimize, and produce PDBQT via Meeko."""
-        if is_sdf or "\n" in input_data:
+        """Convert ligand SMILES, SDF, MOL, MOL2, PDB, CIF, or PDBQT into 3D conformer and produce PDBQT."""
+        trimmed = input_data.strip()
+        mol = None
+
+        # 1. Check if input is already an AutoDock PDBQT format file
+        is_pdbqt = "ROOT" in input_data or "BRANCH" in input_data or (
+            (trimmed.startswith("ATOM") or trimmed.startswith("HETATM")) and 
+            any(len(l) > 66 and (" 0.00" in l or " -0." in l or " 0." in l) for l in input_data.splitlines()[:10])
+        )
+
+        if is_pdbqt:
+            pdb_lines = []
+            for line in input_data.splitlines():
+                if line.startswith(("ATOM", "HETATM")):
+                    elem = line[76:78].strip() if len(line) > 76 else line[12:14].strip()
+                    pdb_lines.append(f"{line[:54]:<54}  1.00  0.00          {elem:>2}")
+            pdb_block = "\n".join(pdb_lines) + "\nEND\n"
+            try:
+                mol = Chem.MolFromPDBBlock(pdb_block)
+            except Exception:
+                mol = None
+            canonical_smiles = Chem.MolToSmiles(Chem.RemoveHs(mol)) if mol else "Custom Ligand (PDBQT)"
+            heavy_atoms = mol.GetNumHeavyAtoms() if mol else max(1, len(pdb_lines))
+            rotb = Lipinski.NumRotatableBonds(mol) if mol else 0
+            return {
+                "pdbqt_text": input_data,
+                "pdb_block": pdb_block,
+                "canonical_smiles": canonical_smiles,
+                "heavy_atom_count": heavy_atoms,
+                "rotatable_bonds": rotb
+            }
+
+        # 2. Tripos MOL2 format
+        if "@<TRIPOS>MOLECULE" in input_data:
+            try:
+                mol = Chem.MolFromMol2Block(input_data)
+            except Exception:
+                mol = None
+
+        # 3. mmCIF format
+        if not mol and (trimmed.startswith("data_") or "_chem_comp." in input_data):
+            try:
+                st = gemmi.read_structure_string(input_data, format=gemmi.CoorFormat.Detect)
+                pdb_str = st.make_pdb_string()
+                mol = Chem.MolFromPDBBlock(pdb_str)
+            except Exception:
+                mol = None
+
+        # 4. SDF / Molfile or PDB block
+        if not mol and (is_sdf or "\n" in input_data):
             mol = Chem.MolFromMolBlock(input_data)
             if not mol:
                 mol = Chem.MolFromMolBlock(input_data, sanitize=False)
                 if mol:
-                    Chem.SanitizeMol(mol)
-        else:
-            smiles = input_data.strip()
+                    try:
+                        Chem.SanitizeMol(mol)
+                    except Exception:
+                        pass
+            if not mol:
+                try:
+                    mol = Chem.MolFromPDBBlock(input_data)
+                except Exception:
+                    mol = None
+
+        # 5. SMILES string
+        if not mol:
+            smiles = trimmed
             mol = Chem.MolFromSmiles(smiles)
 
         if not mol:
-            raise ValueError("Failed to parse ligand structure from provided input.")
+            raise ValueError("Failed to parse ligand structure from provided input (supported: SMILES, SDF, MOL, MOL2, PDB, PDBQT, CIF).")
 
         # Ensure hydrogens are present
         mol_h = Chem.AddHs(mol)
@@ -154,7 +236,6 @@ class DockingEngine:
         params.randomSeed = 42
         embed_result = AllChem.EmbedMolecule(mol_h, params)
         if embed_result != 0:
-            # Fallback with random coordinates
             AllChem.EmbedMolecule(mol_h, useRandomCoords=True)
 
         # Energy minimization with MMFF94

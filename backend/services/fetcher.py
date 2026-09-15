@@ -152,6 +152,18 @@ class StructureFetcher:
         if not pdb_text:
             download_url = f"{RCSB_FILE_URL}/{pdb_id}.pdb"
             pdb_text = _get_text(download_url)
+            if not pdb_text or "ATOM" not in pdb_text:
+                # Fallback to .cif download and convert via gemmi
+                cif_url = f"{RCSB_FILE_URL}/{pdb_id}.cif"
+                cif_text = _get_text(cif_url)
+                if cif_text and ("_atom_site" in cif_text or "data_" in cif_text):
+                    try:
+                        import gemmi
+                        st = gemmi.read_structure_string(cif_text, format=gemmi.CoorFormat.Detect)
+                        pdb_text = st.make_pdb_string()
+                    except Exception as e:
+                        print(f"[RCSB FETCH] CIF fallback conversion failed for {pdb_id}: {e}")
+
             if pdb_text and "ATOM" in pdb_text:
                 with open(cache_pdb, "w", encoding="utf-8") as f:
                     f.write(pdb_text)

@@ -75,17 +75,24 @@ class NarrativeExplainer:
     def _call_llm(data: Dict[str, Any], key: str, provider: str, model: str) -> Optional[str]:
         """Call OpenRouter API with anti-hallucination prompt and DeepSeek model."""
         system_prompt = (
-            f"You are {PROJECT_NAME}'s Academic Pharmacology Explainer for pharmacy and medicinal chemistry students. "
-            "STRICT RULES (Anti-Hallucination Central Directive):\n"
-            "1. You are strictly an EXPLAINER of calculated values, NOT a data source.\n"
+            "You are a Senior Computational Pharmacologist providing an academic research dossier briefing.\n"
+            "CRITICAL CONSTRAINTS:\n"
+            "1. Output ONLY the final Markdown formatted briefing. Do NOT output any internal chain-of-thought, planning notes, or restatements of instructions.\n"
             "2. NEVER invent, hallucinate, or alter any numbers, scores, or constants.\n"
             "3. Every numeric claim (binding energy in kcal/mol, Kd in nM, MW, LogP, TPSA, H-bonds) MUST be cited directly from the provided payload.\n"
             "4. If experimental cross-check status is 'Computational Prediction Only', state clearly that this is an unverified simulation without wet-lab assay confirmation.\n"
-            "5. Structure your output in clear markdown sections: (1) Binding Mechanism & Active Site Interactions, "
-            "(2) ADME & Oral Bioavailability Profile, (3) Experimental Validation & Confidence Analysis, (4) Physiological Implications & Target Pathways."
+            "5. Structure your output into four clean sections with markdown headers:\n"
+            "### 1. Binding Mechanism & Active Site Interactions\n"
+            "### 2. ADME & Oral Bioavailability Profile\n"
+            "### 3. Experimental Validation & Confidence Tier\n"
+            "### 4. Physiological Implications & Clinical Context"
         )
 
-        user_content = f"Here is the verified experimental and computational payload for the drug-target docking run:\n```json\n{json.dumps(data, indent=2)}\n```\nProvide a concise, pedagogical pharmacodynamics and pharmacokinetics explanation in 300-500 words."
+        user_content = (
+            f"Here is the verified experimental and computational payload for the drug-target docking run:\n"
+            f"```json\n{json.dumps(data, indent=2)}\n```\n"
+            f"Provide a concise, publication-grade pharmacological evaluation in 300-500 words. Begin directly with the report."
+        )
 
         # OpenRouter endpoint
         if "sk-or-" in key or provider == "openrouter" or (not provider.startswith("gemini") and not key.startswith("AIza")):
@@ -103,7 +110,7 @@ class NarrativeExplainer:
                     {"role": "user", "content": user_content}
                 ],
                 "temperature": 0.2,
-                "max_tokens": 1000
+                "max_tokens": 2000
             }
             resp = requests.post(url, json=body, headers=headers, timeout=45)
             if resp.status_code == 200:
@@ -111,9 +118,11 @@ class NarrativeExplainer:
                 choices = res_json.get("choices", [])
                 if choices:
                     msg = choices[0].get("message", {})
-                    content = msg.get("content")
-                    if not content and msg.get("reasoning"):
-                        content = msg.get("reasoning")
+                    content = msg.get("content") or ""
+                    # Check if model returned scratchpad thoughts instead of final report
+                    if not content or "The user wants" in content or "Let me structure" in content or content.strip().startswith("Key data points:"):
+                        print("[NARRATIVE] Model returned internal reasoning scratchpad. Using clean deterministic engine.")
+                        return None
                     if content and content.strip():
                         return content.strip()
             else:

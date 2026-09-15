@@ -217,6 +217,27 @@ class BindoraApp {
       batchBtn.addEventListener("click", () => this.runBatchScreening());
     }
 
+    // Batch Library Presets
+    const librarySelect = document.getElementById("select-batch-library");
+    const batchTextarea = document.getElementById("input-batch-candidates");
+    if (librarySelect && batchTextarea) {
+      const presets = {
+        nsaid: "Aspirin, CC(=O)Oc1ccccc1C(=O)O\nIbuprofen, CC(C)Cc1ccc(cc1)C(C)C(=O)O\nNaproxen, COc1ccc2cc(ccc2c1)C(C)C(=O)O\nCelecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F",
+        kinase: "Imatinib, Cc1ccc(cc1Nc2nccc(n2)c3cccnc3)NC(=O)c4ccc(cc4)CN5CCN(CC5)C\nGefitinib, COc1cc2ncnc(c2cc1OCCCN3CCOCC3)Nc4ccc(c(c4)Cl)F\nErlotinib, COCCOC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC=CC(=C3)C#C)OCCOC\nDasatinib, Cc1cccc(c1Cl)NC(=O)c2cnc(s2)Nc3cc(nc(n3)C)N4CCN(CC4)CCO",
+        antiviral: "Remdesivir, CCC(CC)COC(=O)C(C)NP(=O)(OCC1C(C(C(O1)C#N)O)O)Oc2ccccc2\nFavipiravir, C1=C(N=C(C(=O)N1)C(=O)N)F\nMolnupiravir, CC(C)C(=O)OCC1C(C(C(O1)N2C=CC(=NO)NC2=O)O)O\nRibavirin, C1C(C(C(O1)N2C=NC(=N2)C(=O)N)O)O",
+        clear: ""
+      };
+      librarySelect.addEventListener("change", (e) => {
+        const val = e.target.value;
+        if (presets[val] !== undefined) {
+          batchTextarea.value = presets[val];
+          if (val !== "clear") {
+            this.showToast(`Loaded ${librarySelect.options[librarySelect.selectedIndex].text}`, "info");
+          }
+        }
+      });
+    }
+
     // Settings removed — API keys are pre-configured server-side
 
     // Firebase Auth Modal & Events
@@ -1125,7 +1146,11 @@ class BindoraApp {
 
     if (ligName && this.state.ligand) {
       const l = this.state.ligand;
-      ligName.textContent = `${l.name || "Custom Ligand"} (${l.formula || l.canonical_smiles || "Structure loaded"})`;
+      let cleanName = l.name || "Custom Ligand";
+      if (cleanName.startsWith("Conformer3D_COMPOUND_CID_")) {
+        cleanName = "PubChem Compound #" + cleanName.replace("Conformer3D_COMPOUND_CID_", "");
+      }
+      ligName.textContent = `${cleanName} (${l.formula || l.canonical_smiles || "Structure loaded"})`;
     }
     if (targetName && this.state.receptor) {
       const r = this.state.receptor;
@@ -1145,24 +1170,24 @@ class BindoraApp {
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
           <div class="p-2 bg-slate-900/60 rounded border border-slate-800">
             <span class="text-slate-400 block">Binding Free Energy</span>
-            <span class="text-cyan-400 font-bold">\${d.top_pose?.affinity_kcal || "—"} kcal/mol</span>
+            <span class="text-cyan-400 font-bold">${d.top_pose?.affinity_kcal || "—"} kcal/mol</span>
           </div>
           <div class="p-2 bg-slate-900/60 rounded border border-slate-800">
             <span class="text-slate-400 block">Theoretical Kd</span>
-            <span class="text-emerald-400 font-bold">\${thermo.theoretical_kd_nm || "—"} nM</span>
+            <span class="text-emerald-400 font-bold">${thermo.theoretical_kd_nm || "—"} nM</span>
           </div>
           <div class="p-2 bg-slate-900/60 rounded border border-slate-800">
             <span class="text-slate-400 block">H-Bonds</span>
-            <span class="text-yellow-400 font-bold">\${contacts.total_hbond_count || 0}</span>
+            <span class="text-yellow-400 font-bold">${contacts.total_hbond_count || 0}</span>
           </div>
           <div class="p-2 bg-slate-900/60 rounded border border-slate-800">
             <span class="text-slate-400 block">Lipinski Status</span>
-            <span class="\${lip.status === 'Pass' ? 'text-emerald-400' : 'text-amber-400'} font-bold">\${lip.status || "—"} (\${lip.violations_count || 0} violations)</span>
+            <span class="${lip.status === 'Pass' ? 'text-emerald-400' : 'text-amber-400'} font-bold">${lip.status || "—"} (${lip.violations_count || 0} violations)</span>
           </div>
         </div>
-        <div class="mt-2 px-3 py-2 rounded border \${xcheck.is_cross_checked ? 'border-emerald-800 bg-emerald-950/30' : 'border-amber-800 bg-amber-950/30'} text-xs">
-          <span class="font-bold">\${xcheck.is_cross_checked ? '✓' : '⚠'} \${xcheck.status_badge || 'Computational Prediction Only'}</span>
-          \${xcheck.summary_note ? '<p class="text-slate-400 mt-1">' + xcheck.summary_note + '</p>' : ''}
+        <div class="mt-2 px-3 py-2 rounded border ${xcheck.is_cross_checked ? 'border-emerald-800 bg-emerald-950/30' : 'border-amber-800 bg-amber-950/30'} text-xs">
+          <span class="font-bold">${xcheck.is_cross_checked ? '✓' : '⚠'} ${xcheck.status_badge || 'Computational Prediction Only'}</span>
+          ${xcheck.summary_note ? '<p class="text-slate-400 mt-1">' + xcheck.summary_note + '</p>' : ''}
         </div>
       `;
     }
@@ -1175,10 +1200,10 @@ class BindoraApp {
     const uniprot = this.state.receptor?.uniprot;
     if (uniprot && (uniprot.function || uniprot.subcellular_location)) {
       container.innerHTML = `
-        \${uniprot.function ? '<div><span class="font-bold text-slate-200">Biological Function:</span> <span class="text-slate-300">' + uniprot.function + '</span></div>' : ''}
-        \${uniprot.catalytic_activity ? '<div><span class="font-bold text-slate-200">Catalytic Activity:</span> <span class="text-slate-300">' + uniprot.catalytic_activity + '</span></div>' : ''}
-        \${uniprot.subcellular_location ? '<div><span class="font-bold text-slate-200">Subcellular Location:</span> <span class="text-slate-300">' + uniprot.subcellular_location + '</span></div>' : ''}
-        \${uniprot.tissue_specificity ? '<div><span class="font-bold text-slate-200">Tissue Specificity:</span> <span class="text-slate-300">' + uniprot.tissue_specificity + '</span></div>' : ''}
+        ${uniprot.function ? '<div><span class="font-bold text-slate-200">Biological Function:</span> <span class="text-slate-300">' + uniprot.function + '</span></div>' : ''}
+        ${uniprot.catalytic_activity ? '<div><span class="font-bold text-slate-200">Catalytic Activity:</span> <span class="text-slate-300">' + uniprot.catalytic_activity + '</span></div>' : ''}
+        ${uniprot.subcellular_location ? '<div><span class="font-bold text-slate-200">Subcellular Location:</span> <span class="text-slate-300">' + uniprot.subcellular_location + '</span></div>' : ''}
+        ${uniprot.tissue_specificity ? '<div><span class="font-bold text-slate-200">Tissue Specificity:</span> <span class="text-slate-300">' + uniprot.tissue_specificity + '</span></div>' : ''}
       `;
     } else {
       container.innerHTML = '<p class="text-slate-500 italic">No UniProt pathway annotation available for this target. Load a receptor with known annotations to view biological function and signaling cascade details.</p>';
