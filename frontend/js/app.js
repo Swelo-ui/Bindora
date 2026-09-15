@@ -171,32 +171,126 @@ class BindoraApp {
       dockBtn.addEventListener("click", () => this.runDockingPipeline());
     }
 
-    // Viewer controls
+    // Viewer Controls: Camera & Tools
     const resetCamBtn = document.getElementById("btn-reset-cam");
     if (resetCamBtn) {
       resetCamBtn.addEventListener("click", () => this.viewer && this.viewer.resetCamera());
     }
 
+    const spinBtn = document.getElementById("btn-toggle-spin");
+    if (spinBtn) {
+      spinBtn.addEventListener("click", () => this.viewer && this.viewer.toggleSpin());
+    }
+
+    const downloadPngBtn = document.getElementById("btn-download-png");
+    if (downloadPngBtn) {
+      downloadPngBtn.addEventListener("click", () => this.viewer && this.viewer.downloadScreenshot());
+    }
+
+    // Molecular Surface Toggle
     const surfaceToggle = document.getElementById("toggle-surface");
     if (surfaceToggle) {
       surfaceToggle.addEventListener("change", (e) => {
-        if (this.viewer) this.viewer.toggleSurface(e.target.checked);
+        if (this.viewer) {
+          this.viewer.toggleSurface(e.target.checked);
+          if (e.target.checked) {
+            this.showToast(this.state.receptor && this.state.ligand ? "Binding pocket surface displayed" : "Molecular surface displayed", "info");
+          }
+        }
       });
     }
 
+    // Docking Grid Box Toggle & Live Coordinates Sync
+    const getGridCenter = () => ({
+      x: parseFloat(document.getElementById("grid-cx")?.value) || 0,
+      y: parseFloat(document.getElementById("grid-cy")?.value) || 0,
+      z: parseFloat(document.getElementById("grid-cz")?.value) || 0
+    });
+    const getGridSize = () => ({
+      x: parseFloat(document.getElementById("grid-sx")?.value) || 22,
+      y: parseFloat(document.getElementById("grid-sy")?.value) || 22,
+      z: parseFloat(document.getElementById("grid-sz")?.value) || 22
+    });
+
+    const gridBoxToggle = document.getElementById("toggle-gridbox");
+    if (gridBoxToggle) {
+      gridBoxToggle.addEventListener("change", (e) => {
+        if (this.viewer) {
+          this.viewer.settings.showGridBox = e.target.checked;
+          this.viewer.renderGridBox(getGridCenter(), getGridSize(), e.target.checked);
+          if (e.target.checked) this.showToast("3D Docking Grid Box displayed", "info");
+        }
+      });
+    }
+
+    ["grid-cx", "grid-cy", "grid-cz", "grid-sx", "grid-sy", "grid-sz"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener("input", () => {
+          const gToggle = document.getElementById("toggle-gridbox");
+          if (gToggle && gToggle.checked && this.viewer) {
+            this.viewer.renderGridBox(getGridCenter(), getGridSize(), true);
+          }
+        });
+      }
+    });
+
+    // Measure Tool
     const measureToggle = document.getElementById("toggle-measure");
     if (measureToggle) {
       measureToggle.addEventListener("change", (e) => {
-        if (this.viewer) this.viewer.enableMeasurementMode(e.target.checked);
+        if (this.viewer) {
+          this.viewer.enableMeasurementMode(e.target.checked);
+          if (e.target.checked) {
+            this.showToast("Measurement tool enabled: Click two atoms to measure distance in Å", "info");
+          }
+        }
+      });
+    }
+    const clearMeasureBtn = document.getElementById("btn-clear-measure");
+    if (clearMeasureBtn) {
+      clearMeasureBtn.addEventListener("click", () => {
+        if (this.viewer) this.viewer.clearMeasurements();
+        const hudText = document.getElementById("measure-hud-text");
+        if (hudText) hudText.textContent = "📐 Click any atom to begin measurement...";
       });
     }
 
+    // Protein Style Select
     const proteinStyleSelect = document.getElementById("select-protein-style");
     if (proteinStyleSelect) {
       proteinStyleSelect.addEventListener("change", (e) => {
         if (this.viewer) {
           this.viewer.settings.proteinStyle = e.target.value;
           this.viewer.applyProteinStyle();
+          if (!this.state.receptor) {
+            this.showToast("No protein loaded yet. Style will apply when a protein is loaded.", "warning");
+          }
+        }
+      });
+    }
+
+    // Ligand Style Select
+    const ligandStyleSelect = document.getElementById("select-ligand-style");
+    if (ligandStyleSelect) {
+      ligandStyleSelect.addEventListener("change", (e) => {
+        if (this.viewer) {
+          this.viewer.settings.ligandStyle = e.target.value;
+          this.viewer.applyLigandStyle();
+          if (!this.state.ligand) {
+            this.showToast("No ligand loaded yet.", "warning");
+          }
+        }
+      });
+    }
+
+    // Ligand Color Select
+    const ligandColorSelect = document.getElementById("select-ligand-color");
+    if (ligandColorSelect) {
+      ligandColorSelect.addEventListener("change", (e) => {
+        if (this.viewer) {
+          this.viewer.settings.ligandColor = e.target.value;
+          this.viewer.applyLigandStyle();
         }
       });
     }
@@ -792,12 +886,24 @@ class BindoraApp {
     if (this.viewer) {
       this.viewer.clear();
       this.viewer.clearInteractions();
+      this.viewer.clearMeasurements();
+      this.viewer.clearGridBox();
     }
     const emptyState = document.getElementById("viewer-empty-state");
     if (emptyState) emptyState.classList.remove("hidden");
 
     const statusBanner = document.getElementById("docking-status-banner");
     if (statusBanner) statusBanner.classList.add("hidden");
+
+    // Reset toolbar toggle checkboxes
+    const surfToggle = document.getElementById("toggle-surface");
+    if (surfToggle) surfToggle.checked = false;
+    const gBoxToggle = document.getElementById("toggle-gridbox");
+    if (gBoxToggle) gBoxToggle.checked = false;
+    const mToggle = document.getElementById("toggle-measure");
+    if (mToggle) mToggle.checked = false;
+    const mHud = document.getElementById("measure-hud");
+    if (mHud) mHud.classList.add("hidden");
 
     const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
     setTxt("dock-affinity-score", "— kcal/mol");
@@ -900,6 +1006,15 @@ class BindoraApp {
       setVal("grid-sx", p.size?.x || 22);
       setVal("grid-sy", p.size?.y || 22);
       setVal("grid-sz", p.size?.z || 22);
+
+      const gToggle = document.getElementById("toggle-gridbox");
+      if (gToggle && gToggle.checked && this.viewer) {
+        this.viewer.renderGridBox(
+          { x: p.center?.x || 0, y: p.center?.y || 0, z: p.center?.z || 0 },
+          { x: p.size?.x || 22, y: p.size?.y || 22, z: p.size?.z || 22 },
+          true
+        );
+      }
     }
   }
 
