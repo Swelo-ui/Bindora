@@ -1389,12 +1389,13 @@ class BindoraApp {
       const center = { x: getVal("grid-cx", nat.center?.x || 0), y: getVal("grid-cy", nat.center?.y || 0), z: getVal("grid-cz", nat.center?.z || 0) };
       const size = { x: getVal("grid-sx", 22), y: getVal("grid-sy", 22), z: getVal("grid-sz", 22) };
 
+      const exhaustiveness = parseInt(document.getElementById("docking-exhaustiveness")?.value) || 8;
       const res = await BindoraAPI.redockValidate({
         receptor_pdbqt: this.state.receptor.pdbqt_text,
         native_ligand_pdb: nat.pdb_block,
         center: center,
         size: size,
-        exhaustiveness: 8
+        exhaustiveness: exhaustiveness
       });
 
       this.state.redockingValidation = res;

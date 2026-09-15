@@ -556,7 +556,7 @@ class DockingEngine:
                 if s is not None:
                     cmd.extend(["--seed", str(s)])
 
-                process = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+                process = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
                 if process.returncode != 0:
                     err_msg = process.stderr or process.stdout
                     raise RuntimeError(f"AutoDock Vina execution error: {err_msg}")

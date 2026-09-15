@@ -157,7 +157,12 @@ def run_docking():
     receptor_pdb = data.get("receptor_pdb")
     center = data.get("center")
     size = data.get("size")
-    exhaustiveness = int(data.get("exhaustiveness", 8))
+    try:
+        exhaustiveness = int(data.get("exhaustiveness", 8))
+        if exhaustiveness < 1 or exhaustiveness > 64:
+            exhaustiveness = 8
+    except (ValueError, TypeError):
+        exhaustiveness = 8
     num_modes = int(data.get("num_modes", 9))
     replicates = int(data.get("replicates", 1))
     heavy_atoms = int(data.get("heavy_atoms", 20))
@@ -211,7 +216,12 @@ def redock_validate():
     native_ligand_pdb = data.get("native_ligand_pdb")
     center = data.get("center")
     size = data.get("size")
-    exhaustiveness = int(data.get("exhaustiveness", 8))
+    try:
+        exhaustiveness = int(data.get("exhaustiveness", 8))
+        if exhaustiveness < 1 or exhaustiveness > 64:
+            exhaustiveness = 8
+    except (ValueError, TypeError):
+        exhaustiveness = 8
 
     if not receptor_pdbqt or not native_ligand_pdb or not center or not size:
         return jsonify({"error": "Missing required parameters for redocking validation (receptor_pdbqt, native_ligand_pdb, center, size)"}), 400

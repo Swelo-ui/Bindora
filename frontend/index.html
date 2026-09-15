@@ -710,16 +710,17 @@
             <!-- Precision & Replicates Configuration -->
             <div class="grid grid-cols-2 gap-2">
               <div>
-                <label class="text-xs text-slate-400 font-medium">Exhaustiveness:</label>
-                <select id="docking-exhaustiveness" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
+                <label class="text-xs text-slate-500 dark:text-slate-400 font-medium">Exhaustiveness:</label>
+                <select id="docking-exhaustiveness" class="w-full mt-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded p-1.5 text-xs text-slate-800 dark:text-white">
                   <option value="4">4 (Fast Screening)</option>
                   <option value="8" selected>8 (Standard Academic)</option>
                   <option value="16">16 (Publication Grade)</option>
+                  <option value="32">32 (Deep Search / Validation)</option>
                 </select>
               </div>
               <div>
-                <label class="text-xs text-slate-400 font-medium">Sampling Mode:</label>
-                <select id="docking-replicates" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
+                <label class="text-xs text-slate-500 dark:text-slate-400 font-medium">Sampling Mode:</label>
+                <select id="docking-replicates" class="w-full mt-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded p-1.5 text-xs text-slate-800 dark:text-white">
                   <option value="1" selected>Single Seed</option>
                   <option value="3">3 Seeds (Mean ± SD)</option>
                 </select>
@@ -1346,7 +1347,7 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
             </div>
             <p class="text-slate-300 leading-relaxed">
               • Verify search space coordinates (Center X, Y, Z and Box Size). Enable the <strong>Docking Grid Box</strong> checkbox to preview the 3D binding volume.<br>
-              • Select <strong>Exhaustiveness</strong> (4 for rapid screening, 8 for academic standard, 16 for publication-grade precision) and click <strong>Execute 3D Molecular Docking</strong>.<br>
+              • Select <strong>Exhaustiveness</strong> (4 for rapid screening, 8 for academic standard, 16 for publication-grade precision, 32 for deep conformational search / validation) and click <strong>Execute 3D Molecular Docking</strong>.<br>
               • Browse all 9 calculated binding poses with the stepper or click table rows to inspect binding free energy (&Delta;G in kcal/mol), theoretical Kd, hydrogen bonds, and hydrophobic contacts in real-time.
             </p>
           </div>
