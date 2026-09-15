@@ -1,0 +1,32 @@
+# Environment variables and secrets (NEVER COMMIT)
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Binaries and platform-specific executables
+bin/vina.exe
+bin/*.exe
+
+# Data cache and temp files
+data/cache/*
+!data/cache/.gitkeep
+data/benchmarks/cache/*
+
+# IDE and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

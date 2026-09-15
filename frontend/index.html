@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bindora — 3D Drug–Receptor Binding & PK/PD Analyzer</title>
+  
+  <!-- Tailwind CSS via CDN for rapid responsive layout -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Local / Bundled WebGL and Charting Libraries -->
+  <script src="lib/3Dmol-min.js"></script>
+  <script src="lib/chart.min.js"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-cyan-500 selection:text-black">
+
+  <!-- Top Navigation Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Brand & Badges -->
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-extrabold text-lg tracking-tight text-white">Bin<span class="text-cyan-400">dora</span></span>
+            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700">v1.0</span>
+          </div>
+          <p class="text-[11px] text-slate-400 hidden sm:block">3D Molecular Docking & Physiological PK/PD Simulator</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="hidden md:flex space-x-1">
+        <button class="nav-tab active px-3 py-1.5 rounded-lg text-xs font-medium border border-transparent transition-all" data-tab="studio">
+          1. Target & Ligand
+        </button>
+        <button class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium border border-transparent transition-all" data-tab="docking">
+          2. 3D Docking
+        </button>
+        <button class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium border border-transparent transition-all" data-tab="adme">
+          3. PK / ADME
+        </button>
+        <button class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium border border-transparent transition-all" data-tab="crosscheck">
+          4. Cross-Check & PD
+        </button>
+        <button class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium border border-transparent transition-all" data-tab="ai-narrative">
+          5. AI Pharmacologist
+        </button>
+        <button class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium border border-transparent transition-all" data-tab="batch">
+          6. Batch Screening
+        </button>
+        <button class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium border border-transparent transition-all" data-tab="dossier">
+          7. Research Dossier
+        </button>
+      </nav>
+
+      <!-- Engine Status & Settings -->
+      <div class="flex items-center space-x-2">
+        <div id="backend-status-badge" class="px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-800 text-slate-400 border border-slate-700 flex items-center">
+          <span class="inline-block w-2 h-2 rounded-full bg-slate-500 mr-1.5"></span> Connecting...
+        </div>
+        <button id="btn-settings" title="Settings" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Mobile Sub-Nav -->
+  <div class="md:hidden bg-slate-900 border-b border-slate-800 px-4 py-2 flex space-x-2 overflow-x-auto">
+    <button class="nav-tab active text-xs whitespace-nowrap px-2.5 py-1 rounded bg-slate-800 text-cyan-300" data-tab="studio">Studio</button>
+    <button class="nav-tab text-xs whitespace-nowrap px-2.5 py-1 rounded bg-slate-800 text-slate-300" data-tab="docking">3D Docking</button>
+    <button class="nav-tab text-xs whitespace-nowrap px-2.5 py-1 rounded bg-slate-800 text-slate-300" data-tab="adme">PK/ADME</button>
+    <button class="nav-tab text-xs whitespace-nowrap px-2.5 py-1 rounded bg-slate-800 text-slate-300" data-tab="crosscheck">Cross-Check</button>
+    <button class="nav-tab text-xs whitespace-nowrap px-2.5 py-1 rounded bg-slate-800 text-slate-300" data-tab="ai-narrative">AI Report</button>
+    <button class="nav-tab text-xs whitespace-nowrap px-2.5 py-1 rounded bg-slate-800 text-slate-300" data-tab="batch">Batch</button>
+    <button class="nav-tab text-xs whitespace-nowrap px-2.5 py-1 rounded bg-slate-800 text-slate-300" data-tab="dossier">Dossier</button>
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ==================== TAB 1: TARGET & LIGAND STUDIO ==================== -->
+    <section id="tab-studio" class="tab-pane space-y-6">
+      <!-- Welcome / Benchmark Bar -->
+      <div class="glass-panel p-5 rounded-xl border border-slate-800">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+            <h2 class="text-sm font-bold uppercase tracking-wider text-white">1-Click Curated Benchmark Case Studies</h2>
+          </div>
+          <span class="text-[11px] text-slate-400">Zero download wait time &bull; Pre-configured binding sites</span>
+        </div>
+        <div id="benchmark-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <!-- Populated by app.js -->
+        </div>
+      </div>
+
+      <!-- Search & Import Section -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Ligand Search Panel -->
+        <div class="glass-panel p-5 rounded-xl border border-slate-800 space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+              </svg>
+              <h3 class="font-bold text-sm text-white">Ligand / Small Molecule</h3>
+            </div>
+            <span class="text-xs font-mono text-cyan-400">PubChem REST API</span>
+          </div>
+
+          <div class="flex space-x-2">
+            <input id="input-search-pubchem" type="text" placeholder="Search drug name (e.g., Imatinib, Aspirin, Erlotinib)..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+            <button id="btn-search-pubchem" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-medium transition">Search</button>
+          </div>
+
+          <!-- Ligand Live Preview Card -->
+          <div id="card-ligand-info" class="p-4 rounded-lg bg-slate-900/70 border border-slate-800">
+            <p class="text-xs text-slate-400 italic">No ligand loaded yet.</p>
+          </div>
+        </div>
+
+        <!-- Receptor Search Panel -->
+        <div class="glass-panel p-5 rounded-xl border border-slate-800 space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+              </svg>
+              <h3 class="font-bold text-sm text-white">Receptor / Target Protein</h3>
+            </div>
+            <span class="text-xs font-mono text-emerald-400">RCSB PDB REST API</span>
+          </div>
+
+          <div class="flex space-x-2">
+            <input id="input-search-rcsb" type="text" placeholder="PDB code (e.g. 1IEP, 1CX2) or protein name..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            <button id="btn-search-rcsb" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition">Search</button>
+          </div>
+
+          <!-- Receptor Live Preview Card -->
+          <div id="card-receptor-info" class="p-4 rounded-lg bg-slate-900/70 border border-slate-800">
+            <p class="text-xs text-slate-400 italic">No receptor loaded yet.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Action Button -->
+      <div class="flex justify-end pt-2">
+        <button onclick="window.app.switchTab('docking')" class="px-6 py-2.5 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-semibold shadow-lg shadow-cyan-600/25 transition flex items-center space-x-2">
+          <span>Proceed to 3D Molecular Docking</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: 3D DOCKING & VIEWER ==================== -->
+    <section id="tab-docking" class="tab-pane hidden space-y-6">
+      
+      <!-- Top Metrics Strip -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="glass-panel p-4 rounded-xl border border-slate-800">
+          <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">Binding Free Energy (ΔG)</span>
+          <span id="dock-affinity-score" class="text-2xl font-extrabold text-cyan-400 font-mono mt-1 block">— kcal/mol</span>
+          <span class="text-[10px] text-slate-500">AutoDock Vina score</span>
+        </div>
+        <div class="glass-panel p-4 rounded-xl border border-slate-800">
+          <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">Theoretical Kd</span>
+          <span id="dock-kd-score" class="text-2xl font-extrabold text-emerald-400 font-mono mt-1 block">— nM</span>
+          <span class="text-[10px] text-slate-500">Thermodynamic exp(ΔG/RT)</span>
+        </div>
+        <div class="glass-panel p-4 rounded-xl border border-slate-800">
+          <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">Ligand Efficiency (LE)</span>
+          <span id="dock-le-score" class="text-2xl font-extrabold text-purple-400 font-mono mt-1 block">—</span>
+          <span class="text-[10px] text-slate-500">kcal/mol / heavy atom (≥0.3 ideal)</span>
+        </div>
+        <div class="glass-panel p-4 rounded-xl border border-slate-800">
+          <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">Hydrogen Bonds</span>
+          <span id="dock-hbonds-count" class="text-2xl font-extrabold text-yellow-400 font-mono mt-1 block">—</span>
+          <span class="text-[10px] text-slate-500">&le; 3.5 Å donor-acceptor contacts</span>
+        </div>
+      </div>
+
+      <!-- Main Viewer & Controls Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left 2 Cols: 3Dmol WebGL Viewer -->
+        <div class="lg:col-span-2 flex flex-col space-y-3">
+          
+          <!-- Viewer Toolbar -->
+          <div class="glass-panel px-4 py-2 rounded-lg border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+            
+            <div class="flex items-center space-x-3">
+              <label class="text-slate-400">Protein Style:</label>
+              <select id="select-protein-style" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200">
+                <option value="cartoon">Cartoon Ribbon</option>
+                <option value="stick">All Atoms (Stick)</option>
+                <option value="ribbon">Secondary Ribbon</option>
+              </select>
+            </div>
+
+            <div class="flex items-center space-x-4">
+              <label class="flex items-center space-x-1.5 cursor-pointer text-slate-300">
+                <input id="toggle-surface" type="checkbox" class="rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0">
+                <span>Binding Pocket Surface</span>
+              </label>
+              
+              <label class="flex items-center space-x-1.5 cursor-pointer text-slate-300">
+                <input id="toggle-measure" type="checkbox" class="rounded bg-slate-900 border-slate-700 text-rose-500 focus:ring-0">
+                <span>Measure Tool</span>
+              </label>
+
+              <button id="btn-reset-cam" title="Reset Viewpoint" class="p-1 text-slate-400 hover:text-white transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+              </button>
+            </div>
+
+          </div>
+
+          <!-- 3Dmol Container -->
+          <div id="viewport-container" class="border border-slate-800 shadow-2xl relative">
+            <div id="gldiv"></div>
+            
+            <!-- Floating Pose Stepper on Top of Viewer -->
+            <div class="absolute bottom-4 left-4 glass-panel px-3 py-1.5 rounded-lg border border-slate-700/80 flex items-center space-x-2 text-xs">
+              <button id="btn-prev-pose" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-cyan-300 transition">&larr;</button>
+              <span id="dock-current-mode-label" class="font-mono text-white font-semibold">Mode 1 / 9</span>
+              <button id="btn-next-pose" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-cyan-300 transition">&rarr;</button>
+            </div>
+
+            <!-- Interactivity Hint -->
+            <div class="absolute top-4 right-4 bg-slate-950/70 backdrop-blur px-2.5 py-1 rounded text-[11px] text-slate-400 border border-slate-800">
+              Left-drag: Rotate &bull; Scroll: Zoom &bull; Right-drag: Pan
+            </div>
+          </div>
+
+          <!-- Interacting Residues Chips -->
+          <div class="glass-panel p-3 rounded-lg border border-slate-800">
+            <span class="text-xs text-slate-400 font-semibold block mb-2">Interacting Active Site Residues:</span>
+            <div id="dock-interacting-residues" class="flex flex-wrap gap-1.5">
+              <span class="text-xs text-slate-500 italic">Run docking to analyze active pocket contacts</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right 1 Col: Docking Configuration & Pose Table -->
+        <div class="space-y-4">
+          
+          <!-- Run Docking Card -->
+          <div class="glass-panel p-5 rounded-xl border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-sm text-white">AutoDock Vina Engine</h3>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">Native CPU</span>
+            </div>
+
+            <!-- Grid Box Coords -->
+            <div class="space-y-2">
+              <label class="text-xs text-slate-400 font-medium">Grid Box Center (Å):</label>
+              <div class="grid grid-cols-3 gap-2 font-mono text-xs">
+                <input id="grid-cx" type="number" step="0.1" value="0.0" class="bg-slate-900 border border-slate-700 rounded p-1.5 text-center text-white" title="Center X">
+                <input id="grid-cy" type="number" step="0.1" value="0.0" class="bg-slate-900 border border-slate-700 rounded p-1.5 text-center text-white" title="Center Y">
+                <input id="grid-cz" type="number" step="0.1" value="0.0" class="bg-slate-900 border border-slate-700 rounded p-1.5 text-center text-white" title="Center Z">
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <label class="text-xs text-slate-400 font-medium">Grid Box Size (Å):</label>
+              <div class="grid grid-cols-3 gap-2 font-mono text-xs">
+                <input id="grid-sx" type="number" step="1" value="22" class="bg-slate-900 border border-slate-700 rounded p-1.5 text-center text-white" title="Size X">
+                <input id="grid-sy" type="number" step="1" value="22" class="bg-slate-900 border border-slate-700 rounded p-1.5 text-center text-white" title="Size Y">
+                <input id="grid-sz" type="number" step="1" value="22" class="bg-slate-900 border border-slate-700 rounded p-1.5 text-center text-white" title="Size Z">
+              </div>
+            </div>
+
+            <div>
+              <label class="text-xs text-slate-400 font-medium">Exhaustiveness (Precision):</label>
+              <select id="docking-exhaustiveness" class="w-full mt-1 bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
+                <option value="4">4 (Fast - Low-end hardware safe)</option>
+                <option value="8" selected>8 (Standard Academic Default)</option>
+                <option value="16">16 (High Precision Research)</option>
+              </select>
+            </div>
+
+            <!-- Big Run Button -->
+            <button id="btn-run-docking" class="w-full py-3 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-bold shadow-lg shadow-cyan-600/30 transition flex items-center justify-center space-x-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+              <span>Execute 3D Molecular Docking</span>
+            </button>
+          </div>
+
+          <!-- Poses Ranked Table -->
+          <div class="glass-panel p-4 rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <h4 class="font-bold text-xs text-white">Calculated Binding Poses</h4>
+              <span class="text-[10px] text-slate-400">Click row to preview</span>
+            </div>
+            <div class="max-h-56 overflow-y-auto">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-slate-900/80 text-slate-400 font-medium border-b border-slate-800">
+                  <tr>
+                    <th class="px-3 py-1.5">Mode</th>
+                    <th class="px-3 py-1.5">ΔG (kcal)</th>
+                    <th class="px-3 py-1.5">RMSD l.b.</th>
+                    <th class="px-3 py-1.5">RMSD u.b.</th>
+                  </tr>
+                </thead>
+                <tbody id="pose-table-rows" class="divide-y divide-slate-800/60">
+                  <tr><td colspan="4" class="px-3 py-4 text-center text-slate-500 italic">No docking run executed yet</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ==================== TAB 3: PHARMACOKINETICS & ADME ==================== -->
+    <section id="tab-adme" class="tab-pane hidden space-y-6">
+      
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <div>
+          <h2 class="text-lg font-bold text-white">Pharmacokinetic (ADME) & Drug-Likeness Profiling</h2>
+          <p class="text-xs text-slate-400">Rigorous physicochemical and oral bioavailability calculations via RDKit Cheminformatics Engine</p>
+        </div>
+        <div id="adme-lipinski-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700">
+          Lipinski: Pending
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Left: Lipinski Radar Chart -->
+        <div class="glass-panel p-5 rounded-xl border border-slate-800 flex flex-col items-center">
+          <h3 class="font-bold text-sm text-white mb-2 self-start">Bioavailability Radar Space</h3>
+          <p class="text-xs text-slate-400 mb-4 self-start">Visualizing candidate compliance within the drug-like pharmaceutical boundary</p>
+          <div class="w-full h-72 max-w-md relative">
+            <canvas id="chart-lipinski-radar"></canvas>
+          </div>
+        </div>
+
+        <!-- Right: ADME Cards Grid -->
+        <div class="grid grid-cols-2 gap-4">
+          
+          <div class="glass-panel p-4 rounded-xl border border-slate-800">
+            <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">GI Absorption</span>
+            <span id="adme-gi-val" class="text-xl font-bold text-cyan-400 mt-1 block">—</span>
+            <span class="text-[10px] text-slate-500">BOILED-Egg model (Egan et al.)</span>
+          </div>
+
+          <div class="glass-panel p-4 rounded-xl border border-slate-800">
+            <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">BBB Permeability</span>
+            <span id="adme-bbb-val" class="text-xl font-bold text-purple-400 mt-1 block">—</span>
+            <span class="text-[10px] text-slate-500">Clark CNS penetration heuristic</span>
+          </div>
+
+          <div class="glass-panel p-4 rounded-xl border border-slate-800">
+            <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">Plasma Protein Binding</span>
+            <span id="adme-ppb-val" class="text-xl font-bold text-emerald-400 mt-1 block">—</span>
+            <span class="text-[10px] text-slate-500">Lipophilic albumin binding tier</span>
+          </div>
+
+          <div class="glass-panel p-4 rounded-xl border border-slate-800">
+            <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">PAINS Filter</span>
+            <span id="adme-pains-val" class="text-xl font-bold text-emerald-400 mt-1 block">—</span>
+            <span class="text-[10px] text-slate-500">Pan-Assay interference alerts</span>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Formula References -->
+      <div class="glass-panel p-4 rounded-xl border border-slate-800 text-xs text-slate-400 space-y-1">
+        <span class="font-bold text-slate-300 block mb-1">Scientific Methodology & Grounded Descriptors:</span>
+        <p>&bull; <strong>Lipinski's Rule of 5:</strong> MW &le; 500 Da, MolLogP &le; 5.0, H-Bond Donors &le; 5, H-Bond Acceptors &le; 10 (Pfizer, 1997).</p>
+        <p>&bull; <strong>Veber Criteria:</strong> Rotatable Bonds &le; 10, Topological Polar Surface Area (TPSA) &le; 140 Å² (GSK, 2002).</p>
+        <p>&bull; <strong>Pan-Assay Interference (PAINS):</strong> Substructure catalog screening against frequent false-positive chemotypes (Baell & Holloway, 2010).</p>
+      </div>
+
+    </section>
+
+    <!-- ==================== TAB 4: EXPERIMENTAL CROSS-CHECK & PD ==================== -->
+    <section id="tab-crosscheck" class="tab-pane hidden space-y-6">
+      
+      <div class="pb-2 border-b border-slate-800">
+        <h2 class="text-lg font-bold text-white">Experimental Bioactivity Cross-Check & Virtual Physiology</h2>
+        <p class="text-xs text-slate-400">Comparing computational predictions against curated wet-lab bioactivity records in ChEMBL and UniProt</p>
+      </div>
+
+      <!-- Crosscheck Badge & Details Container -->
+      <div id="crosscheck-container">
+        <div class="p-6 rounded-xl border border-slate-800 bg-slate-900/50 text-center">
+          <p class="text-xs text-slate-400 italic">Execute docking or load a benchmark to trigger ChEMBL experimental verification.</p>
+        </div>
+      </div>
+
+      <!-- Virtual Physiology / Downstream Pathway Map -->
+      <div class="glass-panel p-5 rounded-xl border border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-sm text-white">Target Pathway & Physiological Cascade</h3>
+          <span class="text-xs font-mono text-cyan-400">UniProt REST Annotation</span>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Computational modeling of downstream pharmacology approximates receptor occupancy effects without the requirement of live animal sacrifice.
+          Binding at the target cleft disrupts physiological catalytic phosphotransfer or endogenous agonist binding, propagating signal attenuation down canonical cascades.
+        </p>
+      </div>
+
+    </section>
+
+    <!-- ==================== TAB 5: AI RESEARCH PHARMACOLOGIST ==================== -->
+    <section id="tab-ai-narrative" class="tab-pane hidden space-y-6">
+      
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <div>
+          <h2 class="text-lg font-bold text-white">AI Research Pharmacologist</h2>
+          <p class="text-xs text-slate-400">Pedagogical plain-language analysis strictly grounded on calculated scientific metrics</p>
+        </div>
+        <div class="flex items-center space-x-2 text-xs text-emerald-400 font-semibold">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span>Zero-Hallucination Guardrails Active</span>
+        </div>
+      </div>
+
+      <!-- Narrative Content -->
+      <div class="glass-panel p-6 rounded-xl border border-slate-800">
+        <div id="narrative-report-content">
+          <p class="text-xs text-slate-400 italic">Run docking to generate a comprehensive pharmacological narrative.</p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ==================== TAB 6: BATCH SCREENING ==================== -->
+    <section id="tab-batch" class="tab-pane hidden space-y-6">
+      
+      <div class="pb-2 border-b border-slate-800">
+        <h2 class="text-lg font-bold text-white">Multi-Ligand Comparative Batch Screening</h2>
+        <p class="text-xs text-slate-400">Screen candidate compound libraries against the current target receptor and rank by binding affinity</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Candidate Library Input -->
+        <div class="glass-panel p-5 rounded-xl border border-slate-800 space-y-3">
+          <label class="text-xs font-bold text-white block">Candidate Compounds (Name, SMILES):</label>
+          <textarea id="input-batch-candidates" rows="8" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500">Aspirin, CC(=O)Oc1ccccc1C(=O)O
+Ibuprofen, CC(C)Cc1ccc(cc1)C(C)C(=O)O
+Naproxen, COc1ccc2cc(ccc2c1)C(C)C(=O)O
+Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
+          
+          <button id="btn-run-batch" class="w-full py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition flex items-center justify-center space-x-2">
+            <span>Run Batch Virtual Screening</span>
+          </button>
+        </div>
+
+        <!-- Ranked Leaderboard Table -->
+        <div class="lg:col-span-2 glass-panel p-5 rounded-xl border border-slate-800 space-y-3">
+          <h3 class="font-bold text-sm text-white">Comparative Ranking Matrix</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left border border-slate-800 rounded-lg">
+              <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+                <tr>
+                  <th class="p-3 text-center">Rank</th>
+                  <th class="p-3">Candidate</th>
+                  <th class="p-3">ΔG (kcal/mol)</th>
+                  <th class="p-3">Kd (nM)</th>
+                  <th class="p-3">LE (kcal/atom)</th>
+                  <th class="p-3">H-Bonds</th>
+                  <th class="p-3">Lipinski</th>
+                </tr>
+              </thead>
+              <tbody id="batch-leaderboard-rows" class="divide-y divide-slate-800 font-mono">
+                <tr><td colspan="7" class="text-center p-6 text-xs text-slate-500 italic">Click "Run Batch Virtual Screening" to dock candidate library.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ==================== TAB 7: RESEARCH DOSSIER & EXPORT ==================== -->
+    <section id="tab-dossier" class="tab-pane hidden space-y-6">
+      
+      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+        <div>
+          <h2 class="text-lg font-bold text-white">Academic Research Dossier</h2>
+          <p class="text-xs text-slate-400">Formal report suitable for M.Pharm coursework submission or early-stage computational citation</p>
+        </div>
+        <button id="btn-export-dossier" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center space-x-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+          <span>Print / Export PDF Dossier</span>
+        </button>
+      </div>
+
+      <div class="glass-panel p-8 rounded-xl border border-slate-800 space-y-6 text-slate-200">
+        <div class="border-b border-slate-700/80 pb-4">
+          <span class="text-xs font-mono text-cyan-400 uppercase tracking-widest">Bindora Computational Pharmacology Dossier</span>
+          <h1 class="text-2xl font-black text-white mt-1">3D Molecular Docking & Pharmacokinetic Evaluation</h1>
+          <p class="text-xs text-slate-400 mt-1">Generated via AutoDock Vina v1.2.7 & RDKit Cheminformatics Engine</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 text-xs font-mono">
+          <div class="p-3 bg-slate-900/60 rounded border border-slate-800">
+            <span class="text-slate-400 block">Investigational API / Ligand</span>
+            <span class="text-white font-bold text-sm">Aspirin (Acetylsalicylic acid)</span>
+          </div>
+          <div class="p-3 bg-slate-900/60 rounded border border-slate-800">
+            <span class="text-slate-400 block">Biological Target</span>
+            <span class="text-white font-bold text-sm">Cyclooxygenase-2 (COX-2, PDB: 1CX2)</span>
+          </div>
+        </div>
+
+        <div class="text-xs space-y-2 leading-relaxed">
+          <h4 class="font-bold text-slate-200 uppercase text-xs tracking-wider">Methodology & Attribution</h4>
+          <p>This report documents a computational docking simulation executed using AutoDock Vina (Scripps CCSB). Physicochemical descriptors were derived strictly using RDKit's topological and empirical rule catalogs. Bioactivity validation was cross-checked with the European Bioinformatics Institute (EMBL-EBI) ChEMBL repository.</p>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Settings Modal -->
+  <div id="modal-settings" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-base text-white">Bindora Settings & AI Keys</h3>
+        <button id="btn-close-settings" class="text-slate-400 hover:text-white">&times;</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="font-semibold text-slate-300 block mb-1">OpenRouter / Gemini API Key (Optional):</label>
+          <input id="input-api-key" type="password" placeholder="sk-or-v1-... or AIza..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-cyan-500">
+          <p class="text-[11px] text-slate-400 mt-1.5">
+            If left blank, Bindora automatically uses its built-in, deterministic, offline rule-based pharmacology reasoning engine at <strong>$0 recurring cost</strong>.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2 border-t border-slate-800">
+        <button id="btn-save-settings" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold transition">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-slate-950 py-4 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <span>Bindora &bull; Research & Educational Computational Pharmacology</span>
+      <span class="font-mono text-[11px] text-slate-600">CC BY-SA 3.0 ChEMBL &bull; CC0 RCSB PDB &bull; PubChem PUG REST</span>
+    </div>
+  </footer>
+
+  <!-- Main Application JavaScript Modules -->
+  <script src="js/api.js"></script>
+  <script src="js/viewer.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

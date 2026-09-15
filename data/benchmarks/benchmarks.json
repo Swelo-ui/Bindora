@@ -1,0 +1,38 @@
+[
+  {
+    "id": "imatinib_bcrabl",
+    "drug_name": "Imatinib",
+    "target_name": "BCR-ABL1 Tyrosine Kinase",
+    "pdb_id": "1IEP",
+    "indication": "Chronic Myeloid Leukemia (CML)",
+    "mechanism": "Type II ATP-competitive kinase inhibitor that stabilizes the inactive DFG-out conformation.",
+    "smiles": "Cc1ccc(cc1Nc2nccc(n2)c3cccnc3)NC(=O)c4ccc(cc4)CN5CCN(CC5)C"
+  },
+  {
+    "id": "aspirin_cox2",
+    "drug_name": "Aspirin",
+    "target_name": "Cyclooxygenase-2 (COX-2)",
+    "pdb_id": "1CX2",
+    "indication": "Pain, Fever, and Inflammatory Disorders",
+    "mechanism": "Inactivates prostaglandin endoperoxide synthase by steric hindrance and active site Ser530 interaction.",
+    "smiles": "CC(=O)Oc1ccccc1C(=O)O"
+  },
+  {
+    "id": "gefitinib_egfr",
+    "drug_name": "Gefitinib",
+    "target_name": "Epidermal Growth Factor Receptor (EGFR)",
+    "pdb_id": "2ITY",
+    "indication": "Non-Small Cell Lung Cancer (NSCLC)",
+    "mechanism": "4-Anilinoquinazoline ATP-competitive inhibitor binding the hinge region Met793 of EGFR kinase.",
+    "smiles": "COc1cc2ncnc(c2cc1OCCCN3CCOCC3)Nc4ccc(c(c4)Cl)F"
+  },
+  {
+    "id": "remdesivir_rdrp",
+    "drug_name": "Remdesivir (GS-441524)",
+    "target_name": "SARS-CoV-2 RdRp",
+    "pdb_id": "7BV2",
+    "indication": "Antiviral RNA synthesis termination",
+    "mechanism": "Adenosine nucleotide analog causing non-obligate delayed chain termination during viral replication.",
+    "smiles": "C1=CC2=C(C(=N1)N)N=CN2C3C(C(C(O3)CO)O)(C#N)O"
+  }
+]
