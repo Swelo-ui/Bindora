@@ -16,7 +16,7 @@ class BindoraFirebase {
       projectId: "bindora-1db62",
       storageBucket: "bindora-1db62.firebasestorage.app",
       messagingSenderId: "615327811618",
-      appId: "1:615327811618:web:acce08dbead01dcf98227b",
+      appId: "1:615327811618:web:3d5e4eda9b24476f89c87b",
       measurementId: "G-ZN1340CMFE"
     };
 

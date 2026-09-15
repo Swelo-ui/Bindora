@@ -1,6 +1,6 @@
 import os
 import json
-import urllib.request
+import requests
 from typing import Dict, Any, Optional
 import hashlib
 from backend.config import OPENROUTER_API_KEY, OPENROUTER_MODEL, GEMINI_API_KEY, CACHE_DIR, PROJECT_NAME
@@ -85,7 +85,7 @@ class NarrativeExplainer:
             "(2) ADME & Oral Bioavailability Profile, (3) Experimental Validation & Confidence Analysis, (4) Physiological Implications & Target Pathways."
         )
 
-        user_content = f"Here is the verified experimental and computational payload for the drug-target docking run:\n```json\n{json.dumps(data, indent=2)}\n```\nProvide a comprehensive, pedagogical pharmacodynamics and pharmacokinetics explanation."
+        user_content = f"Here is the verified experimental and computational payload for the drug-target docking run:\n```json\n{json.dumps(data, indent=2)}\n```\nProvide a concise, pedagogical pharmacodynamics and pharmacokinetics explanation in 300-500 words."
 
         # OpenRouter endpoint
         if "sk-or-" in key or provider == "openrouter" or (not provider.startswith("gemini") and not key.startswith("AIza")):
@@ -102,12 +102,22 @@ class NarrativeExplainer:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_content}
                 ],
-                "temperature": 0.2
+                "temperature": 0.2,
+                "max_tokens": 1000
             }
-            req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers)
-            with urllib.request.urlopen(req, timeout=25) as resp:
-                res_json = json.loads(resp.read().decode("utf-8"))
-                return res_json["choices"][0]["message"]["content"]
+            resp = requests.post(url, json=body, headers=headers, timeout=45)
+            if resp.status_code == 200:
+                res_json = resp.json()
+                choices = res_json.get("choices", [])
+                if choices:
+                    msg = choices[0].get("message", {})
+                    content = msg.get("content")
+                    if not content and msg.get("reasoning"):
+                        content = msg.get("reasoning")
+                    if content and content.strip():
+                        return content.strip()
+            else:
+                print(f"[NARRATIVE] OpenRouter HTTP error {resp.status_code}: {resp.text[:200]}")
         
         return None
 
