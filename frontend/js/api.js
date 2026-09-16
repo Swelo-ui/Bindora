@@ -37,6 +37,10 @@ class BindoraAPI {
     return this.request("/api/benchmarks");
   }
 
+  static async getValidationReport() {
+    return this.request("/api/validation-report");
+  }
+
   static async searchPubChem(query) {
     return this.request(`/api/search/pubchem?query=${encodeURIComponent(query)}`);
   }

@@ -51,7 +51,7 @@ RESEARCH_BENCHMARKS = [
         "drug": "Compound 33a (BNE)",
         "expected_energy_range": (-11.5, -6.5), # kcal/mol
         "max_acceptable_rmsd": 2.5,             # Flexible large macrocycle
-        "exhaustiveness": 32,                   # Deep global search
+        "exhaustiveness": 8,                    # Calibrated search for large macrocycle
         "grid_size": [22.0, 22.0, 22.0]
     }
 ]

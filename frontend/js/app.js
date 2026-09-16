@@ -57,6 +57,13 @@ class BindoraApp {
       console.warn("Could not fetch benchmarks:", e);
     }
 
+    // 4b. Fetch live empirical validation reports
+    try {
+      this.loadValidationReportUI();
+    } catch (e) {
+      console.warn("Could not load validation report:", e);
+    }
+
     // 5. Clean live state on startup (benchmarks are available above for 1-click exploration if user chooses)
     this.updateStudioCards();
 
@@ -923,6 +930,92 @@ class BindoraApp {
         <p class="benchmark-case-desc text-[11px] text-slate-400 mt-1 line-clamp-2">${bm.mechanism}</p>
       </div>
     `).join("");
+  }
+
+  async loadValidationReportUI() {
+    try {
+      const data = await BindoraAPI.getValidationReport();
+      if (!data) return;
+
+      const { validation_report, flagship_targets } = data;
+      const hsg = flagship_targets?.["1HSG"];
+      const aq1 = flagship_targets?.["1AQ1"];
+      const sumStats = validation_report?.summary_statistics;
+
+      // Update KPI Stat Cards
+      const kpiAq1 = document.getElementById("wp-kpi-1aq1-rmsd");
+      if (kpiAq1 && aq1?.mode1_rmsd_angstroms !== undefined) {
+        kpiAq1.textContent = `${aq1.mode1_rmsd_angstroms} Å`;
+      }
+
+      const kpiHsg = document.getElementById("wp-kpi-1hsg-rmsd");
+      if (kpiHsg && hsg?.mode1_rmsd_angstroms !== undefined) {
+        kpiHsg.textContent = `${hsg.mode1_rmsd_angstroms} Å`;
+      }
+
+      const kpiHsgE = document.getElementById("wp-kpi-1hsg-energy");
+      if (kpiHsgE && hsg?.vina_affinity_kcal !== undefined) {
+        kpiHsgE.textContent = `${hsg.vina_affinity_kcal.toFixed(2)}`;
+      }
+
+      const kpiCasfRate = document.getElementById("wp-kpi-casf-rate");
+      if (kpiCasfRate && sumStats?.pose_reconstruction?.rmsd_success_rate_percent !== undefined) {
+        kpiCasfRate.textContent = `${sumStats.pose_reconstruction.rmsd_success_rate_percent.toFixed(1)}%`;
+      }
+
+      const kpiCasfMean = document.getElementById("wp-kpi-casf-mean");
+      if (kpiCasfMean && sumStats?.pose_reconstruction?.mean_rmsd_angstroms !== undefined) {
+        kpiCasfMean.textContent = `${sumStats.pose_reconstruction.mean_rmsd_angstroms.toFixed(2)} Å`;
+      }
+
+      // Update Flagship Table Rows
+      if (aq1) {
+        const elRmsd = document.getElementById("wp-row-1aq1-rmsd");
+        if (elRmsd) elRmsd.textContent = `${aq1.mode1_rmsd_angstroms} Å`;
+        const elEnergy = document.getElementById("wp-row-1aq1-energy");
+        if (elEnergy) elEnergy.textContent = `${aq1.vina_affinity_kcal.toFixed(2)} kcal/mol`;
+      }
+
+      if (hsg) {
+        const elRmsd = document.getElementById("wp-row-1hsg-rmsd");
+        if (elRmsd) elRmsd.textContent = `${hsg.mode1_rmsd_angstroms} Å`;
+        const elEnergy = document.getElementById("wp-row-1hsg-energy");
+        if (elEnergy) elEnergy.textContent = `${hsg.vina_affinity_kcal.toFixed(2)} kcal/mol`;
+      }
+
+      // Populate Multi-Target CASF Benchmark Rows
+      const casfBody = document.getElementById("casf-benchmark-rows");
+      if (casfBody && validation_report?.complex_results?.length) {
+        casfBody.innerHTML = validation_report.complex_results.map(c => {
+          const pass = c.rmsd_angstroms <= 2.0;
+          const statusBadge = pass
+            ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold font-mono bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">Sub-2.0 Å &check;</span>`
+            : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold font-mono bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700">Near-Native (${c.rmsd_angstroms} Å)</span>`;
+          return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition">
+              <td class="p-2.5 font-mono font-bold">
+                <a href="https://www.rcsb.org/structure/${c.pdb_id}" target="_blank" class="text-sky-700 dark:text-cyan-400 hover:underline">${c.pdb_id}</a>
+              </td>
+              <td class="p-2.5">
+                <span class="font-medium text-slate-800 dark:text-slate-200 block">${c.target_name}</span>
+                <span class="text-[10px] text-slate-400">${c.target_class || ""}</span>
+              </td>
+              <td class="p-2.5">
+                <span class="font-mono text-slate-700 dark:text-slate-300">${c.drug_name}</span>
+                <span class="text-[10px] text-slate-400 block">${c.ligand_resname}</span>
+              </td>
+              <td class="p-2.5 font-mono text-center text-slate-600 dark:text-slate-300">${c.exp_delta_g_kcal ? c.exp_delta_g_kcal.toFixed(2) : "—"}</td>
+              <td class="p-2.5 font-mono text-center font-semibold text-slate-900 dark:text-slate-100">${c.vina_delta_g_kcal ? c.vina_delta_g_kcal.toFixed(2) : "—"}</td>
+              <td class="p-2.5 font-mono text-center text-slate-500 dark:text-slate-400">${c.vinardo_delta_g_kcal ? c.vinardo_delta_g_kcal.toFixed(2) : "—"}</td>
+              <td class="p-2.5 font-mono text-center font-bold ${pass ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}">${c.rmsd_angstroms.toFixed(2)} Å</td>
+              <td class="p-2.5 text-center">${statusBadge}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+    } catch (e) {
+      console.warn("Could not load validation report:", e);
+    }
   }
 
   async loadBenchmark(id) {

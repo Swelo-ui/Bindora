@@ -1,0 +1,20 @@
+{
+  "pdb_id": "1AQ1",
+  "target": "CDK2 Kinase",
+  "ligand": "Staurosporine (STU)",
+  "timestamp": "2026-09-16 14:35:43",
+  "vina_affinity_kcal": -12.99,
+  "vinardo_affinity_kcal": -9.42,
+  "mode1_rmsd_angstroms": 0.19,
+  "best_mode_rmsd_angstroms": 0.19,
+  "best_mode": 1,
+  "is_validated": true,
+  "badge": "Protocol Validated (RMSD: 0.19 \u00c5 < 2.0 \u00c5)",
+  "status": "Pass (Research Grade)",
+  "energy_in_lit_range": true,
+  "rmsd_pass_threshold": true,
+  "rmsd_ideal_threshold": true,
+  "docking_time_seconds": 56.62,
+  "exhaustiveness": 32,
+  "overall_grade": "RESEARCH_GRADE"
+}

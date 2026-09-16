@@ -62,6 +62,47 @@ def get_benchmarks():
         return jsonify({"benchmarks": data})
     return jsonify({"benchmarks": []})
 
+@app.route("/api/validation-report", methods=["GET"])
+@app.route("/api/validation-reports", methods=["GET"])
+def get_validation_report():
+    val_file = BENCHMARKS_DIR / "validation_report_v1.json"
+    val_data = {}
+    if val_file.exists():
+        try:
+            with open(val_file, "r", encoding="utf-8") as f:
+                val_data = json.load(f)
+        except Exception as e:
+            val_data = {"error": str(e)}
+
+    hsg_file = BENCHMARKS_DIR / "1hsg_benchmark_result.json"
+    hsg_data = {}
+    if hsg_file.exists():
+        try:
+            with open(hsg_file, "r", encoding="utf-8") as f:
+                hsg_data = json.load(f)
+        except Exception:
+            pass
+
+    aq1_file = BENCHMARKS_DIR / "1aq1_benchmark_result.json"
+    aq1_data = {}
+    if aq1_file.exists():
+        try:
+            with open(aq1_file, "r", encoding="utf-8") as f:
+                aq1_data = json.load(f)
+        except Exception:
+            pass
+
+    return jsonify({
+        "status": "success",
+        "parent_company": "NexPharmaTech",
+        "support_email": "sharmaji.pharmatech.info@gmail.com",
+        "validation_report": val_data,
+        "flagship_targets": {
+            "1HSG": hsg_data,
+            "1AQ1": aq1_data
+        }
+    })
+
 @app.route("/api/search/pubchem", methods=["GET"])
 def search_pubchem():
     query = request.args.get("query", "").strip()
