@@ -74,12 +74,13 @@ class BindoraAPI {
     });
   }
 
-  static async analyzeInteractions(receptorPdb, posePdbqt) {
+  static async analyzeInteractions(receptorPdb, posePdbqt, smiles = "") {
     return this.request("/api/docking/interactions", {
       method: "POST",
       body: JSON.stringify({
         receptor_pdb: receptorPdb,
-        pose_pdbqt: posePdbqt
+        pose_pdbqt: posePdbqt,
+        smiles: smiles
       })
     });
   }
@@ -109,6 +110,13 @@ class BindoraAPI {
     return this.request("/api/docking/redock-validate", {
       method: "POST",
       body: JSON.stringify(params)
+    });
+  }
+
+  static async getInteractionDiagram(smiles, interactions) {
+    return this.request("/api/docking/interaction-diagram", {
+      method: "POST",
+      body: JSON.stringify({ smiles, interactions })
     });
   }
 

@@ -118,10 +118,11 @@ class NarrativeExplainer:
             "You are a Senior Computational Pharmacologist providing an academic research dossier briefing.\n"
             "CRITICAL CONSTRAINTS:\n"
             "1. Output ONLY the final Markdown formatted briefing. Do NOT output any internal chain-of-thought, planning notes, or restatements of instructions.\n"
-            "2. NEVER invent, hallucinate, or alter any numbers, scores, or constants.\n"
-            "3. Every numeric claim (binding energy in kcal/mol, Kd in nM, MW, LogP, TPSA, H-bonds) MUST be cited directly from the provided payload.\n"
-            "4. If experimental cross-check status is 'Computational Prediction Only', state clearly that this is an unverified simulation without wet-lab assay confirmation.\n"
-            "5. Structure your output into four clean sections with markdown headers:\n"
+            "2. NEVER invent, hallucinate, or alter any numbers, scores, or constants. Use the exact values provided in the JSON data.\n"
+            "3. Writing Style: Write natural, publication-grade academic prose as seen in the Journal of Medicinal Chemistry or Nature. NEVER include raw programming keys, code variables, or parenthetical JSON paths like '(payload: ...)', 'is_cross_checked: false' in the user-facing text. Integrate all numbers smoothly into scientific prose.\n"
+            "4. Markdown Tables: When summarizing ADME properties or molecular descriptors, use clean GitHub-flavored markdown tables with standard pipes and headers.\n"
+            "5. If experimental cross-check status is 'Computational Prediction Only', state clearly that this is an in silico estimation without deposited wet-lab binding assays in ChEMBL.\n"
+            "6. Structure your output into four clean sections with markdown headers:\n"
             "### 1. Binding Mechanism & Active Site Interactions\n"
             "### 2. ADME & Oral Bioavailability Profile\n"
             "### 3. Experimental Validation & Confidence Tier\n"
@@ -228,7 +229,8 @@ class NarrativeExplainer:
         gi = pk.get("gi_absorption", {}).get("level", "Moderate")
         bbb = pk.get("bbb_permeation", {}).get("status", "Non-permeant")
         ppb = pk.get("plasma_protein_binding", {}).get("tier", "Moderate")
-        cyp_alerts = pk.get("cyp450_inhibition", [])
+        cyp_data = pk.get("cyp450_inhibition", [])
+        cyp_alerts = cyp_data.get("alerts", []) if isinstance(cyp_data, dict) else cyp_data
 
         safety = adme.get("medicinal_chemistry_safety", {})
         pains = safety.get("pains_alerts", {})
@@ -253,9 +255,9 @@ class NarrativeExplainer:
 
         # Format CYP alerts
         if cyp_alerts:
-            cyp_str = "; ".join([f"{c['cyp']} ({c['description']})" for c in cyp_alerts])
+            cyp_str = "; ".join([f"{c['cyp']} ({c['description']})" for c in cyp_alerts]) + " *(Exploratory SMARTS Heuristic — Not a Validated Predictor)*"
         else:
-            cyp_str = "No major CYP450 structural inhibition alerts identified."
+            cyp_str = "No major CYP450 structural inhibition alerts identified *(Exploratory SMARTS Heuristic)*."
 
         # Section 1: Binding mechanism
         sec1 = (

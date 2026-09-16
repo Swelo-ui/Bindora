@@ -690,5 +690,80 @@ html.light #tab-adme .grid-cols-6 .glass-panel {
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
 }
 
+/* 25. Research Whitepaper Component (Light & Dark Theme Polish) */
+#research-validation-whitepaper {
+  background: linear-gradient(180deg, #0b1f3b 0%, #071326 100%);
+  border: 1px solid rgba(0, 198, 255, 0.25);
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
 
+html.light #research-validation-whitepaper {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 24px -2px rgba(15, 23, 42, 0.07), 0 1px 4px rgba(15, 23, 42, 0.04) !important;
+  color: #0f172a !important;
+}
 
+html.light #research-validation-whitepaper .wp-journal-header {
+  border-bottom-color: #e2e8f0 !important;
+}
+
+html.light #research-validation-whitepaper .wp-abstract-box {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light #research-validation-whitepaper .wp-section-header {
+  border-bottom-color: #e2e8f0 !important;
+}
+
+html.light #research-validation-whitepaper .wp-subcard {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light #research-validation-whitepaper .wp-subcard:hover {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light #research-validation-whitepaper .wp-table-container {
+  border-color: #e2e8f0 !important;
+  background-color: #ffffff !important;
+}
+
+html.light #research-validation-whitepaper .wp-table thead tr {
+  background-color: #f1f5f9 !important;
+  border-bottom-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+html.light #research-validation-whitepaper .wp-table tbody tr {
+  border-bottom-color: #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+html.light #research-validation-whitepaper .wp-table tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+html.light #research-validation-whitepaper .wp-ref-box {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light #research-validation-whitepaper .wp-code-box {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+html.light #research-validation-whitepaper .wp-math-box {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html.light #research-validation-whitepaper .wp-footer-bar {
+  border-top-color: #e2e8f0 !important;
+}

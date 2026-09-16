@@ -225,12 +225,21 @@ class DockingEngine:
             "active_pocket_centering": pocket_desc
         }
 
+        native_smiles = None
+        if has_co_ligand and co_ligand_pdb:
+            try:
+                nat_prep = DockingEngine.prepare_native_ligand(co_ligand_pdb)
+                native_smiles = nat_prep.get("canonical_smiles")
+            except Exception as e:
+                print(f"[RECEPTOR PREP] Native SMILES derivation notice: {e}")
+
         native_ligand_info = {
             "has_native": has_co_ligand,
             "name": co_ligand_name,
             "chain": best_candidate["chain"] if has_co_ligand else None,
             "atom_count": best_candidate["atom_count"] if has_co_ligand else 0,
             "pdb_block": co_ligand_pdb,
+            "smiles": native_smiles,
             "center": {"x": round(center_x, 2), "y": round(center_y, 2), "z": round(center_z, 2)} if has_co_ligand else None
         }
 
@@ -509,15 +518,22 @@ class DockingEngine:
     def run_docking(
         receptor_pdbqt: str,
         ligand_pdbqt: str,
-        center: Dict[str, float],
-        size: Dict[str, float],
+        center: Any,
+        size: Any,
         exhaustiveness: int = 8,
         num_modes: int = 9,
         replicates: int = 1,
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
+        reference_pdb: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Run AutoDock Vina on the prepared receptor and ligand PDBQT files with optional multi-seed replicate sampling."""
         vina_path = ensure_vina()
+
+        # Support both dict {"x":.., "y":.., "z":..} and list/tuple [x, y, z]
+        if isinstance(center, (list, tuple)) and len(center) >= 3:
+            center = {"x": float(center[0]), "y": float(center[1]), "z": float(center[2])}
+        if isinstance(size, (list, tuple)) and len(size) >= 3:
+            size = {"x": float(size[0]), "y": float(size[1]), "z": float(size[2])}
 
         # Determine seeds to run
         if replicates > 1:
@@ -556,7 +572,9 @@ class DockingEngine:
                 if s is not None:
                     cmd.extend(["--seed", str(s)])
 
-                process = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                # Dynamically scale timeout based on exhaustiveness to support deep research searches
+                calc_timeout = max(600, int(exhaustiveness * 90))
+                process = subprocess.run(cmd, capture_output=True, text=True, timeout=calc_timeout)
                 if process.returncode != 0:
                     err_msg = process.stderr or process.stdout
                     raise RuntimeError(f"AutoDock Vina execution error: {err_msg}")
@@ -626,7 +644,145 @@ class DockingEngine:
                 "confidence_interval_95": round(1.96 * (sd_aff / math.sqrt(len(all_runs_top_affinities))), 3)
             }
 
+        # Multi-engine scoring: compute Vinardo and GNINA scores for poses
+        for p in best_poses:
+            p_pdbqt = p.get("pdbqt_content", "")
+            if p_pdbqt:
+                p["vinardo_affinity_kcal"] = DockingEngine.score_pose_vinardo(receptor_pdbqt, p_pdbqt)
+                p["gnina"] = DockingEngine.score_pose_gnina(receptor_pdbqt, p_pdbqt)
+
+        # Compute reference RMSD if reference structure is provided
+        if reference_pdb and best_poses:
+            try:
+                from backend.utils.rmsd_calculator import calculate_rmsd
+                for idx, p in enumerate(best_poses):
+                    p_rmsd = calculate_rmsd(p.get("pdbqt_content", ""), reference_pdb)
+                    p["rmsd_to_reference"] = p_rmsd
+                    if idx == 0:
+                        p["mode1_rmsd_angstroms"] = p_rmsd
+            except Exception as ex:
+                print(f"[RMSD REFERENCE NOTICE] {ex}")
+
         return best_poses
+
+
+
+    @staticmethod
+    def score_pose_vinardo(
+        receptor_pdbqt: str,
+        pose_pdbqt: str,
+        pocket_center: Optional[Dict[str, float]] = None,
+        pocket_size: Optional[Dict[str, float]] = None
+    ) -> Optional[float]:
+        """Rescore a docked pose with Vina's optimized Vinardo empirical scoring function."""
+        vina_path = ensure_vina()
+        clean_pdbqt = "\n".join([l for l in pose_pdbqt.splitlines() if not l.startswith(("MODEL", "ENDMDL"))])
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            rf = tmp_path / "receptor.pdbqt"
+            lf = tmp_path / "pose.pdbqt"
+            rf.write_text(receptor_pdbqt, encoding="utf-8")
+            lf.write_text(clean_pdbqt, encoding="utf-8")
+            cmd = [
+                str(vina_path),
+                "--receptor", str(rf),
+                "--ligand", str(lf),
+                "--scoring", "vinardo",
+                "--score_only"
+            ]
+            if pocket_center and pocket_size and "x" in pocket_center and "x" in pocket_size:
+                cmd.extend([
+                    "--center_x", str(pocket_center["x"]),
+                    "--center_y", str(pocket_center["y"]),
+                    "--center_z", str(pocket_center["z"]),
+                    "--size_x", str(pocket_size["x"]),
+                    "--size_y", str(pocket_size["y"]),
+                    "--size_z", str(pocket_size["z"])
+                ])
+            else:
+                cmd.append("--autobox")
+            try:
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                if res.returncode == 0:
+                    m = re.search(r"Estimated Free Energy of Binding\s*:\s*([-+]?\d*\.\d+|\d+)", res.stdout)
+                    if m:
+                        return round(float(m.group(1)), 3)
+            except Exception as e:
+                print(f"[VINARDO SCORING ERROR] {e}")
+        return None
+
+    @staticmethod
+    def score_pose_gnina(receptor_pdbqt: str, pose_pdbqt: str) -> Dict[str, Any]:
+        """Rescore a docked pose using GNINA CNN scoring if available."""
+        import shutil
+        from backend.config import GNINA_EXE, BIN_DIR
+        clean_pdbqt = "\n".join([l for l in pose_pdbqt.splitlines() if not l.startswith(("MODEL", "ENDMDL"))])
+
+        gnina_bin = None
+        if GNINA_EXE and Path(GNINA_EXE).exists():
+            gnina_bin = str(GNINA_EXE)
+        elif (Path(BIN_DIR) / "gnina").exists():
+            gnina_bin = str(Path(BIN_DIR) / "gnina")
+        elif (Path(BIN_DIR) / "gnina.exe").exists():
+            gnina_bin = str(Path(BIN_DIR) / "gnina.exe")
+        else:
+            w = shutil.which("gnina")
+            if w:
+                gnina_bin = w
+
+        if not gnina_bin:
+            return {
+                "available": False,
+                "cnn_score": None,
+                "cnn_affinity": None,
+                "status": "GNINA not installed (requires gnina binary in bin/ or PATH)"
+            }
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            rf = tmp_path / "receptor.pdbqt"
+            lf = tmp_path / "pose.pdbqt"
+            rf.write_text(receptor_pdbqt, encoding="utf-8")
+            lf.write_text(clean_pdbqt, encoding="utf-8")
+
+            cmd = [
+                gnina_bin,
+                "--score_only",
+                "-r", str(rf),
+                "-l", str(lf),
+                "--autobox_ligand", str(lf)
+            ]
+            try:
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
+                if res.returncode == 0:
+                    cnn_score = None
+                    cnn_aff = None
+                    m_score = re.search(r"CNNscore\s*:\s*([-+]?\d*\.\d+|\d+)", res.stdout)
+                    if m_score:
+                        cnn_score = round(float(m_score.group(1)), 4)
+                    m_aff = re.search(r"CNNaffinity\s*:\s*([-+]?\d*\.\d+|\d+)", res.stdout)
+                    if m_aff:
+                        cnn_aff = round(float(m_aff.group(1)), 3)
+                    return {
+                        "available": True,
+                        "cnn_score": cnn_score,
+                        "cnn_affinity": cnn_aff,
+                        "status": "Scored with GNINA CNN"
+                    }
+            except Exception as e:
+                return {
+                    "available": False,
+                    "cnn_score": None,
+                    "cnn_affinity": None,
+                    "status": f"GNINA execution error: {e}"
+                }
+
+        return {
+            "available": False,
+            "cnn_score": None,
+            "cnn_affinity": None,
+            "status": "GNINA parsing failed"
+        }
 
     @staticmethod
     def run_redocking_validation(
@@ -634,11 +790,13 @@ class DockingEngine:
         native_ligand_pdb: str,
         pocket_center: Dict[str, float],
         pocket_size: Dict[str, float],
-        exhaustiveness: int = 8
+        exhaustiveness: int = 8,
+        seed: Optional[int] = 42
     ) -> Dict[str, Any]:
         """
         Redock native co-crystallized ligand into its binding pocket and compute heavy-atom RMSD for protocol validation.
         Passes the native ligand through the rigorous 4-step preparation pipeline (PDB -> SDF -> AddHs -> Meeko PDBQT).
+        Uses a fixed reproducible random seed (default 42) for deterministic academic benchmarking.
         """
         # 1. Parse original crystallographic heavy-atom coordinates
         cryst_atoms = []
@@ -666,14 +824,15 @@ class DockingEngine:
         # 2. Prepare native ligand via robust 4-step pipeline
         lig_prep = DockingEngine.prepare_native_ligand(native_ligand_pdb)
 
-        # 3. Execute Vina docking
+        # 3. Execute Vina docking with fixed reproducible seed for benchmark validation
         poses = DockingEngine.run_docking(
             receptor_pdbqt,
             lig_prep["pdbqt_text"],
             pocket_center,
             pocket_size,
             exhaustiveness=exhaustiveness,
-            num_modes=5
+            num_modes=5,
+            seed=seed
         )
 
         if not poses:
@@ -684,20 +843,37 @@ class DockingEngine:
 
         # 4. Helper to calculate heavy-atom RMSD for a given docked pose PDBQT
         def calc_pose_rmsd(pose_pdbqt: str) -> float:
+            # 1. Try gold-standard RDKit graph-isomorphism & symmetry-corrected RMSD via Meeko
+            try:
+                from meeko import PDBQTMolecule, RDKitMolCreate
+                from rdkit.Chem import AllChem
+                pdbqt_mol = PDBQTMolecule(pose_pdbqt)
+                rdkit_mols = RDKitMolCreate.from_pdbqt_mol(pdbqt_mol)
+                if rdkit_mols and len(rdkit_mols) > 0:
+                    ref_mol = Chem.RemoveHs(Chem.MolFromPDBBlock(lig_prep.get("pdb_block", native_ligand_pdb)))
+                    docked_mol = Chem.RemoveHs(rdkit_mols[0])
+                    if ref_mol and docked_mol and ref_mol.GetNumHeavyAtoms() == docked_mol.GetNumHeavyAtoms():
+                        return float(AllChem.GetBestRMS(docked_mol, ref_mol))
+            except Exception:
+                pass
+
+            # 2. Fallback: Coordinate distance matching
             docked_atoms = []
             for line in pose_pdbqt.splitlines():
                 if line.startswith(("ATOM  ", "HETATM")):
                     try:
-                        aname = line[12:16].strip()
-                        elem = line[76:78].strip() or aname[0]
-                        if elem.upper() == "H":
+                        tokens = line.split()
+                        ad4 = tokens[-1] if tokens else ""
+                        elem = "Cl" if ad4.upper() == "CL" else "Br" if ad4.upper() == "BR" else "F" if ad4.upper() == "F" else ad4[0].upper() if ad4 else line[12:14].strip().upper()
+                        if elem == "H":
                             continue
+                        aname = line[12:16].strip()
                         x = float(line[30:38])
                         y = float(line[38:46])
                         z = float(line[46:54])
                         docked_atoms.append({
                             "name": aname,
-                            "elem": elem.upper(),
+                            "elem": elem,
                             "coord": (x, y, z)
                         })
                     except Exception:
@@ -746,8 +922,20 @@ class DockingEngine:
             badge = f"Divergent Pose (RMSD: {mode1_rmsd:.2f} Å > 2.0 Å)"
             status = "Borderline (Consider Higher Exhaustiveness or Expanded Grid)"
 
+        vinardo_score = None
+        try:
+            vinardo_score = DockingEngine.score_pose_vinardo(
+                receptor_pdbqt,
+                top_pose["pdbqt_content"],
+                pocket_center,
+                pocket_size
+            )
+        except Exception as ve:
+            print(f"[VINARDO REDOCK WARNING] {ve}")
+
         return {
             "affinity_kcal": affinity,
+            "vinardo_affinity_kcal": vinardo_score,
             "rmsd_angstroms": round(mode1_rmsd, 2),
             "best_rmsd_angstroms": round(min_rmsd, 2),
             "best_rmsd_mode": best_mode,
@@ -756,9 +944,11 @@ class DockingEngine:
             "benchmark_status": status,
             "docked_pdb": best_pose["pdb_block"],
             "top_pose_docked_pdb": top_pose["pdb_block"],
+            "top_pose_pdbqt": top_pose["pdbqt_content"],
             "cryst_pdb": lig_prep.get("pdb_block", native_ligand_pdb),
             "heavy_atom_count": len(cryst_atoms),
-            "preparation_log": lig_prep.get("prep_log", {})
+            "preparation_log": lig_prep.get("prep_log", {}),
+            "poses": poses
         }
 
     @staticmethod

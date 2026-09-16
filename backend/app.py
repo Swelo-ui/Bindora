@@ -100,9 +100,10 @@ def search_rcsb():
     if len(query) == 4 and query.isalnum():
         result = StructureFetcher.fetch_rcsb_pdb(query)
         if result:
-            # Also fetch UniProt annotation if available
-            uniprot_info = StructureFetcher.search_uniprot(result.get("title", query))
-            result["uniprot"] = uniprot_info
+            # Also fetch UniProt annotation via PDB cross-reference if not already populated
+            if "uniprot" not in result or not result["uniprot"]:
+                uniprot_info = StructureFetcher.fetch_uniprot_by_pdb_id(query)
+                result["uniprot"] = uniprot_info
             return jsonify({"direct": True, "entry": result})
         return jsonify({"error": f"PDB structure '{query}' not found"}), 404
     
@@ -167,6 +168,7 @@ def run_docking():
     replicates = int(data.get("replicates", 1))
     heavy_atoms = int(data.get("heavy_atoms", 20))
     mw = float(data.get("molecular_weight", 300.0))
+    smiles = data.get("smiles", "")
 
     if not receptor_pdbqt or not ligand_pdbqt or not center or not size:
         return jsonify({"error": "Missing required docking parameters (receptor, ligand, center, size)"}), 400
@@ -197,6 +199,12 @@ def run_docking():
         contacts = {}
         if receptor_pdb:
             contacts = DockingEngine.analyze_interactions(receptor_pdb, best_pose["pdbqt_content"])
+            if smiles:
+                try:
+                    from backend.services.interaction_diagram import InteractionDiagramGenerator
+                    contacts["diagram_svg"] = InteractionDiagramGenerator.generate_diagram_svg(smiles, contacts)
+                except Exception as ex:
+                    print(f"[DIAGRAM ERROR] {ex}")
 
         return jsonify({
             "poses": poses,
@@ -208,6 +216,20 @@ def run_docking():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": f"Docking execution failed: {str(e)}"}), 500
+
+@app.route("/api/docking/interaction-diagram", methods=["POST"])
+def get_interaction_diagram():
+    data = request.get_json() or {}
+    smiles = data.get("smiles", "")
+    interactions = data.get("interactions", {})
+    if not smiles or not interactions:
+        return jsonify({"error": "Missing 'smiles' or 'interactions' in request body"}), 400
+    try:
+        from backend.services.interaction_diagram import InteractionDiagramGenerator
+        svg = InteractionDiagramGenerator.generate_diagram_svg(smiles, interactions)
+        return jsonify({"diagram_svg": svg})
+    except Exception as e:
+        return jsonify({"error": f"Failed to generate diagram: {str(e)}"}), 500
 
 @app.route("/api/docking/redock-validate", methods=["POST"])
 def redock_validate():
@@ -226,13 +248,16 @@ def redock_validate():
     if not receptor_pdbqt or not native_ligand_pdb or not center or not size:
         return jsonify({"error": "Missing required parameters for redocking validation (receptor_pdbqt, native_ligand_pdb, center, size)"}), 400
 
+    seed = int(data.get("seed", 42))
+
     try:
         validation_result = DockingEngine.run_redocking_validation(
             receptor_pdbqt,
             native_ligand_pdb,
             center,
             size,
-            exhaustiveness=exhaustiveness
+            exhaustiveness=exhaustiveness,
+            seed=seed
         )
         return jsonify(validation_result)
     except Exception as e:
@@ -268,6 +293,13 @@ def analyze_interactions():
 
     try:
         contacts = DockingEngine.analyze_interactions(receptor_pdb, pose_pdbqt)
+        smiles = data.get("smiles", "").strip()
+        if smiles:
+            try:
+                from backend.services.interaction_diagram import InteractionDiagramGenerator
+                contacts["diagram_svg"] = InteractionDiagramGenerator.generate_diagram_svg(smiles, contacts)
+            except Exception as se:
+                contacts["diagram_svg_error"] = str(se)
         return jsonify(contacts)
     except Exception as e:
         return jsonify({"error": f"Interaction analysis failed: {str(e)}"}), 400

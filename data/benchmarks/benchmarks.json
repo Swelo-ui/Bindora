@@ -34,5 +34,23 @@
     "indication": "Antiviral RNA synthesis termination",
     "mechanism": "Adenosine nucleotide analog causing non-obligate delayed chain termination during viral replication.",
     "smiles": "C1=CC2=C(C(=N1)N)N=CN2C3C(C(C(O3)CO)O)(C#N)O"
+  },
+  {
+    "id": "indinavir_hiv1",
+    "drug_name": "Indinavir",
+    "target_name": "HIV-1 Protease",
+    "pdb_id": "1HSG",
+    "indication": "HIV/AIDS Antiretroviral Therapy (HAART)",
+    "mechanism": "Peptidomimetic transition-state analog inhibiting the C2-symmetric catalytic Asp25/Asp25' dyad.",
+    "smiles": "CC(C)(C)NC(=O)[C@@H]1CN(CCN1C[C@@H](C[C@@H](CC2=CC=CC=C2)NC(=O)[C@H]3C[C@H]4CCCC[C@H]4N3)O)CC5=CN=CC=C5"
+  },
+  {
+    "id": "staurosporine_cdk2",
+    "drug_name": "Staurosporine",
+    "target_name": "CDK2 Kinase",
+    "pdb_id": "1AQ1",
+    "indication": "Oncology / Cell Cycle Checkpoint Arrest",
+    "mechanism": "High-affinity ATP-competitive indolocarbazole alkaloid inhibiting cyclin-dependent kinase 2.",
+    "smiles": "CC12C(C(CC(O1)n3c4ccccc4c5c3c6n2c7ccccc7c6c8c5C(=O)NC8)NC)OC"
   }
-]
+]

@@ -113,7 +113,14 @@ class BatchScreeningService:
                 contacts = DockingEngine.analyze_interactions(receptor_pdb, best_pose["pdbqt_content"])
                 hbond_cnt = contacts.get("total_hbond_count", 0)
 
-                # 7. Consensus Score Calculation
+                # 7. Multi-engine Rescoring & Consensus Confidence Evaluation
+                vinardo_aff = best_pose.get("vinardo_affinity_kcal")
+                if vinardo_aff is None:
+                    vinardo_aff = DockingEngine.score_pose_vinardo(receptor_pdbqt, best_pose["pdbqt_content"])
+                
+                gnina_info = best_pose.get("gnina") or DockingEngine.score_pose_gnina(receptor_pdbqt, best_pose["pdbqt_content"])
+                gnina_score = gnina_info.get("cnn_score")
+
                 # Balances: |ΔG| (50%), Ligand Efficiency (scaled x10), and H-bond contact reward (+0.25 each, up to +1.0)
                 consensus = round(abs(affinity) * 0.5 + (le * 10.0) + min(hbond_cnt, 4) * 0.25, 2)
 
@@ -123,6 +130,9 @@ class BatchScreeningService:
                     "valid": True,
                     "status": "Screened",
                     "affinity_kcal": affinity,
+                    "vinardo_affinity_kcal": vinardo_aff,
+                    "gnina_score": gnina_score,
+                    "consensus_confidence": "Pending",
                     "consensus_score": consensus,
                     "theoretical_kd_nm": thermo["theoretical_kd_nm"],
                     "ligand_efficiency": le,
@@ -148,12 +158,41 @@ class BatchScreeningService:
                     "rank": "—"
                 })
 
-        # Sort valid candidates by binding affinity (lowest/most negative first)
+        # Multi-Engine Consensus Ranking Calibration:
+        # 1. Sort by Vina affinity to assign Vina ranks
         valid_results.sort(key=lambda x: x["affinity_kcal"])
-
-        # Assign ranks to valid candidates
         for idx, item in enumerate(valid_results):
+            item["vina_rank"] = idx + 1
             item["rank"] = idx + 1
+
+        # 2. Sort copy by Vinardo affinity to assign Vinardo ranks
+        vinardo_valid = [item for item in valid_results if item.get("vinardo_affinity_kcal") is not None]
+        vinardo_valid.sort(key=lambda x: x["vinardo_affinity_kcal"])
+        vinardo_ranks = {item["name"]: idx + 1 for idx, item in enumerate(vinardo_valid)}
+
+        # 3. Evaluate Concrete Consensus Confidence:
+        # - High-Confidence: Rank difference <= 1 AND energy difference <= 3.0 kcal/mol
+        # - Moderate-Confidence: Rank difference <= 2 AND energy difference <= 4.5 kcal/mol
+        # - Divergent — Low Confidence: Rank difference > 2 OR energy difference > 4.5 kcal/mol
+        for item in valid_results:
+            vinardo_rank = vinardo_ranks.get(item["name"])
+            vinardo_aff = item.get("vinardo_affinity_kcal")
+            if vinardo_rank is not None and vinardo_aff is not None:
+                rank_delta = abs(item["vina_rank"] - vinardo_rank)
+                energy_delta = round(abs(item["affinity_kcal"] - vinardo_aff), 2)
+                item["rank_delta"] = rank_delta
+                item["energy_delta_kcal"] = energy_delta
+                item["consensus_criteria"] = f"|ΔRank|={rank_delta}, |ΔΔG|={energy_delta} kcal/mol"
+
+                if rank_delta <= 1 and energy_delta <= 3.0:
+                    item["consensus_confidence"] = "High-Confidence"
+                elif rank_delta <= 2 and energy_delta <= 4.5:
+                    item["consensus_confidence"] = "Moderate-Confidence"
+                else:
+                    item["consensus_confidence"] = "Divergent — Low Confidence"
+            else:
+                item["consensus_confidence"] = "Standard (Single Engine)"
+                item["consensus_criteria"] = "Single Engine"
 
         # Combine valid and failed (failed listed at bottom with rank "—")
         return valid_results + failed_results

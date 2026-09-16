@@ -221,6 +221,8 @@ class StructureFetcher:
             return None
 
         metadata["pdb_content"] = pdb_text
+        if "uniprot" not in metadata or not metadata["uniprot"]:
+            metadata["uniprot"] = StructureFetcher.fetch_uniprot_by_pdb_id(pdb_id)
         return metadata
 
     @staticmethod
@@ -264,8 +266,92 @@ class StructureFetcher:
         return results
 
     @staticmethod
+    def fetch_uniprot_by_pdb_id(pdb_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch protein functional and pathway annotations from UniProt using PDB cross-reference."""
+        pdb_id = pdb_id.strip().upper()
+        if len(pdb_id) != 4:
+            return None
+        cache_file = CACHE_DIR / f"uniprot_pdb_{pdb_id}.json"
+        if cache_file.exists():
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+
+        url = f"{UNIPROT_BASE_URL}/search?query=xref:pdb-{pdb_id}&format=json&size=1"
+        data = _get_json(url)
+        if not data or "results" not in data or not data["results"]:
+            url_lower = f"{UNIPROT_BASE_URL}/search?query=xref:pdb-{pdb_id.lower()}&format=json&size=1"
+            data = _get_json(url_lower)
+
+        if not data or "results" not in data or not data["results"]:
+            return None
+
+        entry = data["results"][0]
+        accession = entry.get("primaryAccession", "")
+        gene_name = ""
+        try:
+            gene_name = entry["genes"][0]["geneName"]["value"]
+        except Exception:
+            pass
+
+        rec_name = ""
+        try:
+            rec_name = entry["proteinDescription"]["recommendedName"]["fullName"]["value"]
+        except Exception:
+            rec_name = gene_name or pdb_id
+
+        organism = entry.get("organism", {}).get("scientificName", "")
+        
+        # Extract comments
+        function_desc = ""
+        catalytic_activity = ""
+        pathway_desc = ""
+        tissue_spec = ""
+        subcellular_loc = []
+        for comment in entry.get("comments", []):
+            ctype = comment.get("commentType")
+            if ctype == "FUNCTION" and not function_desc:
+                function_desc = comment.get("texts", [{}])[0].get("value", "")
+            elif ctype == "CATALYTIC ACTIVITY" and not catalytic_activity:
+                catalytic_activity = comment.get("reaction", {}).get("name", "")
+            elif ctype == "PATHWAY" and not pathway_desc:
+                pathway_desc = comment.get("texts", [{}])[0].get("value", "")
+            elif ctype == "TISSUE SPECIFICITY" and not tissue_spec:
+                tissue_spec = comment.get("texts", [{}])[0].get("value", "")
+            elif ctype == "SUBCELLULAR LOCATION":
+                for loc in comment.get("subcellularLocations", []):
+                    subcellular_loc.append(loc.get("location", {}).get("value", ""))
+
+        result = {
+            "accession": accession,
+            "protein_name": rec_name,
+            "gene_name": gene_name,
+            "organism": organism,
+            "function": function_desc,
+            "catalytic_activity": catalytic_activity,
+            "pathway": pathway_desc,
+            "tissue_specificity": tissue_spec,
+            "subcellular_location": subcellular_loc,
+            "uniprot_url": f"https://www.uniprot.org/uniprotkb/{accession}"
+        }
+        try:
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2)
+        except Exception:
+            pass
+        return result
+
+    @staticmethod
     def search_uniprot(query: str) -> Optional[Dict[str, Any]]:
         """Fetch protein functional and pathway annotations from UniProt."""
+        q_clean = query.strip()
+        if len(q_clean) == 4 and q_clean.isalnum():
+            pdb_res = StructureFetcher.fetch_uniprot_by_pdb_id(q_clean)
+            if pdb_res:
+                return pdb_res
+
         url = f"{UNIPROT_BASE_URL}/search?query={urllib.parse.quote(query)}&format=json&size=1"
         data = _get_json(url)
         if not data or "results" not in data or not data["results"]:
@@ -287,9 +373,11 @@ class StructureFetcher:
 
         organism = entry.get("organism", {}).get("scientificName", "")
         
-        # Extract function comment
+        # Extract comments
         function_desc = ""
         catalytic_activity = ""
+        pathway_desc = ""
+        tissue_spec = ""
         subcellular_loc = []
         for comment in entry.get("comments", []):
             ctype = comment.get("commentType")
@@ -297,6 +385,10 @@ class StructureFetcher:
                 function_desc = comment.get("texts", [{}])[0].get("value", "")
             elif ctype == "CATALYTIC ACTIVITY" and not catalytic_activity:
                 catalytic_activity = comment.get("reaction", {}).get("name", "")
+            elif ctype == "PATHWAY" and not pathway_desc:
+                pathway_desc = comment.get("texts", [{}])[0].get("value", "")
+            elif ctype == "TISSUE SPECIFICITY" and not tissue_spec:
+                tissue_spec = comment.get("texts", [{}])[0].get("value", "")
             elif ctype == "SUBCELLULAR LOCATION":
                 for loc in comment.get("subcellularLocations", []):
                     subcellular_loc.append(loc.get("location", {}).get("value", ""))
@@ -308,6 +400,8 @@ class StructureFetcher:
             "organism": organism,
             "function": function_desc,
             "catalytic_activity": catalytic_activity,
+            "pathway": pathway_desc,
+            "tissue_specificity": tissue_spec,
             "subcellular_location": subcellular_loc,
             "uniprot_url": f"https://www.uniprot.org/uniprotkb/{accession}"
         }

@@ -1,4 +1,7 @@
-import pytest
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from backend.services.docking import DockingEngine
 from backend.services.fetcher import StructureFetcher
 
@@ -143,5 +146,80 @@ def test_native_ligand_fractional_occupancy_7bv2():
     assert "rmsd_angstroms" in result
     assert "validation_badge" in result
     assert "docked_pdb" in result
+    assert "vinardo_affinity_kcal" in result
 
+def test_vinardo_scoring_and_interaction_diagram():
+    # 1. Test Vinardo scoring
+    rec_meta = StructureFetcher.fetch_rcsb_pdb("1CX2")
+    rec = DockingEngine.prepare_receptor(rec_meta["pdb_content"], target_chain="A")
+    lig = DockingEngine.prepare_ligand("CC(=O)Oc1ccccc1C(=O)O")
+    pocket = rec["detected_pocket"]
+
+    poses = DockingEngine.run_docking(
+        rec["pdbqt_text"],
+        lig["pdbqt_text"],
+        pocket["center"],
+        pocket["size"],
+        exhaustiveness=1,
+        num_modes=2
+    )
+    assert len(poses) >= 1
+    top_pose = poses[0]
+    assert "vinardo_affinity_kcal" in top_pose
+    assert top_pose["vinardo_affinity_kcal"] is not None
+
+    # 2. Test 2D interaction diagram generator
+    from backend.services.interaction_diagram import InteractionDiagramGenerator
+    contacts = DockingEngine.analyze_interactions(rec["cleaned_pdb"], top_pose["pdbqt_content"])
+    svg = InteractionDiagramGenerator.generate_diagram_svg("CC(=O)Oc1ccccc1C(=O)O", contacts)
+    assert "<svg" in svg
+    assert "</svg>" in svg
+    assert "LigPlot-style 2D Map" in svg
+    assert "Hydrogen Bond" in svg
+
+
+def test_hiv1_protease_1hsg_benchmark():
+    # 1HSG is the classic gold-standard benchmark (Astex / Chen et al., 1994)
+    rec_meta = StructureFetcher.fetch_rcsb_pdb("1HSG")
+    assert rec_meta is not None
+    rec = DockingEngine.prepare_receptor(rec_meta["pdb_content"])
+    
+    # Must preserve C2 homodimer (Chains A & B)
+    assert set(["A", "B"]).issubset(set(rec["chains"]))
+    native = rec["native_ligand"]
+    assert native["has_native"] is True
+    assert native["name"] == "MK1"
+    assert native["atom_count"] == 45
+
+    # Run redocking validation with exhaustiveness=2 for CI/CD speed
+    result = DockingEngine.run_redocking_validation(
+        rec["pdbqt_text"],
+        native["pdb_block"],
+        rec["detected_pocket"]["center"],
+        rec["detected_pocket"]["size"],
+        exhaustiveness=2,
+        seed=42
+    )
+
+    assert result["affinity_kcal"] < -7.0
+    assert result["rmsd_angstroms"] < 2.5
+    assert result["validation_badge"] is not None
+
+
+if __name__ == "__main__":
+    import inspect
+    tests = [obj for name, obj in inspect.getmembers(sys.modules[__name__]) if inspect.isfunction(obj) and name.startswith("test_")]
+    print(f"\nRunning {len(tests)} docking suite tests...")
+    passed = 0
+    for t in tests:
+        try:
+            print(f"  [RUNNING] {t.__name__}...", end="", flush=True)
+            t()
+            print(" PASS")
+            passed += 1
+        except Exception as e:
+            print(f" FAIL: {e}")
+    print(f"\nResult: {passed}/{len(tests)} passed.\n")
+    if passed != len(tests):
+        sys.exit(1)
 

@@ -180,7 +180,14 @@ class ADMEProfiler:
                     "tier": ppb_tier,
                     "rationale": ppb_note
                 },
-                "cyp450_inhibition": cyp_alerts
+                "cyp450_inhibition": {
+                    "alerts": cyp_alerts,
+                    "count": len(cyp_alerts),
+                    "methodology": "heuristic_smarts",
+                    "validated": False,
+                    "disclaimer": "Exploratory SMARTS substructure heuristics — Not a validated quantitative predictor",
+                    "status": f"{len(cyp_alerts)} heuristic alert(s)" if cyp_alerts else "No structural alerts"
+                }
             },
             "medicinal_chemistry_safety": {
                 "pains_alerts": {

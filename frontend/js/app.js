@@ -326,7 +326,7 @@ class BindoraApp {
       const presets = {
         nsaid: "Aspirin, CC(=O)Oc1ccccc1C(=O)O\nIbuprofen, CC(C)Cc1ccc(cc1)C(C)C(=O)O\nNaproxen, COc1ccc2cc(ccc2c1)C(C)C(=O)O\nCelecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F",
         kinase: "Imatinib, Cc1ccc(cc1Nc2nccc(n2)c3cccnc3)NC(=O)c4ccc(cc4)CN5CCN(CC5)C\nGefitinib, COc1cc2ncnc(c2cc1OCCCN3CCOCC3)Nc4ccc(c(c4)Cl)F\nErlotinib, COCCOC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC=CC(=C3)C#C)OCCOC\nDasatinib, Cc1cccc(c1Cl)NC(=O)c2cnc(s2)Nc3cc(nc(n3)C)N4CCN(CC4)CCO",
-        antiviral: "Remdesivir, CCC(CC)COC(=O)C(C)NP(=O)(OCC1C(C(C(O1)C#N)O)O)Oc2ccccc2\nFavipiravir, C1=C(N=C(C(=O)N1)C(=O)N)F\nMolnupiravir, CC(C)C(=O)OCC1C(C(C(O1)N2C=CC(=NO)NC2=O)O)O\nRibavirin, C1C(C(C(O1)N2C=NC(=N2)C(=O)N)O)O",
+        antiviral: "Remdesivir, CCC(CC)COC(=O)C(C)NP(=O)(OCC1C(C(C(O1)(C#N)C2=CC=C3N2N=CN=C3N)O)O)OC4=CC=CC=C4\nFavipiravir, C1=C(N=C(C(=O)N1)C(=O)N)F\nMolnupiravir, CC(C)C(=O)OCC1C(C(C(O1)N2C=CC(=NO)NC2=O)O)O\nRibavirin, C1=NC(=NN1C2C(C(C(O2)CO)O)O)C(=O)N",
         clear: ""
       };
       librarySelect.addEventListener("change", (e) => {
@@ -752,36 +752,100 @@ class BindoraApp {
     }, 3500);
   }
 
-  // Lightweight markdown → HTML renderer for AI narratives
+  // Publication-grade markdown → HTML renderer for AI narratives & reports
   renderMarkdown(text) {
     if (!text) return '';
-    // Escape HTML entities first
-    let out = text
+
+    // Clean up any internal raw payload keys or leaks (e.g. "(payload: ...)", "is_cross_checked: false")
+    let cleaned = text
+      .replace(/\s*\(payload:\s*[^)]+\)/gi, '')
+      .replace(/•\s*Cross-check flag:\s*is_cross_checked:\s*(true|false)/gi, (m, val) => {
+        return val === 'true'
+          ? '<span class="inline-flex items-center text-emerald-500 font-semibold text-xs">&#10003; Experimental ChEMBL Records Verified</span>'
+          : '<span class="inline-flex items-center text-amber-500 font-semibold text-xs">&#9888; Computational Prediction (Unverified Simulation)</span>';
+      });
+
+    // 1. Extract markdown tables to tokens so line-break parsing doesn't break table syntax
+    const tables = [];
+    const tableRegex = /((?:^[ \t]*\|.+?\|[ \t]*\r?\n)+(?:^[ \t]*\|[-: |]+\|[ \t]*\r?\n)(?:^[ \t]*\|.+?\|[ \t]*(?:\r?\n|$))+)/gm;
+
+    let out = cleaned.replace(tableRegex, (match) => {
+      const rows = match.trim().split(/\r?\n/).filter(r => r.trim().startsWith('|'));
+      if (rows.length < 2) return match;
+      const parseRow = (row) => row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+      const headers = parseRow(rows[0]);
+      const dataRows = rows.slice(2).map(parseRow);
+
+      let html = '<div class="overflow-x-auto my-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900/40">';
+      html += '<table class="w-full text-xs text-left border-collapse">';
+      html += '<thead class="bg-slate-100 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">';
+      html += '<tr>';
+      headers.forEach(h => {
+        html += `<th class="p-2.5 font-sans">${h}</th>`;
+      });
+      html += '</tr></thead><tbody class="divide-y divide-slate-100 dark:divide-slate-800/80 text-slate-800 dark:text-slate-200">';
+      dataRows.forEach(row => {
+        html += '<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition">';
+        row.forEach((cell, idx) => {
+          const isNum = idx > 0 && /^-?\d+(\.\d+)?/.test(cell);
+          html += `<td class="p-2.5 ${isNum ? 'font-mono' : 'font-sans'}">${cell}</td>`;
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+
+      const token = `%%TABLE_BLOCK_${tables.length}%%`;
+      tables.push(html);
+      return `\n\n${token}\n\n`;
+    });
+
+    // Escape HTML entities
+    out = out
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
+
     // Horizontal divider
     out = out.replace(/^---$/gm, '<hr class="border-slate-200 dark:border-slate-800 my-4">');
+
     // Headers
     out = out
       .replace(/^### (.+)$/gm, '<h3 class="text-sm font-bold text-slate-900 dark:text-white mt-4 mb-1 pb-0.5 border-b border-slate-200 dark:border-slate-700/50">$1</h3>')
       .replace(/^## (.+)$/gm, '<h2 class="text-sm font-bold text-[#0D6EFD] dark:text-[#00C6FF] mt-5 mb-1 uppercase tracking-wide">$1</h2>')
       .replace(/^# (.+)$/gm, '<h1 class="text-base font-extrabold text-slate-900 dark:text-white mt-5 mb-2">$1</h1>');
-    // Unordered lists (- or *)
-    out = out.replace(/^[\*\-] (.+)$/gm, '<div class="flex items-start space-x-2 my-1.5"><span class="text-cyan-500 font-bold leading-tight select-none">&#8226;</span><span class="text-slate-700 dark:text-slate-300 leading-relaxed">$1</span></div>');
+
+    // Unordered lists (- or * or •)
+    out = out.replace(/^[•\*\-] (.+)$/gm, '<div class="flex items-start space-x-2 my-1.5"><span class="text-cyan-500 font-bold leading-tight select-none">&#8226;</span><span class="text-slate-700 dark:text-slate-300 leading-relaxed">$1</span></div>');
+
     // Bold and italic
     out = out
       .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-slate-900 dark:text-white">$1</strong>')
       .replace(/\*([^*]+?)\*/g, '<em class="italic text-slate-600 dark:text-slate-300">$1</em>');
+
     // Clean any dangling unclosed bold tags
     out = out.replace(/\*\*([^*]+)$/gm, '<strong class="font-semibold text-slate-900 dark:text-white">$1</strong>');
+
     // Inline code
     out = out
       .replace(/`(.+?)`/g, '<code class="font-mono text-cyan-700 dark:text-[#00C6FF] bg-slate-100 dark:bg-slate-800/70 px-1 py-0.5 rounded text-xs border border-slate-200 dark:border-slate-700">$1</code>');
+
     // Double newline = paragraph break
     out = out.replace(/\n\n/g, '</p><p class="mt-2 text-slate-700 dark:text-slate-300">');
+
     // Single newline
     out = out.replace(/\n/g, '<br>');
+
+    // Restore table tokens
+    tables.forEach((tableHtml, i) => {
+      out = out.replace(new RegExp(`%%TABLE_BLOCK_${i}%%`, 'g'), tableHtml);
+    });
+
+    // Clean empty paragraph wrappers around tables
+    out = out.replace(/<p[^>]*>\s*<\/p>/g, '');
+    out = out.replace(/<br>\s*(<div class="overflow-x-auto)/g, '$1');
+    out = out.replace(/(<\/table><\/div>)\s*<br>/g, '$1');
+    out = out.replace(/<br>\s*(<div class="flex items-start)/g, '$1');
+
     return out;
   }
 
@@ -831,6 +895,18 @@ class BindoraApp {
     if (this.state.ligand?.adme) {
       this.updateADMEView();
     }
+
+    // Sync any rendered 2D interaction diagrams with current theme
+    const diagSvgs = document.querySelectorAll(".bindora-svg-root");
+    diagSvgs.forEach(svg => {
+      if (theme === 'light') {
+        svg.classList.remove('theme-dark');
+        svg.classList.add('theme-light');
+      } else {
+        svg.classList.remove('theme-light');
+        svg.classList.add('theme-dark');
+      }
+    });
   }
 
   renderBenchmarksUI() {
@@ -1166,7 +1242,15 @@ class BindoraApp {
     if (redockNative) redockNative.textContent = "No co-ligand loaded";
 
     const poseTable = document.getElementById("pose-table-rows");
-    if (poseTable) poseTable.innerHTML = `<tr><td colspan="4" class="text-center p-6 text-xs text-slate-500 italic">No docking run loaded yet.</td></tr>`;
+    if (poseTable) poseTable.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-xs text-slate-500 italic">No docking run loaded yet.</td></tr>`;
+
+    const diagContainer = document.getElementById("dock-interaction-diagram-container");
+    if (diagContainer) diagContainer.innerHTML = `<span class="text-xs text-slate-500 italic">Run docking to render 2D radial interaction schematic</span>`;
+
+    if (window.DockingCharts && DockingCharts.energyChartInstance) {
+      DockingCharts.energyChartInstance.destroy();
+      DockingCharts.energyChartInstance = null;
+    }
 
     // Reset toolbar toggle checkboxes
     const surfToggle = document.getElementById("toggle-surface");
@@ -1249,6 +1333,21 @@ class BindoraApp {
       if (this.state.receptor) {
         const r = this.state.receptor;
         const pocket = r.detected_pocket || {};
+        const redock = this.state.redockingValidation;
+        const validationHtml = redock ? `
+          <div class="mt-2 pt-2 border-t border-slate-700/60 flex items-center justify-between">
+            <span class="text-[11px] text-slate-400">Protocol Validation:</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${redock.is_validated ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-amber-950 text-amber-300 border border-amber-800'}">
+              ${redock.validation_badge} (RMSD ${redock.rmsd_angstroms} Å)
+            </span>
+          </div>
+        ` : (r.native_ligand?.has_native ? `
+          <div class="mt-2 pt-2 border-t border-slate-700/60 flex items-center justify-between">
+            <span class="text-[11px] text-slate-400">Protocol Validation:</span>
+            <span id="rec-val-status" class="text-[10px] text-cyan-400 flex items-center"><svg class="animate-spin -ml-1 mr-1.5 h-3 w-3 inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Validating native ligand...</span>
+          </div>
+        ` : '');
+
         recCard.innerHTML = `
           <div class="space-y-2">
             <div class="flex items-center justify-between">
@@ -1262,8 +1361,21 @@ class BindoraApp {
                 Center: (${pocket.center?.x}, ${pocket.center?.y}, ${pocket.center?.z}) | Size: (${pocket.size?.x}, ${pocket.size?.y}, ${pocket.size?.z})
               </div>
             </div>
+            ${validationHtml}
           </div>
         `;
+
+        // Auto-trigger redocking validation if native ligand detected and not yet cached/run
+        if (r.native_ligand?.has_native && !this.state.redockingValidation && !this._redockingRunning) {
+          const recKey = r.pdb_id || r.title;
+          if (this.state.redockCache && this.state.redockCache[recKey]) {
+            this.state.redockingValidation = this.state.redockCache[recKey];
+            this.updateReceptorView();
+            this.updateDossierView();
+          } else {
+            setTimeout(() => this.runRedockingValidation(true), 150);
+          }
+        }
       } else {
         recCard.innerHTML = `<p class="text-xs text-slate-400 italic">No receptor loaded yet. Search RCSB PDB or pick a benchmark above.</p>`;
       }
@@ -1386,12 +1498,25 @@ class BindoraApp {
     this.showToast("Grid box restored to detected active pocket centroid.", "success");
   }
 
-  async runRedockingValidation() {
+  async runRedockingValidation(isAuto = false) {
     if (!this.state.receptor || !this.state.receptor.native_ligand?.pdb_block) {
-      this.showToast("No co-crystallized native ligand found in current receptor.", "error");
+      if (!isAuto) this.showToast("No co-crystallized native ligand found in current receptor.", "error");
       return;
     }
     const nat = this.state.receptor.native_ligand;
+    const recKey = this.state.receptor.pdb_id || this.state.receptor.title || "custom_rec";
+    this.state.redockCache = this.state.redockCache || {};
+
+    if (this.state.redockCache[recKey]) {
+      this.state.redockingValidation = this.state.redockCache[recKey];
+      this.updateReceptorView();
+      this.updateDossierView();
+      if (!isAuto) {
+        this.showToast(`Loaded cached redocking: RMSD = ${this.state.redockingValidation.rmsd_angstroms} Å`, "info");
+      }
+      return;
+    }
+
     const btn = document.getElementById("btn-run-redock-validation");
     const resultsPanel = document.getElementById("redock-results-panel");
     const affVal = document.getElementById("redock-aff-val");
@@ -1404,7 +1529,10 @@ class BindoraApp {
       btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-3.5 w-3.5 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Redocking ${nat.name}...`;
     }
 
-    this.showToast(`Starting redocking validation of native ligand '${nat.name}'...`, "info");
+    if (!isAuto) {
+      this.showToast(`Starting redocking validation of native ligand '${nat.name}'...`, "info");
+    }
+    this._redockingRunning = true;
 
     try {
       const getVal = (id, def) => parseFloat(document.getElementById(id)?.value) || def;
@@ -1421,6 +1549,7 @@ class BindoraApp {
       });
 
       this.state.redockingValidation = res;
+      this.state.redockCache[recKey] = res;
 
       if (resultsPanel) resultsPanel.classList.remove("hidden");
       if (affVal) affVal.textContent = `${res.affinity_kcal} kcal/mol`;
@@ -1435,7 +1564,7 @@ class BindoraApp {
       }
 
       // Preview 3D overlay of crystallographic reference vs redocked pose
-      if (this.viewer && res.docked_pdb) {
+      if (this.viewer && res.docked_pdb && !isAuto) {
         if (res.cryst_pdb) {
           this.viewer.loadRedockOverlay(res.cryst_pdb, res.docked_pdb);
         } else {
@@ -1443,13 +1572,17 @@ class BindoraApp {
         }
       }
 
+      this.updateReceptorView();
       this.updateDossierView();
-      this.showToast(`Redocking validation finished! RMSD = ${res.rmsd_angstroms} Å (${res.benchmark_status})`, res.is_validated ? "success" : "warning");
+      if (!isAuto) {
+        this.showToast(`Redocking validation finished! RMSD = ${res.rmsd_angstroms} Å (${res.benchmark_status})`, res.is_validated ? "success" : "warning");
+      }
 
     } catch (err) {
       console.error("Redocking error:", err);
-      this.showToast(`Redocking validation failed: ${err.message}`, "error");
+      if (!isAuto) this.showToast(`Redocking validation failed: ${err.message}`, "error");
     } finally {
+      this._redockingRunning = false;
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = originalBtnText || "<span>Run Self-Validation (Redock Native Ligand)</span>";
@@ -1508,7 +1641,8 @@ class BindoraApp {
         num_modes: 9,
         replicates: replicates,
         heavy_atoms: p.heavy_atoms?.value || this.state.ligand.heavy_atom_count || 20,
-        molecular_weight: p.molecular_weight?.value || this.state.ligand.weight || 300.0
+        molecular_weight: p.molecular_weight?.value || this.state.ligand.weight || 300.0,
+        smiles: this.state.ligand.canonical_smiles || this.state.ligand.smiles || ""
       });
 
       this.state.docking = dockResult;
@@ -1628,6 +1762,7 @@ class BindoraApp {
         <tr class="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40 cursor-pointer ${idx === this.state.currentPoseIdx ? 'bg-cyan-50 dark:bg-cyan-950/40 font-semibold' : ''}" onclick="window.app.selectPose(${idx})">
           <td class="px-3 py-2 text-cyan-700 dark:text-cyan-300">Mode ${p.mode}</td>
           <td class="px-3 py-2 font-mono text-slate-900 dark:text-white font-semibold">${p.affinity_kcal}</td>
+          <td class="px-3 py-2 font-mono text-emerald-600 dark:text-emerald-400">${p.vinardo_affinity_kcal != null ? p.vinardo_affinity_kcal : '—'}</td>
           <td class="px-3 py-2 font-mono text-slate-600 dark:text-slate-400">${p.rmsd_lb}</td>
           <td class="px-3 py-2 font-mono text-slate-600 dark:text-slate-400">${p.rmsd_ub}</td>
         </tr>
@@ -1646,6 +1781,22 @@ class BindoraApp {
         resContainer.innerHTML = `<span class="text-xs text-slate-500 italic">No specific residues within contact threshold</span>`;
       }
     }
+
+    // 2D Interaction Diagram Rendering
+    const diagramContainer = document.getElementById("dock-interaction-diagram-container");
+    if (diagramContainer) {
+      if (interactions.diagram_svg) {
+        diagramContainer.innerHTML = interactions.diagram_svg;
+        this.setupDiagramPanZoom(diagramContainer);
+      } else {
+        diagramContainer.innerHTML = `<span class="text-xs text-slate-500 italic">No 2D interaction schematic available for this pose</span>`;
+      }
+    }
+
+    // Binding Energy Landscape Chart Rendering
+    if (window.DockingCharts && poses.length > 0) {
+      DockingCharts.renderEnergyLandscape("chart-energy-landscape", poses);
+    }
   }
 
   async selectPose(idx) {
@@ -1657,18 +1808,233 @@ class BindoraApp {
 
     // Re-analyze interactions for this pose
     try {
-      const contacts = await BindoraAPI.analyzeInteractions(this.state.receptor.cleaned_pdb, pose.pdbqt_content);
+      const smiles = this.state.ligand?.canonical_smiles || this.state.ligand?.smiles || "";
+      const contacts = await BindoraAPI.analyzeInteractions(this.state.receptor.cleaned_pdb, pose.pdbqt_content, smiles);
       this.state.docking.interactions = contacts;
 
       if (this.viewer) {
         this.viewer.loadLigand(pose.pdb_block);
         this.viewer.renderInteractions(contacts);
       }
+
+      // Update 2D interaction diagram for the selected pose
+      const diagramContainer = document.getElementById("dock-interaction-diagram-container");
+      if (diagramContainer && contacts.diagram_svg) {
+        diagramContainer.innerHTML = contacts.diagram_svg;
+        this.setupDiagramPanZoom(diagramContainer);
+      }
     } catch (e) {
       console.warn("Could not re-analyze pose interactions:", e);
     }
 
     this.updateDockingScoresUI();
+    this.updateDossierView();
+  }
+
+  setupDiagramPanZoom(container) {
+    const svg = container.querySelector("svg");
+    if (!svg) return;
+
+    // Set theme class matching current html theme
+    if (document.documentElement.classList.contains("light")) {
+      svg.classList.add("theme-light");
+    } else {
+      svg.classList.remove("theme-light");
+    }
+
+    const contentGroup = svg.querySelector("#bindora-diagram-content") || svg;
+
+    // Diagram center coordinates (650 x 500)
+    const cx = 325;
+    const cy = 235;
+
+    // State
+    let currentScale = 1.0;
+    let panX = 0;
+    let panY = 0;
+
+    const applyTransform = () => {
+      if (contentGroup && contentGroup !== svg) {
+        contentGroup.setAttribute(
+          "transform",
+          `translate(${panX.toFixed(1)}, ${panY.toFixed(1)}) translate(${cx}, ${cy}) scale(${currentScale.toFixed(3)}) translate(-${cx}, -${cy})`
+        );
+      }
+    };
+    applyTransform();
+
+    // Mouse drag to pan
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let startPanX = 0;
+    let startPanY = 0;
+
+    container.onmousedown = (e) => {
+      if (e.button !== 0) return; // Only primary mouse button
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startPanX = panX;
+      startPanY = panY;
+      container.style.cursor = "grabbing";
+      e.preventDefault();
+    };
+
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
+      const rect = container.getBoundingClientRect();
+      const scaleFactor = 650 / (rect.width || 650);
+      const dx = (e.clientX - startX) * scaleFactor;
+      const dy = (e.clientY - startY) * scaleFactor;
+
+      // Clamp panning bounds so molecule is never lost
+      panX = Math.max(-280, Math.min(280, startPanX + dx));
+      panY = Math.max(-220, Math.min(220, startPanY + dy));
+      applyTransform();
+    };
+
+    const handleMouseUp = () => {
+      if (isDragging) {
+        isDragging = false;
+        container.style.cursor = "grab";
+      }
+    };
+
+    if (container._panMoveHandler) {
+      window.removeEventListener("mousemove", container._panMoveHandler);
+    }
+    if (container._panUpHandler) {
+      window.removeEventListener("mouseup", container._panUpHandler);
+    }
+    container._panMoveHandler = handleMouseMove;
+    container._panUpHandler = handleMouseUp;
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    // Mouse wheel zoom - smoothly centered on (cx, cy)
+    container.onwheel = (e) => {
+      e.preventDefault();
+      const zoomDelta = e.deltaY > 0 ? 0.92 : 1.08;
+      currentScale = Math.max(0.68, Math.min(2.4, currentScale * zoomDelta));
+      applyTransform();
+    };
+
+    // Wire toolbar buttons
+    const btnZoomIn = document.getElementById("btn-diagram-zoom-in");
+    const btnZoomOut = document.getElementById("btn-diagram-zoom-out");
+    const btnReset = document.getElementById("btn-diagram-reset-view");
+    const btnExportPng = document.getElementById("btn-diagram-export-png");
+    const btnExportSvg = document.getElementById("btn-diagram-export-svg");
+
+    if (btnZoomIn) {
+      btnZoomIn.onclick = () => {
+        currentScale = Math.min(2.4, currentScale * 1.2);
+        applyTransform();
+      };
+    }
+
+    if (btnZoomOut) {
+      btnZoomOut.onclick = () => {
+        currentScale = Math.max(0.68, currentScale * 0.83);
+        applyTransform();
+      };
+    }
+
+    if (btnReset) {
+      btnReset.onclick = () => {
+        currentScale = 1.0;
+        panX = 0;
+        panY = 0;
+        applyTransform();
+      };
+    }
+
+    if (btnExportPng) {
+      btnExportPng.onclick = () => this.exportDiagramPNG(svg);
+    }
+
+    if (btnExportSvg) {
+      btnExportSvg.onclick = () => this.exportDiagramSVG(svg);
+    }
+  }
+
+  exportDiagramPNG(svgElement) {
+    if (!svgElement) return;
+    const isLight = document.documentElement.classList.contains("light") || svgElement.classList.contains("theme-light");
+    const clone = svgElement.cloneNode(true);
+
+    // Publication standard: Reset pan/zoom on export so image is 100% centered, unclipped and includes legend
+    const cloneContent = clone.querySelector("#bindora-diagram-content");
+    if (cloneContent) {
+      cloneContent.setAttribute("transform", "matrix(1 0 0 1 0 0)");
+    }
+
+    clone.setAttribute("viewBox", "0 0 650 500");
+    clone.setAttribute("width", "2600");
+    clone.setAttribute("height", "2000");
+    if (isLight) {
+      clone.classList.add("theme-light");
+    } else {
+      clone.classList.remove("theme-light");
+    }
+
+    const svgXml = new XMLSerializer().serializeToString(clone);
+    const svgBlob = new Blob([svgXml], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 2600;
+      canvas.height = 2000;
+      const ctx = canvas.getContext("2d");
+
+      // Solid background fill for publication clarity
+      ctx.fillStyle = isLight ? "#ffffff" : "#091428";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+
+      const pngData = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      const ligName = (this.state.ligand?.name || "ligand").toLowerCase().replace(/[^a-z0-9]/g, "_");
+      a.download = `bindora_2d_interaction_${ligName}_300dpi.png`;
+      a.href = pngData;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+    img.src = url;
+  }
+
+  exportDiagramSVG(svgElement) {
+    if (!svgElement) return;
+    const isLight = document.documentElement.classList.contains("light");
+    const clone = svgElement.cloneNode(true);
+    const cloneContent = clone.querySelector("#bindora-diagram-content");
+    if (cloneContent) {
+      cloneContent.setAttribute("transform", "matrix(1 0 0 1 0 0)");
+    }
+    clone.setAttribute("viewBox", "0 0 650 500");
+    if (isLight) {
+      clone.classList.add("theme-light");
+    } else {
+      clone.classList.remove("theme-light");
+    }
+
+    const svgXml = '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(clone);
+    const blob = new Blob([svgXml], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const ligName = (this.state.ligand?.name || "ligand").toLowerCase().replace(/[^a-z0-9]/g, "_");
+    a.download = `bindora_2d_interaction_${ligName}.svg`;
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   changePose(direction) {
@@ -1846,6 +2212,19 @@ class BindoraApp {
     if (painsEl) {
       painsEl.textContent = pains.status || "Clear";
       painsEl.className = pains.count > 0 ? "font-bold text-rose-400" : "font-bold text-emerald-400";
+    }
+
+    // CYP450 Heuristic Liability
+    const cyp = pk.cyp450_inhibition || {};
+    const cypEl = document.getElementById("adme-cyp-val");
+    if (cypEl) {
+      const cypAlerts = cyp.alerts || (Array.isArray(cyp) ? cyp : []);
+      if (cypAlerts.length > 0) {
+        cypEl.innerHTML = `<span class="text-amber-600 dark:text-amber-400 font-bold">${cypAlerts.length} SMARTS Alert(s):</span> ` +
+          cypAlerts.map(a => `<span class="inline-block font-mono text-[11px] bg-amber-200/60 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 px-1.5 py-0.5 rounded mr-1">${a.cyp} (${a.description})</span>`).join("");
+      } else {
+        cypEl.innerHTML = `<span class="text-emerald-600 dark:text-emerald-400 font-semibold">Clear &bull; No planar/basic/azole SMARTS alerts detected.</span>`;
+      }
     }
   }
 
@@ -2058,6 +2437,34 @@ class BindoraApp {
               </p>
             </div>
           ` : ''}
+
+          ${adme.drug_likeness ? `
+            <div class="p-2.5 rounded-lg bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-slate-800 dark:text-slate-200 font-sans">Cheminformatics (ADME &amp; Safety Profile):</span>
+                <span class="text-[10px] text-slate-500 font-mono">Lipinski: ${lip.status || 'Pass'} (${lip.violations_count || 0} viols) &bull; GI: ${adme.pharmacokinetics?.gi_absorption?.level || '—'}</span>
+              </div>
+              <div class="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100 dark:border-slate-800">
+                <span class="text-slate-600 dark:text-slate-400">CYP450 Liability:</span>
+                <span class="inline-flex items-center space-x-1.5">
+                  <span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-[10px] font-bold">Exploratory Heuristic — Not a Validated Predictor</span>
+                  <span class="text-slate-700 dark:text-slate-300 font-mono">${(adme.pharmacokinetics?.cyp450_inhibition?.alerts || []).length > 0 ? (adme.pharmacokinetics.cyp450_inhibition.alerts.map(a => a.cyp).join(', ')) : 'No alerts'}</span>
+                </span>
+              </div>
+            </div>
+          ` : ''}
+
+          ${contacts.diagram_svg ? `
+            <div class="p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-slate-800 dark:text-slate-200 font-sans">2D Protein–Ligand Interaction Schematic:</span>
+                <span class="text-[10px] text-cyan-600 dark:text-cyan-400 font-mono">LigPlot-Style Radial SVG</span>
+              </div>
+              <div class="flex items-center justify-center overflow-hidden p-2 bg-white dark:bg-slate-950/90 rounded border border-slate-200 dark:border-slate-800">
+                ${contacts.diagram_svg}
+              </div>
+            </div>
+          ` : ''}
         </div>
 
         <!-- SECTION B: AI-Generated Mechanistic Synthesis (Hypothesis Only) -->
@@ -2106,7 +2513,7 @@ class BindoraApp {
     if (!tbody) return;
 
     if (leaderboard.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center p-6 text-xs text-slate-500 italic">No docking results produced.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="text-center p-6 text-xs text-slate-500 italic">No docking results produced.</td></tr>`;
       return;
     }
 
@@ -2116,6 +2523,8 @@ class BindoraApp {
           <tr class="border-b border-rose-950/60 bg-rose-950/20 text-rose-300">
             <td class="p-2.5 font-bold text-center text-slate-500">—</td>
             <td class="p-2.5 font-semibold text-rose-300 font-sans" title="${item.smiles}">${item.name}</td>
+            <td class="p-2.5 text-slate-500">—</td>
+            <td class="p-2.5 text-slate-500">—</td>
             <td class="p-2.5 text-slate-500">—</td>
             <td class="p-2.5 text-slate-500">—</td>
             <td class="p-2.5 text-slate-500">—</td>
@@ -2131,12 +2540,23 @@ class BindoraApp {
       }
 
       const isWeak = item.is_weak_binder || item.affinity_kcal > -6.0;
+      const isHighConf = item.consensus_confidence === "High-Confidence";
+      const isModerate = item.consensus_confidence === "Moderate-Confidence";
+      const crit = item.consensus_criteria || "";
+      const confBadge = isHighConf ?
+        `<span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-bold inline-block cursor-help" title="${crit}">High-Confidence</span>` :
+        isModerate ?
+        `<span class="px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 text-[10px] font-bold inline-block cursor-help" title="${crit}">Moderate</span>` :
+        `<span class="px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 text-[10px] font-bold inline-block cursor-help" title="${crit}">Divergent</span>`;
+
       return `
         <tr class="border-b border-slate-800 hover:bg-slate-800/50">
           <td class="p-2.5 font-bold text-center text-cyan-400">#${item.rank}</td>
           <td class="p-2.5 font-semibold text-white font-sans" title="${item.smiles}">${item.name}</td>
           <td class="p-2.5 font-mono font-bold ${isWeak ? 'text-amber-400' : 'text-emerald-400'}">${item.affinity_kcal}</td>
+          <td class="p-2.5 font-mono text-cyan-300 font-semibold">${item.vinardo_affinity_kcal ?? "—"}</td>
           <td class="p-2.5 font-mono font-bold text-cyan-300">${item.consensus_score ?? "—"}</td>
+          <td class="p-2.5">${confBadge}</td>
           <td class="p-2.5 font-mono text-slate-300">${item.theoretical_kd_nm}</td>
           <td class="p-2.5 font-mono text-slate-300">${item.ligand_efficiency}</td>
           <td class="p-2.5 font-mono text-slate-300">${item.hbond_count}</td>

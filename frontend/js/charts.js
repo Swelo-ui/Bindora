@@ -117,4 +117,126 @@ class ADMECharts {
   }
 }
 
+class DockingCharts {
+  static energyChartInstance = null;
+
+  static renderEnergyLandscape(canvasId, poses) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !window.Chart || !poses || poses.length === 0) return;
+
+    if (this.energyChartInstance) {
+      this.energyChartInstance.destroy();
+      this.energyChartInstance = null;
+    }
+
+    const labels = poses.map(p => `Mode ${p.mode}`);
+    const affinities = poses.map(p => p.affinity_kcal);
+    const rmsdLb = poses.map(p => p.rmsd_lb ?? 0);
+    const vinardoAffinities = poses.map(p => p.vinardo_affinity_kcal ?? null);
+
+    const isLight = document.documentElement.classList.contains("light");
+    const gridColor = isLight ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.06)";
+    const textColor = isLight ? "#334155" : "#94a3b8";
+
+    const datasets = [
+      {
+        type: "bar",
+        label: "Vina ΔG (kcal/mol)",
+        data: affinities,
+        backgroundColor: isLight ? "rgba(2, 132, 199, 0.6)" : "rgba(56, 189, 248, 0.7)",
+        borderColor: isLight ? "#0284c7" : "#38bdf8",
+        borderWidth: 1.5,
+        borderRadius: 4,
+        yAxisID: "y"
+      }
+    ];
+
+    const hasVinardo = vinardoAffinities.some(v => v !== null);
+    if (hasVinardo) {
+      datasets.push({
+        type: "bar",
+        label: "Vinardo ΔG",
+        data: vinardoAffinities,
+        backgroundColor: isLight ? "rgba(16, 185, 129, 0.6)" : "rgba(52, 211, 153, 0.7)",
+        borderColor: isLight ? "#10b981" : "#34d399",
+        borderWidth: 1.5,
+        borderRadius: 4,
+        yAxisID: "y"
+      });
+    }
+
+    datasets.push({
+      type: "line",
+      label: "RMSD l.b. (Å)",
+      data: rmsdLb,
+      borderColor: "#f59e0b",
+      backgroundColor: "rgba(245, 158, 11, 0.15)",
+      borderWidth: 2,
+      borderDash: [3, 3],
+      pointRadius: 3,
+      fill: false,
+      yAxisID: "yRMSD"
+    });
+
+    const ctx = canvas.getContext("2d");
+    this.energyChartInstance = new Chart(ctx, {
+      data: {
+        labels: labels,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: "index",
+          intersect: false
+        },
+        scales: {
+          x: {
+            grid: { color: gridColor },
+            ticks: { color: textColor, font: { size: 10 } }
+          },
+          y: {
+            type: "linear",
+            position: "left",
+            grid: { color: gridColor },
+            ticks: { color: textColor, font: { size: 10 } },
+            title: {
+              display: true,
+              text: "Binding ΔG (kcal/mol)",
+              color: textColor,
+              font: { size: 10, weight: "600" }
+            }
+          },
+          yRMSD: {
+            type: "linear",
+            position: "right",
+            grid: { drawOnChartArea: false },
+            ticks: { color: "#f59e0b", font: { size: 10 } },
+            title: {
+              display: true,
+              text: "RMSD (Å)",
+              color: "#f59e0b",
+              font: { size: 10, weight: "600" }
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: { color: textColor, font: { size: 10 } }
+          },
+          tooltip: {
+            backgroundColor: isLight ? "rgba(255, 255, 255, 0.95)" : "rgba(15, 23, 42, 0.9)",
+            titleColor: isLight ? "#0284c7" : "#38bdf8",
+            bodyColor: isLight ? "#0f172a" : "#ffffff",
+            borderColor: isLight ? "#cbd5e1" : "#334155",
+            borderWidth: 1
+          }
+        }
+      }
+    });
+  }
+}
+
 window.ADMECharts = ADMECharts;
+window.DockingCharts = DockingCharts;

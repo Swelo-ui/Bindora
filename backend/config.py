@@ -6,6 +6,7 @@ BACKEND_DIR = BASE_DIR / "backend"
 FRONTEND_DIR = BASE_DIR / "frontend"
 BIN_DIR = BASE_DIR / "bin"
 VINA_EXE = BIN_DIR / "vina.exe"
+GNINA_EXE = os.environ.get("GNINA_EXE", str(BIN_DIR / "gnina.exe"))
 
 DATA_DIR = BASE_DIR / "data"
 CACHE_DIR = DATA_DIR / "cache"
