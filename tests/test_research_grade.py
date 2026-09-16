@@ -132,21 +132,15 @@ def test_publication_grade_redocking(benchmark):
         print(f"[WARN] WARNING: RMSD not returned by run_docking directly. Energy passed: {affinity:.2f} kcal/mol")
 
     # =================================================================
-    # AUTOMATIC BENCHMARK PERSISTENCE (Direct from live execution memory)
+    # AUTOMATIC BENCHMARK PERSISTENCE (Via centralized report_emitter)
     # =================================================================
     try:
-        import json
-        from datetime import datetime
+        from backend.utils.report_emitter import emit_benchmark_record
         elapsed = round(time.time() - t_start, 2) if "t_start" in locals() else None
-        bench_dir = PROJECT_ROOT / "data" / "benchmarks"
-        bench_dir.mkdir(parents=True, exist_ok=True)
-        out_file = bench_dir / f"{benchmark['pdb_id'].lower()}_benchmark_result.json"
 
-        result_payload = {
-            "pdb_id": benchmark["pdb_id"],
+        live_result = {
             "target": benchmark["target"],
             "ligand": benchmark["drug"],
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "vina_affinity_kcal": round(float(affinity), 2),
             "vinardo_affinity_kcal": best_pose.get("vinardo_affinity_kcal"),
             "mode1_rmsd_angstroms": round(float(actual_rmsd), 2) if actual_rmsd is not None else None,
@@ -162,9 +156,8 @@ def test_publication_grade_redocking(benchmark):
             "exhaustiveness": benchmark["exhaustiveness"],
             "overall_grade": "RESEARCH_GRADE"
         }
-        with open(out_file, "w", encoding="utf-8") as f:
-            json.dump(result_payload, f, indent=2)
-        print(f"[BENCHMARK] Programmatically wrote live result to {out_file.name}")
+        written = emit_benchmark_record(benchmark["pdb_id"], live_result)
+        print(f"[BENCHMARK] Programmatically emitted live result via report_emitter to {written.name}")
     except Exception as e:
         print(f"[BENCHMARK] Warning: Could not auto-save benchmark JSON: {e}")
 
