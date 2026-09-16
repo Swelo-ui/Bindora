@@ -1727,10 +1727,10 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
     <!-- ==================== TAB 7: RESEARCH DOSSIER & EXPORT ==================== -->
     <section id="tab-dossier" class="tab-pane hidden space-y-6">
       
-      <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800 no-print">
         <div>
-          <h2 class="text-lg font-bold text-slate-900 dark:text-white">Academic Research Dossier</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Formal report suitable for M.Pharm coursework submission or early-stage computational citation</p>
+          <h2 class="text-lg font-bold text-slate-900 dark:text-white">Preclinical Research Dossier</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Comprehensive molecular docking &amp; pharmacokinetic evaluation &bull; Publication-grade format calibrated for academic citation</p>
         </div>
         <button id="btn-export-dossier" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow transition flex items-center space-x-2">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
@@ -1738,21 +1738,26 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
         </button>
       </div>
 
-      <div class="glass-panel p-8 rounded-xl border border-slate-200 dark:border-slate-800 space-y-6 text-slate-800 dark:text-slate-200">
-        <div class="border-b border-slate-200 dark:border-slate-700/80 pb-4">
-          <span class="text-xs font-mono text-cyan-600 dark:text-cyan-400 uppercase tracking-widest">Bindora Computational Pharmacology Dossier</span>
-          <h1 class="text-2xl font-black text-slate-900 dark:text-white mt-1">3D Molecular Docking &amp; Pharmacokinetic Evaluation</h1>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Generated via AutoDock Vina v1.2.7 &amp; RDKit Cheminformatics Engine</p>
+      <div class="glass-panel p-6 sm:p-8 rounded-xl border border-slate-200 dark:border-slate-800 space-y-6 text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-950/70">
+        <!-- Formal Academic Header -->
+        <div class="border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono text-cyan-600 dark:text-cyan-400 uppercase tracking-widest font-bold">NexPharmaTech &bull; Bindora Computational Chemistry Initiative</span>
+            <span class="text-[10px] font-mono text-slate-500 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">CASF-2016 / Astex Standard</span>
+          </div>
+          <h1 class="text-2xl font-black text-slate-900 dark:text-white mt-1.5 tracking-tight">Preclinical Molecular Docking &amp; Pharmacokinetic Evaluation</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Rigorous simulation conducted with AutoDock Vina v1.2.7, Meeko flexible torsion setup &amp; RDKit cheminformatics</p>
         </div>
 
-        <div class="grid grid-cols-2 gap-4 text-xs font-mono">
-          <div class="p-3 bg-slate-100/90 dark:bg-slate-900/60 rounded border border-slate-200 dark:border-slate-800">
-            <span class="text-slate-500 dark:text-slate-400 block">Investigational API / Ligand</span>
-            <span id="dossier-ligand-name" class="text-slate-900 dark:text-white font-bold text-sm">No drug loaded</span>
+        <!-- Target & Ligand Top Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+          <div class="dossier-card p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-800">
+            <span class="text-slate-500 dark:text-slate-400 text-[11px] block font-sans font-semibold">Investigational API / Ligand</span>
+            <span id="dossier-ligand-name" class="text-slate-900 dark:text-white font-bold text-sm block mt-0.5">No drug loaded</span>
           </div>
-          <div class="p-3 bg-slate-100/90 dark:bg-slate-900/60 rounded border border-slate-200 dark:border-slate-800">
-            <span class="text-slate-500 dark:text-slate-400 block">Biological Target</span>
-            <span id="dossier-target-name" class="text-slate-900 dark:text-white font-bold text-sm">No target loaded</span>
+          <div class="dossier-card p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-800">
+            <span class="text-slate-500 dark:text-slate-400 text-[11px] block font-sans font-semibold">Biological Target Macromolecule</span>
+            <span id="dossier-target-name" class="text-slate-900 dark:text-white font-bold text-sm block mt-0.5">No target loaded</span>
           </div>
         </div>
 
@@ -1762,9 +1767,9 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
         </div>
 
         <!-- Academic Attribution & Software Reproducibility Metadata -->
-        <div class="p-4 rounded-xl bg-slate-100/90 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 space-y-2.5 text-[11px] font-mono">
+        <div class="dossier-card p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2.5 text-[11px] font-mono">
           <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-            <span class="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider font-sans text-xs flex items-center space-x-1.5">
+            <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider font-sans text-xs flex items-center space-x-1.5">
               <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2v7.31L4.16 20.25A1 1 0 0 0 5 21.6h14a1 1 0 0 0 .84-1.35L14 9.31V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
               <span>Academic Attribution &amp; Software Reproducibility</span>
             </span>
@@ -1773,23 +1778,23 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-slate-600 dark:text-slate-400">
             <div>
               <span class="text-slate-500 block">Docking Engine:</span>
-              <span id="dossier-vina-ver" class="text-slate-900 dark:text-white font-semibold">AutoDock Vina v1.2.5</span>
+              <span id="dossier-vina-ver" class="text-slate-900 dark:text-white font-semibold">AutoDock Vina v1.2.7</span>
             </div>
             <div>
               <span class="text-slate-500 block">Cheminformatics:</span>
-              <span id="dossier-rdkit-ver" class="text-cyan-600 dark:text-cyan-300 font-semibold">RDKit 2024+</span>
+              <span id="dossier-rdkit-ver" class="text-cyan-600 dark:text-cyan-400 font-semibold">RDKit 2024+</span>
             </div>
             <div>
               <span class="text-slate-500 block">Crystallography:</span>
-              <span id="dossier-gemmi-ver" class="text-cyan-600 dark:text-cyan-300 font-semibold">Gemmi 0.7+</span>
+              <span id="dossier-gemmi-ver" class="text-cyan-600 dark:text-cyan-400 font-semibold">Gemmi 0.7+</span>
             </div>
             <div>
               <span class="text-slate-500 block">PDBQT Setup:</span>
-              <span id="dossier-meeko-ver" class="text-cyan-600 dark:text-cyan-300 font-semibold">Meeko Flexible</span>
+              <span id="dossier-meeko-ver" class="text-cyan-600 dark:text-cyan-400 font-semibold">Meeko Flexible</span>
             </div>
           </div>
-          <div class="text-[10px] text-slate-500 pt-1 leading-normal border-t border-slate-200 dark:border-slate-900 font-sans">
-            <em>Citation Notice:</em> If referencing computational predictions generated by this studio in an academic dissertation or publication, cite AutoDock Vina (Trott &amp; Olson, 2010), RDKit (Landrum et al.), and EMBL-EBI ChEMBL (Gaulton et al., 2017).
+          <div class="text-[10px] text-slate-500 pt-1 leading-normal border-t border-slate-200 dark:border-slate-800 font-sans">
+            <em>Citation Notice:</em> If referencing computational predictions generated by this platform in an academic dissertation or publication, cite AutoDock Vina (Trott &amp; Olson, 2010), Vinardo (Quiroga &amp; Villarreal, 2016), RDKit (Landrum et al.), and EMBL-EBI ChEMBL (Gaulton et al., 2017). Support inquiries: <span class="font-mono text-cyan-600 dark:text-cyan-400">sharmaji.pharmatech.info@gmail.com</span>.
           </div>
         </div>
       </div>

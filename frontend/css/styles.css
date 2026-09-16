@@ -164,45 +164,222 @@ body {
   color: #fbbf24;
 }
 
-/* Print Styles for Research Dossier */
+/* ==========================================================================
+   Print Styles for Research Dossier (PDF Export)
+   ========================================================================== */
 @media print {
-  body {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 12mm 12mm;
+  }
+
+  /* Force white background and dark typography across entire document */
+  html, body {
     background-color: #ffffff !important;
     background-image: none !important;
     color: #0f172a !important;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-  header, #main-header, nav, .lg\:hidden, #viewport-container, #btn-export-dossier, .no-print {
+
+  /* Hide navigation, header bar, 3D viewport, buttons, modals, and toasts */
+  header, #main-header, nav, .lg\:hidden, #viewport-container, #btn-export-dossier, .no-print,
+  #modal-firebase-auth, #modal-about, #toast-container, .nav-tab, button, #settings-modal {
     display: none !important;
   }
+
   .print-only {
     display: block !important;
   }
+
   .tab-pane:not(#tab-dossier) {
     display: none !important;
   }
+
   #tab-dossier {
     display: block !important;
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    background: transparent !important;
   }
-  .glass-panel {
+
+  /* Force all container backgrounds to white/light on paper */
+  #tab-dossier * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #tab-dossier .glass-panel {
     background: #ffffff !important;
     border: 1px solid #cbd5e1 !important;
     box-shadow: none !important;
     color: #0f172a !important;
+    padding: 0 !important;
   }
-  h1, h2, h3, h4, strong {
+
+  #tab-dossier [class*="bg-slate-900"],
+  #tab-dossier [class*="bg-slate-950"],
+  #tab-dossier [class*="bg-slate-800"],
+  #tab-dossier [class*="bg-slate-700"],
+  #tab-dossier [class*="dark:bg-slate-900"],
+  #tab-dossier [class*="dark:bg-slate-950"],
+  #tab-dossier [class*="dark:bg-slate-800"],
+  #tab-dossier [class*="dark:bg-"] {
+    background-color: #ffffff !important;
+    background-image: none !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  /* Clean subtle card shading for printed tables and parameter boxes */
+  #tab-dossier .dossier-card,
+  #tab-dossier .dossier-subbox {
+    background-color: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    border-radius: 6px !important;
+  }
+
+  /* Reset all text colors to high-contrast print values */
+  #tab-dossier h1, #tab-dossier h2, #tab-dossier h3, #tab-dossier h4, #tab-dossier strong {
     color: #0f172a !important;
   }
-  p, span, div {
+
+  #tab-dossier p, #tab-dossier span, #tab-dossier td, #tab-dossier th, #tab-dossier div {
     color: #1e293b !important;
   }
-  .text-cyan-400, .text-cyan-300, .text-[#00C6FF] {
-    color: #0284c7 !important;
+
+  #tab-dossier .text-slate-400,
+  #tab-dossier .text-slate-500,
+  #tab-dossier .text-slate-600,
+  #tab-dossier [class*="dark:text-slate-"] {
+    color: #475569 !important;
   }
-  .text-emerald-400 {
-    color: #059669 !important;
+
+  #tab-dossier [class*="dark:text-white"] {
+    color: #0f172a !important;
+  }
+
+  /* Print-safe color accents */
+  #tab-dossier .text-cyan-600,
+  #tab-dossier .text-cyan-400,
+  #tab-dossier .text-cyan-300,
+  #tab-dossier [class*="text-cyan"] {
+    color: #0369a1 !important;
+  }
+
+  #tab-dossier .text-emerald-600,
+  #tab-dossier .text-emerald-400,
+  #tab-dossier [class*="text-emerald"] {
+    color: #047857 !important;
+  }
+
+  #tab-dossier .text-amber-600,
+  #tab-dossier .text-amber-400,
+  #tab-dossier [class*="text-amber"] {
+    color: #b45309 !important;
+  }
+
+  #tab-dossier .text-purple-600,
+  #tab-dossier .text-purple-400,
+  #tab-dossier [class*="text-purple"] {
+    color: #6b21a8 !important;
+  }
+
+  /* Badges in Print */
+  #tab-dossier .badge-print-success {
+    background-color: #ecfdf5 !important;
+    border: 1px solid #10b981 !important;
+    color: #065f46 !important;
+  }
+
+  #tab-dossier .badge-print-info {
+    background-color: #f0f9ff !important;
+    border: 1px solid #0284c7 !important;
+    color: #0369a1 !important;
+  }
+
+  #tab-dossier .badge-print-warning {
+    background-color: #fffbeb !important;
+    border: 1px solid #f59e0b !important;
+    color: #92400e !important;
+  }
+
+  /* Table styling */
+  #tab-dossier table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  #tab-dossier th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    font-weight: 700 !important;
+    padding: 4px 6px !important;
+  }
+
+  #tab-dossier td {
+    border: 1px solid #e2e8f0 !important;
+    color: #1e293b !important;
+    padding: 4px 6px !important;
+  }
+
+  #tab-dossier tr:nth-child(even) td {
+    background-color: #f8fafc !important;
+  }
+
+  /* SVG interaction diagram in print */
+  #tab-dossier .bindora-svg-root {
+    --bd-bg: #ffffff !important;
+    --bd-bond: #0f172a !important;
+    --bd-text: #0f172a !important;
+    --bd-subtext: #334155 !important;
+    --bd-legend-muted: #94a3b8 !important;
+    --bd-legend-bg: #f8fafc !important;
+    --bd-legend-border: #cbd5e1 !important;
+    --bd-hb-bg: #f0fdfa !important;
+    --bd-hb-border: #0d9488 !important;
+    --bd-hb-text: #115e59 !important;
+    --bd-hb-line: #0891b2 !important;
+    --bd-hp-bg: #fffbeb !important;
+    --bd-hp-border: #d97706 !important;
+    --bd-hp-text: #78350f !important;
+    --bd-hp-line: #d97706 !important;
+    --bd-tag-bg: #e0f2fe !important;
+    --bd-tag-border: #0284c7 !important;
+    --bd-tag-text: #0369a1 !important;
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Page break rules */
+  .page-break-inside-avoid,
+  .dossier-card,
+  .dossier-section,
+  #tab-dossier tr,
+  #tab-dossier table,
+  #dossier-svg-container {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .page-break-before {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+
+  .page-break-after-avoid {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
   }
 }
 
@@ -573,6 +750,26 @@ html.light #tab-dossier .glass-panel {
   background-color: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
   box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06) !important;
+}
+html.light #tab-dossier .dossier-card {
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+html.light #tab-dossier .dossier-subbox {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+}
+html.light #tab-dossier table {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+html.light #tab-dossier th {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+html.light #tab-dossier td {
+  border-color: #f1f5f9 !important;
 }
 html.light #tab-dossier .bg-slate-900\/60,
 html.light #tab-dossier [class*="bg-slate-900"],

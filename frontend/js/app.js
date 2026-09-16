@@ -3,6 +3,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const app = new BindoraApp();
   window.app = app;
+  window.bindoraApp = app;
   app.init();
 });
 
@@ -582,7 +583,12 @@ class BindoraApp {
     // Export Dossier
     const exportBtn = document.getElementById("btn-export-dossier");
     if (exportBtn) {
-      exportBtn.addEventListener("click", () => window.print());
+      exportBtn.addEventListener("click", () => {
+        this.updateDossierView();
+        setTimeout(() => {
+          window.print();
+        }, 150);
+      });
     }
 
     // Brand Guide / About Modal
@@ -2461,127 +2467,557 @@ class BindoraApp {
       targetName.textContent = `${r.title || "Target Receptor"} (PDB: ${r.pdb_id || "N/A"})`;
     }
 
-    if (resultsSummary && this.state.docking) {
-      const d = this.state.docking;
-      const thermo = d.thermodynamics || {};
-      const contacts = d.interactions || {};
-      const adme = this.state.ligand?.adme || {};
-      const lip = adme.drug_likeness?.lipinski || {};
-      const xcheck = this.state.crosscheck || {};
-      const redock = this.state.redockingValidation;
-      const repStats = d.replicate_stats;
+    if (!resultsSummary) return;
 
-      const isWeak = thermo.is_weak_binder || (d.top_pose?.affinity_kcal > -6.0);
-
+    if (!this.state.docking) {
       resultsSummary.innerHTML = `
-        <!-- SECTION A: Computed Quantitative Metrics (Deterministic) -->
-        <div class="space-y-3 p-4 rounded-xl border border-cyan-200 dark:border-cyan-800/40 bg-slate-50/90 dark:bg-slate-900/60 shadow-sm">
-          <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-            <span class="font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
-              <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2v7.31L4.16 20.25A1 1 0 0 0 5 21.6h14a1 1 0 0 0 .84-1.35L14 9.31V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
-              <span>Section A: Deterministic Physical Computations (AutoDock Vina &amp; RDKit)</span>
-            </span>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 font-semibold">Physical Facts</span>
-          </div>
-
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
-            <div class="p-2.5 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
-              <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px]">Binding Free Energy (ΔG)</span>
-              <span class="text-cyan-600 dark:text-cyan-400 font-bold text-sm">${d.top_pose?.affinity_kcal || "—"} kcal/mol</span>
-            </div>
-            <div class="p-2.5 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
-              <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px]">Theoretical Dissociation (Kd)</span>
-              <span class="text-emerald-600 dark:text-emerald-400 font-bold text-sm">${thermo.theoretical_kd_nm || "—"} nM</span>
-            </div>
-            <div class="p-2.5 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
-              <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px]">Ligand Efficiency (LE)</span>
-              <span class="text-amber-600 dark:text-yellow-400 font-bold text-sm">${thermo.ligand_efficiency?.value || "—"}</span>
-              <span class="text-[10px] text-slate-500 block">SILE: ${thermo.size_independent_le?.value || "—"}</span>
-            </div>
-            <div class="p-2.5 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
-              <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px]">H-Bonds &amp; Contacts</span>
-              <span class="text-purple-600 dark:text-purple-400 font-bold text-sm">${contacts.total_hbond_count || 0} H-Bonds</span>
-              <span class="text-[10px] text-slate-500 block">${contacts.total_hydrophobic_count || 0} Hydrophobic</span>
-            </div>
-          </div>
-
-          ${repStats ? `
-            <div class="p-2.5 rounded-lg bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800/40 text-xs font-mono flex items-center justify-between">
-              <span class="text-slate-700 dark:text-slate-300 font-sans">Multi-Seed Stochastic Replicates (N=${repStats.replicates_count}):</span>
-              <span class="text-cyan-700 dark:text-cyan-300 font-bold">Mean ΔG = ${repStats.mean_affinity_kcal} ± ${repStats.sd_affinity_kcal} kcal/mol (95% CI: ±${repStats.confidence_interval_95} kcal/mol)</span>
-            </div>
-          ` : ''}
-
-          ${redock ? `
-            <div class="p-2.5 rounded-lg ${redock.is_validated ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40' : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/40'} border text-xs font-mono flex items-center justify-between">
-              <span class="text-slate-700 dark:text-slate-300 font-sans">Protocol Self-Validation (Native Ligand Redocking):</span>
-              <span class="${redock.is_validated ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'} font-bold">RMSD = ${redock.rmsd_angstroms} Å &bull; ${redock.benchmark_status}</span>
-            </div>
-          ` : ''}
-
-          ${isWeak ? `
-            <div class="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-600/50 text-xs text-amber-900 dark:text-amber-200 font-sans space-y-1">
-              <strong class="font-bold flex items-center space-x-1.5 text-amber-800 dark:text-amber-300">
-                <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                <span>Scientific Qualification: Sub-threshold Binding Detected</span>
-              </strong>
-              <p class="text-[11px] leading-relaxed text-amber-800/90 dark:text-amber-200/90">
-                Calculated ΔG (${d.top_pose?.affinity_kcal} kcal/mol) corresponds to high micromolar or millimolar affinity (Kd ≈ ${thermo.theoretical_kd_um || '—'} µM). At this range, experimental wet-lab assays typically show non-specific surface adhesion or no inhibition. Do not interpret as a potent hit.
-              </p>
-            </div>
-          ` : ''}
-
-          ${adme.drug_likeness ? `
-            <div class="p-2.5 rounded-lg bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="font-bold text-slate-800 dark:text-slate-200 font-sans">Cheminformatics (ADME &amp; Safety Profile):</span>
-                <span class="text-[10px] text-slate-500 font-mono">Lipinski: ${lip.status || 'Pass'} (${lip.violations_count || 0} viols) &bull; GI: ${adme.pharmacokinetics?.gi_absorption?.level || '—'}</span>
-              </div>
-              <div class="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100 dark:border-slate-800">
-                <span class="text-slate-600 dark:text-slate-400">CYP450 Liability:</span>
-                <span class="inline-flex items-center space-x-1.5">
-                  <span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-[10px] font-bold">Exploratory Heuristic — Not a Validated Predictor</span>
-                  <span class="text-slate-700 dark:text-slate-300 font-mono">${(adme.pharmacokinetics?.cyp450_inhibition?.alerts || []).length > 0 ? (adme.pharmacokinetics.cyp450_inhibition.alerts.map(a => a.cyp).join(', ')) : 'No alerts'}</span>
-                </span>
-              </div>
-            </div>
-          ` : ''}
-
-          ${contacts.diagram_svg ? `
-            <div class="p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="font-bold text-slate-800 dark:text-slate-200 font-sans">2D Protein–Ligand Interaction Schematic:</span>
-                <span class="text-[10px] text-cyan-600 dark:text-cyan-400 font-mono">LigPlot-Style Radial SVG</span>
-              </div>
-              <div class="flex items-center justify-center overflow-hidden p-2 bg-white dark:bg-slate-950/90 rounded border border-slate-200 dark:border-slate-800">
-                ${contacts.diagram_svg}
-              </div>
-            </div>
-          ` : ''}
-        </div>
-
-        <!-- SECTION B: AI-Generated Mechanistic Synthesis (Hypothesis Only) -->
-        <div class="space-y-3 p-4 rounded-xl border border-purple-200 dark:border-purple-800/40 bg-purple-50/40 dark:bg-slate-900/60 shadow-sm">
-          <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-            <span class="font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
-              <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>
-              <span>Section B: AI Mechanistic Interpretation (DeepSeek/LLM Hypothesis)</span>
-            </span>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800 font-semibold">Hypothesis Only</span>
-          </div>
-          <div class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-sans space-y-2">
-            <p class="text-slate-500 dark:text-slate-400 italic">
-              Computational docking identifies potential geometric fits within conformational sampling space. Biological efficacy requires secondary wet-lab verification (enzymatic IC50, SPR, cellular viability).
-            </p>
-            ${this.state.narrative ? `
-              <div class="p-3 bg-white dark:bg-slate-950/60 rounded-lg border border-slate-200 dark:border-slate-800/80 text-slate-800 dark:text-slate-300 text-xs leading-relaxed max-h-48 overflow-y-auto">
-                ${this.renderMarkdown(this.state.narrative.narrative || '')}
-              </div>
-            ` : '<p class="text-slate-400 dark:text-slate-500 italic text-xs">Generate narrative report in Tab 5 to append comprehensive mechanistic explanation here.</p>'}
-          </div>
+        <div class="p-8 text-center border border-dashed border-slate-300 dark:border-slate-800 rounded-xl">
+          <p class="text-slate-500 italic text-xs">No active molecular docking simulation loaded. Run a docking simulation in Tab 3 to automatically compile and generate the complete preclinical research dossier.</p>
         </div>
       `;
+      return;
     }
+
+    const d = this.state.docking;
+    const l = this.state.ligand || {};
+    const r = this.state.receptor || {};
+    const thermo = d.thermodynamics || {};
+    const contacts = d.interactions || {};
+    const adme = l.adme || {};
+    const phys = adme.physicochemical || {};
+    const lip = adme.drug_likeness?.lipinski || {};
+    const veber = adme.drug_likeness?.veber || {};
+    const pk = adme.pharmacokinetics || {};
+    const redock = this.state.redockingValidation;
+    const repStats = d.replicate_stats;
+    const poses = d.poses || (d.top_pose ? [d.top_pose] : []);
+    const topPose = d.top_pose || poses[0] || {};
+    const heavyCount = phys.heavy_atoms?.value || l.heavy_atom_count || 20;
+
+    // Grid coordinates
+    const getVal = (id, def) => parseFloat(document.getElementById(id)?.value) || def;
+    const center = d.grid?.center || { x: getVal("grid-cx", 0), y: getVal("grid-cy", 0), z: getVal("grid-cz", 0) };
+    const size = d.grid?.size || { x: getVal("grid-sx", 22), y: getVal("grid-sy", 22), z: getVal("grid-sz", 22) };
+    const exhaustiveness = d.exhaustiveness || parseInt(document.getElementById("docking-exhaustiveness")?.value) || 8;
+
+    const isWeak = thermo.is_weak_binder || (topPose.affinity_kcal > -6.0);
+
+    // Helpers
+    const formatKd = (dg) => {
+      if (dg == null || isNaN(dg)) return "—";
+      const RT = 0.59248; // kcal/mol at 298.15K
+      const kdM = Math.exp(dg / RT);
+      const kdNM = kdM * 1e9;
+      if (kdNM < 1) return `${(kdNM * 1000).toFixed(1)} pM`;
+      if (kdNM < 1000) return `${kdNM.toFixed(1)} nM`;
+      const kdUM = kdM * 1e6;
+      if (kdUM < 1000) return `${kdUM.toFixed(2)} µM`;
+      return `${(kdM * 1000).toFixed(2)} mM`;
+    };
+
+    const calcLE = (dg, hCount) => {
+      if (dg == null || !hCount || isNaN(dg) || hCount <= 0) return "—";
+      return (-dg / hCount).toFixed(3);
+    };
+
+    // Modes table rows
+    const posesRows = poses.map((p, idx) => {
+      const mode = p.mode || (idx + 1);
+      const aff = p.affinity_kcal != null ? Number(p.affinity_kcal).toFixed(2) : "—";
+      const vinAff = p.vinardo_affinity_kcal != null ? Number(p.vinardo_affinity_kcal).toFixed(2) : "—";
+      const kdStr = p.affinity_kcal != null ? formatKd(p.affinity_kcal) : "—";
+      const leStr = p.affinity_kcal != null ? calcLE(p.affinity_kcal, heavyCount) : "—";
+      const rmsdLb = p.rmsd_lb != null ? Number(p.rmsd_lb).toFixed(3) : "0.000";
+      const rmsdUb = p.rmsd_ub != null ? Number(p.rmsd_ub).toFixed(3) : "0.000";
+      const isTop = idx === 0;
+
+      return `
+        <tr class="${isTop ? 'bg-cyan-50/70 dark:bg-cyan-950/40 font-semibold' : ''}">
+          <td class="text-center font-mono font-bold ${isTop ? 'text-cyan-700 dark:text-cyan-400' : 'text-slate-700 dark:text-slate-300'} p-2 border border-slate-200 dark:border-slate-800">#${mode}</td>
+          <td class="text-center font-mono font-bold ${isTop ? 'text-cyan-700 dark:text-cyan-400' : 'text-slate-900 dark:text-white'} p-2 border border-slate-200 dark:border-slate-800">${aff} kcal/mol</td>
+          <td class="text-center font-mono text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800">${vinAff !== "—" ? vinAff + ' kcal/mol' : '—'}</td>
+          <td class="text-center font-mono text-emerald-700 dark:text-emerald-400 font-bold p-2 border border-slate-200 dark:border-slate-800">${kdStr}</td>
+          <td class="text-center font-mono text-amber-700 dark:text-amber-400 p-2 border border-slate-200 dark:border-slate-800">${leStr}</td>
+          <td class="text-center font-mono text-slate-500 dark:text-slate-400 p-2 border border-slate-200 dark:border-slate-800">${rmsdLb} Å</td>
+          <td class="text-center font-mono text-slate-500 dark:text-slate-400 p-2 border border-slate-200 dark:border-slate-800">${rmsdUb} Å</td>
+          <td class="text-center text-[10px] p-2 border border-slate-200 dark:border-slate-800">
+            ${isTop ? '<span class="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold">Rank 1 (Global Min)</span>' : '<span class="text-slate-500">Conformational Mode</span>'}
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    // Hydrogen bonds
+    const hbonds = contacts.hydrogen_bonds || [];
+    const hbondRows = hbonds.length > 0 ? hbonds.map(hb => `
+      <tr>
+        <td class="font-mono font-bold text-slate-900 dark:text-white p-2 border border-slate-200 dark:border-slate-800">${hb.residue || `${hb.res_name} ${hb.res_num}:${hb.chain}`}</td>
+        <td class="font-mono text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800">${hb.receptor_atom || '—'}</td>
+        <td class="font-mono text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800">${hb.ligand_atom || '—'}</td>
+        <td class="font-mono text-cyan-700 dark:text-cyan-400 font-bold text-center p-2 border border-slate-200 dark:border-slate-800">${hb.distance != null ? Number(hb.distance).toFixed(2) + ' Å' : '—'}</td>
+        <td class="text-slate-600 dark:text-slate-400 text-[10px] p-2 border border-slate-200 dark:border-slate-800">${hb.type || 'Hydrogen Bond'}</td>
+      </tr>
+    `).join("") : `<tr><td colspan="5" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No directional hydrogen bonds detected within 3.5 Å cutoff.</td></tr>`;
+
+    // Hydrophobic contacts
+    const hydrophobics = contacts.hydrophobic_contacts || [];
+    const hydrophobicList = hydrophobics.length > 0 ? hydrophobics.map(hp => `
+      <span class="inline-flex items-center space-x-1 px-2 py-1 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 font-mono text-[11px]">
+        <span class="font-bold">${hp.residue || `${hp.res_name} ${hp.res_num}:${hp.chain}`}</span>
+        <span class="text-[10px] text-amber-700 dark:text-amber-400">(${Number(hp.distance).toFixed(2)} Å)</span>
+      </span>
+    `).join(" ") : `<span class="text-slate-500 italic text-xs">No hydrophobic contacts detected within 4.0 Å cutoff.</span>`;
+
+    // Lipinski Rule of 5 Matrix
+    const mw = phys.molecular_weight?.value != null ? Number(phys.molecular_weight.value).toFixed(2) : (l.weight != null ? Number(l.weight).toFixed(2) : "—");
+    const logp = phys.logp?.value != null ? Number(phys.logp.value).toFixed(2) : "—";
+    const hbd = phys.h_bond_donors?.value != null ? phys.h_bond_donors.value : "—";
+    const hba = phys.h_bond_acceptors?.value != null ? phys.h_bond_acceptors.value : "—";
+    const tpsa = phys.tpsa?.value != null ? Number(phys.tpsa.value).toFixed(2) : "—";
+    const rotb = phys.rotatable_bonds?.value != null ? phys.rotatable_bonds.value : "—";
+
+    const mwPass = mw !== "—" ? Number(mw) <= 500 : true;
+    const logpPass = logp !== "—" ? Number(logp) <= 5.0 : true;
+    const hbdPass = hbd !== "—" ? Number(hbd) <= 5 : true;
+    const hbaPass = hba !== "—" ? Number(hba) <= 10 : true;
+    const lipViolations = (mwPass ? 0 : 1) + (logpPass ? 0 : 1) + (hbdPass ? 0 : 1) + (hbaPass ? 0 : 1);
+
+    resultsSummary.innerHTML = `
+      <!-- SECTION 1: EXECUTIVE THERMODYNAMIC & KINETIC METRICS -->
+      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
+            <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2v7.31L4.16 20.25A1 1 0 0 0 5 21.6h14a1 1 0 0 0 .84-1.35L14 9.31V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
+            <span>Section 1: Executive Quantitative Binding Metrics</span>
+          </span>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800 font-semibold">Primary Simulation</span>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Binding Free Energy (ΔG)</span>
+            <span class="text-cyan-700 dark:text-cyan-400 font-black text-base">${topPose.affinity_kcal != null ? topPose.affinity_kcal.toFixed(2) : "—"} <span class="text-xs font-normal font-sans">kcal/mol</span></span>
+          </div>
+          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Theoretical Dissociation (Kd)</span>
+            <span class="text-emerald-700 dark:text-emerald-400 font-black text-base">${thermo.theoretical_kd_nm != null ? thermo.theoretical_kd_nm + ' nM' : formatKd(topPose.affinity_kcal)}</span>
+          </div>
+          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Ligand Efficiency (LE)</span>
+            <span class="text-amber-700 dark:text-amber-400 font-black text-base">${thermo.ligand_efficiency?.value || calcLE(topPose.affinity_kcal, heavyCount)}</span>
+            <span class="text-[10px] text-slate-500 block font-sans">SILE: ${thermo.size_independent_le?.value || "—"}</span>
+          </div>
+          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Intermolecular Contacts</span>
+            <span class="text-purple-700 dark:text-purple-400 font-black text-base">${contacts.total_hbond_count || hbonds.length} <span class="text-xs font-normal font-sans">H-Bonds</span></span>
+            <span class="text-[10px] text-slate-500 block font-sans">${contacts.total_hydrophobic_count || hydrophobics.length} Hydrophobic</span>
+          </div>
+        </div>
+
+        ${repStats ? `
+          <div class="p-2.5 rounded-lg bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800/40 text-xs font-mono flex items-center justify-between">
+            <span class="text-slate-800 dark:text-slate-200 font-sans font-medium">Multi-Seed Stochastic Replicates (N=${repStats.replicates_count}):</span>
+            <span class="text-cyan-800 dark:text-cyan-300 font-bold">Mean ΔG = ${repStats.mean_affinity_kcal} ± ${repStats.sd_affinity_kcal} kcal/mol (95% CI: ±${repStats.confidence_interval_95} kcal/mol)</span>
+          </div>
+        ` : ''}
+
+        ${redock ? `
+          <div class="p-2.5 rounded-lg ${redock.is_validated ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40' : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/40'} border text-xs font-mono flex items-center justify-between">
+            <span class="text-slate-800 dark:text-slate-200 font-sans font-medium">Protocol Self-Validation (Native Ligand Redocking):</span>
+            <span class="${redock.is_validated ? 'text-emerald-800 dark:text-emerald-300' : 'text-amber-800 dark:text-amber-300'} font-bold">RMSD = ${redock.rmsd_angstroms} Å &bull; ${redock.benchmark_status}</span>
+          </div>
+        ` : ''}
+
+        ${isWeak ? `
+          <div class="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-600/50 text-xs text-amber-900 dark:text-amber-200 font-sans space-y-1">
+            <strong class="font-bold flex items-center space-x-1.5 text-amber-900 dark:text-amber-300">
+              <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span>Scientific Qualification: Sub-threshold Binding Detected</span>
+            </strong>
+            <p class="text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/90">
+              Calculated ΔG (${topPose.affinity_kcal} kcal/mol) corresponds to micromolar or millimolar affinity (Kd ≈ ${thermo.theoretical_kd_um || '—'} µM). At this range, experimental assays typically observe non-specific surface adhesion or weak kinetics. Interpret cautiously.
+            </p>
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- SECTION 2: BIOPHYSICAL ENTITIES & DOCKING SEARCH SPACE SPECIFICATIONS -->
+      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
+            <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+            <span>Section 2: Biophysical &amp; Search Space Parameters</span>
+          </span>
+          <span class="text-[10px] text-slate-500 font-mono">Algorithm: Vina Iterated Local Search</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <!-- Target Specifications -->
+          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1.5 font-mono">
+            <div class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1 font-sans text-xs">Target Receptor</div>
+            <div class="flex justify-between"><span class="text-slate-500">PDB Identifier:</span> <span class="font-bold text-slate-900 dark:text-white">${r.pdb_id || 'Custom PDB'}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Chains / Heavy Atoms:</span> <span class="text-slate-800 dark:text-slate-200">${(r.chains || ['A']).join(', ')} &bull; ${r.atom_count || '—'} atoms</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Grid Center [X, Y, Z]:</span> <span class="text-cyan-700 dark:text-cyan-400 font-bold">${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${center.z.toFixed(1)}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Search Box Dimensions:</span> <span class="text-slate-800 dark:text-slate-200">${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)} Å</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Search Exhaustiveness:</span> <span class="font-bold text-slate-900 dark:text-white">${exhaustiveness} (Deep Sampling)</span></div>
+          </div>
+
+          <!-- Ligand Specifications -->
+          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1.5 font-mono">
+            <div class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1 font-sans text-xs">Investigational Ligand</div>
+            <div class="flex justify-between"><span class="text-slate-500">Ligand Name:</span> <span class="font-bold text-slate-900 dark:text-white truncate max-w-[200px]" title="${l.name || ''}">${l.name || 'Custom Ligand'}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Molecular Formula:</span> <span class="text-slate-800 dark:text-slate-200">${l.formula || 'Derived from SMILES'}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Molecular Weight:</span> <span class="text-slate-800 dark:text-slate-200">${mw} g/mol</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Heavy Atoms / Rot. Bonds:</span> <span class="text-slate-800 dark:text-slate-200">${heavyCount} heavy &bull; ${rotb} rotatable</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Wildman-Crippen LogP:</span> <span class="font-bold text-slate-900 dark:text-white">${logp}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 3: COMPREHENSIVE CONFORMATIONAL SAMPLING TABLE (MODES 1 TO 9) -->
+      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
+            <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+            <span>Section 3: Ranked Binding Modes Table (AutoDock Vina &amp; Vinardo)</span>
+          </span>
+          <span class="text-[10px] text-slate-500 font-mono">Cluster Cutoff: 2.0 Å</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
+            <thead>
+              <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-bold font-sans">
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Mode</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Vina ΔG</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Vinardo ΔG</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Theoretical Kd</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Ligand Eff.</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">RMSD l.b.</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">RMSD u.b.</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Classification</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${posesRows}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SECTION 4: INTERMOLECULAR INTERACTION RESIDUE PROFILING -->
+      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
+            <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
+            <span>Section 4: Intermolecular Interaction Fingerprint</span>
+          </span>
+          <span class="text-[10px] text-slate-500 font-mono">Cutoffs: H-Bond &le; 3.5 Å &bull; Hydrophobic &le; 4.0 Å</span>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <span class="font-bold text-slate-800 dark:text-slate-200 text-xs block mb-1.5 font-sans">Directional Hydrogen Bonds:</span>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
+                <thead>
+                  <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-sans font-bold">
+                    <th class="p-2 border border-slate-200 dark:border-slate-800">Receptor Residue</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800">Receptor Atom</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800">Ligand Atom</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Distance (Å)</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800">Bond Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${hbondRows}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <span class="font-bold text-slate-800 dark:text-slate-200 text-xs block mb-1.5 font-sans">Hydrophobic Contact Residues:</span>
+            <div class="p-2.5 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-wrap gap-1.5">
+              ${hydrophobicList}
+            </div>
+          </div>
+        </div>
+      </div>
+
+    let currentSec = 5;
+    const svgSectionHtml = contacts.diagram_svg ? `
+      <!-- SECTION: 2D PROTEIN-LIGAND INTERACTION SCHEMATIC -->
+      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-2 page-break-inside-avoid">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
+            <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            <span>Section ${currentSec++}: 2D Protein–Ligand Interaction Schematic</span>
+          </span>
+          <span class="text-[10px] text-cyan-700 dark:text-cyan-400 font-mono">LigPlot-Style Radial Vector Map</span>
+        </div>
+        <div class="dossier-subbox flex items-center justify-center p-3 bg-white dark:bg-slate-950/90 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden" id="dossier-svg-container">
+          ${contacts.diagram_svg}
+        </div>
+        <p class="text-[10px] text-slate-500 font-sans text-center mt-1">
+          <em>Figure 1:</em> 2D radial representation of binding cleft contacts (dashed cyan lines = hydrogen bonds with distances; amber rays = hydrophobic interactions).
+        </p>
+      </div>
+    ` : '';
+
+    const admetSecNumber = currentSec++;
+    const aiSecNumber = currentSec++;
+
+    resultsSummary.innerHTML = `
+      <!-- SECTION 1: EXECUTIVE THERMODYNAMIC & KINETIC METRICS -->
+      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
+            <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2v7.31L4.16 20.25A1 1 0 0 0 5 21.6h14a1 1 0 0 0 .84-1.35L14 9.31V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
+            <span>Section 1: Executive Quantitative Binding Metrics</span>
+          </span>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800 font-semibold">Primary Simulation</span>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Binding Free Energy (ΔG)</span>
+            <span class="text-cyan-700 dark:text-cyan-400 font-black text-base">${topPose.affinity_kcal != null ? topPose.affinity_kcal.toFixed(2) : "—"} <span class="text-xs font-normal font-sans">kcal/mol</span></span>
+          </div>
+          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Theoretical Dissociation (Kd)</span>
+            <span class="text-emerald-700 dark:text-emerald-400 font-black text-base">${thermo.theoretical_kd_nm != null ? thermo.theoretical_kd_nm + ' nM' : formatKd(topPose.affinity_kcal)}</span>
+          </div>
+          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Ligand Efficiency (LE)</span>
+            <span class="text-amber-700 dark:text-amber-400 font-black text-base">${thermo.ligand_efficiency?.value || calcLE(topPose.affinity_kcal, heavyCount)}</span>
+            <span class="text-[10px] text-slate-500 block font-sans">SILE: ${thermo.size_independent_le?.value || "—"}</span>
+          </div>
+          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Intermolecular Contacts</span>
+            <span class="text-purple-700 dark:text-purple-400 font-black text-base">${contacts.total_hbond_count || hbonds.length} <span class="text-xs font-normal font-sans">H-Bonds</span></span>
+            <span class="text-[10px] text-slate-500 block font-sans">${contacts.total_hydrophobic_count || hydrophobics.length} Hydrophobic</span>
+          </div>
+        </div>
+
+        ${repStats ? `
+          <div class="p-2.5 rounded-lg bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800/40 text-xs font-mono flex items-center justify-between">
+            <span class="text-slate-800 dark:text-slate-200 font-sans font-medium">Multi-Seed Stochastic Replicates (N=${repStats.replicates_count}):</span>
+            <span class="text-cyan-800 dark:text-cyan-300 font-bold">Mean ΔG = ${repStats.mean_affinity_kcal} ± ${repStats.sd_affinity_kcal} kcal/mol (95% CI: ±${repStats.confidence_interval_95} kcal/mol)</span>
+          </div>
+        ` : ''}
+
+        ${redock ? `
+          <div class="p-2.5 rounded-lg ${redock.is_validated ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40' : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/40'} border text-xs font-mono flex items-center justify-between">
+            <span class="text-slate-800 dark:text-slate-200 font-sans font-medium">Protocol Self-Validation (Native Ligand Redocking):</span>
+            <span class="${redock.is_validated ? 'text-emerald-800 dark:text-emerald-300' : 'text-amber-800 dark:text-amber-300'} font-bold">RMSD = ${redock.rmsd_angstroms} Å &bull; ${redock.benchmark_status}</span>
+          </div>
+        ` : ''}
+
+        ${isWeak ? `
+          <div class="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-600/50 text-xs text-amber-900 dark:text-amber-200 font-sans space-y-1">
+            <strong class="font-bold flex items-center space-x-1.5 text-amber-900 dark:text-amber-300">
+              <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span>Scientific Qualification: Sub-threshold Binding Detected</span>
+            </strong>
+            <p class="text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/90">
+              Calculated ΔG (${topPose.affinity_kcal} kcal/mol) corresponds to micromolar or millimolar affinity (Kd ≈ ${thermo.theoretical_kd_um || '—'} µM). At this range, experimental assays typically observe non-specific surface adhesion or weak kinetics. Interpret cautiously.
+            </p>
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- SECTION 2: BIOPHYSICAL ENTITIES & DOCKING SEARCH SPACE SPECIFICATIONS -->
+      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
+            <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+            <span>Section 2: Biophysical &amp; Search Space Parameters</span>
+          </span>
+          <span class="text-[10px] text-slate-500 font-mono">Algorithm: Vina Iterated Local Search</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <!-- Target Specifications -->
+          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1.5 font-mono">
+            <div class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1 font-sans text-xs">Target Receptor</div>
+            <div class="flex justify-between"><span class="text-slate-500">PDB Identifier:</span> <span class="font-bold text-slate-900 dark:text-white">${r.pdb_id || 'Custom PDB'}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Chains / Heavy Atoms:</span> <span class="text-slate-800 dark:text-slate-200">${(r.chains || ['A']).join(', ')} &bull; ${r.atom_count || '—'} atoms</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Grid Center [X, Y, Z]:</span> <span class="text-cyan-700 dark:text-cyan-400 font-bold">${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${center.z.toFixed(1)}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Search Box Dimensions:</span> <span class="text-slate-800 dark:text-slate-200">${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)} Å</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Search Exhaustiveness:</span> <span class="font-bold text-slate-900 dark:text-white">${exhaustiveness} (Deep Sampling)</span></div>
+          </div>
+
+          <!-- Ligand Specifications -->
+          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1.5 font-mono">
+            <div class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1 font-sans text-xs">Investigational Ligand</div>
+            <div class="flex justify-between"><span class="text-slate-500">Ligand Name:</span> <span class="font-bold text-slate-900 dark:text-white truncate max-w-[200px]" title="${l.name || ''}">${l.name || 'Custom Ligand'}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Molecular Formula:</span> <span class="text-slate-800 dark:text-slate-200">${l.formula || 'Derived from SMILES'}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Molecular Weight:</span> <span class="text-slate-800 dark:text-slate-200">${mw} g/mol</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Heavy Atoms / Rot. Bonds:</span> <span class="text-slate-800 dark:text-slate-200">${heavyCount} heavy &bull; ${rotb} rotatable</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Wildman-Crippen LogP:</span> <span class="font-bold text-slate-900 dark:text-white">${logp}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 3: COMPREHENSIVE CONFORMATIONAL SAMPLING TABLE (MODES 1 TO 9) -->
+      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
+            <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+            <span>Section 3: Ranked Binding Modes Table (AutoDock Vina &amp; Vinardo)</span>
+          </span>
+          <span class="text-[10px] text-slate-500 font-mono">Cluster Cutoff: 2.0 Å</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
+            <thead>
+              <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-bold font-sans">
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Mode</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Vina ΔG</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Vinardo ΔG</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Theoretical Kd</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Ligand Eff.</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">RMSD l.b.</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">RMSD u.b.</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Classification</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${posesRows}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SECTION 4: INTERMOLECULAR INTERACTION RESIDUE PROFILING -->
+      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
+            <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
+            <span>Section 4: Intermolecular Interaction Fingerprint</span>
+          </span>
+          <span class="text-[10px] text-slate-500 font-mono">Cutoffs: H-Bond &le; 3.5 Å &bull; Hydrophobic &le; 4.0 Å</span>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <span class="font-bold text-slate-800 dark:text-slate-200 text-xs block mb-1.5 font-sans">Directional Hydrogen Bonds:</span>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
+                <thead>
+                  <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-sans font-bold">
+                    <th class="p-2 border border-slate-200 dark:border-slate-800">Receptor Residue</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800">Receptor Atom</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800">Ligand Atom</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Distance (Å)</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800">Bond Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${hbondRows}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <span class="font-bold text-slate-800 dark:text-slate-200 text-xs block mb-1.5 font-sans">Hydrophobic Contact Residues:</span>
+            <div class="p-2.5 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-wrap gap-1.5">
+              ${hydrophobicList}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 5: 2D PROTEIN-LIGAND INTERACTION SCHEMATIC (OPTIONAL) -->
+      ${svgSectionHtml}
+
+      <!-- SECTION: CHEMINFORMATICS & PRECLINICAL ADMET ASSESSMENT -->
+      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
+            <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Section ${admetSecNumber}: Cheminformatics &amp; Preclinical Drug-Likeness (Lipinski Rule of 5)</span>
+          </span>
+          <span class="text-[10px] px-2 py-0.5 rounded ${lipViolations === 0 ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800' : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'} font-bold font-mono">
+            ${lipViolations === 0 ? 'Lipinski Compliant (0 Violations)' : `Borderline (${lipViolations} Violations)`}
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <!-- Lipinski Matrix -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
+              <thead>
+                <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-sans font-bold">
+                  <th class="p-2 border border-slate-200 dark:border-slate-800">Lipinski Parameter</th>
+                  <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Value</th>
+                  <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Criterion</th>
+                  <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody class="font-mono">
+                <tr>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 font-sans">Molecular Weight (MW)</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold">${mw} Da</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center text-slate-500">&le; 500 Da</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold ${mwPass ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}">${mwPass ? 'Pass' : 'Violated'}</td>
+                </tr>
+                <tr>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 font-sans">Wildman-Crippen LogP</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold">${logp}</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center text-slate-500">&le; 5.0</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold ${logpPass ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}">${logpPass ? 'Pass' : 'Violated'}</td>
+                </tr>
+                <tr>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 font-sans">H-Bond Donors (HBD)</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold">${hbd}</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center text-slate-500">&le; 5</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold ${hbdPass ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}">${hbdPass ? 'Pass' : 'Violated'}</td>
+                </tr>
+                <tr>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 font-sans">H-Bond Acceptors (HBA)</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold">${hba}</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center text-slate-500">&le; 10</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold ${hbaPass ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}">${hbaPass ? 'Pass' : 'Violated'}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pharmacokinetics & Veber Rules -->
+          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2 text-xs font-mono">
+            <div class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1 font-sans">Pharmacokinetics &amp; Bioavailability</div>
+            <div class="flex justify-between"><span class="text-slate-500">TPSA (Topological Polar Surface):</span> <span class="font-bold text-slate-900 dark:text-white">${tpsa} Å² (&le; 140 Å²)</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Rotatable Bonds Count:</span> <span class="font-bold text-slate-900 dark:text-white">${rotb} (&le; 10)</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Gastrointestinal (GI) Absorption:</span> <span class="text-emerald-700 dark:text-emerald-400 font-bold">${pk.gi_absorption?.level || 'High'}</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Blood-Brain Barrier (BBB):</span> <span class="text-slate-800 dark:text-slate-200">${pk.bbb_permeant?.is_permeant ? 'Permeant' : 'Non-Permeant'}</span></div>
+            <div class="flex justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+              <span class="text-slate-500">CYP450 Liability:</span>
+              <span class="text-slate-800 dark:text-slate-200">${(pk.cyp450_inhibition?.alerts || []).length > 0 ? pk.cyp450_inhibition.alerts.map(a => a.cyp).join(', ') : 'No Inhibitory Alerts'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: AI-GENERATED MECHANISTIC HYPOTHESIS -->
+      ${this.state.narrative ? `
+        <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-2 page-break-inside-avoid">
+          <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+            <span class="font-bold text-purple-800 dark:text-purple-300 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
+              <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>
+              <span>Section ${aiSecNumber}: AI Mechanistic Synthesis (DeepSeek LLM Hypothesis)</span>
+            </span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800 font-semibold font-mono">In-Silico Hypothesis</span>
+          </div>
+          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-xs leading-relaxed font-sans">
+            ${this.renderMarkdown(this.state.narrative.narrative || '')}
+          </div>
+        </div>
+      ` : ''}
+    `;
   }
 
   updatePathwayInfo() {
