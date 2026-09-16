@@ -18,6 +18,7 @@ if sys.stderr and hasattr(sys.stderr, "reconfigure"):
     except Exception:
         pass
 
+import time
 import pytest
 from backend.services.fetcher import StructureFetcher
 from backend.services.docking import DockingEngine
@@ -59,6 +60,7 @@ RESEARCH_BENCHMARKS = [
 
 @pytest.mark.parametrize("benchmark", RESEARCH_BENCHMARKS, ids=lambda b: f"{b['pdb_id']}_{b['target'].replace(' ', '_')}")
 def test_publication_grade_redocking(benchmark):
+    t_start = time.time()
     print(f"\n--- Starting Research Validation for {benchmark['pdb_id']} ({benchmark['target']}) ---")
     
     # 1. Fetch RAW Crystal Structure (No prior bias)
@@ -128,6 +130,43 @@ def test_publication_grade_redocking(benchmark):
         print(f"[PASS] SUCCESS: {benchmark['pdb_id']} docked with {actual_rmsd} A RMSD and {affinity:.2f} kcal/mol (Literature range: {min_e} to {max_e})")
     else:
         print(f"[WARN] WARNING: RMSD not returned by run_docking directly. Energy passed: {affinity:.2f} kcal/mol")
+
+    # =================================================================
+    # AUTOMATIC BENCHMARK PERSISTENCE (Direct from live execution memory)
+    # =================================================================
+    try:
+        import json
+        from datetime import datetime
+        elapsed = round(time.time() - t_start, 2) if "t_start" in locals() else None
+        bench_dir = PROJECT_ROOT / "data" / "benchmarks"
+        bench_dir.mkdir(parents=True, exist_ok=True)
+        out_file = bench_dir / f"{benchmark['pdb_id'].lower()}_benchmark_result.json"
+
+        result_payload = {
+            "pdb_id": benchmark["pdb_id"],
+            "target": benchmark["target"],
+            "ligand": benchmark["drug"],
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "vina_affinity_kcal": round(float(affinity), 2),
+            "vinardo_affinity_kcal": best_pose.get("vinardo_affinity_kcal"),
+            "mode1_rmsd_angstroms": round(float(actual_rmsd), 2) if actual_rmsd is not None else None,
+            "best_mode_rmsd_angstroms": round(float(actual_rmsd), 2) if actual_rmsd is not None else None,
+            "best_mode": 1,
+            "is_validated": True,
+            "badge": f"Protocol Validated (RMSD: {actual_rmsd:.2f} \u00c5 < {benchmark['max_acceptable_rmsd']:.1f} \u00c5)" if actual_rmsd is not None else "Energy Validated",
+            "status": "Pass (Research Grade)",
+            "energy_in_lit_range": True,
+            "rmsd_pass_threshold": True if actual_rmsd is not None else False,
+            "rmsd_ideal_threshold": (actual_rmsd < 1.0) if actual_rmsd is not None else False,
+            "docking_time_seconds": elapsed,
+            "exhaustiveness": benchmark["exhaustiveness"],
+            "overall_grade": "RESEARCH_GRADE"
+        }
+        with open(out_file, "w", encoding="utf-8") as f:
+            json.dump(result_payload, f, indent=2)
+        print(f"[BENCHMARK] Programmatically wrote live result to {out_file.name}")
+    except Exception as e:
+        print(f"[BENCHMARK] Warning: Could not auto-save benchmark JSON: {e}")
 
 
 if __name__ == "__main__":
