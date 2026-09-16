@@ -75,7 +75,42 @@ body {
 
 /* Navigation Tabs */
 .nav-tab {
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 32px !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+  flex-shrink: 0 !important;
   transition: all 0.2s ease;
+}
+
+#main-header nav {
+  overflow: visible !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+#main-header nav::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+#main-header .nav-tab {
+  font-size: 11px;
+  letter-spacing: -0.01em;
+  padding: 4px 8px !important;
+  height: 29px !important;
+}
+
+@media (min-width: 1536px) {
+  #main-header .nav-tab {
+    font-size: 12px;
+    padding: 5px 10px !important;
+    height: 31px !important;
+  }
 }
 
 .nav-tab.active {

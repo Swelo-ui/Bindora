@@ -230,8 +230,8 @@ class DockingEngine:
             try:
                 nat_prep = DockingEngine.prepare_native_ligand(co_ligand_pdb)
                 native_smiles = nat_prep.get("canonical_smiles")
-            except Exception as e:
-                print(f"[RECEPTOR PREP] Native SMILES derivation notice: {e}")
+            except Exception:
+                pass
 
         native_ligand_info = {
             "has_native": has_co_ligand,
@@ -303,6 +303,64 @@ class DockingEngine:
         return None
 
     @staticmethod
+    def _convert_mol_to_meeko_pdbqt(mol_h) -> str:
+        """
+        Convert protonated RDKit 3D Mol into PDBQT text using Meeko.
+        Guarantees finite partial charges by computing Gasteiger charges with
+        automatic formal-charge / zero-charge fallback for challenging chemotypes
+        (e.g., hypervalent phosphorus, phosphate groups, nucleotides, transition metals, boron).
+        """
+        try:
+            AllChem.ComputeGasteigerCharges(mol_h)
+        except Exception:
+            pass
+
+        # Sanitize non-finite (NaN / Inf) or missing charges
+        for atom in mol_h.GetAtoms():
+            charge = 0.0
+            if atom.HasProp("_GasteigerCharge"):
+                try:
+                    v = atom.GetDoubleProp("_GasteigerCharge")
+                    if not (math.isnan(v) or math.isinf(v)):
+                        charge = v
+                    else:
+                        charge = float(atom.GetFormalCharge())
+                except Exception:
+                    charge = float(atom.GetFormalCharge())
+            else:
+                charge = float(atom.GetFormalCharge())
+            atom.SetDoubleProp("_BindoraCharge", float(charge))
+
+        # Primary route: use sanitized charge model
+        mol_setups = None
+        try:
+            preparator = MoleculePreparation(charge_model="read", charge_atom_prop="_BindoraCharge")
+            mol_setups = preparator.prepare(mol_h)
+        except Exception:
+            mol_setups = None
+
+        if not mol_setups:
+            # Fallback route: zero charge model
+            preparator = MoleculePreparation(charge_model="zero")
+            mol_setups = preparator.prepare(mol_h)
+
+        if not mol_setups:
+            raise RuntimeError("Meeko could not build flexible torsion tree for molecule.")
+
+        pdbqt_str, is_ok, err_msg = PDBQTWriterLegacy.write_string(mol_setups[0])
+        if not is_ok:
+            # Robust fallback to charge_model="zero"
+            preparator = MoleculePreparation(charge_model="zero")
+            mol_setups = preparator.prepare(mol_h)
+            if mol_setups:
+                pdbqt_str, is_ok, err_msg = PDBQTWriterLegacy.write_string(mol_setups[0])
+
+        if not is_ok:
+            raise RuntimeError(f"Meeko PDBQT conversion failed for molecule: {err_msg}")
+
+        return pdbqt_str
+
+    @staticmethod
     def prepare_native_ligand(native_ligand_pdb: str) -> Dict[str, Any]:
         """
         Dedicated 4-step preparation pipeline for native co-crystallized ligands:
@@ -328,20 +386,9 @@ class DockingEngine:
 
         # Step 3: Add explicit hydrogens preserving crystallographic 3D coordinates
         mol_h = Chem.AddHs(mol, addCoords=True)
-        try:
-            AllChem.ComputeGasteigerCharges(mol_h)
-        except Exception:
-            pass
 
-        # Step 4: Meeko conversion to PDBQT with torsion tree
-        preparator = MoleculePreparation()
-        mol_setups = preparator.prepare(mol_h)
-        if not mol_setups:
-            raise RuntimeError("Meeko could not build flexible torsion tree for native ligand.")
-
-        pdbqt_str, is_ok, err_msg = PDBQTWriterLegacy.write_string(mol_setups[0])
-        if not is_ok:
-            raise RuntimeError(f"Meeko PDBQT conversion failed for native ligand: {err_msg}")
+        # Step 4: Robust Meeko conversion to PDBQT with torsion tree & sanitized charges
+        pdbqt_str = DockingEngine._convert_mol_to_meeko_pdbqt(mol_h)
 
         canonical_smiles = Chem.MolToSmiles(Chem.RemoveHs(mol_h))
         pdb_block_h = Chem.MolToPDBBlock(mol_h)
@@ -478,15 +525,8 @@ class DockingEngine:
             conformer_desc = "RDKit ETKDGv3 (Experimental Torsion Knowledge Distance Geometry)"
             minimization_desc = "MMFF94 (Merck Molecular Force Field) gradient optimization (500 max iterations)"
 
-        # Prepare PDBQT using Meeko
-        preparator = MoleculePreparation()
-        mol_setups = preparator.prepare(mol_h)
-        if not mol_setups:
-            raise RuntimeError("Meeko could not construct ligand flexible torsions setup.")
-
-        pdbqt_str, is_ok, err_msg = PDBQTWriterLegacy.write_string(mol_setups[0])
-        if not is_ok:
-            raise RuntimeError(f"Meeko PDBQT conversion failed: {err_msg}")
+        # Prepare PDBQT using Meeko with robust sanitized charges
+        pdbqt_str = DockingEngine._convert_mol_to_meeko_pdbqt(mol_h)
 
         # Also prepare PDB block for 3Dmol.js viewer
         pdb_block = Chem.MolToPDBBlock(mol_h)
@@ -648,7 +688,9 @@ class DockingEngine:
         for p in best_poses:
             p_pdbqt = p.get("pdbqt_content", "")
             if p_pdbqt:
-                p["vinardo_affinity_kcal"] = DockingEngine.score_pose_vinardo(receptor_pdbqt, p_pdbqt)
+                p["vinardo_affinity_kcal"] = DockingEngine.score_pose_vinardo(
+                    receptor_pdbqt, p_pdbqt, center, size
+                )
                 p["gnina"] = DockingEngine.score_pose_gnina(receptor_pdbqt, p_pdbqt)
 
         # Compute reference RMSD if reference structure is provided
@@ -707,8 +749,8 @@ class DockingEngine:
                     m = re.search(r"Estimated Free Energy of Binding\s*:\s*([-+]?\d*\.\d+|\d+)", res.stdout)
                     if m:
                         return round(float(m.group(1)), 3)
-            except Exception as e:
-                print(f"[VINARDO SCORING ERROR] {e}")
+            except Exception:
+                pass
         return None
 
     @staticmethod
@@ -930,8 +972,8 @@ class DockingEngine:
                 pocket_center,
                 pocket_size
             )
-        except Exception as ve:
-            print(f"[VINARDO REDOCK WARNING] {ve}")
+        except Exception:
+            pass
 
         return {
             "affinity_kcal": affinity,

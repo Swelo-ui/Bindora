@@ -1,0 +1,109 @@
+{
+  "pipeline_name": "CASF-2016 Batch Redocking Benchmark",
+  "timestamp_utc": "2026-09-16T20:03:35.139642+00:00",
+  "runtime_environment": {
+    "python": "3.13.1",
+    "os": "Windows 10",
+    "arch": "AMD64"
+  },
+  "provenance": {
+    "is_programmatic": true,
+    "sha256_sig": "b95f902457d58a0e"
+  },
+  "data": {
+    "metadata": {
+      "benchmark_version": "2.0",
+      "benchmark_type": "CASF-2016_core_set",
+      "timestamp_utc": "2026-09-16T20:03:35.139195+00:00",
+      "docking_engine": "AutoDock Vina 1.2.7",
+      "scoring_functions": [
+        "AutoDock Vina (Standard)",
+        "Vinardo (Quiroga & Villarreal 2016)"
+      ],
+      "exhaustiveness": 4,
+      "pdb_id_source": "CASF-2016 core set (Su et al. JCIM 2019)",
+      "operating_system": "win32",
+      "reporting_policy": "Full distribution — all complexes reported (successes and failures). No cherry-picking. Generated programmatically via report_emitter."
+    },
+    "summary_statistics": {
+      "total_complexes_attempted": 5,
+      "successful_dockings": 5,
+      "failed_dockings": 0,
+      "failure_rate_percent": 0.0,
+      "failed_pdb_ids": [],
+      "pose_reconstruction": {
+        "total_with_rmsd": 5,
+        "rmsd_under_2a_count": 4,
+        "rmsd_under_1a_count": 2,
+        "rmsd_success_rate_percent": 80.0,
+        "mean_rmsd_angstroms": 1.202,
+        "median_rmsd_angstroms": 1.26
+      },
+      "affinity_correlation": {
+        "note": "Affinity correlation requires experimental pKd values from PDBbind, not available in RCSB-only fetch mode. Add exp_delta_g_kcal to each result via PDBbind registration to compute Pearson R / RMSE.",
+        "vina_pearson_r": null,
+        "vina_spearman_rho": null,
+        "vina_rmse_kcal": null,
+        "vina_mae_kcal": null
+      },
+      "total_elapsed_seconds": 160.0
+    },
+    "complex_results": [
+      {
+        "pdb_id": "1A1E",
+        "success": true,
+        "has_native_redock": true,
+        "vina_delta_g_kcal": -6.253,
+        "vinardo_delta_g_kcal": -5.319,
+        "rmsd_angstroms": 1.37,
+        "is_validated": true,
+        "error": null,
+        "elapsed_seconds": 19.02
+      },
+      {
+        "pdb_id": "1A28",
+        "success": true,
+        "has_native_redock": true,
+        "vina_delta_g_kcal": -10.404,
+        "vinardo_delta_g_kcal": -8.039,
+        "rmsd_angstroms": 0.0,
+        "is_validated": true,
+        "error": null,
+        "elapsed_seconds": 14.28
+      },
+      {
+        "pdb_id": "1A4G",
+        "success": true,
+        "has_native_redock": true,
+        "vina_delta_g_kcal": -7.03,
+        "vinardo_delta_g_kcal": -4.623,
+        "rmsd_angstroms": 1.26,
+        "is_validated": true,
+        "error": null,
+        "elapsed_seconds": 31.73
+      },
+      {
+        "pdb_id": "1A4Q",
+        "success": true,
+        "has_native_redock": true,
+        "vina_delta_g_kcal": -7.155,
+        "vinardo_delta_g_kcal": -4.259,
+        "rmsd_angstroms": 0.98,
+        "is_validated": true,
+        "error": null,
+        "elapsed_seconds": 39.33
+      },
+      {
+        "pdb_id": "1A4R",
+        "success": true,
+        "has_native_redock": true,
+        "vina_delta_g_kcal": -5.697,
+        "vinardo_delta_g_kcal": -4.008,
+        "rmsd_angstroms": 2.4,
+        "is_validated": true,
+        "error": null,
+        "elapsed_seconds": 55.66
+      }
+    ]
+  }
+}

@@ -402,4 +402,4 @@ def batch_docking():
 
 if __name__ == "__main__":
     print(f"Starting Bindora Server on http://{HOST}:{PORT}")
-    app.run(host=HOST, port=PORT, debug=DEBUG)
+    app.run(host=HOST, port=PORT, debug=DEBUG, use_reloader=False)

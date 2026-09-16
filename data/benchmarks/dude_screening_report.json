@@ -1,0 +1,53 @@
+{
+  "pipeline_name": "DUD-E Virtual Screening Benchmark",
+  "report_version": "2.0",
+  "timestamp_utc": "2026-09-16T20:20:16.137506+00:00",
+  "runtime_environment": {
+    "python": "3.13.1",
+    "os": "Windows 10",
+    "arch": "AMD64"
+  },
+  "provenance": {
+    "is_programmatic": true,
+    "sha256_sig": "3e44739ec72156ea"
+  },
+  "data": {
+    "targets": [
+      {
+        "target": "vegfr2",
+        "target_name": "VEGFR2",
+        "pdb_id": "2OH4",
+        "target_class": "RTK",
+        "success": true,
+        "n_actives_attempted": 5,
+        "n_actives_docked": 5,
+        "n_decoys_attempted": 10,
+        "n_decoys_docked": 10,
+        "roc_auc": 0.12,
+        "ef_1pct": 0.0,
+        "ef_5pct": 0.0,
+        "ef_10pct": 0.0,
+        "error": null,
+        "elapsed_seconds": 346.98
+      }
+    ],
+    "aggregate_statistics": {
+      "n_targets_attempted": 1,
+      "n_targets_successful": 1,
+      "mean_roc_auc": 0.12,
+      "mean_ef_1pct": 0.0,
+      "mean_ef_5pct": 0.0,
+      "mean_ef_10pct": 0.0
+    },
+    "subset_name": "single_vegfr2",
+    "dude_caveat": "DUD-E decoys are property-matched (MW, cLogP, HBA, HBD, rotatable bonds) but NOT topologically diversified from actives. Some decoys carry structural similarity to actives (analogue bias), inflating enrichment scores for some methods. This caveat applies to all published DUD-E benchmarks (Mysinger et al. 2012). Results must be interpreted alongside pose-accuracy data (CASF-2016 redocking), not in isolation.",
+    "metadata": {
+      "benchmark_version": "2.0",
+      "benchmark_type": "DUD-E_virtual_screening",
+      "subset_name": "single_vegfr2",
+      "timestamp_utc": "2026-09-16T20:20:16.137457+00:00",
+      "exhaustiveness": 4,
+      "operating_system": "win32"
+    }
+  }
+}

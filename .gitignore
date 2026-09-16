@@ -22,6 +22,12 @@ bin/*.exe
 data/cache/*
 !data/cache/.gitkeep
 data/benchmarks/cache/*
+data/benchmarks/*.log
+data/benchmarks/*_progress.json
+data/dude/
+docking_*/
+tests/dossier_export.pdf
+tests/dossier_print_preview.png
 
 # IDE and OS files
 .vscode/

@@ -507,7 +507,21 @@ def run_benchmark(
             "rmsd_under_2a_count": rmsd_success_count,
             "rmsd_success_rate_percent": round(rmsd_success_rate, 1),
             "mean_rmsd_angstroms": round(sum(rmsd_vals) / len(rmsd_vals), 2) if rmsd_vals else 0.0
-        }
+        },
+        # Literature comparison fields — published AutoDock Vina reference values
+        # from the CASF-2016 scoring power benchmark (Su et al. JCIM 2019).
+        # These allow readers to directly compare Bindora's numbers to published Vina results.
+        # Source: Su M. et al. J. Chem. Inf. Model. 2019, 59(2), 895-913.
+        #         DOI: 10.1021/acs.jcim.8b00545 — Table 3 (AutoDock Vina on 285 CASF-2016 complexes)
+        "literature_r": 0.564,      # Published Vina Pearson R on CASF-2016 full set
+        "literature_rmse": 2.19,    # Published Vina RMSE (kcal/mol) on CASF-2016 full set
+        "literature_source": "Su M. et al. J. Chem. Inf. Model. 2019, 59(2), 895-913. DOI:10.1021/acs.jcim.8b00545",
+        "literature_caveat": (
+            "Literature values are from the 285-complex CASF-2016 core set (PDBbind v2016). "
+            "Bindora's curated 25-complex set is a different and smaller subset. "
+            "Direct numerical comparison is informative but not statistically equivalent. "
+            "Run tests/benchmark_casf2016.py for a true apples-to-apples comparison."
+        )
     }
 
     report = {
@@ -575,6 +589,11 @@ def generate_markdown_report(report: Dict[str, Any]) -> str:
         f"| **Mean Absolute Error (MAE)** | **{stats['vina_mae_kcal']:.2f} kcal/mol** | **{stats['vinardo_mae_kcal']:.2f} kcal/mol** | < 2.0 kcal/mol |",
         f"| **Pose Redocking Success (RMSD $\\le 2.0$ Å)** | **{pose_stats['rmsd_success_rate_percent']}%** ({pose_stats['rmsd_under_2a_count']}/{pose_stats['total_native_complexes']}) | — | > 70% |",
         f"| **Mean Crystallographic RMSD** | **{pose_stats['mean_rmsd_angstroms']:.2f} Å** | — | < 2.0 Å |",
+        f"| **Literature Vina R (CASF-2016, 285 complexes)** | {stats.get('literature_r', 'N/A')} | — | Reference |",
+        f"| **Literature Vina RMSE (CASF-2016, 285 complexes)** | {stats.get('literature_rmse', 'N/A')} kcal/mol | — | Reference |",
+        "",
+        f"> *Literature reference: {stats.get('literature_source', '')}*",
+        f"> *{stats.get('literature_caveat', '')}*",
         "",
         "---",
         "",

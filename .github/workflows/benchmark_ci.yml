@@ -1,0 +1,80 @@
+name: Bindora Benchmark CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    name: Fast Benchmark Suite (5 complexes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download AutoDock Vina binary (Linux x64)
+        run: |
+          mkdir -p bin
+          wget -q -O bin/vina \
+            https://github.com/ccsb-scripps/AutoDock-Vina/releases/download/v1.2.7/vina_1.2.7_linux_x86_64
+          chmod +x bin/vina
+          bin/vina --version
+
+      - name: Run fast benchmark (5 complexes, exhaustiveness=4)
+        env:
+          VINA_EXE: bin/vina
+        run: |
+          python tests/benchmark_accuracy.py \
+            --fast \
+            --exhaustiveness 4 \
+            --output-json data/benchmarks/ci_result.json \
+            --output-md   data/benchmarks/ci_result.md
+
+      - name: Validate output (at least 3 of 5 complexes must succeed)
+        run: |
+          python - <<'PYEOF'
+          import json, sys
+          with open('data/benchmarks/ci_result.json') as f:
+              r = json.load(f)
+          stats = r.get('summary_statistics', {})
+          n = stats.get('successful_evaluations', 0)
+          pose = stats.get('pose_reconstruction', {})
+          print(f'Successful dockings: {n}/5')
+          print(f"RMSD success rate:   {pose.get('rmsd_success_rate_percent','?')}%")
+          print(f"Mean RMSD:           {pose.get('mean_rmsd_angstroms','?')} A")
+          print(f"Vina Pearson R:      {stats.get('vina_pearson_r','?')}")
+          if n < 3:
+              print(f'FAIL: {n}/5 succeeded (CI requires >= 3)', file=sys.stderr)
+              sys.exit(1)
+          print('PASS')
+          PYEOF
+
+      - name: Run core unit tests (no regressions)
+        run: python -m pytest tests/test_docking.py tests/test_adme.py -v --tb=short -x
+        timeout-minutes: 10
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bindora-benchmark-${{ github.sha }}
+          path: |
+            data/benchmarks/ci_result.json
+            data/benchmarks/ci_result.md
+          retention-days: 30

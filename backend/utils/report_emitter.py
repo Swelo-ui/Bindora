@@ -169,3 +169,108 @@ def emit_pipeline_report(
 
     return atomic_json_dump(report_payload, target)
 
+
+def emit_casf2016_checkpoint(
+    progress_dict: Dict[str, Any],
+    output_path: Union[str, Path]
+) -> Path:
+    """
+    Atomically write a CASF-2016 batch-run checkpoint after every completed complex.
+
+    The checkpoint is designed to be:
+    - Re-entrant safe: can be called after every single complex with no data loss risk.
+    - Resumable: the batch runner reads this file on startup to skip already-completed IDs.
+    - Provenance-stamped: SHA-256 hash of results list prevents silent corruption.
+
+    Required keys in progress_dict:
+        completed_ids (list[str])  -- PDB IDs that have finished (success or failure)
+        results       (list[dict]) -- per-complex result dicts
+        started_at    (str)        -- ISO 8601 timestamp of run start
+        total_targets (int)        -- total number of PDB IDs in this run
+    """
+    required = {"completed_ids", "results", "started_at", "total_targets"}
+    missing = required - set(progress_dict.keys())
+    if missing:
+        raise ScientificIntegrityError(
+            f"emit_casf2016_checkpoint: missing required keys: {missing}"
+        )
+    if not isinstance(progress_dict["completed_ids"], list):
+        raise ScientificIntegrityError("completed_ids must be a list")
+    if not isinstance(progress_dict["results"], list):
+        raise ScientificIntegrityError("results must be a list")
+
+    now_utc = datetime.now(timezone.utc)
+
+    payload = {
+        "checkpoint_version": "2.0",
+        "checkpoint_type": "casf2016_batch",
+        "updated_at_utc": now_utc.isoformat(),
+        "started_at": progress_dict["started_at"],
+        "total_targets": progress_dict["total_targets"],
+        "completed_count": len(progress_dict["completed_ids"]),
+        "completed_ids": progress_dict["completed_ids"],
+        "results": progress_dict["results"],
+        "provenance": {
+            "is_programmatic": True,
+            "python_version": platform.python_version(),
+            "os_platform": platform.system(),
+            "sha256_sig": compute_provenance_hash({
+                "completed_ids": sorted(progress_dict["completed_ids"]),
+                "result_count": len(progress_dict["results"])
+            })
+        }
+    }
+
+    return atomic_json_dump(payload, output_path)
+
+
+def emit_screening_report(
+    pipeline_name: str,
+    screening_results: Dict[str, Any],
+    output_file: Union[str, Path]
+) -> Path:
+    """
+    Emit a DUD-E virtual screening report (ROC-AUC, enrichment factors).
+
+    screening_results must include:
+        targets     (list[dict]) -- per-target results with roc_auc, ef_1pct, ef_5pct, ef_10pct
+        dude_caveat (str)        -- the analogue-bias disclaimer (mandatory, never omitted)
+        subset_name (str)        -- e.g. 'diverse_8' or 'full_102'
+    """
+    required = {"targets", "dude_caveat", "subset_name"}
+    missing = required - set(screening_results.keys())
+    if missing:
+        raise ScientificIntegrityError(
+            f"emit_screening_report: missing required fields: {missing}"
+        )
+    if not screening_results.get("dude_caveat", "").strip():
+        raise ScientificIntegrityError(
+            "dude_caveat field must be non-empty -- DUD-E analogue-bias caveat "
+            "is mandatory and must appear in every screening report."
+        )
+
+    # Validate per-target numeric fields
+    for t in screening_results.get("targets", []):
+        validate_numeric_field(t, "roc_auc", min_val=0.0, max_val=1.0)
+        validate_numeric_field(t, "ef_1pct", min_val=0.0)
+        validate_numeric_field(t, "ef_5pct", min_val=0.0)
+        validate_numeric_field(t, "ef_10pct", min_val=0.0)
+
+    now_utc = datetime.now(timezone.utc)
+    report_payload = {
+        "pipeline_name": pipeline_name,
+        "report_version": "2.0",
+        "timestamp_utc": now_utc.isoformat(),
+        "runtime_environment": {
+            "python": platform.python_version(),
+            "os": f"{platform.system()} {platform.release()}",
+            "arch": platform.machine()
+        },
+        "provenance": {
+            "is_programmatic": True,
+            "sha256_sig": compute_provenance_hash(screening_results)
+        },
+        "data": screening_results
+    }
+
+    return atomic_json_dump(report_payload, output_file)

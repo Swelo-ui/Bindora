@@ -9,12 +9,17 @@ BIN_DIR = BASE_DIR / "bin"
 VINA_EXE = BIN_DIR / "vina.exe"
 VINA_URL = "https://github.com/ccsb-scripps/AutoDock-Vina/releases/download/v1.2.7/vina_1.2.7_win.exe"
 
-def ensure_vina():
+_VINA_NOTIFIED = False
+
+def ensure_vina(verbose: bool = False):
     """Ensure the AutoDock Vina binary exists and is functional."""
+    global _VINA_NOTIFIED
     BIN_DIR.mkdir(parents=True, exist_ok=True)
     
     if VINA_EXE.exists() and VINA_EXE.stat().st_size > 100000:
-        print(f"[VINA] Found existing binary at: {VINA_EXE}")
+        if verbose and not _VINA_NOTIFIED:
+            print(f"[VINA] Found existing binary at: {VINA_EXE}")
+            _VINA_NOTIFIED = True
         return str(VINA_EXE)
         
     print(f"[VINA] Downloading AutoDock Vina 1.2.7 for Windows from:\n  {VINA_URL}")

@@ -39,10 +39,11 @@ class BindoraApp {
       const statusBadge = document.getElementById("backend-status-badge");
       if (statusBadge) {
         if (health.vina_available) {
-          statusBadge.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span> AutoDock Vina Ready`;
-          statusBadge.className = "px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800 flex items-center";
+          statusBadge.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1.5 animate-pulse flex-shrink-0"></span><span class="hidden 2xl:inline">AutoDock Vina Ready</span><span class="2xl:hidden">Vina Ready</span>`;
+          statusBadge.className = "hidden lg:flex px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800 items-center whitespace-nowrap flex-shrink-0";
         } else {
-          statusBadge.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1.5"></span> Vina Standby`;
+          statusBadge.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1.5 flex-shrink-0"></span><span class="hidden 2xl:inline">Vina Standby</span><span class="2xl:hidden">Standby</span>`;
+          statusBadge.className = "hidden lg:flex px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-950/80 text-amber-300 border border-amber-800 items-center whitespace-nowrap flex-shrink-0";
         }
       }
     } catch (e) {
@@ -606,6 +607,17 @@ class BindoraApp {
       closeAboutActionBtn.addEventListener("click", () => aboutModal.classList.add("hidden"));
     }
 
+    // Terminal CLI Guide Modal [v2.0]
+    const cliBtn = document.getElementById("btn-cli-guide");
+    const cliModal = document.getElementById("modal-cli-guide");
+    const closeCliBtn = document.getElementById("btn-close-cli-guide");
+    if (cliBtn && cliModal) {
+      cliBtn.addEventListener("click", () => cliModal.classList.remove("hidden"));
+    }
+    if (closeCliBtn && cliModal) {
+      closeCliBtn.addEventListener("click", () => cliModal.classList.add("hidden"));
+    }
+
     // Blind Docking & Pocket Centroid Reset
     const blindBtn = document.getElementById("btn-blind-docking");
     if (blindBtn) {
@@ -748,6 +760,11 @@ class BindoraApp {
       setTimeout(() => {
         if (this.viewer.viewer) this.viewer.viewer.render();
       }, 100);
+    }
+
+    // If switching to AI narrative tab and docking is completed but no narrative yet, generate it
+    if (tabId === "ai-narrative" && this.state.docking && !this.state.narrative) {
+      this.generateNarrativeReport();
     }
   }
 
@@ -2329,9 +2346,33 @@ class BindoraApp {
 
   async generateNarrativeReport() {
     const container = document.getElementById("narrative-report-content");
-    if (container) {
-      container.innerHTML = `<div class="text-xs text-slate-400 animate-pulse">Generating pedagogical pharmacology explanation with strict anti-hallucination verification...</div>`;
+    if (!container) return;
+
+    // If neither receptor nor ligand is loaded yet, display friendly guidance instead of error
+    if (!this.state.receptor && !this.state.ligand) {
+      container.innerHTML = `
+        <div class="p-6 rounded-xl bg-slate-900/40 border border-slate-700/60 text-center space-y-3">
+          <div class="w-12 h-12 mx-auto rounded-full bg-purple-950/60 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-inner">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+          </div>
+          <h4 class="text-sm font-semibold text-slate-200">No Active Simulation Loaded</h4>
+          <p class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+            To generate a publication-grade pharmacological briefing, select a target receptor and drug in <span class="text-cyan-400 font-semibold">1. Target &amp; Ligand</span> and run docking in <span class="text-cyan-400 font-semibold">2. 3D Docking</span>, or load a preset benchmark from the Home tab.
+          </p>
+          <div class="pt-2 flex items-center justify-center space-x-2">
+            <button onclick="window.bindoraApp.switchTab('home')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white transition shadow cursor-pointer">
+              Go to Benchmarks / Home
+            </button>
+            <button onclick="window.bindoraApp.switchTab('studio')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer">
+              Open Target &amp; Ligand Studio
+            </button>
+          </div>
+        </div>
+      `;
+      return;
     }
+
+    container.innerHTML = `<div class="text-xs text-slate-400 animate-pulse flex items-center space-x-2 py-3"><svg class="w-4 h-4 animate-spin text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg><span>Synthesizing pharmacological briefing with anti-hallucination verification...</span></div>`;
 
     const payload = {
       ligand_name: this.state.ligand?.name || "Drug Candidate",
@@ -2347,26 +2388,38 @@ class BindoraApp {
     try {
       const res = await BindoraAPI.explainNarrative(payload);
       this.state.narrative = res;
-      if (container) {
-        // Render markdown formatted text properly (not raw with ** showing)
-        const renderedMarkdown = this.renderMarkdown(res.narrative || '');
-        container.innerHTML = `
-          <div class="space-y-4">
-            <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700/60 text-xs text-slate-500 dark:text-slate-400">
-              <span>Engine: <a href="https://openrouter.ai" target="_blank" rel="noopener" class="text-cyan-600 dark:text-cyan-400 font-semibold hover:underline">${res.source}</a></span>
-              <span class="text-emerald-600 dark:text-emerald-400 font-semibold">&#10003; Zero-Hallucination Verified</span>
-            </div>
-            <div class="text-slate-800 dark:text-slate-300 text-xs sm:text-sm leading-relaxed narrative-md">
-              <p>${renderedMarkdown}</p>
-            </div>
+      // Render markdown formatted text properly (not raw with ** showing)
+      const renderedMarkdown = this.renderMarkdown(res.narrative || '');
+      container.innerHTML = `
+        <div class="space-y-4">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700/60 text-xs text-slate-500 dark:text-slate-400">
+            <span>Engine: <span class="text-cyan-600 dark:text-cyan-400 font-semibold">${res.source}</span></span>
+            <span class="text-emerald-600 dark:text-emerald-400 font-semibold">&#10003; Zero-Hallucination Verified</span>
           </div>
-        `;
-      }
+          <div class="text-slate-800 dark:text-slate-300 text-xs sm:text-sm leading-relaxed narrative-md space-y-3">
+            ${renderedMarkdown}
+          </div>
+        </div>
+      `;
     } catch (e) {
       console.warn("Narrative generation error:", e);
-      if (container) {
-        container.innerHTML = `<div class="text-xs text-rose-400">Failed to generate narrative: ${e.message}</div>`;
-      }
+      container.innerHTML = `
+        <div class="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 space-y-2.5">
+          <div class="flex items-center space-x-2 text-rose-600 dark:text-rose-400 font-semibold text-xs">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <span>Narrative Briefing Generation Notice: ${e.message}</span>
+          </div>
+          <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+            The server request did not complete. Ensure the local server is running on <code class="font-mono text-cyan-600 dark:text-cyan-400">http://localhost:5000</code>, then click retry below to synthesize using the rule-based reasoning engine.
+          </p>
+          <div>
+            <button onclick="window.bindoraApp.generateNarrativeReport()" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white shadow-sm transition cursor-pointer">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+              <span>Retry Generation</span>
+            </button>
+          </div>
+        </div>
+      `;
     }
   }
 
