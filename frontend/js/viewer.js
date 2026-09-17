@@ -54,7 +54,7 @@ class MolecularViewer {
     const M = window["$" + "3Dmol"];
     if (M) {
       this.viewer = M.createViewer(el, {
-        backgroundColor: '0x0f172a',
+        backgroundColor: '0x090a0f',
         antialias: true
       });
       console.log('[3Dmol] Viewer initialized successfully.');
@@ -320,10 +320,27 @@ class MolecularViewer {
           const atoms = this.receptorModel.selectedAtoms(sel);
           if (atoms && atoms.length > 0) {
             const ca = atoms.find(a => a.atom === 'CA') || atoms[0];
+            const sidechainAtoms = atoms.filter(a => a.atom !== 'CA' && a.atom !== 'C' && a.atom !== 'N' && a.atom !== 'O');
+            let pos = { x: ca.x, y: ca.y, z: ca.z };
+            if (sidechainAtoms.length > 0) {
+              const avgX = sidechainAtoms.reduce((s, a) => s + a.x, 0) / sidechainAtoms.length;
+              const avgY = sidechainAtoms.reduce((s, a) => s + a.y, 0) / sidechainAtoms.length;
+              const avgZ = sidechainAtoms.reduce((s, a) => s + a.z, 0) / sidechainAtoms.length;
+              const dx = avgX - ca.x;
+              const dy = avgY - ca.y;
+              const dz = avgZ - ca.z;
+              const dist = Math.hypot(dx, dy, dz) || 1.0;
+              // Shift 1.6 Angstroms toward sidechain centroid to clear cartoon ribbon and prevent label collision
+              pos = {
+                x: ca.x + (dx / dist) * 1.6,
+                y: ca.y + (dy / dist) * 1.6,
+                z: ca.z + (dz / dist) * 1.6
+              };
+            }
             const displayRes = (resName ? resName + ' ' : '') + resNum;
             const lbl = this.viewer.addLabel(displayRes, {
-              position: { x: ca.x, y: ca.y, z: ca.z },
-              backgroundColor: 'rgba(15, 23, 42, 0.8)',
+              position: pos,
+              backgroundColor: 'rgba(11, 12, 17, 0.92)',
               fontColor: '#38bdf8',
               fontSize: 11,
               borderThickness: 1,
@@ -334,6 +351,48 @@ class MolecularViewer {
         }
       });
     }
+
+    // 3D Distance Label Collision Avoidance Placer
+    const placed3DLabels = [];
+    const getOptimalLabelPos = (start, end, defaultT = 0.5) => {
+      const vx = end.x - start.x;
+      const vy = end.y - start.y;
+      const vz = end.z - start.z;
+      const tCandidates = [defaultT, 0.32, 0.68, 0.22, 0.78];
+
+      for (const t of tCandidates) {
+        const candidate = {
+          x: start.x + vx * t,
+          y: start.y + vy * t,
+          z: start.z + vz * t
+        };
+
+        const collision = placed3DLabels.some(pl => {
+          const d = Math.hypot(candidate.x - pl.x, candidate.y - pl.y, candidate.z - pl.z);
+          return d < 1.8;
+        });
+
+        if (!collision) {
+          placed3DLabels.push(candidate);
+          return candidate;
+        }
+      }
+
+      let px = -vy, py = vx, pz = 0;
+      let pLen = Math.hypot(px, py, pz);
+      if (pLen < 0.01) {
+        px = 0; py = -vz; pz = vy;
+        pLen = Math.hypot(px, py, pz) || 1.0;
+      }
+      const shift = 1.4;
+      const shifted = {
+        x: start.x + vx * defaultT + (px / pLen) * shift,
+        y: start.y + vy * defaultT + (py / pLen) * shift,
+        z: start.z + vz * defaultT + (pz / pLen) * shift
+      };
+      placed3DLabels.push(shifted);
+      return shifted;
+    };
 
     // 1. Directional Hydrogen Bonds (Yellow)
     if (this.settings.showHbonds && hydrogen_bonds.length > 0) {
@@ -353,12 +412,14 @@ class MolecularViewer {
         });
         this.interactionShapes.push(cyl);
 
-        const mid = { x: (lx + rx) / 2, y: (ly + ry) / 2, z: (lz + rz) / 2 };
+        const lblPos = getOptimalLabelPos({ x: lx, y: ly, z: lz }, { x: rx, y: ry, z: rz }, 0.44);
         this.viewer.addLabel(hb.distance + ' A', {
-          position: mid,
-          backgroundColor: 'rgba(17, 24, 39, 0.85)',
+          position: lblPos,
+          backgroundColor: 'rgba(11, 12, 17, 0.92)',
           fontColor: '#facc15',
-          fontSize: 10
+          fontSize: 10,
+          borderThickness: 1,
+          borderColor: '#ca8a04'
         });
       });
     }
@@ -381,12 +442,14 @@ class MolecularViewer {
         });
         this.interactionShapes.push(cyl);
 
-        const mid = { x: (lx + rx) / 2, y: (ly + ry) / 2, z: (lz + rz) / 2 };
+        const lblPos = getOptimalLabelPos({ x: lx, y: ly, z: lz }, { x: rx, y: ry, z: rz }, 0.58);
         this.viewer.addLabel(`Salt ${sb.distance} A`, {
-          position: mid,
-          backgroundColor: 'rgba(17, 24, 39, 0.85)',
+          position: lblPos,
+          backgroundColor: 'rgba(11, 12, 17, 0.92)',
           fontColor: '#ec4899',
-          fontSize: 10
+          fontSize: 10,
+          borderThickness: 1,
+          borderColor: '#db2777'
         });
       });
     }
@@ -409,12 +472,14 @@ class MolecularViewer {
         });
         this.interactionShapes.push(cyl);
 
-        const mid = { x: (lx + rx) / 2, y: (ly + ry) / 2, z: (lz + rz) / 2 };
+        const lblPos = getOptimalLabelPos({ x: lx, y: ly, z: lz }, { x: rx, y: ry, z: rz }, 0.50);
         this.viewer.addLabel(`π-π ${ps.distance} A`, {
-          position: mid,
-          backgroundColor: 'rgba(17, 24, 39, 0.85)',
+          position: lblPos,
+          backgroundColor: 'rgba(11, 12, 17, 0.92)',
           fontColor: '#10b981',
-          fontSize: 10
+          fontSize: 10,
+          borderThickness: 1,
+          borderColor: '#059669'
         });
       });
     }
@@ -437,12 +502,14 @@ class MolecularViewer {
         });
         this.interactionShapes.push(cyl);
 
-        const mid = { x: (lx + rx) / 2, y: (ly + ry) / 2, z: (lz + rz) / 2 };
+        const lblPos = getOptimalLabelPos({ x: lx, y: ly, z: lz }, { x: rx, y: ry, z: rz }, 0.50);
         this.viewer.addLabel(`π-Cat ${pc.distance} A`, {
-          position: mid,
-          backgroundColor: 'rgba(17, 24, 39, 0.85)',
+          position: lblPos,
+          backgroundColor: 'rgba(11, 12, 17, 0.92)',
           fontColor: '#f97316',
-          fontSize: 10
+          fontSize: 10,
+          borderThickness: 1,
+          borderColor: '#ea580c'
         });
       });
     }
@@ -465,12 +532,14 @@ class MolecularViewer {
         });
         this.interactionShapes.push(cyl);
 
-        const mid = { x: (lx + rx) / 2, y: (ly + ry) / 2, z: (lz + rz) / 2 };
+        const lblPos = getOptimalLabelPos({ x: lx, y: ly, z: lz }, { x: rx, y: ry, z: rz }, 0.50);
         this.viewer.addLabel(`Hal ${hal.distance} A`, {
-          position: mid,
-          backgroundColor: 'rgba(17, 24, 39, 0.85)',
+          position: lblPos,
+          backgroundColor: 'rgba(11, 12, 17, 0.92)',
           fontColor: '#a855f7',
-          fontSize: 10
+          fontSize: 10,
+          borderThickness: 1,
+          borderColor: '#9333ea'
         });
       });
     }

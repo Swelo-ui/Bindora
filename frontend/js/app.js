@@ -1021,10 +1021,10 @@ class BindoraApp {
       if (logoLight) logoLight.classList.add('hidden');
       localStorage.setItem('bindora-theme', 'dark');
 
-      // Update 3Dmol viewer background to dark navy if active
+      // Update 3Dmol viewer background to dark obsidian if active
       if (this.viewer && this.viewer.viewer) {
         try {
-          this.viewer.viewer.setBackgroundColor('0x0f172a');
+          this.viewer.viewer.setBackgroundColor('0x090a0f');
           this.viewer.viewer.render();
         } catch (e) {}
       }
@@ -2109,9 +2109,9 @@ class BindoraApp {
 
         let badgeHtml = '';
         if (typeCount >= 5) {
-          badgeHtml = `<span class="ml-1 px-1 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/80 text-[9px] font-mono font-bold" title="Contains ${typeCount}/6 interaction classes">${typeCount}/6</span>`;
+          badgeHtml = `<span class="ml-1 px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/80 text-[9px] font-mono font-bold" title="Contains ${typeCount}/6 interaction classes">${typeCount}/6</span>`;
         } else if (typeCount > 0) {
-          badgeHtml = `<span class="ml-1 text-[9px] text-slate-400 font-mono">(${typeCount})</span>`;
+          badgeHtml = `<span class="ml-1 px-1.5 py-0.2 rounded bg-slate-800 text-cyan-300 border border-slate-700/80 text-[9px] font-mono font-medium" title="Contains ${typeCount}/6 interaction classes">${typeCount}/6</span>`;
         }
 
         const isSelected = idx === this.state.currentPoseIdx;
@@ -2461,7 +2461,7 @@ class BindoraApp {
       const ctx = canvas.getContext("2d");
 
       // Solid background fill for publication clarity
-      ctx.fillStyle = isLight ? "#ffffff" : "#091428";
+      ctx.fillStyle = isLight ? "#ffffff" : "#090a0f";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       ctx.drawImage(img, 0, 0);
@@ -3778,16 +3778,18 @@ class BindoraApp {
     // Render clean 2-column cards (no awkward wrapping)
     container.innerHTML = flexCandidates.map(c => {
       const isChecked = previouslyChecked.has(c.id);
+      const rotBadge = c.rotatable_bonds ? `<span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-950/80 text-cyan-400 border border-cyan-900/60 font-mono flex-shrink-0">${c.rotatable_bonds} rot</span>` : '';
       return `
-        <div class="flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none ${isChecked ? 'bg-slate-800 border-slate-500 text-slate-100 shadow-sm' : 'bg-slate-800/50 hover:bg-slate-750/70 border-slate-700/60 text-slate-300 hover:border-slate-600'}"
+        <div class="flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none ${isChecked ? 'bg-cyan-950/70 border-cyan-500/80 text-cyan-200 shadow-sm shadow-cyan-950/40' : 'bg-slate-900/60 hover:bg-slate-800/80 border-slate-800 text-slate-300 hover:border-slate-700'}"
              data-id="${c.id}" data-chain="${c.chain}" data-resnum="${c.res_num}" data-resname="${c.res_name}" title="Click to focus in 3D viewer & toggle flexible rotamers">
           <input type="checkbox" value="${c.id}" ${isChecked ? 'checked' : ''} class="hidden flex-residue-cb">
           <div class="flex items-center space-x-1.5 min-w-0">
-            <span class="font-mono font-semibold ${isChecked ? 'text-white' : 'text-slate-200'}">${c.res_name} ${c.res_num}</span>
-            <span class="text-[9px] px-1 py-0.2 rounded bg-slate-900/90 text-slate-400 border border-slate-800 font-mono">Ch:${c.chain}</span>
+            <span class="font-mono font-semibold ${isChecked ? 'text-cyan-100' : 'text-slate-200'}">${c.res_name} ${c.res_num}</span>
+            <span class="text-[9px] px-1 py-0.2 rounded bg-slate-950/90 text-slate-400 border border-slate-800 font-mono">Ch:${c.chain}</span>
+            ${rotBadge}
           </div>
           <div class="flex items-center space-x-1.5 flex-shrink-0">
-            <span class="flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition ${isChecked ? 'bg-slate-200 text-slate-900 border-slate-300' : 'border-slate-600 text-transparent'}">✓</span>
+            <span class="flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition ${isChecked ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-black' : 'border-slate-700 text-transparent'}">✓</span>
           </div>
         </div>
       `;
@@ -3851,14 +3853,14 @@ class BindoraApp {
 
         const indicator = card.querySelector(".flex-check-indicator");
         if (newCheckedState) {
-          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-slate-800 border-slate-500 text-slate-100 shadow-sm";
+          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-cyan-950/70 border-cyan-500/80 text-cyan-200 shadow-sm shadow-cyan-950/40";
           if (indicator) {
-            indicator.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition bg-slate-200 text-slate-900 border-slate-300";
+            indicator.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition bg-cyan-500 text-slate-950 border-cyan-400 font-black";
           }
         } else {
-          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-slate-800/50 hover:bg-slate-750/70 border-slate-700/60 text-slate-300 hover:border-slate-600";
+          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-slate-900/60 hover:bg-slate-800/80 border-slate-800 text-slate-300 hover:border-slate-700";
           if (indicator) {
-            indicator.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition border-slate-600 text-transparent";
+            indicator.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition border-slate-700 text-transparent";
           }
         }
 
@@ -3887,9 +3889,9 @@ class BindoraApp {
         e.stopPropagation();
         container.querySelectorAll(".flex-residue-cb").forEach(cb => { cb.checked = false; });
         container.querySelectorAll(".flex-residue-card").forEach(card => {
-          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-slate-800/50 hover:bg-slate-750/70 border-slate-700/60 text-slate-300 hover:border-slate-600";
+          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-slate-900/60 hover:bg-slate-800/80 border-slate-800 text-slate-300 hover:border-slate-700";
           const ind = card.querySelector(".flex-check-indicator");
-          if (ind) ind.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition border-slate-600 text-transparent";
+          if (ind) ind.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition border-slate-700 text-transparent";
         });
         if (this.viewer && this.viewer.clearFlexibleHighlights) {
           this.viewer.clearFlexibleHighlights();

@@ -16,17 +16,27 @@
       theme: {
         extend: {
           colors: {
+            obsidian: {
+              950: '#07080b',
+              900: '#090a0f',
+              850: '#0f1016',
+              800: '#151620',
+              750: '#1c1d27',
+              700: '#22242f',
+              600: '#2d303e'
+            },
             navy: {
-              950: '#071326',
-              900: '#0B1F3B',
-              800: '#102a4e',
-              700: '#173b6c',
+              950: '#07080b',
+              900: '#090a0f',
+              800: '#151620',
+              700: '#22242f',
             },
             brand: {
-              blue: '#0D6EFD',
-              cyan: '#00C6FF',
-              teal: '#00D1C1',
-              purple: '#7B5CFF'
+              blue: '#2563eb',
+              cobalt: '#1d4ed8',
+              cyan: '#38bdf8',
+              teal: '#14b8a6',
+              purple: '#8b5cf6'
             }
           }
         }
@@ -44,12 +54,12 @@
   <script src="lib/chart.min.js"></script>
 
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=2.4">
+  <link rel="stylesheet" href="css/styles.css?v=2.5">
 </head>
-<body class="bg-[#071326] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-cyan-500 selection:text-black">
+<body class="bg-[#090a0f] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white">
 
   <!-- Top Navigation Header -->
-  <header id="main-header" class="border-b border-[#163252] bg-[#0B1F3B]/90 backdrop-blur-md sticky top-0 z-40 transition-colors duration-200">
+  <header id="main-header" class="border-b border-[#1c1d25] bg-[#0d0e14]/92 backdrop-blur-md sticky top-0 z-40 transition-colors duration-200">
     <div class="max-w-[1720px] mx-auto px-2 sm:px-4 lg:px-6 h-16 flex items-center justify-between gap-1.5 xl:gap-3">
 
       <!-- Brand logo (Single prominent logo, dark & light responsive) -->
@@ -59,7 +69,7 @@
           <img id="header-logo-dark" src="assets/branding/logo-header-dark.png?v=7" alt="Bindora Dock" class="h-9 sm:h-10 xl:h-11 w-auto object-contain drop-shadow-[0_2px_10px_rgba(0,198,255,0.25)] group-hover:scale-[1.02] transition duration-200" />
           <!-- Light mode logo (shown when light mode is active) -->
           <img id="header-logo-light" src="assets/branding/logo-header-light.png?v=7" alt="Bindora Dock" class="h-9 sm:h-10 xl:h-11 w-auto object-contain group-hover:scale-[1.02] transition duration-200 hidden" />
-          <span id="header-version-badge" class="text-[9.5px] font-mono font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-cyan-300 border border-blue-200 dark:border-cyan-500/30 flex-shrink-0">v2.0</span>
+          <span id="header-version-badge" class="text-[9.5px] font-mono font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-[#1a1b24] text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-[#2e3040] flex-shrink-0">v2.0</span>
         </a>
       </div>
 
@@ -94,12 +104,12 @@
 
       <!-- Right Controls: Status, Auth, Theme, Reset, Info -->
       <div class="flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0">
-        <div id="backend-status-badge" class="hidden lg:flex px-2.5 py-1 text-xs font-semibold rounded-full bg-[#0B1F3B] text-slate-400 border border-slate-700 items-center whitespace-nowrap flex-shrink-0">
+        <div id="backend-status-badge" class="hidden lg:flex px-2.5 py-1 text-xs font-semibold rounded-full bg-[#13141b] text-slate-300 border border-[#242633] items-center whitespace-nowrap flex-shrink-0">
           <span class="inline-block w-2 h-2 rounded-full bg-slate-500 mr-1.5 flex-shrink-0"></span> Connecting...
         </div>
 
         <!-- Firebase Auth Button -->
-        <button id="btn-user-auth" class="px-2 xl:px-2.5 py-1.5 rounded-lg bg-[#0e274a] hover:bg-[#133564] text-slate-200 border border-slate-700 text-xs font-medium flex items-center space-x-1.5 transition flex-shrink-0 whitespace-nowrap">
+        <button id="btn-user-auth" class="px-2 xl:px-2.5 py-1.5 rounded-lg bg-[#161720] hover:bg-[#1f202c] text-slate-200 border border-[#272937] text-xs font-medium flex items-center space-x-1.5 transition flex-shrink-0 whitespace-nowrap">
           <img id="user-avatar-img" class="w-5 h-5 rounded-full hidden flex-shrink-0" src="" alt="User" />
           <svg id="user-default-icon" class="w-4 h-4 text-cyan-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
@@ -108,7 +118,7 @@
         </button>
 
         <!-- Dark / Light Mode Toggle -->
-        <button id="btn-theme-toggle" title="Toggle Light / Dark Mode" class="p-1.5 xl:p-2 rounded-lg bg-[#0e274a] hover:bg-[#133564] text-slate-300 border border-slate-700 transition flex-shrink-0">
+        <button id="btn-theme-toggle" title="Toggle Light / Dark Mode" class="p-1.5 xl:p-2 rounded-lg bg-[#161720] hover:bg-[#1f202c] text-slate-300 border border-[#272937] transition flex-shrink-0">
           <!-- Sun icon — shown in dark mode, click → light -->
           <svg id="icon-sun" class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
@@ -120,19 +130,19 @@
         </button>
 
         <!-- New Session / Reset Button -->
-        <button id="btn-reset-session" title="Reset Workspace &amp; Clear Current Session" class="p-1.5 xl:p-2 rounded-lg bg-[#0e274a] hover:bg-[#133564] text-slate-300 border border-slate-700 transition flex-shrink-0">
+        <button id="btn-reset-session" title="Reset Workspace &amp; Clear Current Session" class="p-1.5 xl:p-2 rounded-lg bg-[#161720] hover:bg-[#1f202c] text-slate-300 border border-[#272937] transition flex-shrink-0">
           <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
         </button>
 
         <!-- Terminal CLI Mode Button -->
-        <button id="btn-cli-guide" title="Terminal CLI Mode [v2.0] — Run in Command Line / Server" class="px-2 xl:px-2.5 py-1.5 rounded-lg bg-[#0e274a] hover:bg-[#133564] text-emerald-400 border border-emerald-500/30 text-xs font-semibold flex items-center space-x-1 transition cursor-pointer flex-shrink-0 whitespace-nowrap">
+        <button id="btn-cli-guide" title="Terminal CLI Mode [v2.0] — Run in Command Line / Server" class="px-2 xl:px-2.5 py-1.5 rounded-lg bg-[#161720] hover:bg-[#1f202c] text-emerald-400 border border-emerald-500/30 text-xs font-semibold flex items-center space-x-1 transition cursor-pointer flex-shrink-0 whitespace-nowrap">
           <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
           <span class="hidden 2xl:inline">CLI Mode [v2.0]</span>
           <span class="hidden sm:inline 2xl:hidden">CLI</span>
         </button>
 
         <!-- Brand Guide / About Modal Button -->
-        <button id="btn-about" title="Bindora Dock Brand Identity &amp; Scientific Methodology" class="p-1.5 xl:p-2 rounded-lg bg-[#0e274a] hover:bg-[#133564] text-cyan-400 border border-slate-700 transition flex-shrink-0">
+        <button id="btn-about" title="Bindora Dock Brand Identity &amp; Scientific Methodology" class="p-1.5 xl:p-2 rounded-lg bg-[#161720] hover:bg-[#1f202c] text-slate-300 border border-[#272937] transition flex-shrink-0">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
@@ -143,7 +153,7 @@
   </header>
 
   <!-- Mobile Sub-Nav (Clean compact navigation) -->
-  <div class="lg:hidden bg-[#0B1F3B] border-b border-[#163252] px-4 py-2 flex space-x-2 overflow-x-auto">
+  <div class="lg:hidden bg-[#0d0e14] border-b border-[#1c1d25] px-4 py-2 flex space-x-2 overflow-x-auto">
     <button class="nav-tab active text-xs whitespace-nowrap px-2.5 py-1 rounded bg-slate-800 text-cyan-300" data-tab="home">Home</button>
     <button class="nav-tab text-xs whitespace-nowrap px-2.5 py-1 rounded bg-slate-800 text-slate-300" data-tab="studio">Studio</button>
     <button class="nav-tab text-xs whitespace-nowrap px-2.5 py-1 rounded bg-slate-800 text-slate-300" data-tab="docking">3D Docking</button>
@@ -377,10 +387,7 @@
       </div>
 
       <!-- ==================== RESEARCH-GRADE SCIENTIFIC VALIDATION WHITEPAPER ==================== -->
-      <section id="research-validation-whitepaper" class="rounded-2xl relative overflow-hidden shadow-xl border border-slate-200 dark:border-cyan-500/25 bg-white dark:bg-[#0B1F3B]/90 transition-colors duration-200">
-        <!-- Ambient Accents (Only visible in dark mode to prevent washing out light mode) -->
-        <div class="hidden dark:block absolute -top-40 -right-40 w-[450px] h-[450px] rounded-full pointer-events-none" style="background: radial-gradient(circle, rgba(0,198,255,0.06) 0%, transparent 70%);"></div>
-        <div class="hidden dark:block absolute -bottom-40 -left-40 w-[450px] h-[450px] rounded-full pointer-events-none" style="background: radial-gradient(circle, rgba(123,92,255,0.06) 0%, transparent 70%);"></div>
+      <section id="research-validation-whitepaper" class="rounded-2xl relative overflow-hidden shadow-xl border border-slate-200 dark:border-[#22242f] bg-white dark:bg-[#0f1016] transition-colors duration-200">
 
         <!-- ── SUITE HEADER ─────────────────────────────────────── -->
         <div class="wp-journal-header relative z-10 px-5 sm:px-8 lg:px-12 pt-7 pb-5 border-b border-slate-200 dark:border-slate-800">
@@ -1460,7 +1467,7 @@
                 </div>
 
                 <!-- Grid of Flexible Residue Cards (2 Columns - clean & proportional) -->
-                <div id="flex-residues-container" class="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto pr-1">
+                <div id="flex-residues-container" class="grid grid-cols-2 gap-1.5 max-h-56 overflow-y-auto custom-scrollbar pr-1">
                   <span class="col-span-2 text-[11px] text-slate-500 italic p-2 text-center">Load receptor or run docking to discover active site residues.</span>
                 </div>
               </div>
@@ -2044,7 +2051,7 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
                 <div id="user-profile-email" class="text-slate-400 text-[11px] font-mono">user@example.com</div>
               </div>
             </div>
-            <button id="btn-toggle-edit-profile" class="px-2.5 py-1.5 rounded-lg bg-[#0e274a] hover:bg-[#133564] text-cyan-300 border border-cyan-700/40 text-xs font-medium flex items-center space-x-1.5 transition">
+            <button id="btn-toggle-edit-profile" class="px-2.5 py-1.5 rounded-lg bg-[#161720] hover:bg-[#1f202c] text-slate-200 border border-[#272937] text-xs font-medium flex items-center space-x-1.5 transition">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
               <span>Edit Profile</span>
             </button>

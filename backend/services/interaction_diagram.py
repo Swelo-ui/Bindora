@@ -222,7 +222,7 @@ class InteractionDiagramGenerator:
         if not grouped_residues:
             return (
                 f'<svg class="bindora-svg-root" width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">'
-                f'<rect width="100%" height="100%" fill="#091428" rx="8"/>'
+                f'<rect width="100%" height="100%" fill="#090a0f" rx="8"/>'
                 f'<text x="50%" y="50%" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">'
                 f'No contacts within threshold for 2D diagram</text></svg>'
             )
@@ -332,7 +332,7 @@ class InteractionDiagramGenerator:
             types_class_str = " ".join([f"itype-{t}" for t in r["types_set"]])
             types_data_str = " ".join(r["types_set"])
 
-            for c in r["contacts"]:
+            for c_idx, c in enumerate(r["contacts"]):
                 ctype = c["type"]
                 dist = c["distance"]
                 target_pt = c["target_pt"]
@@ -360,7 +360,15 @@ class InteractionDiagramGenerator:
 
                 pill_svg = ""
                 if line_len >= 52.0 and dist is not None:
-                    t_pill = 0.44
+                    # Stagger multiple contacts from the same residue along the line length to prevent pill collisions
+                    n_contacts = len(r["contacts"])
+                    if n_contacts == 1:
+                        t_pill = 0.44
+                    elif n_contacts == 2:
+                        t_pill = 0.32 if c_idx == 0 else 0.62
+                    else:
+                        t_pill = 0.28 + (c_idx * 0.20)
+
                     px = target_pt[0] + vx * t_pill
                     py = target_pt[1] + vy * t_pill
 
@@ -374,12 +382,20 @@ class InteractionDiagramGenerator:
                         px = target_pt[0] + (vx / line_len) * 22.0
                         py = target_pt[1] + (vy / line_len) * 22.0
 
-                    for prev_p in placed_pills:
-                        if abs(px - prev_p["x"]) < 36.0 and abs(py - prev_p["y"]) < 18.0:
-                            norm_x = -vy / line_len
-                            norm_y = vx / line_len
-                            px += norm_x * 12.0
-                            py += norm_y * 12.0
+                    # Multi-pass collision relaxation against all placed pills
+                    norm_x = -vy / line_len
+                    norm_y = vx / line_len
+                    for _ in range(6):
+                        collision = False
+                        for prev_p in placed_pills:
+                            dx = px - prev_p["x"]
+                            dy = py - prev_p["y"]
+                            if abs(dx) < 36.0 and abs(dy) < 18.0:
+                                collision = True
+                                px += norm_x * 16.0
+                                py += norm_y * 16.0
+                                break
+                        if not collision:
                             break
 
                     placed_pills.append({"x": px, "y": py})
@@ -403,20 +419,24 @@ class InteractionDiagramGenerator:
             dots_svg = []
             priority_order = ["salt_bridge", "hbond", "pi_stack", "pi_cation", "halogen", "hydrophobic"]
             sorted_types = sorted(list(r["types_set"]), key=lambda t: priority_order.index(t) if t in priority_order else 99)
-            dot_start_x = -32.0
-            for d_idx, dtype in enumerate(sorted_types[:3]):
+            
+            n_dots = min(len(sorted_types), 4)
+            badge_w = max(88.0, 36.0 + n_dots * 9.5 + len(res_label) * 6.2)
+            half_w = badge_w / 2.0
+            dot_start_x = -half_w + 10.0
+            for d_idx, dtype in enumerate(sorted_types[:4]):
                 d_color = interaction_styles[dtype]["color"]
-                dx_pos = dot_start_x + (d_idx * 7.5)
+                dx_pos = dot_start_x + (d_idx * 8.0)
                 dots_svg.append(f'<circle class="badge-dot" data-dot-type="{dtype}" cx="{dx_pos:.1f}" cy="0" r="3.2" fill="{d_color}"/>')
 
-            text_offset_x = 4.0 if len(sorted_types) <= 1 else 7.0
+            text_offset_x = (dot_start_x + (n_dots * 8.0) + half_w) / 2.0 if n_dots > 0 else 0.0
 
             badge_svg = (
                 f'<g class="interaction-badge-node {types_class_str}" data-types="{types_data_str}" data-primary-type="{r["primary_type"]}" transform="translate({res_x:.1f},{res_y:.1f})">\n'
-                f'  <rect class="badge-bg" x="-42" y="-12" width="84" height="24" rx="6" '
+                f'  <rect class="badge-bg" x="{-half_w:.1f}" y="-12" width="{badge_w:.1f}" height="24" rx="6" '
                 f'fill="{primary_style["pill_bg"]}" stroke="{primary_style["badge_border"]}" stroke-width="1.4"/>\n'
                 f'  {"".join(dots_svg)}\n'
-                f'  <text class="badge-text" x="{text_offset_x}" y="3.8" fill="{primary_style["pill_text"]}" '
+                f'  <text class="badge-text" x="{text_offset_x:.1f}" y="3.8" fill="{primary_style["pill_text"]}" '
                 f'font-family="system-ui, -apple-system, sans-serif" font-size="9.5" font-weight="bold" text-anchor="middle">{res_label}</text>\n'
                 f'</g>'
             )
@@ -425,21 +445,21 @@ class InteractionDiagramGenerator:
         legend_y = height - 20
         legend_svg = (
             f'<g id="bindora-diagram-legend" transform="translate(15, {legend_y})">'
-            f'<rect x="-5" y="-13" width="{width - 25}" height="26" rx="5" '
-            f'fill="var(--bd-legend-bg, #0b1329)" stroke="var(--bd-legend-border, #1e293b)" stroke-width="1"/>'
-            f'<line x1="10" y1="0" x2="28" y2="0" stroke="#facc15" stroke-width="2" stroke-dasharray="4,3"/>'
-            f'<text x="34" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9.5">Hydrogen Bond</text>'
-            f'<line x1="95" y1="0" x2="113" y2="0" stroke="#ec4899" stroke-width="2" stroke-dasharray="4,3"/>'
-            f'<text x="119" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9.5">Salt Bridge</text>'
-            f'<line x1="195" y1="0" x2="213" y2="0" stroke="#10b981" stroke-width="2" stroke-dasharray="4,3"/>'
-            f'<text x="219" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9.5">π-π Stack</text>'
-            f'<line x1="288" y1="0" x2="306" y2="0" stroke="#f97316" stroke-width="1.8" stroke-dasharray="4,3"/>'
-            f'<text x="312" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9.5">π-Cation</text>'
-            f'<line x1="375" y1="0" x2="393" y2="0" stroke="#a855f7" stroke-width="1.8" stroke-dasharray="4,3"/>'
-            f'<text x="399" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9.5">Halogen</text>'
-            f'<line x1="460" y1="0" x2="478" y2="0" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="2,3"/>'
-            f'<text x="484" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9.5">Hydrophobic (Slate)</text>'
-            f'<text x="{width - 40}" y="3.5" fill="var(--bd-legend-muted, #64748b)" font-family="system-ui, sans-serif" font-size="9.5" text-anchor="end">LigPlot-style 2D Map</text>'
+            f'<rect x="-5" y="-13" width="{width - 20}" height="26" rx="5" '
+            f'fill="var(--bd-legend-bg, #121319)" stroke="var(--bd-legend-border, #22242e)" stroke-width="1"/>'
+            f'<line x1="8" y1="0" x2="22" y2="0" stroke="#facc15" stroke-width="2" stroke-dasharray="4,3"/>'
+            f'<text x="26" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9">H-Bond</text>'
+            f'<line x1="82" y1="0" x2="96" y2="0" stroke="#ec4899" stroke-width="2" stroke-dasharray="4,3"/>'
+            f'<text x="100" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9">Salt Bridge</text>'
+            f'<line x1="168" y1="0" x2="182" y2="0" stroke="#10b981" stroke-width="2" stroke-dasharray="4,3"/>'
+            f'<text x="186" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9">π-π Stack</text>'
+            f'<line x1="250" y1="0" x2="264" y2="0" stroke="#f97316" stroke-width="1.8" stroke-dasharray="4,3"/>'
+            f'<text x="268" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9">π-Cation</text>'
+            f'<line x1="324" y1="0" x2="338" y2="0" stroke="#a855f7" stroke-width="1.8" stroke-dasharray="4,3"/>'
+            f'<text x="342" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9">Halogen</text>'
+            f'<line x1="398" y1="0" x2="412" y2="0" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="2,3"/>'
+            f'<text x="416" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9">Hydrophobic (Slate)</text>'
+            f'<text x="{width - 32}" y="3.5" fill="var(--bd-legend-muted, #64748b)" font-family="system-ui, sans-serif" font-size="9" text-anchor="end">LigPlot-style 2D Map</text>'
             f'</g>'
         )
 
@@ -447,13 +467,13 @@ class InteractionDiagramGenerator:
             '<defs>\n'
             '<style>\n'
             '  .bindora-svg-root {\n'
-            '    --bd-bg: #091428;\n'
+            '    --bd-bg: #090a0f;\n'
             '    --bd-bond: #e2e8f0;\n'
             '    --bd-text: #f1f5f9;\n'
             '    --bd-subtext: #cbd5e1;\n'
             '    --bd-legend-muted: #64748b;\n'
-            '    --bd-legend-bg: #0b1329;\n'
-            '    --bd-legend-border: #1e293b;\n'
+            '    --bd-legend-bg: #121319;\n'
+            '    --bd-legend-border: #22242e;\n'
             '    --bd-hb-bg: #2a2004;\n'
             '    --bd-hb-border: #ca8a04;\n'
             '    --bd-hb-text: #fef08a;\n'
@@ -527,7 +547,7 @@ class InteractionDiagramGenerator:
             f'<svg class="bindora-svg-root" id="bindora-2d-interaction-svg" '
             f'xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
             f'viewBox="0 0 {width} {height}" width="100%" height="100%" '
-            f'style="background-color: var(--bd-bg, #091428); border-radius: 8px; display: block; overflow: hidden;">\n'
+            f'style="background-color: var(--bd-bg, #090a0f); border-radius: 8px; display: block; overflow: hidden;">\n'
             f'{style_defs}\n'
             f'  <!-- Zoomable and Pannable Diagram Content -->\n'
             f'  <g id="bindora-diagram-content" transform="matrix(1 0 0 1 0 0)">\n'

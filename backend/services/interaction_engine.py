@@ -73,12 +73,22 @@ class InteractionEngine:
         for hp in hydrophobics:
             contact_residues.add(hp["residue"])
 
+        # Scientifically valid flexible sidechains in AutoDock Vina (excluding rigid/zero-torsion GLY, ALA, PRO)
+        ROTATABLE_SIDECHAINS = {
+            "ARG": 4, "LYS": 4, "GLU": 3, "GLN": 3, "MET": 3,
+            "LEU": 2, "ILE": 2, "ASP": 2, "ASN": 2, "HIS": 2,
+            "PHE": 2, "TYR": 2, "TRP": 2, "VAL": 1, "SER": 1,
+            "THR": 1, "CYS": 1
+        }
+
         # Flexible residue candidates
         flex_candidates = []
         for cr in sorted(list(contact_residues)):
             try:
                 parts = cr.split()
-                rname = parts[0]
+                rname = parts[0].upper()
+                if rname not in ROTATABLE_SIDECHAINS:
+                    continue  # Glycine, Alanine, Proline cannot be flexible in AutoDock Vina
                 rnum_chain = parts[1]
                 rnum, rchain = rnum_chain.split(":")
                 flex_candidates.append({
@@ -86,7 +96,8 @@ class InteractionEngine:
                     "label": cr,
                     "res_name": rname,
                     "res_num": int(rnum),
-                    "chain": rchain
+                    "chain": rchain,
+                    "rotatable_bonds": ROTATABLE_SIDECHAINS[rname]
                 })
             except Exception:
                 pass

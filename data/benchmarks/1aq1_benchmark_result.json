@@ -2,10 +2,10 @@
   "pdb_id": "1AQ1",
   "target": "CDK2 Kinase",
   "ligand": "Staurosporine (Inhibitor)",
-  "timestamp": "2026-09-17 23:41:09",
-  "timestamp_iso": "2026-09-17T18:11:09.573019+00:00",
-  "vina_affinity_kcal": -13.6,
-  "vinardo_affinity_kcal": -9.268,
+  "timestamp": "2026-09-18 02:11:45",
+  "timestamp_iso": "2026-09-17T20:41:45.074301+00:00",
+  "vina_affinity_kcal": -13.62,
+  "vinardo_affinity_kcal": -9.254,
   "mode1_rmsd_angstroms": 0.35,
   "best_mode_rmsd_angstroms": 0.35,
   "best_mode": 1,
@@ -15,13 +15,13 @@
   "energy_in_lit_range": true,
   "rmsd_pass_threshold": true,
   "rmsd_ideal_threshold": true,
-  "docking_time_seconds": 54.02,
+  "docking_time_seconds": 74.98,
   "exhaustiveness": 32,
   "overall_grade": "RESEARCH_GRADE",
   "provenance": {
     "is_programmatic": true,
     "python_version": "3.13.1",
     "os_platform": "Windows",
-    "sha256_sig": "f64323d04772e8c1"
+    "sha256_sig": "e3f87f271252d01f"
   }
 }
