@@ -143,10 +143,12 @@ class BindoraAPI {
     });
   }
 
-  static async getPharmacophoreActives(target = "", chemblId = "", maxActives = 10) {
+  static async getPharmacophoreActives(target = "", chemblId = "", pdbId = "", uniprotAcc = "", maxActives = 10) {
     let url = `/api/pharmacophore/actives?max_actives=${maxActives}`;
     if (target) url += `&target=${encodeURIComponent(target)}`;
     if (chemblId) url += `&chembl_id=${encodeURIComponent(chemblId)}`;
+    if (pdbId) url += `&pdb_id=${encodeURIComponent(pdbId)}`;
+    if (uniprotAcc) url += `&uniprot_acc=${encodeURIComponent(uniprotAcc)}`;
     return this.request(url);
   }
 

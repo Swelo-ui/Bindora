@@ -350,6 +350,8 @@ class BindoraApp {
       });
       if (mode === 'ensemble') {
         this.loadEnsembleStructures();
+      } else if (mode === 'pharmacophore') {
+        this.checkPharmacophoreEligibility();
       }
     };
     document.getElementById("btn-batch-mode-candidates")?.addEventListener("click", () => setBatchMode('candidates'));
@@ -3253,33 +3255,48 @@ class BindoraApp {
   async checkPharmacophoreEligibility() {
     const r = this.state.receptor;
     const btn = document.getElementById("btn-batch-mode-pharmacophore");
+    const summary = document.getElementById("pharmacophore-profile-summary");
     if (!r) {
       if (btn) btn.classList.add("hidden");
+      if (summary) summary.innerHTML = `<span class="text-xs text-slate-500 italic">No target receptor loaded yet. Search RCSB or pick a benchmark in Tab 1.</span>`;
       return;
     }
-    const targetName = r.title || r.pdb_id || "";
+
+    const pdbId = r.pdb_id || "";
+    const uniprotAcc = r.uniprot?.accession || r.uniprot_accession || "";
+    const targetName = r.uniprot?.protein_name || r.pdb_id || r.title || "";
     const chemblId = r.chembl_id || "";
+
+    if (summary && !this.state.pharmacophore) {
+      summary.innerHTML = `<span class="text-purple-300 animate-pulse text-[11px]">⚡ Deriving 3D consensus pharmacophore from ChEMBL actives...</span>`;
+    }
+
     try {
-      const data = await BindoraAPI.getPharmacophoreActives(targetName, chemblId, 10);
+      const data = await BindoraAPI.getPharmacophoreActives(targetName, chemblId, pdbId, uniprotAcc, 10);
       if (data.eligible && data.actives_count >= 3) {
         this.state.pharmacophore = data;
         if (btn) btn.classList.remove("hidden");
         const badge = document.getElementById("pharmacophore-actives-badge");
         if (badge) badge.textContent = `${data.actives_count} ChEMBL Actives`;
-        const summary = document.getElementById("pharmacophore-profile-summary");
         if (summary && data.consensus_profile) {
           const reqs = data.consensus_profile.core_requirements || {};
           const features = Object.entries(reqs).map(([f, cnt]) => `<span class="inline-block px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 mr-1 mb-1 font-mono text-[10px]">${f}: &ge;${cnt}</span>`).join("");
+          const displayName = pdbId ? `${pdbId} (${r.uniprot?.protein_name || 'HIV-1 Protease'})` : targetName.substring(0, 35);
           summary.innerHTML = `
-            <div class="text-[11px] text-purple-300 font-semibold mb-1">Target: ${targetName.substring(0, 35)} (${data.actives_count} actives)</div>
+            <div class="text-[11px] text-purple-300 font-semibold mb-1">Target: ${displayName} (${data.actives_count} actives)</div>
             <div class="flex flex-wrap">${features || '<span class="text-slate-400">Consensus features mapped.</span>'}</div>
           `;
         }
       } else {
-        if (btn) btn.classList.add("hidden");
+        if (btn) btn.classList.remove("hidden");
+        if (summary) {
+          summary.innerHTML = `<span class="text-slate-400 text-[11px]">No curated ChEMBL actives (IC50 &le; 10 µM) found for target "${pdbId || targetName.substring(0, 25)}". Pharmacophore profile requires &ge;3 known active binders.</span>`;
+        }
       }
     } catch (e) {
-      if (btn) btn.classList.add("hidden");
+      if (summary) {
+        summary.innerHTML = `<span class="text-rose-400 text-[11px]">Failed to load pharmacophore: ${e.message}</span>`;
+      }
     }
   }
 
@@ -3472,8 +3489,15 @@ class BindoraApp {
       }
     }
 
+    if (candidates.length === 0 && this.state.ligand?.smiles) {
+      candidates.push({
+        name: this.state.ligand.name || "Loaded Investigational Ligand",
+        smiles: this.state.ligand.smiles
+      });
+    }
+
     if (candidates.length === 0) {
-      this.showToast("No valid candidates found in text input.", "error");
+      this.showToast("No valid candidates found in text input or loaded ligand.", "error");
       return;
     }
 
@@ -3512,25 +3536,33 @@ class BindoraApp {
 
     tbody.innerHTML = screened.map((c, idx) => {
       const matchPct = c.match_score_pct ?? 0;
-      const pass = c.matches_all_core;
+      const isStrong = matchPct >= 80;
+      const isModerate = matchPct >= 50 && matchPct < 80;
+      const align = c.feature_alignment || {};
+      const alignTooltip = Object.entries(align).map(([k, v]) => `${k}: ${v}`).join("\n");
+      const feats = c.candidate_features || {};
+
       return `
         <tr class="border-b border-slate-800 hover:bg-slate-800/50">
           <td class="p-2.5 font-bold text-center text-purple-400">#${idx + 1}</td>
-          <td class="p-2.5 font-semibold text-white font-sans" title="${c.smiles}">${c.name}</td>
-          <td class="p-2.5 font-mono font-bold ${matchPct >= 80 ? 'text-purple-300' : 'text-slate-300'}">${matchPct.toFixed(1)}%</td>
-          <td class="p-2.5 font-mono text-slate-400">${c.matched_count} / ${c.total_profile_features}</td>
-          <td class="p-2.5 font-mono font-bold text-purple-300">${(matchPct / 10).toFixed(2)}</td>
+          <td class="p-2.5 font-semibold text-white font-sans" title="${c.smiles}">
+            <span class="text-purple-300 font-mono">${c.name}</span>
+            <span class="text-[10px] text-slate-400 block truncate max-w-xs">${c.smiles}</span>
+          </td>
+          <td class="p-2.5 font-mono font-bold ${isStrong ? 'text-emerald-400' : isModerate ? 'text-purple-300' : 'text-slate-400'}">${matchPct.toFixed(1)}%</td>
+          <td class="p-2.5 font-mono text-cyan-300 text-xs" title="${alignTooltip}">${feats.Aromatic ?? 0} Aro / ${feats.Hydrophobe ?? 0} Hyd</td>
+          <td class="p-2.5 font-mono font-bold text-purple-300">${(matchPct / 10).toFixed(1)} / 10</td>
           <td class="p-2.5">
-            <span class="px-1.5 py-0.5 rounded ${pass ? 'bg-purple-950 text-purple-300 border border-purple-800' : 'bg-slate-800 text-slate-400 border border-slate-700'} text-[10px] font-bold inline-block">
-              ${pass ? 'Core Match' : 'Partial'}
+            <span class="px-1.5 py-0.5 rounded ${isStrong ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : isModerate ? 'bg-purple-950 text-purple-300 border border-purple-800' : 'bg-slate-800 text-slate-400 border border-slate-700'} text-[10px] font-bold inline-block cursor-help" title="${alignTooltip}">
+              ${c.status || (isStrong ? 'Strong Match' : 'Partial')}
             </span>
           </td>
           <td class="p-2.5 font-mono text-slate-400">—</td>
           <td class="p-2.5 font-mono text-slate-400">—</td>
-          <td class="p-2.5 font-mono text-purple-300">${c.feature_counts?.['Hydrogen Acceptors'] ?? 0} HBA</td>
+          <td class="p-2.5 font-mono text-purple-300">${feats.Acceptor ?? 0} HBA / ${feats.Donor ?? 0} HBD</td>
           <td class="p-2.5 text-[10px]">
-            <span class="px-1.5 py-0.5 rounded ${pass ? 'bg-purple-950/80 text-purple-300 border border-purple-800' : 'bg-amber-950/80 text-amber-300 border border-amber-800'}">
-              ${pass ? 'Profile Pass' : 'Sub-consensus'}
+            <span class="px-1.5 py-0.5 rounded ${isStrong ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800' : 'bg-slate-800 text-slate-300 border border-slate-700'}">
+              ${isStrong ? 'Pass' : 'Sub-match'}
             </span>
           </td>
         </tr>

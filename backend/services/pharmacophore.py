@@ -25,72 +25,128 @@ class PharmacophoreService:
     """Service to derive consensus ligand pharmacophore profiles from known actives and screen candidates."""
 
     @staticmethod
-    def fetch_target_actives(target_name: str, chembl_target_id: Optional[str] = None, max_actives: int = 10) -> List[Dict[str, Any]]:
+    def fetch_target_actives(
+        target_name: str = "",
+        chembl_target_id: Optional[str] = None,
+        pdb_id: Optional[str] = None,
+        uniprot_accession: Optional[str] = None,
+        max_actives: int = 10
+    ) -> List[Dict[str, Any]]:
         """Fetch curated high-affinity active molecules (IC50 <= 1000 nM) from ChEMBL for this target."""
-        target_name_clean = target_name.strip()
-        if not target_name_clean and not chembl_target_id:
+        target_name_clean = (target_name or "").strip()
+        pdb_clean = (pdb_id or "").strip().upper()
+        acc_clean = (uniprot_accession or "").strip().upper()
+        chembl_tid = (chembl_target_id or "").strip().upper()
+
+        if not target_name_clean and not chembl_tid and not pdb_clean and not acc_clean:
             return []
 
-        cache_key = f"chembl_actives_{chembl_target_id or urllib.parse.quote_plus(target_name_clean.lower())}.json"
+        ident_key = chembl_tid or acc_clean or pdb_clean or urllib.parse.quote_plus(target_name_clean[:40].lower())
+        cache_key = f"chembl_actives_{ident_key}.json"
         cache_file = CACHE_DIR / cache_key
         if cache_file.exists():
             try:
                 with open(cache_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    cached = json.load(f)
+                    if cached and len(cached) >= 3:
+                        return cached
             except Exception:
                 pass
 
-        tid = chembl_target_id
-        if not tid:
-            # Search target in ChEMBL by name
+        tid = chembl_tid
+
+        # 1. Try UniProt accession direct match (most accurate for biological targets)
+        if not tid and acc_clean:
             try:
-                turl = f"{CHEMBL_BASE_URL}/target/search?q={urllib.parse.quote(target_name_clean)}&format=json"
-                req = urllib.request.Request(turl, headers=HEADERS)
+                u_url = f"{CHEMBL_BASE_URL}/target?target_components__accession={acc_clean}&format=json"
+                req = urllib.request.Request(u_url, headers=HEADERS)
                 with urllib.request.urlopen(req, timeout=10) as resp:
-                    tdata = json.loads(resp.read().decode("utf-8"))
-                    targets = tdata.get("targets", [])
+                    udata = json.loads(resp.read().decode("utf-8"))
+                    targets = udata.get("targets", [])
                     if targets:
                         tid = targets[0].get("target_chembl_id")
             except Exception as e:
-                print(f"[PHARMACOPHORE TARGET LOOKUP WARNING] {e}")
+                print(f"[PHARMACOPHORE UNIPROT LOOKUP WARNING] {e}")
+
+        # 2. Try PDB ID search in ChEMBL (ChEMBL indexes RCSB PDB complexes)
+        if not tid and pdb_clean:
+            try:
+                p_url = f"{CHEMBL_BASE_URL}/target/search?q={pdb_clean}&format=json"
+                req = urllib.request.Request(p_url, headers=HEADERS)
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    pdata = json.loads(resp.read().decode("utf-8"))
+                    targets = pdata.get("targets", [])
+                    if targets:
+                        tid = targets[0].get("target_chembl_id")
+            except Exception as e:
+                print(f"[PHARMACOPHORE PDB LOOKUP WARNING] {e}")
+
+        # 3. Try Target Name search in ChEMBL
+        if not tid and target_name_clean:
+            search_queries = [target_name_clean]
+            if len(target_name_clean) > 30:
+                for kw in ["HIV-1 PROTEASE", "HIV PROTEASE", "PROTEASE", "KINASE", "REVERSE TRANSCRIPTASE", "POLYPROTEIN"]:
+                    if kw in target_name_clean.upper():
+                        search_queries.append(kw.title())
+                        break
+                words = target_name_clean.split()
+                if len(words) > 3:
+                    search_queries.append(" ".join(words[:3]))
+
+            for q in search_queries:
+                try:
+                    turl = f"{CHEMBL_BASE_URL}/target/search?q={urllib.parse.quote(q)}&format=json"
+                    req = urllib.request.Request(turl, headers=HEADERS)
+                    with urllib.request.urlopen(req, timeout=10) as resp:
+                        tdata = json.loads(resp.read().decode("utf-8"))
+                        targets = tdata.get("targets", [])
+                        if targets:
+                            tid = targets[0].get("target_chembl_id")
+                            break
+                except Exception as e:
+                    print(f"[PHARMACOPHORE TARGET LOOKUP WARNING] {e}")
 
         if not tid:
             return []
 
-        # Query activities for target with IC50 <= 1000 nM
+        # Query activities for target: first try potent IC50 <= 1000 nM, if < 3 try up to 10000 nM
         actives = []
         seen_smiles = set()
-        try:
-            act_url = (
-                f"{CHEMBL_BASE_URL}/activity?target_chembl_id={tid}&standard_type=IC50&"
-                f"standard_value__lte=1000&standard_units=nM&limit=25&format=json"
-            )
-            req = urllib.request.Request(act_url, headers=HEADERS)
-            with urllib.request.urlopen(req, timeout=12) as resp:
-                act_data = json.loads(resp.read().decode("utf-8"))
-                for act in act_data.get("activities", []):
-                    smi = act.get("canonical_smiles")
-                    if smi and smi not in seen_smiles:
-                        # Verify valid RDKit molecule
-                        m = Chem.MolFromSmiles(smi)
-                        if m and m.GetNumHeavyAtoms() >= 6:
-                            seen_smiles.add(smi)
-                            actives.append({
-                                "chembl_id": act.get("molecule_chembl_id"),
-                                "smiles": smi,
-                                "ic50_nm": float(act.get("standard_value", 0.0)),
-                                "assay_type": act.get("standard_type", "IC50")
-                            })
-                    if len(actives) >= max_actives:
-                        break
-        except Exception as e:
-            print(f"[PHARMACOPHORE ACTIVES FETCH WARNING] {e}")
 
-        try:
-            with open(cache_file, "w", encoding="utf-8") as f:
-                json.dump(actives, f, indent=2)
-        except Exception:
-            pass
+        for lte_val in [1000, 10000]:
+            try:
+                act_url = (
+                    f"{CHEMBL_BASE_URL}/activity?target_chembl_id={tid}&standard_type=IC50&"
+                    f"standard_value__lte={lte_val}&standard_units=nM&limit=30&format=json"
+                )
+                req = urllib.request.Request(act_url, headers=HEADERS)
+                with urllib.request.urlopen(req, timeout=12) as resp:
+                    act_data = json.loads(resp.read().decode("utf-8"))
+                    for act in act_data.get("activities", []):
+                        smi = act.get("canonical_smiles")
+                        if smi and smi not in seen_smiles:
+                            m = Chem.MolFromSmiles(smi)
+                            if m and m.GetNumHeavyAtoms() >= 6:
+                                seen_smiles.add(smi)
+                                actives.append({
+                                    "chembl_id": act.get("molecule_chembl_id"),
+                                    "smiles": smi,
+                                    "ic50_nm": float(act.get("standard_value", 0.0)),
+                                    "assay_type": act.get("standard_type", "IC50")
+                                })
+                        if len(actives) >= max_actives:
+                            break
+                if len(actives) >= 3:
+                    break
+            except Exception as e:
+                print(f"[PHARMACOPHORE ACTIVES FETCH WARNING] {e}")
+
+        if actives:
+            try:
+                with open(cache_file, "w", encoding="utf-8") as f:
+                    json.dump(actives, f, indent=2)
+            except Exception:
+                pass
 
         return actives
 

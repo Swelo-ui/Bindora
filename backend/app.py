@@ -447,10 +447,20 @@ def run_ensemble():
 def get_pharmacophore_actives():
     target = request.args.get("target", "").strip()
     chembl_id = request.args.get("chembl_id", "").strip() or None
-    if not target and not chembl_id:
-        return jsonify({"error": "Either 'target' or 'chembl_id' is required"}), 400
+    pdb_id = request.args.get("pdb_id", "").strip() or None
+    uniprot_acc = request.args.get("uniprot_acc", "").strip() or None
+    max_actives = int(request.args.get("max_actives", 10))
 
-    actives = PharmacophoreService.fetch_target_actives(target, chembl_target_id=chembl_id, max_actives=10)
+    if not target and not chembl_id and not pdb_id and not uniprot_acc:
+        return jsonify({"error": "Target identifier (target, chembl_id, pdb_id, or uniprot_acc) is required"}), 400
+
+    actives = PharmacophoreService.fetch_target_actives(
+        target_name=target,
+        chembl_target_id=chembl_id,
+        pdb_id=pdb_id,
+        uniprot_accession=uniprot_acc,
+        max_actives=max_actives
+    )
     profile = PharmacophoreService.build_consensus_profile(actives) if len(actives) >= 3 else None
     return jsonify({
         "actives_count": len(actives),
