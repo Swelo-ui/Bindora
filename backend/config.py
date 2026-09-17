@@ -1,11 +1,33 @@
 import os
 from pathlib import Path
 
+import sys
+import shutil
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 BACKEND_DIR = BASE_DIR / "backend"
 FRONTEND_DIR = BASE_DIR / "frontend"
 BIN_DIR = BASE_DIR / "bin"
-VINA_EXE = BIN_DIR / "vina.exe"
+
+def _resolve_vina_path():
+    env_vina = os.environ.get("VINA_EXE")
+    if env_vina and os.path.exists(env_vina):
+        return Path(env_vina)
+    if sys.platform == "win32":
+        win_bin = BIN_DIR / "vina.exe"
+        if win_bin.exists():
+            return win_bin
+    sys_vina = shutil.which("vina")
+    if sys_vina:
+        return Path(sys_vina)
+    if sys.platform == "win32":
+        return BIN_DIR / "vina.exe"
+    local_vina = BIN_DIR / "vina"
+    if local_vina.exists():
+        return local_vina
+    return BIN_DIR / "vina"
+
+VINA_EXE = _resolve_vina_path()
 GNINA_EXE = os.environ.get("GNINA_EXE", str(BIN_DIR / "gnina.exe"))
 
 DATA_DIR = BASE_DIR / "data"
