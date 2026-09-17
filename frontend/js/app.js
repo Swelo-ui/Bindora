@@ -18,7 +18,11 @@ class BindoraApp {
       crosscheck: null,
       narrative: null,
       benchmarks: [],
-      activeTab: "home"
+      activeTab: "home",
+      batchMode: "candidates",
+      batchCandidateResults: null,
+      ensembleResults: null,
+      pharmacophoreResults: null
     };
   }
 
@@ -330,6 +334,7 @@ class BindoraApp {
 
     // Batch Mode Switching (Candidates / Ensemble / Pharmacophore)
     const setBatchMode = (mode) => {
+      this.state.batchMode = mode;
       ['candidates', 'ensemble', 'pharmacophore'].forEach(m => {
         const panel = document.getElementById(`panel-batch-${m}`);
         const btn = document.getElementById(`btn-batch-mode-${m}`);
@@ -351,10 +356,25 @@ class BindoraApp {
       } else if (mode === 'pharmacophore') {
         this.checkPharmacophoreEligibility();
       }
+      this.updateBatchMatrixView(mode);
     };
     document.getElementById("btn-batch-mode-candidates")?.addEventListener("click", () => setBatchMode('candidates'));
     document.getElementById("btn-batch-mode-ensemble")?.addEventListener("click", () => setBatchMode('ensemble'));
     document.getElementById("btn-batch-mode-pharmacophore")?.addEventListener("click", () => setBatchMode('pharmacophore'));
+
+    // Workflow Guide (i) Modal Event Listeners
+    const btnWorkflowInfo = document.getElementById("btn-batch-workflow-info");
+    const modalWorkflowGuide = document.getElementById("modal-batch-workflow-guide");
+    const btnCloseWorkflowGuide = document.getElementById("btn-close-batch-workflow-guide");
+    const btnGotItWorkflowGuide = document.getElementById("btn-got-it-batch-workflow-guide");
+    if (btnWorkflowInfo && modalWorkflowGuide) {
+      btnWorkflowInfo.addEventListener("click", () => modalWorkflowGuide.classList.remove("hidden"));
+      btnCloseWorkflowGuide?.addEventListener("click", () => modalWorkflowGuide.classList.add("hidden"));
+      btnGotItWorkflowGuide?.addEventListener("click", () => modalWorkflowGuide.classList.add("hidden"));
+      modalWorkflowGuide.addEventListener("click", (e) => {
+        if (e.target === modalWorkflowGuide) modalWorkflowGuide.classList.add("hidden");
+      });
+    }
 
     // Ensemble run trigger
     document.getElementById("btn-run-ensemble")?.addEventListener("click", () => this.runEnsembleDocking());
@@ -801,9 +821,10 @@ class BindoraApp {
       this.generateNarrativeReport();
     }
 
-    // If switching to batch tab, check pharmacophore eligibility
+    // If switching to batch tab, check pharmacophore eligibility & sync view
     if (tabId === "batch") {
       this.checkPharmacophoreEligibility();
+      this.updateBatchMatrixView(this.state.batchMode || 'candidates');
     }
   }
 
@@ -1380,6 +1401,10 @@ class BindoraApp {
     this.state.ensembleStructures = null;
     this.state.pharmacophore = null;
     this.state.currentPoseIdx = 0;
+    this.state.batchCandidateResults = null;
+    this.state.ensembleResults = null;
+    this.state.pharmacophoreResults = null;
+    this.updateBatchMatrixView(this.state.batchMode || 'candidates');
 
     if (this.viewer) {
       this.viewer.clear();
@@ -2625,7 +2650,8 @@ class BindoraApp {
         exhaustiveness: 4
       });
 
-      this.renderBatchLeaderboard(batchResult.leaderboard || []);
+      this.state.batchCandidateResults = batchResult.leaderboard || [];
+      this.renderBatchLeaderboard(this.state.batchCandidateResults);
       this.showToast(`Batch screening complete! Screened ${batchResult.total_screened} compounds.`, "success");
     } catch (e) {
       this.showToast(`Batch screening error: ${e.message}`, "error");
@@ -3100,7 +3126,7 @@ class BindoraApp {
     if (!tbody) return;
 
     if (leaderboard.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" class="text-center p-6 text-xs text-slate-500 italic">No docking results produced.</td></tr>`;
+      this.renderBatchCandidatePlaceholder();
       return;
     }
 
@@ -3159,6 +3185,134 @@ class BindoraApp {
 
     const sub = document.getElementById("batch-matrix-subtitle");
     if (sub) sub.textContent = "Consensus = ΔG (50%) + LE (scaled) + H-Bond Bonus";
+  }
+
+  updateBatchMatrixView(mode = "candidates") {
+    if (mode === "candidates") {
+      if (this.state.batchCandidateResults && this.state.batchCandidateResults.length > 0) {
+        this.renderBatchLeaderboard(this.state.batchCandidateResults);
+      } else {
+        this.renderBatchCandidatePlaceholder();
+      }
+    } else if (mode === "ensemble") {
+      if (this.state.ensembleResults && this.state.ensembleResults.structures && this.state.ensembleResults.structures.length > 0) {
+        this.renderEnsembleLeaderboard(this.state.ensembleResults);
+      } else {
+        this.renderEnsemblePlaceholder();
+      }
+    } else if (mode === "pharmacophore") {
+      if (this.state.pharmacophoreResults && this.state.pharmacophoreResults.screened && this.state.pharmacophoreResults.screened.length > 0) {
+        this.renderPharmacophoreLeaderboard(this.state.pharmacophoreResults);
+      } else {
+        this.renderPharmacophorePlaceholder();
+      }
+    }
+  }
+
+  renderBatchCandidatePlaceholder() {
+    const thead = document.getElementById("batch-table-head");
+    if (thead) {
+      thead.innerHTML = `
+        <tr class="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-mono text-[11px] whitespace-nowrap">
+          <th class="py-2.5 px-2 text-center w-8">#</th>
+          <th class="py-2.5 px-2.5 min-w-[120px]">Candidate</th>
+          <th class="py-2.5 px-2 text-center" title="Binding Free Energy (kcal/mol)">Vina ΔG</th>
+          <th class="py-2.5 px-2 text-center" title="Vinardo Empirical Scoring (kcal/mol)">Vinardo</th>
+          <th class="py-2.5 px-2 text-center" title="Consensus Score (kcal/mol)">Consensus</th>
+          <th class="py-2.5 px-2 text-center">Confidence</th>
+          <th class="py-2.5 px-2 text-center" title="Estimated Dissociation Constant (nM)">Kd (nM)</th>
+          <th class="py-2.5 px-2 text-center" title="Ligand Efficiency = ΔG / Heavy Atom Count">LE</th>
+          <th class="py-2.5 px-2 text-center" title="Hydrogen Bond Interactions">H-Bonds</th>
+          <th class="py-2.5 px-2 text-center">Status</th>
+        </tr>
+      `;
+    }
+    const tbody = document.getElementById("batch-leaderboard-rows");
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="10" class="text-center p-8 text-xs text-slate-500 italic">
+            <div class="space-y-1.5 max-w-md mx-auto">
+              <p class="font-semibold text-slate-300">Candidate Virtual Screening Ready</p>
+              <p class="text-[11px] text-slate-400 leading-relaxed">Select a preset or enter candidate SMILES on the left, then click <strong class="text-cyan-400">"Run Batch Virtual Screening"</strong> to dock the library against the active binding pocket.</p>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+    const sub = document.getElementById("batch-matrix-subtitle");
+    if (sub) sub.textContent = "Consensus = ΔG (50%) + LE (scaled) + H-Bond Bonus";
+  }
+
+  renderEnsemblePlaceholder() {
+    const thead = document.getElementById("batch-table-head");
+    if (thead) {
+      thead.innerHTML = `
+        <tr class="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-mono text-[11px] whitespace-nowrap">
+          <th class="py-2.5 px-2 text-center w-8">#</th>
+          <th class="py-2.5 px-2.5 min-w-[140px]">Target Conformation (PDB)</th>
+          <th class="py-2.5 px-2 text-center" title="Binding Free Energy (kcal/mol)">Vina ΔG</th>
+          <th class="py-2.5 px-2 text-center" title="Vinardo Empirical Scoring (kcal/mol)">Vinardo</th>
+          <th class="py-2.5 px-2 text-center" title="Consensus Score (kcal/mol)">Consensus</th>
+          <th class="py-2.5 px-2 text-center">Mode</th>
+          <th class="py-2.5 px-2 text-center" title="Estimated Dissociation Constant (nM)">Kd (nM)</th>
+          <th class="py-2.5 px-2 text-center" title="Ligand Efficiency = ΔG / Heavy Atom Count">LE</th>
+          <th class="py-2.5 px-2 text-center" title="Hydrogen Bond Interactions">H-Bonds</th>
+          <th class="py-2.5 px-2 text-center">Status</th>
+        </tr>
+      `;
+    }
+    const tbody = document.getElementById("batch-leaderboard-rows");
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="10" class="text-center p-8 text-xs text-slate-500 italic">
+            <div class="space-y-1.5 max-w-md mx-auto">
+              <p class="font-semibold text-emerald-400">Ensemble Cross-Docking Ready</p>
+              <p class="text-[11px] text-slate-400 leading-relaxed">Select alternative target PDB crystallographic structures on the left and click <strong class="text-emerald-400">"Run Ensemble Cross-Docking"</strong> to evaluate conformational consistency across receptor conformations.</p>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+    const sub = document.getElementById("batch-matrix-subtitle");
+    if (sub) sub.textContent = "Conformational Robustness: Cross-docking across target structural ensemble";
+  }
+
+  renderPharmacophorePlaceholder() {
+    const reqs = this.state.pharmacophore?.consensus_profile?.core_requirements || {};
+    const thead = document.getElementById("batch-table-head");
+    if (thead) {
+      thead.innerHTML = `
+        <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800 font-mono text-[11px] whitespace-nowrap">
+          <th class="py-2.5 px-2 text-center w-8">#</th>
+          <th class="py-2.5 px-2.5 min-w-[120px]">Candidate</th>
+          <th class="py-2.5 px-2 text-center w-16">Match %</th>
+          <th class="py-2.5 px-2 text-center w-16">Score</th>
+          <th class="py-2.5 px-1.5 text-center w-12" title="Aromatic Rings (Required: &ge; ${reqs.Aromatic || 1})">Aro (${reqs.Aromatic ? '&ge;' + reqs.Aromatic : 'Aro'})</th>
+          <th class="py-2.5 px-1.5 text-center w-12" title="Hydrophobic Centers (Required: &ge; ${reqs.Hydrophobe || 1})">Hyd (${reqs.Hydrophobe ? '&ge;' + reqs.Hydrophobe : 'Hyd'})</th>
+          <th class="py-2.5 px-1.5 text-center w-12" title="H-Bond Donors (Required: &ge; ${reqs.Donor || 1})">HBD (${reqs.Donor ? '&ge;' + reqs.Donor : 'HBD'})</th>
+          <th class="py-2.5 px-1.5 text-center w-12" title="H-Bond Acceptors (Required: &ge; ${reqs.Acceptor || 1})">HBA (${reqs.Acceptor ? '&ge;' + reqs.Acceptor : 'HBA'})</th>
+          <th class="py-2.5 px-2 text-center w-24">Alignment</th>
+          <th class="py-2.5 px-2 text-center w-16">Status</th>
+        </tr>
+      `;
+    }
+    const tbody = document.getElementById("batch-leaderboard-rows");
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="10" class="text-center p-8 text-xs text-slate-500 italic">
+            <div class="space-y-1.5 max-w-md mx-auto">
+              <p class="font-semibold text-purple-400">Consensus Pharmacophore Alignment Ready</p>
+              <p class="text-[11px] text-slate-400 leading-relaxed">Click <strong class="text-purple-400">"Screen Candidates vs Pharmacophore"</strong> on the left to align molecules against the 3D consensus chemical features of known active inhibitors.</p>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+    const sub = document.getElementById("batch-matrix-subtitle");
+    if (sub) sub.textContent = "Pharmacophore Consensus: Spatial chemical alignment against active ChEMBL binders";
   }
 
   updateFlexibleResiduesUI(flexCandidates) {
@@ -3425,7 +3579,8 @@ class BindoraApp {
         exhaustiveness: 4
       });
 
-      this.renderEnsembleLeaderboard(res);
+      this.state.ensembleResults = res;
+      this.renderEnsembleLeaderboard(this.state.ensembleResults);
       const s = res.summary || {};
       this.showToast(`Ensemble docking complete! Mean ΔG: ${s.mean_affinity ?? '—'} ± ${s.std_affinity ?? 0} kcal/mol`, "success");
     } catch (e) {
@@ -3462,7 +3617,7 @@ class BindoraApp {
 
     const structures = res.structures || [];
     if (structures.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" class="text-center p-6 text-xs text-slate-500 italic">No ensemble docking results produced.</td></tr>`;
+      this.renderEnsemblePlaceholder();
       return;
     }
 
@@ -3560,7 +3715,8 @@ class BindoraApp {
 
     try {
       const data = await BindoraAPI.screenPharmacophore(candidates, this.state.pharmacophore.consensus_profile);
-      this.renderPharmacophoreLeaderboard(data);
+      this.state.pharmacophoreResults = data;
+      this.renderPharmacophoreLeaderboard(this.state.pharmacophoreResults);
       this.showToast(`Pharmacophore screening complete! Screened ${data.total} candidates.`, "success");
     } catch (e) {
       this.showToast(`Pharmacophore screening failed: ${e.message}`, "error");
@@ -3597,7 +3753,7 @@ class BindoraApp {
 
     const screened = data.screened || [];
     if (screened.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" class="text-center p-6 text-xs text-slate-500 italic">No candidates screened against pharmacophore.</td></tr>`;
+      this.renderPharmacophorePlaceholder();
       return;
     }
 

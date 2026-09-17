@@ -1704,7 +1704,12 @@
       
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-slate-200 dark:border-slate-800 gap-3">
         <div>
-          <h2 class="text-lg font-bold text-slate-900 dark:text-white">Batch Screening &amp; SAR Explorer</h2>
+          <div class="flex items-center space-x-2">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Batch Screening &amp; SAR Explorer</h2>
+            <button id="btn-batch-workflow-info" type="button" title="Pipeline Guide: How Virtual Screening, Ensemble &amp; Pharmacophore work together" class="w-5 h-5 rounded-full bg-slate-800 hover:bg-cyan-900/60 border border-slate-700 hover:border-cyan-500/60 text-slate-300 hover:text-cyan-300 transition flex items-center justify-center text-[11px] font-bold cursor-pointer shadow-sm">
+              i
+            </button>
+          </div>
           <p class="text-xs text-slate-500 dark:text-slate-400">Screen candidate libraries, explore conformational ensembles, or match against active pharmacophores</p>
         </div>
         <!-- Mode Switcher -->
@@ -1766,10 +1771,6 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
           </p>
           <div id="pharmacophore-profile-summary" class="p-3 rounded-lg bg-slate-900/60 border border-slate-800 text-xs space-y-2 text-slate-300">
             <span class="text-slate-400 italic">Awaiting active profile...</span>
-          </div>
-          <div class="flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-400">
-            <span>Candidate Source:</span>
-            <span class="text-purple-300 font-mono font-medium">Batch Library / Loaded API</span>
           </div>
           <button id="btn-run-pharmacophore-screen" class="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center justify-center space-x-2 shadow-lg shadow-purple-950/40">
             <span>Screen Candidates vs Pharmacophore</span>
@@ -2335,6 +2336,132 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
     </div>
   </div>
 
+  <!-- ==================== BATCH & SAR PIPELINE GUIDE MODAL ==================== -->
+  <div id="modal-batch-workflow-guide" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center hidden p-4">
+    <div class="glass-panel border border-slate-700/80 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-7 space-y-6 shadow-2xl relative">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-500/20 via-cyan-500/20 to-emerald-500/20 border border-cyan-500/40 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="font-bold text-base text-white flex items-center gap-2">
+              <span>Virtual Screening &amp; SAR Pipeline Guide</span>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800 font-mono font-bold">Research Workflow</span>
+            </h3>
+            <p class="text-xs text-slate-400">How the 3 screening modes interconnect in publication-grade computational drug discovery</p>
+          </div>
+        </div>
+        <button id="btn-close-batch-workflow-guide" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition text-2xl leading-none cursor-pointer" title="Close Guide">&times;</button>
+      </div>
+
+      <!-- Core Research Concept Banner -->
+      <div class="p-4 rounded-xl bg-gradient-to-r from-blue-950/40 via-cyan-950/30 to-purple-950/30 border border-cyan-800/40 space-y-2">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center space-x-1.5">
+          <svg class="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <span>The Modern In-Silico Drug Discovery Funnel</span>
+        </h4>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Standard molecular docking against a single static receptor typically suffers from a <strong>30–50% false-positive rate</strong> because rigid scoring functions reward large hydrophobic surface contacts ("grease balls") regardless of directional chemistry or target flexibility. Bindora resolves this by combining <strong>High-Throughput Scoring</strong>, <strong>Experimental Pharmacophore Validation</strong>, and <strong>Conformational Ensemble Cross-Docking</strong> into a single synergistic cascade.
+        </p>
+      </div>
+
+      <!-- The 3 Interconnected Pillars -->
+      <div class="space-y-4">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-1">
+          The 3 Pillars of Preclinical Lead Identification
+        </h4>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          
+          <!-- Pillar 1: Candidate Screening -->
+          <div class="p-3.5 rounded-xl bg-slate-900/70 border border-cyan-800/50 space-y-2 flex flex-col justify-between">
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">Stage 1 &bull; Fast Funnel</span>
+                <span class="text-xs font-mono text-cyan-400 font-bold">Vina &amp; Vinardo</span>
+              </div>
+              <h5 class="text-xs font-bold text-white">Candidate Virtual Screening</h5>
+              <p class="text-[11px] text-slate-400 leading-relaxed">
+                Screens multi-compound libraries (SMILES) against the rigid binding pocket. Calculates binding free energy (&Delta;G in kcal/mol), estimated dissociation constant (K<sub>d</sub>), and Ligand Efficiency (LE).
+              </p>
+            </div>
+            <div class="p-2 rounded-lg bg-black/40 border border-slate-800 text-[10px] text-slate-400">
+              <strong class="text-cyan-300 block mb-0.5">Scientific Role:</strong>
+              Ranks hundreds of chemotypes rapidly to eliminate non-binding or sterically clashing compounds.
+            </div>
+          </div>
+
+          <!-- Pillar 2: Pharmacophore Consensus -->
+          <div class="p-3.5 rounded-xl bg-slate-900/70 border border-purple-800/50 space-y-2 flex flex-col justify-between">
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800">Stage 2 &bull; Bio Filter</span>
+                <span class="text-xs font-mono text-purple-400 font-bold">ChEMBL Actives</span>
+              </div>
+              <h5 class="text-xs font-bold text-white">Pharmacophore Matching</h5>
+              <p class="text-[11px] text-slate-400 leading-relaxed">
+                Queries curated EMBL-EBI wet-lab binders (IC<sub>50</sub> &le; 10 &mu;M) to build a 3D consensus profile of essential interaction anchors: Aromatic (&pi;-&pi;), Hydrophobic cores, H-Bond Donors, and Acceptors.
+              </p>
+            </div>
+            <div class="p-2 rounded-lg bg-black/40 border border-slate-800 text-[10px] text-slate-400">
+              <strong class="text-purple-300 block mb-0.5">Scientific Role:</strong>
+              <strong>Eliminates false positives!</strong> Ensures high-affinity hits genuinely satisfy the spatial chemistry proven in wet-lab experiments.
+            </div>
+          </div>
+
+          <!-- Pillar 3: Ensemble Cross-Docking -->
+          <div class="p-3.5 rounded-xl bg-slate-900/70 border border-emerald-800/50 space-y-2 flex flex-col justify-between">
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">Stage 3 &bull; Robustness</span>
+                <span class="text-xs font-mono text-emerald-400 font-bold">Multi-PDB</span>
+              </div>
+              <h5 class="text-xs font-bold text-white">Ensemble Cross-Docking</h5>
+              <p class="text-[11px] text-slate-400 leading-relaxed">
+                Cross-docks your prioritized lead across multiple crystallographic structures (apo, holo, mutant variants) to account for receptor conformational flexibility and induced-fit movements.
+              </p>
+            </div>
+            <div class="p-2 rounded-lg bg-black/40 border border-slate-800 text-[10px] text-slate-400">
+              <strong class="text-emerald-300 block mb-0.5">Scientific Role:</strong>
+              <strong>Overcomes the rigid receptor flaw!</strong> Verifies that binding affinity is resilient (Mean &Delta;G &plusmn; SD) across biological protein conformations.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Recommended Protocol (Step-by-Step SOP) -->
+      <div class="space-y-2">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-1">
+          Recommended Academic Screening SOP
+        </h4>
+        <ol class="space-y-2 text-xs text-slate-300 list-decimal list-inside leading-relaxed bg-slate-900/50 p-3.5 rounded-xl border border-slate-800 font-sans">
+          <li>
+            <strong class="text-cyan-300">Run Candidate Virtual Screening:</strong> Input candidate SMILES or load a library preset (e.g. Kinase or Antiviral). Click <em>Run Batch Virtual Screening</em> to compute &Delta;G and rank the library.
+          </li>
+          <li>
+            <strong class="text-purple-300">Filter with Pharmacophore Mode:</strong> Switch to <em>Pharmacophore Mode</em> and click <em>Screen Candidates vs Pharmacophore</em>. Prioritize hits showing &ge; 70% match with known wet-lab ChEMBL active features.
+          </li>
+          <li>
+            <strong class="text-emerald-300">Validate Target Robustness via Ensemble Docking:</strong> Switch to <em>Ensemble Structures</em>. Select multiple PDB structures of this protein and click <em>Run Ensemble Cross-Docking</em> to verify stable binding (SD &le; 1.0 kcal/mol) across receptor conformations.
+          </li>
+        </ol>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="border-t border-slate-800 pt-3 text-xs text-slate-400 flex items-center justify-between">
+        <span class="font-mono text-[11px] text-slate-500">Bindora Preclinical SAR Engine &bull; CASF-2016 Compliant</span>
+        <button id="btn-got-it-batch-workflow-guide" class="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-lg text-xs transition cursor-pointer shadow">Got it, Return to Screening</button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Footer -->
   <footer class="border-t border-slate-800/80 bg-slate-950 py-4 text-center text-xs text-slate-500">
     <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -2348,6 +2475,6 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
   <script src="js/viewer.js?v=2.2"></script>
   <script src="js/charts.js?v=2.2"></script>
   <script src="js/firebase-auth.js?v=2.2"></script>
-  <script src="js/app.js?v=2.4"></script>
+  <script src="js/app.js?v=2.5"></script>
 </body>
 </html>
