@@ -139,22 +139,42 @@ class InteractionEngine:
 
     @classmethod
     def _parse_ligand_atoms(cls, block_str: str) -> List[Dict[str, Any]]:
+        # Check for REMARK SMILES IDX mappings from Meeko PDBQT
+        smi_map: Dict[int, int] = {}
+        for line in block_str.splitlines():
+            if line.startswith("REMARK SMILES IDX"):
+                tokens = line[17:].strip().split()
+                try:
+                    for i in range(0, len(tokens) - 1, 2):
+                        smi_idx = int(tokens[i]) - 1  # 0-based
+                        pdb_idx = int(tokens[i + 1])
+                        smi_map[pdb_idx] = smi_idx
+                except Exception:
+                    pass
+
         atoms = []
         atom_idx = 0
         for line in block_str.splitlines():
             if line.startswith(("ATOM  ", "HETATM")):
                 try:
+                    serial = int(line[6:11].strip()) if len(line) >= 11 and line[6:11].strip().isdigit() else (atom_idx + 1)
                     atom_name = line[12:16].strip()
-                    elem = line[76:78].strip() or atom_name[0]
+                    elem = line[76:78].strip() if len(line) > 76 else ""
+                    if not elem:
+                        elem = atom_name[0]
                     x = float(line[30:38])
                     y = float(line[38:46])
                     z = float(line[46:54])
 
+                    s_idx = smi_map.get(serial, atom_idx)
+
                     atoms.append({
+                        "serial": serial,
                         "atom_name": atom_name,
                         "elem": elem.upper(),
                         "coord": np.array([x, y, z]),
-                        "atom_idx": atom_idx
+                        "atom_idx": s_idx,
+                        "smiles_idx": smi_map.get(serial, None)
                     })
                     atom_idx += 1
                 except Exception:
@@ -379,6 +399,95 @@ class InteractionEngine:
         return salt_bridges
 
     @classmethod
+    def _find_ligand_aromatic_rings(
+        cls,
+        lig_atoms: List[Dict[str, Any]],
+        mol: Optional[Chem.Mol] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Identify 5- and 6-membered aromatic rings directly from 3D coordinates and geometry.
+        Guarantees that ring centroids and normals are strictly anchored within the real 3D ring.
+        """
+        heavy = [a for a in lig_atoms if a.get("elem") not in ("H", "HD")]
+        if len(heavy) < 5:
+            return []
+
+        # Build 3D covalent bond graph based on heavy-atom interatomic distances (1.0 - 1.85 A)
+        n_heavy = len(heavy)
+        adj: Dict[int, List[int]] = {i: [] for i in range(n_heavy)}
+        for i in range(n_heavy):
+            ci = heavy[i]["coord"]
+            for j in range(i + 1, n_heavy):
+                cj = heavy[j]["coord"]
+                dist = float(np.linalg.norm(ci - cj))
+                if 1.0 <= dist <= 1.85:
+                    adj[i].append(j)
+                    adj[j].append(i)
+
+        # Depth-first search for 5- and 6-membered simple cycles
+        cycles = []
+        def dfs(path: List[int]) -> None:
+            curr = path[-1]
+            for nxt in adj[curr]:
+                if nxt == path[0] and len(path) in (5, 6):
+                    can = tuple(sorted(path))
+                    if can not in [tuple(sorted(c)) for c in cycles]:
+                        cycles.append(list(path))
+                elif nxt not in path and len(path) < 6:
+                    if nxt > path[0]:
+                        dfs(path + [nxt])
+
+        for i in range(n_heavy):
+            dfs([i])
+
+        valid_rings = []
+        ring_elements = {"C", "N", "O", "S", "A", "NA", "OA", "SA"}
+
+        for c_indices in cycles:
+            ring_atoms = [heavy[i] for i in c_indices]
+            # Must consist of ring-forming elements
+            if any(a.get("elem") not in ring_elements for a in ring_atoms):
+                continue
+
+            coords = np.array([a["coord"] for a in ring_atoms])
+            centroid = np.mean(coords, axis=0)
+
+            # Planarity check via SVD: aromatic rings are strictly flat (RMSD < 0.18 A)
+            c_coords = coords - centroid
+            _, s, vh = np.linalg.svd(c_coords)
+            rmsd = float(np.sqrt(s[2]**2 / len(c_indices)))
+            if rmsd > 0.18:
+                continue
+
+            # Unit normal vector to best-fit plane
+            normal = vh[2]
+            norm = float(np.linalg.norm(normal))
+            if norm > 1e-6:
+                normal = normal / norm
+            else:
+                normal = np.array([0.0, 0.0, 1.0])
+
+            # Confirm aromaticity if RDKit mol is provided
+            if mol is not None:
+                has_smi_map = any(a.get("smiles_idx") is not None for a in ring_atoms)
+                if has_smi_map:
+                    smi_aromatic = all(
+                        mol.GetAtomWithIdx(a["smiles_idx"]).GetIsAromatic()
+                        for a in ring_atoms if a.get("smiles_idx") is not None
+                    )
+                    if not smi_aromatic:
+                        continue
+
+            valid_rings.append({
+                "indices": [a.get("atom_idx", 0) for a in ring_atoms],
+                "centroid": centroid,
+                "normal": normal,
+                "atoms": ring_atoms
+            })
+
+        return valid_rings
+
+    @classmethod
     def _find_pi_stacking(
         cls,
         rec_atoms: List[Dict[str, Any]],
@@ -388,42 +497,9 @@ class InteractionEngine:
     ) -> List[Dict[str, Any]]:
         """PLIP criteria for aromatic pi-pi stacking: centroid distance <= 5.5 A."""
         stacks = []
-        if not mol:
-            return stacks
 
-        # 1. Identify ligand aromatic rings
-        ring_info = mol.GetRingInfo()
-        lig_rings = []
-        conf = mol.GetConformer() if mol.GetNumConformers() > 0 else None
-
-        for r_atom_indices in ring_info.AtomRings():
-            if all(mol.GetAtomWithIdx(idx).GetIsAromatic() for idx in r_atom_indices):
-                # Calculate centroid and normal
-                coords = []
-                for idx in r_atom_indices:
-                    # Match with 3D pose atom coordinate if available
-                    match_lat = next((la for la in lig_atoms if la.get("atom_idx") == idx), None)
-                    if match_lat is not None:
-                        coords.append(match_lat["coord"])
-                    elif conf:
-                        p = conf.GetAtomPosition(idx)
-                        coords.append(np.array([p.x, p.y, p.z]))
-                if len(coords) >= 5:
-                    coords_arr = np.array(coords)
-                    centroid = np.mean(coords_arr, axis=0)
-                    # Normal vector via cross product of two vectors
-                    v1 = coords_arr[1] - coords_arr[0]
-                    v2 = coords_arr[2] - coords_arr[0]
-                    normal = np.cross(v1, v2)
-                    norm = np.linalg.norm(normal)
-                    if norm > 1e-6:
-                        normal = normal / norm
-                    lig_rings.append({
-                        "indices": r_atom_indices,
-                        "centroid": centroid,
-                        "normal": normal
-                    })
-
+        # 1. Identify ligand aromatic rings directly from 3D structure
+        lig_rings = cls._find_ligand_aromatic_rings(lig_atoms, mol)
         if not lig_rings:
             return stacks
 
@@ -491,24 +567,58 @@ class InteractionEngine:
         """PLIP criteria for pi-cation interactions (<= 4.5 A)."""
         pi_cations = []
 
-        # 1. Receptor cations (LYS NZ, ARG guanidinium) to ligand aromatic rings
-        # 2. Ligand cations to receptor aromatic rings (PHE, TYR, TRP, HIS)
+        # 1. Receptor cations (LYS NZ, ARG guanidinium)
+        # 2. Receptor aromatics (PHE, TYR, TRP, HIS - strict sidechain ring atoms only)
         rec_cations: Dict[Tuple[str, int, str], List[np.ndarray]] = {}
         rec_aromatics: Dict[Tuple[str, int, str], List[np.ndarray]] = {}
 
         for ra in rec_atoms:
             rkey = (ra["res_name"], ra["res_num"], ra["chain"])
-            if ra["res_name"] == "LYS" and ra["atom_name"] == "NZ":
+            aname = ra["atom_name"]
+            rname = ra["res_name"]
+            if rname == "LYS" and aname == "NZ":
                 rec_cations.setdefault(rkey, []).append(ra["coord"])
-            elif ra["res_name"] == "ARG" and ra["atom_name"] in ("NE", "CZ", "NH1", "NH2"):
+            elif rname == "ARG" and aname in ("NE", "CZ", "NH1", "NH2"):
                 rec_cations.setdefault(rkey, []).append(ra["coord"])
-            elif ra["res_name"] in ("PHE", "TYR", "TRP", "HIS") and ra["elem"] in ("C", "N"):
+            elif rname in ("PHE", "TYR") and aname in ("CG", "CD1", "CD2", "CE1", "CE2", "CZ"):
+                rec_aromatics.setdefault(rkey, []).append(ra["coord"])
+            elif rname == "HIS" and aname in ("CG", "ND1", "CD2", "CE1", "NE2"):
+                rec_aromatics.setdefault(rkey, []).append(ra["coord"])
+            elif rname == "TRP" and aname in ("CD2", "CE2", "CE3", "CZ2", "CZ3", "CH2"):
                 rec_aromatics.setdefault(rkey, []).append(ra["coord"])
 
+        # Ligand aromatic rings directly from 3D structure
+        lig_rings = cls._find_ligand_aromatic_rings(lig_atoms, mol)
+
         # Check ligand cationic nitrogens to receptor aromatics
+        # Filter out neutral amides (-C(=O)-N-) and nitro groups (-NO2)
         for latom in lig_atoms:
-            if latom["elem"] == "N":
+            if latom.get("elem") == "N":
                 lcoord = latom["coord"]
+
+                # Exclude if attached to carbonyl carbon (amide) or two oxygens (nitro)
+                is_amide_or_nitro = False
+                bonded_heavy = [
+                    other for other in lig_atoms
+                    if other is not latom and np.linalg.norm(other["coord"] - lcoord) <= 1.55
+                ]
+                oxygens_count = sum(1 for b in bonded_heavy if b.get("elem") == "O")
+                if oxygens_count >= 2:
+                    is_amide_or_nitro = True
+                else:
+                    for b in bonded_heavy:
+                        if b.get("elem") == "C":
+                            c_bonded_o = any(
+                                o.get("elem") == "O" and np.linalg.norm(o["coord"] - b["coord"]) <= 1.38
+                                for o in lig_atoms if o is not b
+                            )
+                            if c_bonded_o:
+                                is_amide_or_nitro = True
+                                break
+
+                if is_amide_or_nitro:
+                    continue
+
                 for (rname, rnum, rchain), coords in rec_aromatics.items():
                     if len(coords) < 5:
                         continue
@@ -531,39 +641,26 @@ class InteractionEngine:
                         })
 
         # Check receptor cations (LYS NZ, ARG guanidinium) to ligand aromatic rings
-        if mol:
-            conf = mol.GetConformer() if mol.GetNumConformers() > 0 else None
-            ring_info = mol.GetRingInfo()
-            for r_atom_indices in ring_info.AtomRings():
-                if all(mol.GetAtomWithIdx(idx).GetIsAromatic() for idx in r_atom_indices):
-                    coords = []
-                    for idx in r_atom_indices:
-                        match_lat = next((la for la in lig_atoms if la.get("atom_idx") == idx), None)
-                        if match_lat is not None:
-                            coords.append(match_lat["coord"])
-                        elif conf:
-                            p = conf.GetAtomPosition(idx)
-                            coords.append(np.array([p.x, p.y, p.z]))
-                    if len(coords) >= 5:
-                        lring_centroid = np.mean(np.array(coords), axis=0)
-                        for (rname, rnum, rchain), c_coords in rec_cations.items():
-                            cation_center = np.mean(c_coords, axis=0)
-                            d = float(np.linalg.norm(cation_center - lring_centroid))
-                            if d <= max_dist:
-                                res_id = f"{rname} {rnum}:{rchain}"
-                                pi_cations.append({
-                                    "type": "π-Cation",
-                                    "subtype": "Receptor Cation - Ligand π-Ring",
-                                    "distance": round(d, 2),
-                                    "residue": res_id,
-                                    "res_name": rname,
-                                    "res_num": rnum,
-                                    "chain": rchain,
-                                    "ligand_atom": f"Ring ({len(r_atom_indices)} atoms)",
-                                    "ligand_atom_idx": r_atom_indices[0],
-                                    "start_coord": [float(c) for c in cation_center],
-                                    "end_coord": [float(c) for c in lring_centroid]
-                                })
+        for lring in lig_rings:
+            lring_centroid = lring["centroid"]
+            for (rname, rnum, rchain), c_coords in rec_cations.items():
+                cation_center = np.mean(c_coords, axis=0)
+                d = float(np.linalg.norm(cation_center - lring_centroid))
+                if d <= max_dist:
+                    res_id = f"{rname} {rnum}:{rchain}"
+                    pi_cations.append({
+                        "type": "π-Cation",
+                        "subtype": "Receptor Cation - Ligand π-Ring",
+                        "distance": round(d, 2),
+                        "residue": res_id,
+                        "res_name": rname,
+                        "res_num": rnum,
+                        "chain": rchain,
+                        "ligand_atom": f"Ring ({len(lring['indices'])} atoms)",
+                        "ligand_atom_idx": lring["indices"][0],
+                        "start_coord": [float(c) for c in cation_center],
+                        "end_coord": [float(c) for c in lring_centroid]
+                    })
 
         return pi_cations
 

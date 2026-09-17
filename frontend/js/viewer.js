@@ -295,6 +295,9 @@ class MolecularViewer {
     } = interactions;
 
     this.lastInteractingResidues = new Set();
+    if (!this.residueLabels) this.residueLabels = new Map();
+    this.residueLabels.clear();
+
     if (this.receptorModel && interacting_residues.length > 0) {
       interacting_residues.forEach(resStr => {
         const parts = resStr.split(' ');
@@ -302,7 +305,8 @@ class MolecularViewer {
         const numChain = parts[1] || '';
         const [resNumStr, chain] = numChain.split(':');
         const resNum = parseInt(resNumStr);
-        this.lastInteractingResidues.add(`${chain || 'A'}:${resNum}`);
+        const key = `${chain || 'A'}:${resNum}`;
+        this.lastInteractingResidues.add(key);
 
         const sel = { resi: resNum };
         if (chain) sel.chain = chain;
@@ -316,7 +320,8 @@ class MolecularViewer {
           const atoms = this.receptorModel.selectedAtoms(sel);
           if (atoms && atoms.length > 0) {
             const ca = atoms.find(a => a.atom === 'CA') || atoms[0];
-            this.viewer.addLabel(resName + resNum, {
+            const displayRes = (resName ? resName + ' ' : '') + resNum;
+            const lbl = this.viewer.addLabel(displayRes, {
               position: { x: ca.x, y: ca.y, z: ca.z },
               backgroundColor: 'rgba(15, 23, 42, 0.8)',
               fontColor: '#38bdf8',
@@ -324,6 +329,7 @@ class MolecularViewer {
               borderThickness: 1,
               borderColor: '#0284c7'
             });
+            if (lbl) this.residueLabels.set(key, lbl);
           }
         }
       });
@@ -835,10 +841,13 @@ class MolecularViewer {
         this.flexHighlights = new Map();
       }
 
-      // If disabling / unselecting: Cleanly remove glow and restore original residue style
+      // If disabling / unselecting: Cleanly remove wireframe surface, shapes, labels and restore original residue style
       if (!enable) {
         if (this.flexHighlights.has(key)) {
           const item = this.flexHighlights.get(key);
+          if (item.surfaceId !== undefined && item.surfaceId !== null) {
+            try { this.viewer.removeSurface(item.surfaceId); } catch (e) {}
+          }
           if (item.shapes) {
             item.shapes.forEach(s => {
               try { this.viewer.removeShape(s); } catch (e) {}
@@ -869,48 +878,110 @@ class MolecularViewer {
             this.applyReceptorStyle();
           }
         }
+
+        // Restore base residue label if active (ensuring no missing labels on deselect)
+        if (this.settings.showResidueLabels && isInteracting) {
+          const atoms = this.receptorModel.selectedAtoms(sel);
+          if (atoms && atoms.length > 0) {
+            const ca = atoms.find(a => a.atom === 'CA') || atoms[0];
+            const displayRes = (resName ? resName + ' ' : '') + num;
+            const baseLbl = this.viewer.addLabel(displayRes, {
+              position: { x: ca.x, y: ca.y, z: ca.z },
+              backgroundColor: 'rgba(15, 23, 42, 0.8)',
+              fontColor: '#38bdf8',
+              fontSize: 11,
+              borderThickness: 1,
+              borderColor: '#0284c7'
+            });
+            if (baseLbl) {
+              if (!this.residueLabels) this.residueLabels = new Map();
+              this.residueLabels.set(key, baseLbl);
+            }
+          }
+        }
+
         this.viewer.render();
         return;
       }
 
-      // If enabling / selecting: Professional Crystallographic Focus
+      // If enabling / selecting: Professional Crystallographic Focus with Wireframe Structure
       this.viewer.zoomTo(sel, 600);
 
-      // Clean existing shapes/labels if re-selecting
+      // Clean existing shapes/labels/surface if re-selecting
       if (this.flexHighlights.has(key)) {
         const old = this.flexHighlights.get(key);
+        if (old.surfaceId !== undefined && old.surfaceId !== null) {
+          try { this.viewer.removeSurface(old.surfaceId); } catch (e) {}
+        }
         if (old.shapes) old.shapes.forEach(s => { try { this.viewer.removeShape(s); } catch (e) {} });
         if (old.labels) old.labels.forEach(l => { try { this.viewer.removeLabel(l); } catch (e) {} });
       }
 
-      // Render sidechain with clean, high-clarity sticks (standard PyMOL / Maestro crystallographic style)
+      // Suppress base interaction label to avoid double-label collision / overlapping
+      if (this.residueLabels && this.residueLabels.has(key)) {
+        try { this.viewer.removeLabel(this.residueLabels.get(key)); } catch (e) {}
+        this.residueLabels.delete(key);
+      }
+
+      // Render sidechain with high-contrast elemental sticks (cyan carbons, red oxygen, blue nitrogen, yellow sulfur)
       this.receptorModel.setStyle(sel, {
-        cartoon: { color: '#38bdf8', opacity: 0.95, thickness: 0.5 },
-        stick: { radius: 0.26, colorscheme: 'amino' }
+        cartoon: { color: '#38bdf8', opacity: 0.95, thickness: 0.45 },
+        stick: { radius: 0.28, colorscheme: 'cyanCarbon' }
       });
+
+      // Add research-grade glowing wireframe VDW surface around the side chain
+      const M = window["$" + "3Dmol"];
+      const SType = M ? M.SurfaceType.VDW : 1;
+      let surfPromise = null;
+      try {
+        const surfSel = { model: this.receptorModel, resi: num };
+        if (chain) surfSel.chain = chain;
+        surfPromise = this.viewer.addSurface(SType, {
+          wireframe: true,
+          opacity: 0.8,
+          color: '#00f0ff'
+        }, surfSel);
+      } catch (e) {
+        console.warn('[3Dmol] Residue wireframe surface warning:', e);
+      }
 
       const shapes = [];
       const labels = [];
       const atoms = this.receptorModel.selectedAtoms(sel);
 
+      const highlightItem = { shapes, labels, sel, surfaceId: null, resName };
+
+      if (surfPromise && typeof surfPromise.then === 'function') {
+        surfPromise.then(id => {
+          if (this.flexHighlights && this.flexHighlights.has(key)) {
+            this.flexHighlights.get(key).surfaceId = id;
+          } else {
+            try { this.viewer.removeSurface(id); } catch (e) {}
+          }
+        }).catch(err => {
+          console.warn('[3Dmol] Residue wireframe async error:', err);
+        });
+      } else if (surfPromise !== undefined && surfPromise !== null) {
+        highlightItem.surfaceId = surfPromise;
+      }
+
       if (atoms && atoms.length > 0) {
-        // Clean 3D floating academic label without emojis
+        // Clean single academic 3D label without collision
         const ca = atoms.find(a => a.atom === 'CA') || atoms[0];
         const displayLabel = resName ? `${resName} ${num}:${chain || 'A'}` : `${num}:${chain || 'A'}`;
         const lbl = this.viewer.addLabel(`[Flex] ${displayLabel}`, {
           position: { x: ca.x, y: ca.y + 1.2, z: ca.z },
-          backgroundColor: 'rgba(15, 23, 42, 0.92)',
-          fontColor: '#f8fafc',
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          fontColor: '#38bdf8',
           fontSize: 11,
-          borderThickness: 1,
-          borderColor: '#475569',
+          borderThickness: 1.5,
+          borderColor: '#0284c7',
           inFront: true
         });
         if (lbl) labels.push(lbl);
-
-        this.flexHighlights.set(key, { shapes, labels, sel });
       }
 
+      this.flexHighlights.set(key, highlightItem);
       this.viewer.render();
     } catch (e) {
       console.warn('[3Dmol] focusResidue notice:', e);
@@ -921,6 +992,9 @@ class MolecularViewer {
     if (!this.viewer) return;
     if (this.flexHighlights && this.flexHighlights.size > 0) {
       this.flexHighlights.forEach((item, key) => {
+        if (item.surfaceId !== undefined && item.surfaceId !== null) {
+          try { this.viewer.removeSurface(item.surfaceId); } catch (e) {}
+        }
         if (item.shapes) {
           item.shapes.forEach(s => {
             try { this.viewer.removeShape(s); } catch (e) {}
@@ -938,6 +1012,27 @@ class MolecularViewer {
               cartoon: { color: '#38bdf8', opacity: 0.9 },
               stick: { radius: 0.22, colorscheme: 'amino' }
             });
+            if (this.settings.showResidueLabels) {
+              const atoms = this.receptorModel.selectedAtoms(item.sel);
+              if (atoms && atoms.length > 0) {
+                const ca = atoms.find(a => a.atom === 'CA') || atoms[0];
+                const parts = key.split(':');
+                const num = parts[1] || '';
+                const displayRes = (item.resName ? item.resName + ' ' : '') + num;
+                const baseLbl = this.viewer.addLabel(displayRes, {
+                  position: { x: ca.x, y: ca.y, z: ca.z },
+                  backgroundColor: 'rgba(15, 23, 42, 0.8)',
+                  fontColor: '#38bdf8',
+                  fontSize: 11,
+                  borderThickness: 1,
+                  borderColor: '#0284c7'
+                });
+                if (baseLbl) {
+                  if (!this.residueLabels) this.residueLabels = new Map();
+                  this.residueLabels.set(key, baseLbl);
+                }
+              }
+            }
           } else {
             this.receptorModel.setStyle(item.sel, {
               cartoon: { colorscheme: 'chain', opacity: 0.85, thickness: 0.4 }

@@ -317,3 +317,50 @@ def test_2d_diagram_collision_free_and_grouping():
             dy = abs(coords[i][1] - coords[j][1])
             assert not (dx < 80.0 and dy < 22.0), f"Badges overlap at {coords[i]} and {coords[j]}"
 
+def test_pi_stacking_and_pi_cation_strict_ring_anchors():
+    # Receptor with PHE sidechain ring centered at z=9.0, CA at z=13.0, and LYS NZ at (10, 15, 12.5)
+    rec_pdb = (
+        "ATOM      1  N   PHE A  10      10.000  10.000  14.000  1.00 20.00           N\n"
+        "ATOM      2  CA  PHE A  10      10.000  10.000  13.000  1.00 20.00           C\n"
+        "ATOM      3  C   PHE A  10      11.000  10.000  13.000  1.00 20.00           C\n"
+        "ATOM      4  O   PHE A  10      11.500  10.000  14.000  1.00 20.00           O\n"
+        "ATOM      5  CB  PHE A  10      10.000  11.500  12.000  1.00 20.00           C\n"
+        "ATOM      6  CG  PHE A  10      10.000  11.500  10.500  1.00 20.00           C\n"
+        "ATOM      7  CD1 PHE A  10       8.800  11.500   9.750  1.00 20.00           C\n"
+        "ATOM      8  CD2 PHE A  10      11.200  11.500   9.750  1.00 20.00           C\n"
+        "ATOM      9  CE1 PHE A  10       8.800  11.500   8.250  1.00 20.00           C\n"
+        "ATOM     10  CE2 PHE A  10      11.200  11.500   8.250  1.00 20.00           C\n"
+        "ATOM     11  CZ  PHE A  10      10.000  11.500   7.500  1.00 20.00           C\n"
+        "ATOM     12  NZ  LYS A  15      10.000  15.000  12.500  1.00 20.00           N\n"
+    )
+
+    # Ligand parallel benzene ring placed at y=15.0, centered at (10.0, 15.0, 9.0)
+    lig_pdbqt = (
+        "REMARK VINA RESULT: -6.0 0.0 0.0\n"
+        "ROOT\n"
+        "ATOM      1  C   LIG     1      10.000  15.000  10.500  1.00  0.00    +0.000 A \n"
+        "ATOM      2  C   LIG     1       8.800  15.000   9.750  1.00  0.00    +0.000 A \n"
+        "ATOM      3  C   LIG     1       8.800  15.000   8.250  1.00  0.00    +0.000 A \n"
+        "ATOM      4  C   LIG     1      10.000  15.000   7.500  1.00  0.00    +0.000 A \n"
+        "ATOM      5  C   LIG     1      11.200  15.000   8.250  1.00  0.00    +0.000 A \n"
+        "ATOM      6  C   LIG     1      11.200  15.000   9.750  1.00  0.00    +0.000 A \n"
+        "ENDROOT\n"
+    )
+
+    res = InteractionEngine.analyze(rec_pdb, lig_pdbqt)
+
+    # 1. Pi-pi stacking: endpoints MUST match exact ring centroids
+    assert len(res["pi_stacking"]) == 1
+    ps = res["pi_stacking"][0]
+    assert np.allclose(ps["start_coord"], [10.0, 15.0, 9.0], atol=0.01)
+    assert np.allclose(ps["end_coord"], [10.0, 11.5, 9.0], atol=0.01)
+    assert ps["distance"] == 3.5
+
+    # 2. Pi-cation: endpoints MUST connect LYS NZ and ligand ring centroid
+    assert len(res["pi_cation"]) == 1
+    pc = res["pi_cation"][0]
+    assert np.allclose(pc["start_coord"], [10.0, 15.0, 12.5], atol=0.01)
+    assert np.allclose(pc["end_coord"], [10.0, 15.0, 9.0], atol=0.01)
+    assert pc["distance"] == 3.5
+
+

@@ -407,7 +407,7 @@ class InteractionDiagramGenerator:
             f'<rect x="-5" y="-13" width="{width - 25}" height="26" rx="5" '
             f'fill="var(--bd-legend-bg, #0b1329)" stroke="var(--bd-legend-border, #1e293b)" stroke-width="1"/>'
             f'<line x1="10" y1="0" x2="28" y2="0" stroke="#facc15" stroke-width="2" stroke-dasharray="4,3"/>'
-            f'<text x="34" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9.5">H-Bond</text>'
+            f'<text x="34" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9.5">Hydrogen Bond</text>'
             f'<line x1="95" y1="0" x2="113" y2="0" stroke="#ec4899" stroke-width="2" stroke-dasharray="4,3"/>'
             f'<text x="119" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9.5">Salt Bridge</text>'
             f'<line x1="195" y1="0" x2="213" y2="0" stroke="#10b981" stroke-width="2" stroke-dasharray="4,3"/>'
