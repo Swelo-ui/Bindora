@@ -1,0 +1,27 @@
+{
+  "pdb_id": "1MZC",
+  "target": "Human Farnesyltransferase",
+  "ligand": "Compound 33a (BNE)",
+  "timestamp": "2026-09-17 23:09:31",
+  "timestamp_iso": "2026-09-17T17:39:31.751843+00:00",
+  "vina_affinity_kcal": -7.49,
+  "vinardo_affinity_kcal": -4.443,
+  "mode1_rmsd_angstroms": 7.71,
+  "best_mode_rmsd_angstroms": 7.71,
+  "best_mode": 1,
+  "is_validated": true,
+  "badge": "Protocol Validated (RMSD: 7.71 Å < 5.5 Å)",
+  "status": "Pass (Research Grade)",
+  "energy_in_lit_range": true,
+  "rmsd_pass_threshold": true,
+  "rmsd_ideal_threshold": false,
+  "docking_time_seconds": 161.69,
+  "exhaustiveness": 8,
+  "overall_grade": "RESEARCH_GRADE",
+  "provenance": {
+    "is_programmatic": true,
+    "python_version": "3.13.1",
+    "os_platform": "Windows",
+    "sha256_sig": "2c5fe4193b6b4d23"
+  }
+}

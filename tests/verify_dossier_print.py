@@ -45,6 +45,18 @@ async def run():
                     }
                 }
             };
+            app.state.receptor.prep_log = {
+                waters_removed: 142,
+                ions_and_buffer_removed: 8,
+                catalytic_metals_retained: 1,
+                protein_atoms_retained: 1950,
+                polar_hydrogens_added: 312,
+                selected_chain: 'A',
+                protonation_state: 'Standard physiological pH 7.4 (Histidines neutral, Asp/Glu ionized, Lys/Arg protonated)',
+                charge_model: 'AMBER FF14SB / Kollman AD4 partial charges & AD4 atom types',
+                preparation_engine: 'Biophysical Polar Hydrogen Geometry Engine (pH 7.4)',
+                active_pocket_centering: 'Co-crystallized native pocket center [30.1, -1.8, 24.3]'
+            };
             app.state.docking = {
                 top_pose: {
                     mode: 1,
@@ -71,9 +83,25 @@ async def run():
                 },
                 interactions: {
                     total_hbond_count: 1,
+                    total_salt_bridge_count: 1,
+                    total_pi_stacking_count: 1,
+                    total_pi_cation_count: 1,
+                    total_halogen_count: 1,
                     total_hydrophobic_count: 4,
                     hydrogen_bonds: [
                         { residue: 'GLU 353:A', res_name: 'GLU', res_num: '353', chain: 'A', receptor_atom: 'OE1', ligand_atom: 'O1', distance: 2.74, type: 'Hydrogen Bond' }
+                    ],
+                    salt_bridges: [
+                        { residue: 'ASP 351:A', res_name: 'ASP', res_num: '351', chain: 'A', subtype: 'Ligand Cation - Protein Anion', ligand_atom: 'N1', distance: 3.32 }
+                    ],
+                    pi_stacking: [
+                        { residue: 'PHE 404:A', res_name: 'PHE', res_num: '404', chain: 'A', subtype: 'Parallel π-π', ligand_atom: 'Ring (6 atoms)', distance: 3.85, angle_deg: 14.2 }
+                    ],
+                    pi_cation: [
+                        { residue: 'HIS 524:A', res_name: 'HIS', res_num: '524', chain: 'A', subtype: 'Ligand Cation - Receptor π-Ring', ligand_atom: 'N1', distance: 4.12 }
+                    ],
+                    halogen_bonds: [
+                        { residue: 'LEU 346:A', res_name: 'LEU', res_num: '346', chain: 'A', receptor_atom: 'O', ligand_atom: 'CL1', distance: 3.48, angle_deg: 156.4 }
                     ],
                     hydrophobic_contacts: [
                         { residue: 'LEU 387:A', res_name: 'LEU', res_num: '387', chain: 'A', distance: 3.45 },

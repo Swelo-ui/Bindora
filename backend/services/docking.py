@@ -10,14 +10,34 @@ from rdkit.Chem import AllChem, Lipinski
 from meeko import MoleculePreparation, PDBQTWriterLegacy
 from backend.config import VINA_EXE
 from backend.utils.vina_setup import ensure_vina
+from backend.services.biophysical_prep import BiophysicalReceptorPreparer
+from backend.services.interaction_engine import InteractionEngine
 
 STANDARD_AMINO_ACIDS = {
     "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS",
     "ILE", "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL"
 }
 
+PTM_AND_NONSTANDARD_RESIDUES = {
+    "MSE",  # Selenomethionine
+    "SEP",  # Phosphoserine
+    "TPO",  # Phosphothreonine
+    "PTR",  # Phosphotyrosine
+    "KCX",  # Carbamylated Lysine
+    "CSO",  # S-hydroxycysteine
+    "CME",  # S,S-(2-hydroxyethyl)thiocysteine
+    "HYP",  # Hydroxyproline
+    "MLY",  # N-dimethyl-lysine
+    "M3L",  # N-trimethyl-lysine
+    "SEC",  # Selenocysteine
+}
+
+PROTEIN_RESIDUES = STANDARD_AMINO_ACIDS | PTM_AND_NONSTANDARD_RESIDUES
+
+CATALYTIC_METALS = {"ZN", "MG", "MN", "FE", "CA", "CO", "NI", "CU"}
+
 SOLVENTS_AND_IONS = {
-    "HOH", "WAT", "DOD", "TIP", "NA", "CL", "K", "MG", "CA", "ZN", "MN", "FE",
+    "HOH", "WAT", "DOD", "TIP", "NA", "CL", "K",
     "SO4", "PO4", "GOL", "EDO", "DMS", "ACT", "FMT", "PEG", "MPD", "BME", "MES"
 }
 
@@ -29,7 +49,11 @@ class DockingEngine:
     """Service to handle receptor & ligand preparation, Vina docking execution, redocking validation, and contact analysis."""
 
     @staticmethod
-    def prepare_receptor(pdb_content: str, target_chain: Optional[str] = None) -> Dict[str, Any]:
+    def prepare_receptor(
+        pdb_content: str,
+        target_chain: Optional[str] = None,
+        retain_structural_waters: bool = False
+    ) -> Dict[str, Any]:
         """Clean receptor PDB, mmCIF, or PDBQT, extract co-crystallized native ligand, compute blind docking box, and produce PDBQT."""
         trimmed = pdb_content.strip()
 
@@ -43,6 +67,8 @@ class DockingEngine:
 
         lines = pdb_content.splitlines()
         protein_lines = []
+        candidate_water_lines = []
+        metal_lines = []
         het_groups: Dict[Tuple[str, str, str], List[str]] = {}
         all_ca_coords = []
         chains_found = set()
@@ -50,12 +76,22 @@ class DockingEngine:
         ions_removed = 0
 
         # 2. Check if input is already an AutoDock PDBQT file
-        is_already_pdbqt = any(
-            (line.startswith("ATOM  ") or line.startswith("HETATM")) and len(line) > 66 and (
-                " C " in line or " A " in line or " OA " in line or " HD " in line or " NA " in line or " SA " in line
-            )
-            for line in lines[:60]
-        )
+        ad4_valid_types = {
+            "A", "C", "HD", "OA", "NA", "SA", "N", "P", "F", "Cl", "Br", "I",
+            "Zn", "Mg", "Mn", "Fe", "Ca", "Cu", "Co", "Ni"
+        }
+        atom_count = 0
+        pdbqt_matches = 0
+        for l in lines[:100]:
+            if (l.startswith("ATOM  ") or l.startswith("HETATM")) and len(l) >= 78:
+                atom_count += 1
+                try:
+                    float(l[70:76].strip())
+                    if l[77:80].strip() in ad4_valid_types:
+                        pdbqt_matches += 1
+                except ValueError:
+                    pass
+        is_already_pdbqt = (atom_count > 0 and pdbqt_matches >= min(atom_count, 5))
 
         for line in lines:
             if line.startswith("ATOM  "):
@@ -64,7 +100,7 @@ class DockingEngine:
                 chains_found.add(chain)
                 if target_chain and chain != target_chain:
                     continue
-                if res_name in STANDARD_AMINO_ACIDS:
+                if res_name in PROTEIN_RESIDUES:
                     protein_lines.append(line)
                     atom_name = line[12:16].strip()
                     try:
@@ -76,11 +112,29 @@ class DockingEngine:
                     except Exception:
                         pass
             elif line.startswith("HETATM"):
-                res_name = line[17:20].strip()
+                res_name = line[17:20].strip().upper()
                 chain = line[21:22].strip()
                 res_num = line[22:26].strip()
-                if res_name in ("HOH", "WAT", "DOD", "TIP"):
+                if res_name in PTM_AND_NONSTANDARD_RESIDUES:
+                    # Non-standard amino acids / PTMs frequently recorded as HETATM in crystal PDBs
+                    chains_found.add(chain)
+                    if target_chain and chain != target_chain:
+                        continue
+                    protein_lines.append(line)
+                    atom_name = line[12:16].strip()
+                    try:
+                        x = float(line[30:38])
+                        y = float(line[38:46])
+                        z = float(line[46:54])
+                        if atom_name == "CA":
+                            all_ca_coords.append((x, y, z))
+                    except Exception:
+                        pass
+                elif res_name in ("HOH", "WAT", "DOD", "TIP"):
+                    candidate_water_lines.append(line)
                     waters_removed += 1
+                elif res_name in CATALYTIC_METALS:
+                    metal_lines.append(line)
                 elif res_name in SOLVENTS_AND_IONS:
                     ions_removed += 1
                 else:
@@ -203,44 +257,74 @@ class DockingEngine:
             "size": {"x": round(blind_sx, 1), "y": round(blind_sy, 1), "z": round(blind_sz, 1)}
         }
 
+        # Filter catalytic structural water molecules near pocket if requested
+        retained_structural_waters = []
+        if retain_structural_waters and candidate_water_lines:
+            for wline in candidate_water_lines:
+                try:
+                    wx = float(wline[30:38])
+                    wy = float(wline[38:46])
+                    wz = float(wline[46:54])
+                    p_dist = math.sqrt((wx - center_x)**2 + (wy - center_y)**2 + (wz - center_z)**2)
+                    if p_dist <= 6.5:
+                        retained_structural_waters.append(wline)
+                except Exception:
+                    continue
+
+        # Filter catalytic metals: retain those in or near the binding pocket
+        retained_metals = []
+        for mline in metal_lines:
+            try:
+                mx = float(mline[30:38])
+                my = float(mline[38:46])
+                mz = float(mline[46:54])
+                dx = abs(mx - center_x)
+                dy = abs(my - center_y)
+                dz = abs(mz - center_z)
+                in_pocket_box = (
+                    dx <= max(size_x / 2.0 + 3.0, 10.0) and
+                    dy <= max(size_y / 2.0 + 3.0, 10.0) and
+                    dz <= max(size_z / 2.0 + 3.0, 10.0)
+                )
+                if in_pocket_box:
+                    retained_metals.append(mline)
+                else:
+                    ions_removed += 1
+            except Exception:
+                continue
+
         # Generate cleaned PDB for 3Dmol viewer and PDBQT for Vina
         if is_already_pdbqt:
             cleaned_pdb_lines = [f"{l[:54]:<54}  1.00  0.00          {l[12:14].strip():>2}" for l in protein_lines]
             cleaned_pdb = "\n".join(cleaned_pdb_lines) + "\nEND\n"
             pdbqt_text = "\n".join(protein_lines) + "\nTER\nEND\n"
+            prep_stats = {
+                "method": "Pre-existing PDBQT format detected",
+                "polar_hydrogens_added": 0,
+                "forcefield_charges": "Preserved from source PDBQT",
+                "protonation_state": "Standard physiological pH 7.4"
+            }
         else:
-            pdbqt_lines = []
-            for line in protein_lines:
-                res_name = line[17:20].strip()
-                atom_name = line[12:16].strip()
-                elem = line[76:78].strip() or atom_name[0]
-                ad4_type = elem
-                if elem == "C":
-                    ad4_type = "A" if res_name in ("PHE", "TYR", "TRP", "HIS") else "C"
-                elif elem == "O":
-                    ad4_type = "OA"
-                elif elem == "N":
-                    ad4_type = "NA" if res_name in ("HIS", "TRP") else "N"
-                elif elem == "S":
-                    ad4_type = "SA"
-                elif elem == "H":
-                    ad4_type = "HD"
-
-                charge = 0.00
-                pdbqt_line = f"{line[:54]:<54}{0.00:>6.2f}{0.00:>6.2f}    {charge:>6.3f} {ad4_type:<2}"
-                pdbqt_lines.append(pdbqt_line)
-
-            cleaned_pdb = "\n".join(protein_lines) + "\nEND\n"
+            cleaned_pdb_lines, pdbqt_lines, prep_stats = BiophysicalReceptorPreparer.prepare(
+                protein_lines,
+                pH=7.4,
+                structural_water_lines=retained_structural_waters,
+                metal_lines=retained_metals
+            )
+            cleaned_pdb = "\n".join(cleaned_pdb_lines) + "\nEND\n"
             pdbqt_text = "\n".join(pdbqt_lines) + "\nTER\nEND\n"
 
         prep_log = {
             "waters_removed": waters_removed,
             "ions_and_buffer_removed": ions_removed,
-            "protein_atoms_retained": len(protein_lines),
+            "catalytic_metals_retained": prep_stats.get("catalytic_metals_retained", len(retained_metals)),
+            "protein_atoms_retained": len(cleaned_pdb_lines),
+            "polar_hydrogens_added": prep_stats.get("polar_hydrogens_added", 0),
             "chains_detected": sorted(list(chains_found)),
             "selected_chain": target_chain or "All Standard Chains",
-            "protonation_state": "Standard physiological pH 7.4 (Histidines neutral/tautomeric, Asp/Glu ionized, Lys/Arg protonated)",
-            "charge_model": "AutoDock4 Gasteiger / Kollman partial charges & AD4 atom types (A, C, NA, OA, SA, HD)",
+            "protonation_state": prep_stats.get("protonation_state", "Standard physiological pH 7.4 (Histidines neutral, Asp/Glu ionized, Lys/Arg protonated)"),
+            "charge_model": prep_stats.get("forcefield_charges", "AMBER FF14SB / Kollman AD4 partial charges & AD4 atom types (A, C, NA, OA, SA, HD)"),
+            "preparation_engine": prep_stats.get("method", "Biophysical Polar Hydrogen Geometry Engine (pH 7.4)"),
             "active_pocket_centering": pocket_desc
         }
 
@@ -1060,140 +1144,14 @@ class DockingEngine:
         receptor_pdb: str,
         ligand_pdb_or_pdbqt: str,
         hbond_cutoff: float = 3.5,
-        hydrophobic_cutoff: float = 4.0
+        hydrophobic_cutoff: float = 4.0,
+        ligand_mol: Optional[Chem.Mol] = None
     ) -> Dict[str, Any]:
-        """Compute atomic contacts: hydrogen bonds and hydrophobic interactions between receptor and docked pose."""
-        # 1. Parse receptor atoms
-        receptor_atoms = []
-        for line in receptor_pdb.splitlines():
-            if line.startswith("ATOM  "):
-                try:
-                    res_name = line[17:20].strip()
-                    res_num = int(line[22:26].strip())
-                    chain = line[21:22].strip()
-                    atom_name = line[12:16].strip()
-                    elem = line[76:78].strip() or atom_name[0]
-                    x = float(line[30:38])
-                    y = float(line[38:46])
-                    z = float(line[46:54])
-                    receptor_atoms.append({
-                        "res_name": res_name,
-                        "res_num": res_num,
-                        "chain": chain,
-                        "atom_name": atom_name,
-                        "elem": elem.upper(),
-                        "coord": (x, y, z)
-                    })
-                except Exception:
-                    continue
-
-        # 2. Parse ligand atoms
-        ligand_atoms = []
-        for line in ligand_pdb_or_pdbqt.splitlines():
-            if line.startswith(("ATOM  ", "HETATM")):
-                try:
-                    atom_name = line[12:16].strip()
-                    elem = line[76:78].strip() or atom_name[0]
-                    x = float(line[30:38])
-                    y = float(line[38:46])
-                    z = float(line[46:54])
-                    ligand_atoms.append({
-                        "atom_name": atom_name,
-                        "elem": elem.upper(),
-                        "coord": (x, y, z)
-                    })
-                except Exception:
-                    continue
-
-        hbonds = []
-        hydrophobics = []
-        contact_residues = set()
-
-        hbond_donors_acceptors = {"N", "O"}
-
-        for latom in ligand_atoms:
-            lx, ly, lz = latom["coord"]
-            lelem = latom["elem"]
-
-            for ratom in receptor_atoms:
-                rx, ry, rz = ratom["coord"]
-                relem = ratom["elem"]
-
-                # Quick bounding box filter
-                if abs(lx - rx) > hydrophobic_cutoff or abs(ly - ry) > hydrophobic_cutoff or abs(lz - rz) > hydrophobic_cutoff:
-                    continue
-
-                dist = math.sqrt((lx - rx)**2 + (ly - ry)**2 + (lz - rz)**2)
-                res_id = f"{ratom['res_name']} {ratom['res_num']}:{ratom['chain']}"
-
-                # Hydrogen bond check
-                if dist <= hbond_cutoff and lelem in hbond_donors_acceptors and relem in hbond_donors_acceptors:
-                    hbonds.append({
-                        "type": "Hydrogen Bond",
-                        "distance": round(dist, 2),
-                        "residue": res_id,
-                        "res_name": ratom["res_name"],
-                        "res_num": ratom["res_num"],
-                        "chain": ratom["chain"],
-                        "receptor_atom": ratom["atom_name"],
-                        "ligand_atom": latom["atom_name"],
-                        "start_coord": [lx, ly, lz],
-                        "end_coord": [rx, ry, rz]
-                    })
-                    contact_residues.add(res_id)
-
-                # Hydrophobic contact check (between carbon atoms)
-                elif dist <= hydrophobic_cutoff and lelem == "C" and relem == "C":
-                    hydrophobics.append({
-                        "type": "Hydrophobic Contact",
-                        "distance": round(dist, 2),
-                        "residue": res_id,
-                        "res_name": ratom["res_name"],
-                        "res_num": ratom["res_num"],
-                        "chain": ratom["chain"],
-                        "receptor_atom": ratom["atom_name"],
-                        "ligand_atom": latom["atom_name"],
-                        "start_coord": [lx, ly, lz],
-                        "end_coord": [rx, ry, rz]
-                    })
-                    contact_residues.add(res_id)
-
-        # Deduplicate to top closest interactions per residue
-        unique_hbonds = {}
-        for hb in hbonds:
-            key = f"{hb['residue']}_{hb['ligand_atom']}"
-            if key not in unique_hbonds or unique_hbonds[key]["distance"] > hb["distance"]:
-                unique_hbonds[key] = hb
-
-        unique_hydrophobics = {}
-        for hp in hydrophobics:
-            key = f"{hp['residue']}_{hp['ligand_atom']}"
-            if key not in unique_hydrophobics or unique_hydrophobics[key]["distance"] > hp["distance"]:
-                unique_hydrophobics[key] = hp
-
-        # Build flexible residue candidates list formatted for Meeko (Chain:Num)
-        flex_candidates = []
-        for cr in sorted(list(contact_residues)):
-            try:
-                parts = cr.split()
-                rname = parts[0]
-                rnum_chain = parts[1]
-                rnum, rchain = rnum_chain.split(":")
-                flex_candidates.append({
-                    "id": f"{rchain}:{rnum}",
-                    "label": cr,
-                    "res_name": rname,
-                    "res_num": int(rnum),
-                    "chain": rchain
-                })
-            except Exception:
-                pass
-
-        return {
-            "hydrogen_bonds": list(unique_hbonds.values()),
-            "hydrophobic_contacts": list(unique_hydrophobics.values())[:12],
-            "interacting_residues": sorted(list(contact_residues)),
-            "flexible_candidates": flex_candidates,
-            "total_hbond_count": len(unique_hbonds),
-            "total_hydrophobic_count": len(unique_hydrophobics)
-        }
+        """Compute atomic contacts: hydrogen bonds, salt bridges, pi-stacking, pi-cation, halogen bonds, and hydrophobic interactions."""
+        return InteractionEngine.analyze(
+            receptor_pdb=receptor_pdb,
+            ligand_pdb_or_pdbqt=ligand_pdb_or_pdbqt,
+            hbond_cutoff=hbond_cutoff,
+            hydrophobic_cutoff=hydrophobic_cutoff,
+            ligand_mol=ligand_mol
+        )

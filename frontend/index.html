@@ -1219,8 +1219,48 @@
             </div>
           </div>
 
+          <!-- Interactive Non-Covalent Interactions Toolbar -->
+          <div id="viewer-interactions-toolbar" class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 bg-slate-900/90 dark:bg-slate-900/90 border border-b-0 border-slate-700/80 rounded-t-xl text-xs backdrop-blur shadow-sm">
+            <div class="flex items-center space-x-2 text-slate-300 font-semibold text-[11px] uppercase tracking-wider">
+              <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              <span class="text-white">Interactions:</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-3 sm:gap-4">
+              <!-- H-Bonds -->
+              <label class="flex items-center space-x-1.5 cursor-pointer text-yellow-400 hover:text-yellow-300 transition font-medium text-[11px]">
+                <input id="toggle-hbonds" type="checkbox" checked class="rounded bg-slate-950 border-yellow-500/60 text-yellow-500 focus:ring-0">
+                <span>🟡 H-Bonds</span>
+              </label>
+              <!-- Salt Bridges -->
+              <label class="flex items-center space-x-1.5 cursor-pointer text-pink-400 hover:text-pink-300 transition font-medium text-[11px]">
+                <input id="toggle-salt-bridges" type="checkbox" checked class="rounded bg-slate-950 border-pink-500/60 text-pink-500 focus:ring-0">
+                <span>🟣 Salt Bridges</span>
+              </label>
+              <!-- Pi-Pi Stacking -->
+              <label class="flex items-center space-x-1.5 cursor-pointer text-emerald-400 hover:text-emerald-300 transition font-medium text-[11px]">
+                <input id="toggle-pi-stacking" type="checkbox" checked class="rounded bg-slate-950 border-emerald-500/60 text-emerald-500 focus:ring-0">
+                <span>🟢 π-π Stacking</span>
+              </label>
+              <!-- Pi-Cation -->
+              <label class="flex items-center space-x-1.5 cursor-pointer text-orange-400 hover:text-orange-300 transition font-medium text-[11px]">
+                <input id="toggle-pi-cation" type="checkbox" checked class="rounded bg-slate-950 border-orange-500/60 text-orange-500 focus:ring-0">
+                <span>🟠 π-Cation</span>
+              </label>
+              <!-- Halogen Bonds -->
+              <label class="flex items-center space-x-1.5 cursor-pointer text-purple-400 hover:text-purple-300 transition font-medium text-[11px]">
+                <input id="toggle-halogen" type="checkbox" checked class="rounded bg-slate-950 border-purple-500/60 text-purple-500 focus:ring-0">
+                <span>🟪 Halogen Bonds</span>
+              </label>
+              <!-- Hydrophobic -->
+              <label class="flex items-center space-x-1.5 cursor-pointer text-sky-400 hover:text-sky-300 transition font-medium text-[11px]">
+                <input id="toggle-hydrophobic" type="checkbox" class="rounded bg-slate-950 border-sky-500/60 text-sky-500 focus:ring-0">
+                <span>🔵 Hydrophobic</span>
+              </label>
+            </div>
+          </div>
+
           <!-- 3Dmol Container -->
-          <div id="viewport-container" class="border border-slate-800 shadow-2xl relative">
+          <div id="viewport-container" class="border border-slate-800 shadow-2xl relative rounded-b-xl overflow-hidden">
             <div id="gldiv"></div>
             
             <!-- Floating Measure Tool HUD -->

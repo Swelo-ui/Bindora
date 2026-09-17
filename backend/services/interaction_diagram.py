@@ -69,6 +69,8 @@ class InteractionDiagramGenerator:
                 atom_coords.append((cx, cy))
 
         hbonds: List[Dict[str, Any]] = interactions.get("hydrogen_bonds", [])
+        salt_bridges: List[Dict[str, Any]] = interactions.get("salt_bridges", [])
+        pi_stacks: List[Dict[str, Any]] = interactions.get("pi_stacking", [])
         hydrophobics: List[Dict[str, Any]] = interactions.get("hydrophobic_contacts", [])
 
         # Collect contacts for radial positioning
@@ -82,8 +84,15 @@ class InteractionDiagramGenerator:
             res_label = f"{res_name} {res_num}:{chain}"
             dist = hb.get("distance", 3.0)
 
-            # Match target atom coord
-            target_pt = atom_coords[idx % len(atom_coords)] if atom_coords else (cx, cy)
+            # Match exact interacting ligand atom coordinate
+            latom_idx = hb.get("ligand_atom_idx")
+            if latom_idx is not None and 0 <= latom_idx < len(atom_coords):
+                target_pt = atom_coords[latom_idx]
+            elif atom_coords:
+                target_pt = atom_coords[idx % len(atom_coords)]
+            else:
+                target_pt = (cx, cy)
+
             dx = target_pt[0] - cx
             dy = target_pt[1] - cy
             angle = math.atan2(dy, dx)
@@ -96,14 +105,76 @@ class InteractionDiagramGenerator:
                 "angle": angle
             })
 
-        # 2. Collect Hydrophobic Contacts (limit to top 8)
+        # 2. Collect Salt Bridges & Pi-Stacking contacts
+        for idx, sb in enumerate(salt_bridges[:4]):
+            res_name = sb.get('res_name', 'RES')
+            res_num = sb.get('res_num', '')
+            chain = sb.get('chain', 'A')
+            res_label = f"{res_name} {res_num}:{chain}"
+            dist = sb.get("distance", 3.8)
+
+            latom_idx = sb.get("ligand_atom_idx")
+            if latom_idx is not None and 0 <= latom_idx < len(atom_coords):
+                target_pt = atom_coords[latom_idx]
+            elif atom_coords:
+                target_pt = atom_coords[idx % len(atom_coords)]
+            else:
+                target_pt = (cx, cy)
+
+            dx = target_pt[0] - cx
+            dy = target_pt[1] - cy
+            angle = math.atan2(dy, dx)
+
+            raw_items.append({
+                "type": "hbond",  # Render with prominent ionic/hbond styling
+                "label": f"SB: {res_label}",
+                "distance": dist,
+                "target_pt": target_pt,
+                "angle": angle
+            })
+
+        for idx, ps in enumerate(pi_stacks[:4]):
+            res_name = ps.get('res_name', 'RES')
+            res_num = ps.get('res_num', '')
+            chain = ps.get('chain', 'A')
+            res_label = f"{res_name} {res_num}:{chain}"
+            dist = ps.get("distance", 4.5)
+
+            latom_idx = ps.get("ligand_atom_idx")
+            if latom_idx is not None and 0 <= latom_idx < len(atom_coords):
+                target_pt = atom_coords[latom_idx]
+            elif atom_coords:
+                target_pt = atom_coords[idx % len(atom_coords)]
+            else:
+                target_pt = (cx, cy)
+
+            dx = target_pt[0] - cx
+            dy = target_pt[1] - cy
+            angle = math.atan2(dy, dx)
+
+            raw_items.append({
+                "type": "hydrophobic",
+                "label": f"π-π: {res_label}",
+                "distance": dist,
+                "target_pt": target_pt,
+                "angle": angle
+            })
+
+        # 3. Collect Hydrophobic Contacts (limit to top 8)
         for idx, hp in enumerate(hydrophobics[:8]):
             res_name = hp.get('res_name', 'RES')
             res_num = hp.get('res_num', '')
             chain = hp.get('chain', 'A')
             res_label = f"{res_name} {res_num}:{chain}"
 
-            target_pt = atom_coords[(idx * 2 + 1) % len(atom_coords)] if atom_coords else (cx, cy)
+            latom_idx = hp.get("ligand_atom_idx")
+            if latom_idx is not None and 0 <= latom_idx < len(atom_coords):
+                target_pt = atom_coords[latom_idx]
+            elif atom_coords:
+                target_pt = atom_coords[(idx * 2 + 1) % len(atom_coords)]
+            else:
+                target_pt = (cx, cy)
+
             dx = target_pt[0] - cx
             dy = target_pt[1] - cy
             angle = math.atan2(dy, dx) + (idx * 0.15)  # Slight offset to reduce initial collision

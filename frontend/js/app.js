@@ -279,6 +279,49 @@ class BindoraApp {
       });
     }
 
+    // Interactive Non-Covalent Interactions Toolbar Toggles
+    const hbToggle = document.getElementById("toggle-hbonds");
+    if (hbToggle) {
+      hbToggle.addEventListener("change", (e) => {
+        if (this.viewer) this.viewer.toggleHBonds(e.target.checked);
+      });
+    }
+
+    const sbToggle = document.getElementById("toggle-salt-bridges");
+    if (sbToggle) {
+      sbToggle.addEventListener("change", (e) => {
+        if (this.viewer) this.viewer.toggleSaltBridges(e.target.checked);
+      });
+    }
+
+    const piToggle = document.getElementById("toggle-pi-stacking");
+    if (piToggle) {
+      piToggle.addEventListener("change", (e) => {
+        if (this.viewer) this.viewer.togglePiStacking(e.target.checked);
+      });
+    }
+
+    const piCatToggle = document.getElementById("toggle-pi-cation");
+    if (piCatToggle) {
+      piCatToggle.addEventListener("change", (e) => {
+        if (this.viewer) this.viewer.togglePiCation(e.target.checked);
+      });
+    }
+
+    const halToggle = document.getElementById("toggle-halogen");
+    if (halToggle) {
+      halToggle.addEventListener("change", (e) => {
+        if (this.viewer) this.viewer.toggleHalogenBonds(e.target.checked);
+      });
+    }
+
+    const hydroToggle = document.getElementById("toggle-hydrophobic");
+    if (hydroToggle) {
+      hydroToggle.addEventListener("change", (e) => {
+        if (this.viewer) this.viewer.toggleHydrophobic(e.target.checked);
+      });
+    }
+
     // Protein Style Select
     const proteinStyleSelect = document.getElementById("select-protein-style");
     if (proteinStyleSelect) {
@@ -1693,8 +1736,10 @@ class BindoraApp {
     if (prepRecEl && this.state.receptor?.prep_log) {
       const pl = this.state.receptor.prep_log;
       prepRecEl.innerHTML = `
-        <div>&bull; Stripped Waters: <span class="text-white font-bold">${pl.waters_removed}</span> atoms (HOH/WAT)</div>
-        <div>&bull; Filtered Ions/Buffer: <span class="text-white font-bold">${pl.ions_and_buffer_removed}</span> atoms</div>
+        <div>&bull; Stripped Waters: <span class="text-white font-bold">${pl.waters_removed ?? 0}</span> atoms (HOH/WAT)</div>
+        <div>&bull; Filtered Buffer/Ions: <span class="text-white font-bold">${pl.ions_and_buffer_removed ?? 0}</span> atoms</div>
+        <div>&bull; Retained Catalytic Metals: <span class="text-amber-400 font-bold">${pl.catalytic_metals_retained ?? 0}</span> ions (Zn/Mg/Mn/Fe/Ca)</div>
+        <div>&bull; Polar Hydrogens Added: <span class="text-cyan-400 font-bold">${pl.polar_hydrogens_added ?? 0}</span> atoms (AMBER FF14SB)</div>
         <div>&bull; Retained Protein Atoms: <span class="text-white font-bold">${pl.protein_atoms_retained}</span> (${pl.selected_chain})</div>
         <div>&bull; Ionization Model: <span class="text-slate-300">${pl.protonation_state}</span></div>
         <div>&bull; Partial Charges: <span class="text-slate-300">${pl.charge_model}</span></div>
@@ -2641,7 +2686,7 @@ class BindoraApp {
       const center = p.center || { x: 0, y: 0, z: 0 };
       const size = p.size || { x: 22, y: 22, z: 22 };
 
-      const batchResult = await BindoraAPI.runBatchDocking({
+      const startRes = await BindoraAPI.startBatchDocking({
         receptor_pdbqt: this.state.receptor.pdbqt_text,
         receptor_pdb: this.state.receptor.cleaned_pdb,
         center: center,
@@ -2650,9 +2695,83 @@ class BindoraApp {
         exhaustiveness: 4
       });
 
-      this.state.batchCandidateResults = batchResult.leaderboard || [];
-      this.renderBatchLeaderboard(this.state.batchCandidateResults);
-      this.showToast(`Batch screening complete! Screened ${batchResult.total_screened} compounds.`, "success");
+      const jobId = startRes.job_id;
+      const total = startRes.total || candidates.length;
+
+      // Stream progress via Server-Sent Events (SSE) with polling fallback
+      await new Promise((resolve, reject) => {
+        let eventSource = null;
+        let pollTimer = null;
+
+        const cleanup = () => {
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+          if (pollTimer) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+          }
+        };
+
+        const handleUpdate = (data) => {
+          if (data.leaderboard && data.leaderboard.length > 0) {
+            this.state.batchCandidateResults = data.leaderboard;
+            this.renderBatchLeaderboard(this.state.batchCandidateResults);
+          }
+          if (btn) {
+            const curName = data.current_compound ? ` (${data.current_compound})` : "";
+            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Screening [${data.completed || 0}/${total}]${curName}...`;
+          }
+
+          if (data.status === "completed") {
+            cleanup();
+            this.showToast(`Batch screening complete! Screened ${data.completed} compounds.`, "success");
+            resolve(data);
+          } else if (data.status === "failed") {
+            cleanup();
+            reject(new Error(data.error || "Batch screening job failed"));
+          } else if (data.status === "cancelled") {
+            cleanup();
+            this.showToast("Batch screening was cancelled.", "info");
+            resolve(data);
+          }
+        };
+
+        if (typeof EventSource !== "undefined") {
+          eventSource = new EventSource(`/api/batch/stream/${jobId}`);
+          eventSource.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              handleUpdate(data);
+            } catch (err) {
+              console.error("[SSE Parse Error]", err);
+            }
+          };
+          eventSource.onerror = () => {
+            cleanup();
+            pollTimer = setInterval(async () => {
+              try {
+                const status = await BindoraAPI.getBatchStatus(jobId);
+                handleUpdate(status);
+              } catch (pe) {
+                cleanup();
+                reject(pe);
+              }
+            }, 1000);
+          };
+        } else {
+          pollTimer = setInterval(async () => {
+            try {
+              const status = await BindoraAPI.getBatchStatus(jobId);
+              handleUpdate(status);
+            } catch (pe) {
+              cleanup();
+              reject(pe);
+            }
+          }, 1000);
+        }
+      });
     } catch (e) {
       this.showToast(`Batch screening error: ${e.message}`, "error");
     } finally {
@@ -2712,6 +2831,7 @@ class BindoraApp {
     const r = this.state.receptor || {};
     const thermo = d.thermodynamics || {};
     const contacts = d.interactions || {};
+    const prepLog = r.prep_log || d.prep_log || {};
     const adme = l.adme || {};
     const phys = adme.physicochemical || {};
     const lip = adme.drug_likeness?.lipinski || {};
@@ -2788,12 +2908,58 @@ class BindoraApp {
       </tr>
     `).join("") : `<tr><td colspan="5" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No directional hydrogen bonds detected within 3.5 Å cutoff.</td></tr>`;
 
+    // Salt bridges & Electrostatic networks
+    const saltBridges = contacts.salt_bridges || [];
+    const saltBridgeRows = saltBridges.length > 0 ? saltBridges.map(sb => `
+      <tr>
+        <td class="font-mono font-bold text-slate-900 dark:text-white p-2 border border-slate-200 dark:border-slate-800">${sb.residue || `${sb.res_name} ${sb.res_num}:${sb.chain}`}</td>
+        <td class="text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800 font-sans text-[11px]">${sb.subtype || 'Ionic Salt Bridge'}</td>
+        <td class="font-mono text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800">${sb.ligand_atom || '—'}</td>
+        <td class="font-mono text-fuchsia-700 dark:text-fuchsia-400 font-bold text-center p-2 border border-slate-200 dark:border-slate-800">${sb.distance != null ? Number(sb.distance).toFixed(2) + ' Å' : '—'}</td>
+        <td class="text-slate-600 dark:text-slate-400 text-[10px] p-2 border border-slate-200 dark:border-slate-800 font-mono">Cutoff &le; 4.2 Å</td>
+      </tr>
+    `).join("") : `<tr><td colspan="5" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No electrostatic salt bridges detected within 4.2 Å cutoff.</td></tr>`;
+
+    // Pi-Pi aromatic stacking
+    const piStacks = contacts.pi_stacking || [];
+    const piStackRows = piStacks.length > 0 ? piStacks.map(ps => `
+      <tr>
+        <td class="font-mono font-bold text-slate-900 dark:text-white p-2 border border-slate-200 dark:border-slate-800">${ps.residue || `${ps.res_name} ${ps.res_num}:${ps.chain}`}</td>
+        <td class="text-emerald-700 dark:text-emerald-400 p-2 border border-slate-200 dark:border-slate-800 font-sans font-semibold text-[11px]">${ps.subtype || 'π-π Stacking'}</td>
+        <td class="font-mono text-emerald-700 dark:text-emerald-400 font-bold text-center p-2 border border-slate-200 dark:border-slate-800">${ps.distance != null ? Number(ps.distance).toFixed(2) + ' Å' : '—'}</td>
+        <td class="font-mono text-slate-600 dark:text-slate-400 text-center p-2 border border-slate-200 dark:border-slate-800 text-[11px]">${ps.angle_deg != null ? Number(ps.angle_deg).toFixed(1) + '°' : '—'}</td>
+      </tr>
+    `).join("") : `<tr><td colspan="4" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No π-π aromatic stacking detected within 5.5 Å centroid cutoff.</td></tr>`;
+
+    // Pi-Cation interactions
+    const piCations = contacts.pi_cation || [];
+    const piCationRows = piCations.length > 0 ? piCations.map(pc => `
+      <tr>
+        <td class="font-mono font-bold text-slate-900 dark:text-white p-2 border border-slate-200 dark:border-slate-800">${pc.residue || `${pc.res_name} ${pc.res_num}:${pc.chain}`}</td>
+        <td class="text-amber-700 dark:text-amber-400 p-2 border border-slate-200 dark:border-slate-800 font-sans font-semibold text-[11px]">${pc.subtype || 'π-Cation Contact'}</td>
+        <td class="font-mono text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800">${pc.ligand_atom || '—'}</td>
+        <td class="font-mono text-amber-700 dark:text-amber-400 font-bold text-center p-2 border border-slate-200 dark:border-slate-800">${pc.distance != null ? Number(pc.distance).toFixed(2) + ' Å' : '—'}</td>
+      </tr>
+    `).join("") : `<tr><td colspan="4" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No π-cation contacts detected within 4.5 Å cutoff.</td></tr>`;
+
+    // Halogen bonds (sigma-hole)
+    const halogenBonds = contacts.halogen_bonds || [];
+    const halogenRows = halogenBonds.length > 0 ? halogenBonds.map(hb => `
+      <tr>
+        <td class="font-mono font-bold text-slate-900 dark:text-white p-2 border border-slate-200 dark:border-slate-800">${hb.residue || `${hb.res_name} ${hb.res_num}:${hb.chain}`}</td>
+        <td class="font-mono text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800">${hb.receptor_atom || '—'}</td>
+        <td class="font-mono text-purple-700 dark:text-purple-400 font-bold p-2 border border-slate-200 dark:border-slate-800">${hb.ligand_atom || 'Halogen (F/Cl/Br/I)'}</td>
+        <td class="font-mono text-purple-700 dark:text-purple-400 font-bold text-center p-2 border border-slate-200 dark:border-slate-800">${hb.distance != null ? Number(hb.distance).toFixed(2) + ' Å' : '—'}</td>
+        <td class="font-mono text-slate-600 dark:text-slate-400 text-center p-2 border border-slate-200 dark:border-slate-800 text-[11px]">${hb.angle_deg != null ? Number(hb.angle_deg).toFixed(1) + '° (θ &ge; 130°)' : '—'}</td>
+      </tr>
+    `).join("") : `<tr><td colspan="5" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No halogen bonds detected within 3.8 Å cutoff and 130° angle criterion.</td></tr>`;
+
     // Hydrophobic contacts
     const hydrophobics = contacts.hydrophobic_contacts || [];
     const hydrophobicList = hydrophobics.length > 0 ? hydrophobics.map(hp => `
-      <span class="inline-flex items-center space-x-1 px-2 py-1 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 font-mono text-[11px]">
+      <span class="inline-flex items-center space-x-1 px-2 py-1 rounded bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/60 text-sky-900 dark:text-sky-200 font-mono text-[11px]">
         <span class="font-bold">${hp.residue || `${hp.res_name} ${hp.res_num}:${hp.chain}`}</span>
-        <span class="text-[10px] text-amber-700 dark:text-amber-400">(${Number(hp.distance).toFixed(2)} Å)</span>
+        <span class="text-[10px] text-sky-700 dark:text-sky-400">(${Number(hp.distance).toFixed(2)} Å)</span>
       </span>
     `).join(" ") : `<span class="text-slate-500 italic text-xs">No hydrophobic contacts detected within 4.0 Å cutoff.</span>`;
 
@@ -2862,7 +3028,7 @@ class BindoraApp {
           <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
             <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Intermolecular Contacts</span>
             <span class="text-purple-700 dark:text-purple-400 font-black text-base">${contacts.total_hbond_count || hbonds.length} <span class="text-xs font-normal font-sans">H-Bonds</span></span>
-            <span class="text-[10px] text-slate-500 block font-sans">${contacts.total_hydrophobic_count || hydrophobics.length} Hydrophobic</span>
+            <span class="text-[10px] text-slate-500 block font-sans">${saltBridges.length} Salt &bull; ${piStacks.length} π-π &bull; ${piCations.length} π-Cat &bull; ${halogenBonds.length} Hal</span>
           </div>
         </div>
 
@@ -2924,6 +3090,23 @@ class BindoraApp {
             <div class="flex justify-between"><span class="text-slate-500">Wildman-Crippen LogP:</span> <span class="font-bold text-slate-900 dark:text-white">${logp}</span></div>
           </div>
         </div>
+
+        <!-- Biophysical Receptor Preparation & Catalytic Metalloenzyme Context -->
+        <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2 text-xs font-mono">
+          <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1">
+            <span class="font-bold text-slate-800 dark:text-slate-200 font-sans text-xs flex items-center space-x-1.5">
+              <svg class="w-3.5 h-3.5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6z"/></svg>
+              <span>Biophysical Preparation &amp; Catalytic Metalloenzyme Parameters</span>
+            </span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold">${prepLog.preparation_engine || 'Biophysical Polar Hydrogen Engine (pH 7.4)'}</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+            <div><span class="text-slate-500 block">Catalytic Metals:</span> <span class="font-bold ${prepLog.catalytic_metals_retained > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-800 dark:text-slate-200'}">${prepLog.catalytic_metals_retained != null ? prepLog.catalytic_metals_retained + ' Retained (Zn/Mg/Mn/Fe/Ca)' : '0 Retained'}</span></div>
+            <div><span class="text-slate-500 block">Polar Hydrogens:</span> <span class="font-bold text-cyan-700 dark:text-cyan-400">${prepLog.polar_hydrogens_added != null ? prepLog.polar_hydrogens_added + ' Added (AMBER FF14SB)' : 'Physiological (pH 7.4)'}</span></div>
+            <div><span class="text-slate-500 block">Solvent / Buffer:</span> <span class="text-slate-800 dark:text-slate-200 font-semibold">${prepLog.waters_removed ?? 0} stripped / ${prepLog.ions_and_buffer_removed ?? 0} buffer ions</span></div>
+            <div><span class="text-slate-500 block">Forcefield / Charges:</span> <span class="text-slate-800 dark:text-slate-200 truncate block" title="${prepLog.charge_model || 'AMBER FF14SB / Kollman AD4'}">${prepLog.charge_model ? 'AMBER FF14SB / Kollman' : 'AMBER FF14SB'}</span></div>
+          </div>
+        </div>
       </div>
 
       <!-- SECTION 3: COMPREHENSIVE CONFORMATIONAL SAMPLING TABLE (MODES 1 TO 9) -->
@@ -2958,18 +3141,25 @@ class BindoraApp {
       </div>
 
       <!-- SECTION 4: INTERMOLECULAR INTERACTION RESIDUE PROFILING -->
-      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-3">
+      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-4 page-break-inside-avoid">
         <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
           <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
             <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
             <span>Section 4: Intermolecular Interaction Fingerprint</span>
           </span>
-          <span class="text-[10px] text-slate-500 font-mono">Cutoffs: H-Bond &le; 3.5 Å &bull; Hydrophobic &le; 4.0 Å</span>
+          <span class="text-[10px] text-slate-500 font-mono">PLIP-Standard Non-Covalent Binding Contacts</span>
         </div>
 
-        <div class="space-y-3">
+        <div class="space-y-4">
+          <!-- 1. Directional Hydrogen Bonds -->
           <div>
-            <span class="font-bold text-slate-800 dark:text-slate-200 text-xs block mb-1.5 font-sans">Directional Hydrogen Bonds:</span>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-bold text-slate-800 dark:text-slate-200 text-xs font-sans flex items-center space-x-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-cyan-500 inline-block"></span>
+                <span>Directional Hydrogen Bonds (Cutoff &le; 3.5 Å):</span>
+              </span>
+              <span class="text-[10px] font-mono text-cyan-700 dark:text-cyan-400 font-semibold">${hbonds.length} Detected</span>
+            </div>
             <div class="overflow-x-auto">
               <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
                 <thead>
@@ -2988,8 +3178,124 @@ class BindoraApp {
             </div>
           </div>
 
+          <!-- 2. Electrostatic Salt Bridges -->
           <div>
-            <span class="font-bold text-slate-800 dark:text-slate-200 text-xs block mb-1.5 font-sans">Hydrophobic Contact Residues:</span>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-bold text-slate-800 dark:text-slate-200 text-xs font-sans flex items-center space-x-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-fuchsia-500 inline-block"></span>
+                <span>Electrostatic Networks &amp; Salt Bridges (Cutoff &le; 4.2 Å):</span>
+              </span>
+              <span class="text-[10px] font-mono text-fuchsia-700 dark:text-fuchsia-400 font-semibold">${saltBridges.length} Detected</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
+                <thead>
+                  <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-sans font-bold">
+                    <th class="p-2 border border-slate-200 dark:border-slate-800">Ionized Residue</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800">Pairing Classification</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800">Ligand Atom</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Distance (Å)</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800">Criterion</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${saltBridgeRows}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 3. Pi-Pi Aromatic Stacking & Pi-Cation Interactions (2 Columns) -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <!-- Pi-Pi Stacking -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-bold text-slate-800 dark:text-slate-200 text-xs font-sans flex items-center space-x-1.5">
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                  <span>π-π Aromatic Stacking (Cutoff &le; 5.5 Å):</span>
+                </span>
+                <span class="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 font-semibold">${piStacks.length} Detected</span>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
+                  <thead>
+                    <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-sans font-bold">
+                      <th class="p-2 border border-slate-200 dark:border-slate-800">Residue</th>
+                      <th class="p-2 border border-slate-200 dark:border-slate-800">Geometry</th>
+                      <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Distance</th>
+                      <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Angle (θ)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${piStackRows}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Pi-Cation Interactions -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-bold text-slate-800 dark:text-slate-200 text-xs font-sans flex items-center space-x-1.5">
+                  <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+                  <span>π-Cation Contacts (Cutoff &le; 4.5 Å):</span>
+                </span>
+                <span class="text-[10px] font-mono text-amber-700 dark:text-amber-400 font-semibold">${piCations.length} Detected</span>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
+                  <thead>
+                    <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-sans font-bold">
+                      <th class="p-2 border border-slate-200 dark:border-slate-800">Residue</th>
+                      <th class="p-2 border border-slate-200 dark:border-slate-800">Classification</th>
+                      <th class="p-2 border border-slate-200 dark:border-slate-800">Ligand Atom</th>
+                      <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Distance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${piCationRows}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Halogen Bonds (Sigma-Hole Contacts) -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-bold text-slate-800 dark:text-slate-200 text-xs font-sans flex items-center space-x-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block"></span>
+                <span>Halogen Bonds (σ-Hole Cutoff &le; 3.8 Å, θ &ge; 130°):</span>
+              </span>
+              <span class="text-[10px] font-mono text-purple-700 dark:text-purple-400 font-semibold">${halogenBonds.length} Detected</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
+                <thead>
+                  <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-sans font-bold">
+                    <th class="p-2 border border-slate-200 dark:border-slate-800">Receptor Residue</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800">Receptor Atom</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800">Ligand Atom</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Distance (Å)</th>
+                    <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Angle (C-X...O/N)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${halogenRows}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 5. Hydrophobic Contact Residues -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="font-bold text-slate-800 dark:text-slate-200 text-xs font-sans flex items-center space-x-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span>
+                <span>Hydrophobic Contact Residues (Cutoff &le; 4.0 Å):</span>
+              </span>
+              <span class="text-[10px] font-mono text-sky-700 dark:text-sky-400 font-semibold">${hydrophobics.length} Contacts</span>
+            </div>
             <div class="p-2.5 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-wrap gap-1.5">
               ${hydrophobicList}
             </div>

@@ -5,7 +5,7 @@ import traceback
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 
 from backend.config import (
@@ -17,9 +17,11 @@ from backend.services.adme import ADMEProfiler
 from backend.services.bioactivity import BioactivityService
 from backend.services.narrative import NarrativeExplainer
 from backend.services.batch import BatchScreeningService
+from backend.services.batch_manager import BatchScreeningManager
 from backend.services.ensemble import EnsembleDockingService
 from backend.services.pharmacophore import PharmacophoreService
 from backend.utils.vina_setup import ensure_vina
+from rdkit import Chem
 
 app = Flask(__name__, static_folder=str(FRONTEND_DIR), static_url_path="")
 CORS(app)
@@ -205,7 +207,12 @@ def prepare_receptor():
         return jsonify({"error": "Receptor PDB content or valid PDB ID is required"}), 400
 
     try:
-        rec_result = DockingEngine.prepare_receptor(pdb_content, target_chain=target_chain)
+        retain_waters = bool(data.get("retain_structural_waters", False))
+        rec_result = DockingEngine.prepare_receptor(
+            pdb_content,
+            target_chain=target_chain,
+            retain_structural_waters=retain_waters
+        )
         return jsonify(rec_result)
     except Exception as e:
         return jsonify({"error": f"Receptor preparation failed: {str(e)}"}), 400
@@ -258,10 +265,11 @@ def run_docking():
         # Calculate thermodynamics and Ligand Efficiency
         thermo = BioactivityService.calculate_thermodynamics(affinity, heavy_atoms, mw)
 
-        # Calculate atomic interactions (H-bonds, hydrophobic)
+        # Calculate atomic interactions (H-bonds, salt bridges, pi-stacking, hydrophobic)
         contacts = {}
         if receptor_pdb:
-            contacts = DockingEngine.analyze_interactions(receptor_pdb, best_pose["pdbqt_content"])
+            lig_mol = Chem.MolFromSmiles(smiles) if smiles else None
+            contacts = DockingEngine.analyze_interactions(receptor_pdb, best_pose["pdbqt_content"], ligand_mol=lig_mol)
             if smiles:
                 try:
                     from backend.services.interaction_diagram import InteractionDiagramGenerator
@@ -293,6 +301,27 @@ def get_interaction_diagram():
         return jsonify({"diagram_svg": svg})
     except Exception as e:
         return jsonify({"error": f"Failed to generate diagram: {str(e)}"}), 500
+
+@app.route("/api/docking/refine", methods=["POST"])
+def refine_docked_pose():
+    data = request.get_json() or {}
+    receptor_pdb = data.get("receptor_pdb", "")
+    docked_pdb = data.get("docked_pdb", "")
+    smiles = data.get("smiles", "")
+
+    if not receptor_pdb or not docked_pdb:
+        return jsonify({"error": "Both receptor_pdb and docked_pdb are required"}), 400
+
+    try:
+        from backend.services.refinement import ComplexRefinementService
+        refinement_result = ComplexRefinementService.refine_pose(
+            receptor_pdb=receptor_pdb,
+            docked_pdb_or_pdbqt=docked_pdb,
+            smiles=smiles
+        )
+        return jsonify(refinement_result)
+    except Exception as e:
+        return jsonify({"error": f"Pose refinement failed: {str(e)}"}), 500
 
 @app.route("/api/docking/redock-validate", methods=["POST"])
 def redock_validate():
@@ -355,8 +384,9 @@ def analyze_interactions():
         return jsonify({"error": "Both receptor_pdb and pose_pdbqt are required"}), 400
 
     try:
-        contacts = DockingEngine.analyze_interactions(receptor_pdb, pose_pdbqt)
         smiles = data.get("smiles", "").strip()
+        lig_mol = Chem.MolFromSmiles(smiles) if smiles else None
+        contacts = DockingEngine.analyze_interactions(receptor_pdb, pose_pdbqt, ligand_mol=lig_mol)
         if smiles:
             try:
                 from backend.services.interaction_diagram import InteractionDiagramGenerator
@@ -395,6 +425,49 @@ def explain_results():
     
     explanation = NarrativeExplainer.generate_explanation(data, api_key=api_key, provider=provider)
     return jsonify(explanation)
+
+@app.route("/api/batch/start", methods=["POST"])
+def start_batch_docking():
+    data = request.get_json() or {}
+    receptor_pdbqt = data.get("receptor_pdbqt")
+    receptor_pdb = data.get("receptor_pdb")
+    center = data.get("center")
+    size = data.get("size")
+    ligands = data.get("ligands", [])
+    exhaustiveness = int(data.get("exhaustiveness", 4))
+
+    if not receptor_pdbqt or not receptor_pdb or not center or not size or not ligands:
+        return jsonify({"error": "Missing required batch parameters"}), 400
+
+    manager = BatchScreeningManager.get_instance()
+    job_id = manager.start_batch_job(
+        receptor_pdbqt=receptor_pdbqt,
+        receptor_pdb=receptor_pdb,
+        pocket_center=center,
+        pocket_size=size,
+        ligand_list=ligands,
+        exhaustiveness=exhaustiveness
+    )
+    return jsonify({"job_id": job_id, "total": len(ligands), "status": "queued"})
+
+@app.route("/api/batch/status/<job_id>", methods=["GET"])
+def get_batch_status(job_id):
+    manager = BatchScreeningManager.get_instance()
+    job = manager.get_job(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    return jsonify(job)
+
+@app.route("/api/batch/stream/<job_id>", methods=["GET"])
+def stream_batch_events(job_id):
+    manager = BatchScreeningManager.get_instance()
+    return Response(manager.stream_job_events(job_id), mimetype="text/event-stream")
+
+@app.route("/api/batch/cancel/<job_id>", methods=["POST"])
+def cancel_batch_docking(job_id):
+    manager = BatchScreeningManager.get_instance()
+    ok = manager.cancel_job(job_id)
+    return jsonify({"cancelled": ok, "job_id": job_id})
 
 @app.route("/api/batch/run", methods=["POST"])
 def batch_docking():

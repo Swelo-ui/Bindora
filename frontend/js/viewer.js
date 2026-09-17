@@ -29,6 +29,10 @@ class MolecularViewer {
       surfaceOpacity: 0.55,
       showGridBox: false,
       showHbonds: true,
+      showSaltBridges: true,
+      showPiStacking: true,
+      showPiCation: true,
+      showHalogenBonds: true,
       showHydrophobic: false,
       showResidueLabels: true
     };
@@ -36,6 +40,7 @@ class MolecularViewer {
     // Surface tracking — prevents accumulation bug
     this._surfaceId = null;
     this._surfaceUpdating = false;
+    this.lastInteractions = null;
 
     this.init();
   }
@@ -66,6 +71,7 @@ class MolecularViewer {
     this.surfaceObj = null;
     this._surfaceId = null;
     this._surfaceUpdating = false;
+    this.lastInteractions = null;
     this.clearInteractions();
     this.clearMeasurements();
     this.clearGridBox();
@@ -266,10 +272,24 @@ class MolecularViewer {
   }
 
   renderInteractions(interactions) {
-    if (!this.viewer || !interactions) return;
+    if (!this.viewer) return;
+    if (interactions) {
+      this.lastInteractions = interactions;
+    } else {
+      interactions = this.lastInteractions;
+    }
+    if (!interactions) return;
     this.clearInteractions();
 
-    const { hydrogen_bonds = [], hydrophobic_contacts = [], interacting_residues = [] } = interactions;
+    const {
+      hydrogen_bonds = [],
+      salt_bridges = [],
+      pi_stacking = [],
+      pi_cation = [],
+      halogen_bonds = [],
+      hydrophobic_contacts = [],
+      interacting_residues = []
+    } = interactions;
 
     if (this.receptorModel && interacting_residues.length > 0) {
       interacting_residues.forEach(resStr => {
@@ -304,8 +324,10 @@ class MolecularViewer {
       });
     }
 
+    // 1. Directional Hydrogen Bonds (Yellow)
     if (this.settings.showHbonds && hydrogen_bonds.length > 0) {
       hydrogen_bonds.forEach(hb => {
+        if (!hb.start_coord || !hb.end_coord) return;
         const [lx, ly, lz] = hb.start_coord;
         const [rx, ry, rz] = hb.end_coord;
 
@@ -330,8 +352,122 @@ class MolecularViewer {
       });
     }
 
+    // 2. Salt Bridges (Magenta)
+    if (this.settings.showSaltBridges && salt_bridges.length > 0) {
+      salt_bridges.forEach(sb => {
+        if (!sb.start_coord || !sb.end_coord) return;
+        const [lx, ly, lz] = sb.start_coord;
+        const [rx, ry, rz] = sb.end_coord;
+
+        const cyl = this.viewer.addCylinder({
+          start: { x: lx, y: ly, z: lz },
+          end: { x: rx, y: ry, z: rz },
+          radius: 0.09,
+          dashed: true,
+          color: '#ec4899',
+          fromCap: 1,
+          toCap: 1
+        });
+        this.interactionShapes.push(cyl);
+
+        const mid = { x: (lx + rx) / 2, y: (ly + ry) / 2, z: (lz + rz) / 2 };
+        this.viewer.addLabel(`Salt ${sb.distance} A`, {
+          position: mid,
+          backgroundColor: 'rgba(17, 24, 39, 0.85)',
+          fontColor: '#ec4899',
+          fontSize: 10
+        });
+      });
+    }
+
+    // 3. π-π Stacking (Emerald Green)
+    if (this.settings.showPiStacking && pi_stacking.length > 0) {
+      pi_stacking.forEach(ps => {
+        if (!ps.start_coord || !ps.end_coord) return;
+        const [lx, ly, lz] = ps.start_coord;
+        const [rx, ry, rz] = ps.end_coord;
+
+        const cyl = this.viewer.addCylinder({
+          start: { x: lx, y: ly, z: lz },
+          end: { x: rx, y: ry, z: rz },
+          radius: 0.09,
+          dashed: true,
+          color: '#10b981',
+          fromCap: 1,
+          toCap: 1
+        });
+        this.interactionShapes.push(cyl);
+
+        const mid = { x: (lx + rx) / 2, y: (ly + ry) / 2, z: (lz + rz) / 2 };
+        this.viewer.addLabel(`π-π ${ps.distance} A`, {
+          position: mid,
+          backgroundColor: 'rgba(17, 24, 39, 0.85)',
+          fontColor: '#10b981',
+          fontSize: 10
+        });
+      });
+    }
+
+    // 4. π-Cation Interactions (Orange)
+    if (this.settings.showPiCation && pi_cation.length > 0) {
+      pi_cation.forEach(pc => {
+        if (!pc.start_coord || !pc.end_coord) return;
+        const [lx, ly, lz] = pc.start_coord;
+        const [rx, ry, rz] = pc.end_coord;
+
+        const cyl = this.viewer.addCylinder({
+          start: { x: lx, y: ly, z: lz },
+          end: { x: rx, y: ry, z: rz },
+          radius: 0.08,
+          dashed: true,
+          color: '#f97316',
+          fromCap: 1,
+          toCap: 1
+        });
+        this.interactionShapes.push(cyl);
+
+        const mid = { x: (lx + rx) / 2, y: (ly + ry) / 2, z: (lz + rz) / 2 };
+        this.viewer.addLabel(`π-Cat ${pc.distance} A`, {
+          position: mid,
+          backgroundColor: 'rgba(17, 24, 39, 0.85)',
+          fontColor: '#f97316',
+          fontSize: 10
+        });
+      });
+    }
+
+    // 5. Halogen Bonds (Purple)
+    if (this.settings.showHalogenBonds && halogen_bonds.length > 0) {
+      halogen_bonds.forEach(hal => {
+        if (!hal.start_coord || !hal.end_coord) return;
+        const [lx, ly, lz] = hal.start_coord;
+        const [rx, ry, rz] = hal.end_coord;
+
+        const cyl = this.viewer.addCylinder({
+          start: { x: lx, y: ly, z: lz },
+          end: { x: rx, y: ry, z: rz },
+          radius: 0.08,
+          dashed: true,
+          color: '#a855f7',
+          fromCap: 1,
+          toCap: 1
+        });
+        this.interactionShapes.push(cyl);
+
+        const mid = { x: (lx + rx) / 2, y: (ly + ry) / 2, z: (lz + rz) / 2 };
+        this.viewer.addLabel(`Hal ${hal.distance} A`, {
+          position: mid,
+          backgroundColor: 'rgba(17, 24, 39, 0.85)',
+          fontColor: '#a855f7',
+          fontSize: 10
+        });
+      });
+    }
+
+    // 6. Hydrophobic Contacts (Sky Blue)
     if (this.settings.showHydrophobic && hydrophobic_contacts.length > 0) {
       hydrophobic_contacts.forEach(hp => {
+        if (!hp.start_coord || !hp.end_coord) return;
         const [lx, ly, lz] = hp.start_coord;
         const [rx, ry, rz] = hp.end_coord;
 
@@ -349,6 +485,36 @@ class MolecularViewer {
     }
 
     this.viewer.render();
+  }
+
+  toggleHBonds(show) {
+    this.settings.showHbonds = show;
+    if (this.lastInteractions) this.renderInteractions(this.lastInteractions);
+  }
+
+  toggleSaltBridges(show) {
+    this.settings.showSaltBridges = show;
+    if (this.lastInteractions) this.renderInteractions(this.lastInteractions);
+  }
+
+  togglePiStacking(show) {
+    this.settings.showPiStacking = show;
+    if (this.lastInteractions) this.renderInteractions(this.lastInteractions);
+  }
+
+  togglePiCation(show) {
+    this.settings.showPiCation = show;
+    if (this.lastInteractions) this.renderInteractions(this.lastInteractions);
+  }
+
+  toggleHalogenBonds(show) {
+    this.settings.showHalogenBonds = show;
+    if (this.lastInteractions) this.renderInteractions(this.lastInteractions);
+  }
+
+  toggleHydrophobic(show) {
+    this.settings.showHydrophobic = show;
+    if (this.lastInteractions) this.renderInteractions(this.lastInteractions);
   }
 
   // Internal helper: safely remove ALL surfaces (prevents accumulation)

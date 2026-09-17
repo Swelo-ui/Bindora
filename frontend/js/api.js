@@ -110,6 +110,23 @@ class BindoraAPI {
     });
   }
 
+  static async startBatchDocking(batchParams) {
+    return this.request("/api/batch/start", {
+      method: "POST",
+      body: JSON.stringify(batchParams)
+    });
+  }
+
+  static async getBatchStatus(jobId) {
+    return this.request(`/api/batch/status/${jobId}`);
+  }
+
+  static async cancelBatchDocking(jobId) {
+    return this.request(`/api/batch/cancel/${jobId}`, {
+      method: "POST"
+    });
+  }
+
   static async redockValidate(params) {
     return this.request("/api/docking/redock-validate", {
       method: "POST",

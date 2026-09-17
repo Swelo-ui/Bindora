@@ -14,13 +14,18 @@ class BatchScreeningService:
         pocket_center: Dict[str, float],
         pocket_size: Dict[str, float],
         ligand_list: List[Dict[str, str]], # [{"name": "Aspirin", "smiles": "CC(=O)..."}, ...]
-        exhaustiveness: int = 4
+        exhaustiveness: int = 4,
+        progress_callback: Any = None,
+        is_cancelled_fn: Any = None
     ) -> List[Dict[str, Any]]:
         """Dock multiple candidate ligands against the same receptor pocket and rank them with consensus scoring."""
         valid_results = []
         failed_results = []
+        total_items = len(ligand_list)
 
-        for item in ligand_list:
+        for item_idx, item in enumerate(ligand_list, 1):
+            if is_cancelled_fn and is_cancelled_fn():
+                break
             name = item.get("name", "Unknown").strip()
             smiles = item.get("smiles", "").strip()
             if not smiles:
@@ -157,6 +162,15 @@ class BatchScreeningService:
                     "consensus_score": 0.0,
                     "rank": "—"
                 })
+
+            if progress_callback:
+                try:
+                    partial_valid = sorted(valid_results, key=lambda x: x["affinity_kcal"])
+                    for pidx, pitem in enumerate(partial_valid):
+                        pitem["rank"] = pidx + 1
+                    progress_callback(item_idx, total_items, name, partial_valid + failed_results)
+                except Exception:
+                    pass
 
         # Multi-Engine Consensus Ranking Calibration:
         # 1. Sort by Vina affinity to assign Vina ranks
