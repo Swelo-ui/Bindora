@@ -612,6 +612,14 @@ def run_screening(targets, exh, resume, subset_name, max_a=None, max_d=None):
         SCREENING_REPORT_MD.write_text(gen_md(all_results, agg, meta), encoding="utf-8")
     except Exception as e:
         logger.error("MD failed: " + str(e))
+    # Auto-synchronize README.md with newly generated report
+    try:
+        sync_script = PROJECT_ROOT / "scripts" / "sync_benchmarks_to_readme.py"
+        if sync_script.exists():
+            import subprocess
+            subprocess.run([sys.executable, str(sync_script)], capture_output=True, text=True)
+    except Exception:
+        pass
     print("Done. AUC=" + str(agg["mean_roc_auc"]) + " EF1%=" + str(agg["mean_ef_1pct"]))
     return sd
 

@@ -411,7 +411,7 @@ def generate_markdown_report(
         "2. **Receptor preparation:** Water/solvent stripping, pH 7.4 protonation, Gasteiger charges, AutoDock 4 atom types (Meeko)",
         "3. **Pocket detection:** Crystallographic co-ligand centroid used as grid box center (22.0 Å cubic search space)",
         "4. **Docking:** AutoDock Vina iterated local search, fixed seed = 42",
-        "5. **RMSD:** Symmetry-corrected heavy-atom RMSD (RDKit graph automorphism AllChem.GetBestRMS)",
+        "5. **RMSD:** In-place symmetry-corrected heavy-atom RMSD (RDKit graph automorphism AllChem.CalcRMS)",
         "6. **Per-complex timeout:** 300 seconds (failed complexes logged, run continues)",
         "",
         "## Reproducibility",
@@ -573,6 +573,17 @@ def run_casf2016_batch(
         print(f"Markdown report written to:  {FINAL_REPORT_MD}")
     except Exception as e:
         logger.error(f"Failed to write Markdown report: {e}")
+
+    # Auto-synchronize README.md with newly generated report
+    try:
+        sync_script = PROJECT_ROOT / "scripts" / "sync_benchmarks_to_readme.py"
+        if sync_script.exists():
+            import subprocess
+            res = subprocess.run([sys.executable, str(sync_script)], capture_output=True, text=True)
+            if res.returncode == 0:
+                print("README.md benchmark table synchronized automatically.")
+    except Exception as e:
+        logger.debug(f"Auto-sync README notice: {e}")
 
     pose = stats["pose_reconstruction"]
     print(f"\n{'='*60}")

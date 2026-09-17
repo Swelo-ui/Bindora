@@ -1,19 +1,27 @@
 {
   "pdb_id": "1HSG",
   "target": "HIV-1 Protease",
-  "ligand": "Indinavir (MK-639 / MK1)",
-  "timestamp": "2026-09-16 10:55:56",
-  "vina_affinity_kcal": -10.241,
-  "vinardo_affinity_kcal": -7.346,
-  "mode1_rmsd_angstroms": 0.83,
-  "best_mode_rmsd_angstroms": 0.83,
+  "ligand": "Indinavir",
+  "timestamp": "2026-09-17 11:53:58",
+  "timestamp_iso": "2026-09-17T06:23:58.195138+00:00",
+  "vina_affinity_kcal": -10.31,
+  "vinardo_affinity_kcal": -7.337,
+  "mode1_rmsd_angstroms": 0.53,
+  "best_mode_rmsd_angstroms": 0.53,
   "best_mode": 1,
   "is_validated": true,
-  "badge": "Protocol Validated (RMSD: 0.83 \u00c5 < 2.0 \u00c5)",
-  "status": "Pass (Publication Grade)",
+  "badge": "Protocol Validated (RMSD: 0.53 Å < 2.0 Å)",
+  "status": "Pass (Research Grade)",
   "energy_in_lit_range": true,
   "rmsd_pass_threshold": true,
   "rmsd_ideal_threshold": true,
-  "docking_time_seconds": 205.64,
-  "overall_grade": "RESEARCH_GRADE"
+  "docking_time_seconds": 610.27,
+  "exhaustiveness": 32,
+  "overall_grade": "RESEARCH_GRADE",
+  "provenance": {
+    "is_programmatic": true,
+    "python_version": "3.13.1",
+    "os_platform": "Windows",
+    "sha256_sig": "ad4c6373c1b3d41f"
+  }
 }

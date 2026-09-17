@@ -885,7 +885,8 @@ class DockingEngine:
 
         # 4. Helper to calculate heavy-atom RMSD for a given docked pose PDBQT
         def calc_pose_rmsd(pose_pdbqt: str) -> float:
-            # 1. Try gold-standard RDKit graph-isomorphism & symmetry-corrected RMSD via Meeko
+            # 1. Gold-standard RDKit in-place symmetry-corrected RMSD via Meeko
+            # Must use CalcRMS (in-place) to avoid rigid superposition destroying pocket coordinates.
             try:
                 from meeko import PDBQTMolecule, RDKitMolCreate
                 from rdkit.Chem import AllChem
@@ -895,7 +896,7 @@ class DockingEngine:
                     ref_mol = Chem.RemoveHs(Chem.MolFromPDBBlock(lig_prep.get("pdb_block", native_ligand_pdb)))
                     docked_mol = Chem.RemoveHs(rdkit_mols[0])
                     if ref_mol and docked_mol and ref_mol.GetNumHeavyAtoms() == docked_mol.GetNumHeavyAtoms():
-                        return float(AllChem.GetBestRMS(docked_mol, ref_mol))
+                        return float(AllChem.CalcRMS(docked_mol, ref_mol))
             except Exception:
                 pass
 

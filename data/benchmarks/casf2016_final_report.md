@@ -1,6 +1,6 @@
 # Bindora CASF-2016 Benchmark Report (v2.0)
 
-**Date:** 2026-09-16 &bull; **Engine:** AutoDock Vina 1.2.7 &bull; **Exhaustiveness:** 4
+**Date:** 2026-09-17 &bull; **Engine:** AutoDock Vina 1.2.7 &bull; **Exhaustiveness:** 4
 
 > **Reporting policy:** This report always shows the complete result distribution.
 > Cherry-picking is structurally impossible: the code that generates this table
@@ -13,10 +13,10 @@
 | Total complexes attempted | **5** | 285 (full set) |
 | Successful dockings | **5** | — |
 | Failed / skipped | **0** (0.0%) | — |
-| RMSD ≤ 2.0 Å (pose success) | **4/5** (**80.0%**) | > 70% |
-| RMSD ≤ 1.0 Å (sub-angstrom) | **2/5** | — |
-| Mean RMSD | **1.202 Å** | < 2.0 Å |
-| Median RMSD | **1.26 Å** | — |
+| RMSD ≤ 2.0 Å (pose success) | **3/5** (**60.0%**) | > 70% |
+| RMSD ≤ 1.0 Å (sub-angstrom) | **1/5** | — |
+| Mean RMSD | **2.894 Å** | < 2.0 Å |
+| Median RMSD | **1.53 Å** | — |
 
 ---
 
@@ -24,11 +24,11 @@
 
 | # | PDB ID | Vina ΔG (kcal/mol) | Vinardo ΔG | RMSD (Å) | Time (s) | Status |
 | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| 1 | `1A1E` | -6.253 | -5.319 | 1.370 | 19.0 | ✅ Validated (≤ 2.0 Å) |
-| 2 | `1A28` | -10.404 | -8.039 | 0.000 | 14.3 | ✅ Sub-Angstrom (≤ 1.0 Å) |
-| 3 | `1A4G` | -7.030 | -4.623 | 1.260 | 31.7 | ✅ Validated (≤ 2.0 Å) |
-| 4 | `1A4Q` | -7.155 | -4.259 | 0.980 | 39.3 | ✅ Sub-Angstrom (≤ 1.0 Å) |
-| 5 | `1A4R` | -5.697 | -4.008 | 2.400 | 55.7 | ⚠️ Near-Native (> 2.0 Å, 2.40 Å) |
+| 1 | `1A1E` | -6.253 | -5.319 | 2.040 | 18.7 | ⚠️ Near-Native (> 2.0 Å, 2.04 Å) |
+| 2 | `1A28` | -10.404 | -8.039 | 0.640 | 12.8 | ✅ Sub-Angstrom (≤ 1.0 Å) |
+| 3 | `1A4G` | -7.030 | -4.623 | 1.530 | 30.0 | ✅ Validated (≤ 2.0 Å) |
+| 4 | `1A4Q` | -7.155 | -4.259 | 1.460 | 38.8 | ✅ Validated (≤ 2.0 Å) |
+| 5 | `1A4R` | -5.697 | -4.008 | 8.800 | 46.7 | ⚠️ Near-Native (> 2.0 Å, 8.80 Å) |
 
 ---
 
@@ -38,7 +38,7 @@
 2. **Receptor preparation:** Water/solvent stripping, pH 7.4 protonation, Gasteiger charges, AutoDock 4 atom types (Meeko)
 3. **Pocket detection:** Crystallographic co-ligand centroid used as grid box center (22.0 Å cubic search space)
 4. **Docking:** AutoDock Vina iterated local search, fixed seed = 42
-5. **RMSD:** Symmetry-corrected heavy-atom RMSD (RDKit graph automorphism AllChem.GetBestRMS)
+5. **RMSD:** In-place symmetry-corrected heavy-atom RMSD (RDKit graph automorphism AllChem.CalcRMS)
 6. **Per-complex timeout:** 300 seconds (failed complexes logged, run continues)
 
 ## Reproducibility

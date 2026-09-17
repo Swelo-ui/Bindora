@@ -23,7 +23,10 @@ def calculate_rmsd(
     else:
         pose_pdbqt = str(docked_pose_or_pdbqt)
 
-    # 1. Gold-standard RDKit graph-isomorphism & symmetry-corrected RMSD via Meeko
+    # 1. Gold-standard RDKit graph-isomorphism & in-place symmetry-corrected RMSD via Meeko
+    # Note: Must use CalcRMS (in-place) rather than GetBestRMS (superposition).
+    # Docking evaluation requires pocket-coordinate positioning; GetBestRMS aligns
+    # the molecules in vacuum, measuring only internal scaffold deformation (leading to false 0.0 A).
     try:
         from meeko import PDBQTMolecule, RDKitMolCreate
         pdbqt_mol = PDBQTMolecule(pose_pdbqt)
@@ -32,7 +35,7 @@ def calculate_rmsd(
             ref_mol = Chem.RemoveHs(Chem.MolFromPDBBlock(reference_pdb_block, sanitize=False))
             docked_mol = Chem.RemoveHs(rdkit_mols[0])
             if ref_mol and docked_mol and ref_mol.GetNumHeavyAtoms() == docked_mol.GetNumHeavyAtoms():
-                best_rms = float(AllChem.GetBestRMS(docked_mol, ref_mol))
+                best_rms = float(AllChem.CalcRMS(docked_mol, ref_mol))
                 if not math.isnan(best_rms):
                     return round(best_rms, 2)
     except Exception:
