@@ -3080,6 +3080,24 @@ class BindoraApp {
   }
 
   renderBatchLeaderboard(leaderboard) {
+    const thead = document.getElementById("batch-table-head");
+    if (thead) {
+      thead.innerHTML = `
+        <tr>
+          <th class="p-2.5 text-center">Rank</th>
+          <th class="p-2.5">Candidate</th>
+          <th class="p-2.5">Vina ΔG</th>
+          <th class="p-2.5">Vinardo</th>
+          <th class="p-2.5">Consensus</th>
+          <th class="p-2.5">Confidence</th>
+          <th class="p-2.5">Kd (nM)</th>
+          <th class="p-2.5">LE</th>
+          <th class="p-2.5">H-Bonds</th>
+          <th class="p-2.5">Status</th>
+        </tr>
+      `;
+    }
+
     const tbody = document.getElementById("batch-leaderboard-rows");
     if (!tbody) return;
 
@@ -3404,6 +3422,24 @@ class BindoraApp {
   }
 
   renderEnsembleLeaderboard(res) {
+    const thead = document.getElementById("batch-table-head");
+    if (thead) {
+      thead.innerHTML = `
+        <tr>
+          <th class="p-2.5 text-center">Rank</th>
+          <th class="p-2.5">Target Conformation (PDB)</th>
+          <th class="p-2.5">Vina ΔG</th>
+          <th class="p-2.5">Vinardo</th>
+          <th class="p-2.5">Consensus</th>
+          <th class="p-2.5">Confidence</th>
+          <th class="p-2.5">Kd (nM)</th>
+          <th class="p-2.5">LE</th>
+          <th class="p-2.5">H-Bonds</th>
+          <th class="p-2.5">Status</th>
+        </tr>
+      `;
+    }
+
     const tbody = document.getElementById("batch-leaderboard-rows");
     if (!tbody) return;
 
@@ -3520,6 +3556,24 @@ class BindoraApp {
   }
 
   renderPharmacophoreLeaderboard(data) {
+    const thead = document.getElementById("batch-table-head");
+    if (thead) {
+      thead.innerHTML = `
+        <tr>
+          <th class="p-2.5 text-center">Rank</th>
+          <th class="p-2.5">Candidate</th>
+          <th class="p-2.5">Match %</th>
+          <th class="p-2.5">Aromatic / Hydrophobic</th>
+          <th class="p-2.5">Score (0-10)</th>
+          <th class="p-2.5">Profile Match</th>
+          <th class="p-2.5 text-slate-500">—</th>
+          <th class="p-2.5 text-slate-500">—</th>
+          <th class="p-2.5">Polar Features</th>
+          <th class="p-2.5">Status</th>
+        </tr>
+      `;
+    }
+
     const tbody = document.getElementById("batch-leaderboard-rows");
     if (!tbody) return;
 
