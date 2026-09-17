@@ -1758,16 +1758,20 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
         <!-- Mode 3: Pharmacophore Mode (Hidden by default, self-gating) -->
         <div id="panel-batch-pharmacophore" class="glass-panel p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 hidden">
           <div class="flex items-center justify-between">
-            <label class="text-xs font-bold text-purple-400 block">Active Ligand Pharmacophore:</label>
+            <label class="text-xs font-bold text-purple-400 block">Target Consensus Pharmacophore:</label>
             <span id="pharmacophore-actives-badge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800">ChEMBL Actives</span>
           </div>
           <p class="text-[11px] text-slate-400 leading-relaxed">
-            Screen candidate molecules against the 3D consensus chemical features derived from known active inhibitors.
+            Screen candidate molecules against 3D consensus chemical features derived from known active inhibitors.
           </p>
-          <div id="pharmacophore-profile-summary" class="p-2.5 rounded bg-slate-900/60 border border-slate-800 text-xs space-y-1 font-mono text-slate-300">
-            <span>Awaiting active profile...</span>
+          <div id="pharmacophore-profile-summary" class="p-3 rounded-lg bg-slate-900/60 border border-slate-800 text-xs space-y-2 text-slate-300">
+            <span class="text-slate-400 italic">Awaiting active profile...</span>
           </div>
-          <button id="btn-run-pharmacophore-screen" class="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center justify-center space-x-2">
+          <div class="flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-400">
+            <span>Candidate Source:</span>
+            <span class="text-purple-300 font-mono font-medium">Batch Library / Loaded API</span>
+          </div>
+          <button id="btn-run-pharmacophore-screen" class="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center justify-center space-x-2 shadow-lg shadow-purple-950/40">
             <span>Screen Candidates vs Pharmacophore</span>
           </button>
         </div>

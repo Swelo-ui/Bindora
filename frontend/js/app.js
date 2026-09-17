@@ -337,14 +337,12 @@ class BindoraApp {
         if (btn) {
           if (m === mode) {
             btn.className = m === 'pharmacophore' 
-              ? 'py-1 px-3 rounded font-medium bg-purple-600 text-white shadow transition'
+              ? 'py-1.5 px-3.5 rounded-md font-semibold text-xs bg-purple-600 text-white shadow-sm transition whitespace-nowrap'
               : m === 'ensemble'
-              ? 'py-1 px-3 rounded font-medium bg-emerald-600 text-white shadow transition'
-              : 'py-1 px-3 rounded font-medium bg-cyan-600 text-white shadow transition';
+              ? 'py-1.5 px-3.5 rounded-md font-semibold text-xs bg-emerald-600 text-white shadow-sm transition whitespace-nowrap'
+              : 'py-1.5 px-3.5 rounded-md font-semibold text-xs bg-cyan-600 text-white shadow-sm transition whitespace-nowrap';
           } else {
-            btn.className = m === 'pharmacophore'
-              ? 'py-1 px-3 rounded font-medium text-purple-600 dark:text-purple-300 hover:text-white border border-purple-800/40 bg-purple-950/20 transition'
-              : 'py-1 px-3 rounded font-medium text-slate-600 dark:text-slate-400 hover:text-white transition';
+            btn.className = 'py-1.5 px-3.5 rounded-md font-medium text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition whitespace-nowrap';
           }
         }
       });
@@ -3294,11 +3292,30 @@ class BindoraApp {
         if (badge) badge.textContent = `${data.actives_count} ChEMBL Actives`;
         if (summary && data.consensus_profile) {
           const reqs = data.consensus_profile.core_requirements || {};
-          const features = Object.entries(reqs).map(([f, cnt]) => `<span class="inline-block px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 mr-1 mb-1 font-mono text-[10px]">${f}: &ge;${cnt}</span>`).join("");
           const displayName = pdbId ? `${pdbId} (${r.uniprot?.protein_name || 'HIV-1 Protease'})` : targetName.substring(0, 35);
           summary.innerHTML = `
-            <div class="text-[11px] text-purple-300 font-semibold mb-1">Target: ${displayName} (${data.actives_count} actives)</div>
-            <div class="flex flex-wrap">${features || '<span class="text-slate-400">Consensus features mapped.</span>'}</div>
+            <div class="flex items-center justify-between pb-1.5 mb-2 border-b border-purple-900/40">
+              <span class="text-[11px] text-purple-300 font-semibold truncate" title="${displayName}">${displayName}</span>
+              <span class="text-[10px] text-purple-400 font-mono font-bold">${data.actives_count} Actives</span>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5 text-[11px]">
+              <div class="p-1.5 rounded bg-purple-950/40 border border-purple-800/60 flex items-center justify-between">
+                <span class="text-slate-400 text-[10px]">H-Donors:</span>
+                <span class="font-mono font-bold text-purple-300">&ge; ${reqs.Donor ?? 1}</span>
+              </div>
+              <div class="p-1.5 rounded bg-purple-950/40 border border-purple-800/60 flex items-center justify-between">
+                <span class="text-slate-400 text-[10px]">H-Acceptors:</span>
+                <span class="font-mono font-bold text-purple-300">&ge; ${reqs.Acceptor ?? 3}</span>
+              </div>
+              <div class="p-1.5 rounded bg-purple-950/40 border border-purple-800/60 flex items-center justify-between">
+                <span class="text-slate-400 text-[10px]">Aromatic:</span>
+                <span class="font-mono font-bold text-purple-300">&ge; ${reqs.Aromatic ?? 3}</span>
+              </div>
+              <div class="p-1.5 rounded bg-purple-950/40 border border-purple-800/60 flex items-center justify-between">
+                <span class="text-slate-400 text-[10px]">Hydrophobic:</span>
+                <span class="font-mono font-bold text-purple-300">&ge; ${reqs.Hydrophobe ?? 5}</span>
+              </div>
+            </div>
           `;
         }
       } else {
@@ -3556,20 +3573,21 @@ class BindoraApp {
   }
 
   renderPharmacophoreLeaderboard(data) {
+    const reqs = this.state.pharmacophore?.consensus_profile?.core_requirements || {};
     const thead = document.getElementById("batch-table-head");
     if (thead) {
       thead.innerHTML = `
-        <tr>
-          <th class="p-2.5 text-center">Rank</th>
-          <th class="p-2.5">Candidate</th>
-          <th class="p-2.5">Match %</th>
-          <th class="p-2.5">Aromatic / Hydrophobic</th>
-          <th class="p-2.5">Score (0-10)</th>
-          <th class="p-2.5">Profile Match</th>
-          <th class="p-2.5 text-slate-500">—</th>
-          <th class="p-2.5 text-slate-500">—</th>
-          <th class="p-2.5">Polar Features</th>
-          <th class="p-2.5">Status</th>
+        <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800 font-mono text-[11px] whitespace-nowrap">
+          <th class="py-3 px-2 text-center w-12">Rank</th>
+          <th class="py-3 px-3 min-w-[140px]">Candidate Compound</th>
+          <th class="py-3 px-2 text-center">Match %</th>
+          <th class="py-3 px-2 text-center">Score (0-10)</th>
+          <th class="py-3 px-2 text-center">Aromatic (${reqs.Aromatic ? '&ge;' + reqs.Aromatic : 'Aro'})</th>
+          <th class="py-3 px-2 text-center">Hydrophobic (${reqs.Hydrophobe ? '&ge;' + reqs.Hydrophobe : 'Hyd'})</th>
+          <th class="py-3 px-2 text-center">Donors (${reqs.Donor ? '&ge;' + reqs.Donor : 'HBD'})</th>
+          <th class="py-3 px-2 text-center">Acceptors (${reqs.Acceptor ? '&ge;' + reqs.Acceptor : 'HBA'})</th>
+          <th class="py-3 px-2.5 text-center">Alignment Profile</th>
+          <th class="py-3 px-2 text-center">Status</th>
         </tr>
       `;
     }
@@ -3591,26 +3609,43 @@ class BindoraApp {
       const alignTooltip = Object.entries(align).map(([k, v]) => `${k}: ${v}`).join("\n");
       const feats = c.candidate_features || {};
 
+      const aroMet = (feats.Aromatic ?? 0) >= (reqs.Aromatic || 1);
+      const hydMet = (feats.Hydrophobe ?? 0) >= (reqs.Hydrophobe || 1);
+      const donMet = (feats.Donor ?? 0) >= (reqs.Donor || 1);
+      const accMet = (feats.Acceptor ?? 0) >= (reqs.Acceptor || 1);
+
       return `
-        <tr class="border-b border-slate-800 hover:bg-slate-800/50">
-          <td class="p-2.5 font-bold text-center text-purple-400">#${idx + 1}</td>
-          <td class="p-2.5 font-semibold text-white font-sans" title="${c.smiles}">
-            <span class="text-purple-300 font-mono">${c.name}</span>
-            <span class="text-[10px] text-slate-400 block truncate max-w-xs">${c.smiles}</span>
+        <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition">
+          <td class="py-2.5 px-2 font-bold text-center text-purple-400 font-mono align-middle">#${idx + 1}</td>
+          <td class="py-2.5 px-3 font-sans align-middle max-w-[180px]" title="${c.smiles}">
+            <span class="text-white font-semibold text-xs block truncate">${c.name}</span>
+            <span class="text-[10px] text-slate-400 font-mono block truncate">${c.smiles}</span>
           </td>
-          <td class="p-2.5 font-mono font-bold ${isStrong ? 'text-emerald-400' : isModerate ? 'text-purple-300' : 'text-slate-400'}">${matchPct.toFixed(1)}%</td>
-          <td class="p-2.5 font-mono text-cyan-300 text-xs" title="${alignTooltip}">${feats.Aromatic ?? 0} Aro / ${feats.Hydrophobe ?? 0} Hyd</td>
-          <td class="p-2.5 font-mono font-bold text-purple-300">${(matchPct / 10).toFixed(1)} / 10</td>
-          <td class="p-2.5">
-            <span class="px-1.5 py-0.5 rounded ${isStrong ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : isModerate ? 'bg-purple-950 text-purple-300 border border-purple-800' : 'bg-slate-800 text-slate-400 border border-slate-700'} text-[10px] font-bold inline-block cursor-help" title="${alignTooltip}">
-              ${c.status || (isStrong ? 'Strong Match' : 'Partial')}
+          <td class="py-2.5 px-2 font-mono font-bold text-center align-middle whitespace-nowrap ${isStrong ? 'text-emerald-400' : isModerate ? 'text-purple-300' : 'text-slate-400'}">
+            ${matchPct.toFixed(1)}%
+          </td>
+          <td class="py-2.5 px-2 font-mono font-bold text-center align-middle whitespace-nowrap text-purple-300">
+            ${(matchPct / 10).toFixed(1)} / 10
+          </td>
+          <td class="py-2.5 px-2 font-mono text-center align-middle whitespace-nowrap ${aroMet ? 'text-emerald-300 font-semibold' : 'text-slate-400'}">
+            ${feats.Aromatic ?? 0}
+          </td>
+          <td class="py-2.5 px-2 font-mono text-center align-middle whitespace-nowrap ${hydMet ? 'text-emerald-300 font-semibold' : 'text-slate-400'}">
+            ${feats.Hydrophobe ?? 0}
+          </td>
+          <td class="py-2.5 px-2 font-mono text-center align-middle whitespace-nowrap ${donMet ? 'text-emerald-300 font-semibold' : 'text-slate-400'}">
+            ${feats.Donor ?? 0}
+          </td>
+          <td class="py-2.5 px-2 font-mono text-center align-middle whitespace-nowrap ${accMet ? 'text-emerald-300 font-semibold' : 'text-slate-400'}">
+            ${feats.Acceptor ?? 0}
+          </td>
+          <td class="py-2.5 px-2.5 text-center align-middle whitespace-nowrap">
+            <span class="px-2 py-0.5 rounded-full ${isStrong ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : isModerate ? 'bg-purple-950 text-purple-300 border border-purple-800' : 'bg-slate-800 text-slate-400 border border-slate-700'} text-[10px] font-bold inline-block cursor-help" title="${alignTooltip}">
+              ${isStrong ? 'Strong Match' : isModerate ? 'Moderate Match' : 'Low Match'}
             </span>
           </td>
-          <td class="p-2.5 font-mono text-slate-400">—</td>
-          <td class="p-2.5 font-mono text-slate-400">—</td>
-          <td class="p-2.5 font-mono text-purple-300">${feats.Acceptor ?? 0} HBA / ${feats.Donor ?? 0} HBD</td>
-          <td class="p-2.5 text-[10px]">
-            <span class="px-1.5 py-0.5 rounded ${isStrong ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800' : 'bg-slate-800 text-slate-300 border border-slate-700'}">
+          <td class="py-2.5 px-2 text-center align-middle whitespace-nowrap">
+            <span class="px-2 py-0.5 rounded ${isStrong ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800 text-slate-400 border border-slate-700'} text-[10px] font-bold tracking-wider uppercase">
               ${isStrong ? 'Pass' : 'Sub-match'}
             </span>
           </td>
