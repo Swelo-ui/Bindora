@@ -3,7 +3,11 @@ from typing import Dict, Any, List, Optional
 from rdkit import Chem
 from rdkit.Chem import Descriptors, Lipinski, Crippen, FilterCatalog
 
-# Initialize PAINS and Brenk structural alert catalogs once for efficiency
+from backend.utils import sascorer
+from pathlib import Path
+import json
+
+# Initialize PAINS, Brenk, NIH, and ZINC structural alert catalogs once for efficiency
 _pains_params = FilterCatalog.FilterCatalogParams()
 _pains_params.AddCatalog(FilterCatalog.FilterCatalogParams.FilterCatalogs.PAINS_A)
 _pains_params.AddCatalog(FilterCatalog.FilterCatalogParams.FilterCatalogs.PAINS_B)
@@ -13,6 +17,44 @@ _pains_catalog = FilterCatalog.FilterCatalog(_pains_params)
 _brenk_params = FilterCatalog.FilterCatalogParams()
 _brenk_params.AddCatalog(FilterCatalog.FilterCatalogParams.FilterCatalogs.BRENK)
 _brenk_catalog = FilterCatalog.FilterCatalog(_brenk_params)
+
+_nih_params = FilterCatalog.FilterCatalogParams()
+_nih_params.AddCatalog(FilterCatalog.FilterCatalogParams.FilterCatalogs.NIH)
+_nih_catalog = FilterCatalog.FilterCatalog(_nih_params)
+
+_zinc_params = FilterCatalog.FilterCatalogParams()
+_zinc_params.AddCatalog(FilterCatalog.FilterCatalogParams.FilterCatalogs.ZINC)
+_zinc_catalog = FilterCatalog.FilterCatalog(_zinc_params)
+
+# Load BOILED-Egg 101-point polygon coordinates from Daina & Zoete (2016) ChemMedChem SI
+_BOILED_EGG_FILE = Path(__file__).resolve().parent / "boiled_egg_coords.json"
+if _BOILED_EGG_FILE.exists():
+    with open(_BOILED_EGG_FILE, "r", encoding="utf-8") as _f:
+        _egg_data = json.load(_f)
+        _GIA_COORDS = _egg_data.get("gia_coords", [])
+        _BBB_COORDS = _egg_data.get("bbb_coords", [])
+else:
+    _GIA_COORDS = []
+    _BBB_COORDS = []
+
+def _point_in_polygon(x: float, y: float, poly: List[List[float]]) -> bool:
+    """Ray-casting algorithm to determine if a point (x, y) is inside a polygon."""
+    if not poly:
+        return False
+    n = len(poly)
+    inside = False
+    p1x, p1y = poly[0]
+    for i in range(n + 1):
+        p2x, p2y = poly[i % n]
+        if y > min(p1y, p2y):
+            if y <= max(p1y, p2y):
+                if x <= max(p1x, p2x):
+                    if p1y != p2y:
+                        xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                    if p1x == p2x or x <= xinters:
+                        inside = not inside
+        p1x, p1y = p2x, p2y
+    return inside
 
 # Common CYP structural alert SMARTS
 _CYP_ALERTS = {
@@ -90,14 +132,28 @@ class ADMEProfiler:
             ghose_violations.append(f"Total atoms outside 20-70 ({total_atoms})")
         ghose_pass = len(ghose_violations) == 0
 
-        # 4. Pharmacokinetic estimations (GI Absorption & BBB Permeation via Egan BOILED-Egg model)
-        # BOILED-Egg ellipse criteria: TPSA <= 131.6 and -0.4 <= LogP <= 5.6 indicates high GI absorption
-        gi_high = (tpsa <= 131.6) and (-0.4 <= logp <= 5.6)
+        # 4. Pharmacokinetic estimations (GI Absorption & BBB Permeation via published BOILED-Egg model)
+        # Exact 101-point ellipse coordinates from Daina & Zoete, ChemMedChem 2016
+        tpsa_sandp = Descriptors.TPSA(mol, includeSandP=True)
+        wlogp = round(Descriptors.MolLogP(mol), 2)
+        gi_high = _point_in_polygon(tpsa_sandp, wlogp, _GIA_COORDS)
         gi_absorption = "High" if gi_high else "Moderate / Low"
 
-        # BBB permeability: TPSA < 90 Å², MW < 400 Da, 1.2 <= LogP <= 3.2
-        bbb_permeant = (tpsa < 90.0) and (mw < 400.0) and (1.0 <= logp <= 3.5)
+        bbb_permeant = _point_in_polygon(tpsa_sandp, wlogp, _BBB_COORDS)
         bbb_status = "Permeant (Likely crosses BBB)" if bbb_permeant else "Non-permeant (Low CNS penetration likelihood)"
+
+        # 5. Synthetic Accessibility Score (SAScore: 1.0 easy to 10.0 difficult)
+        sa_score_raw = sascorer.calculateScore(mol)
+        sa_score = round(sa_score_raw, 2) if sa_score_raw is not None else None
+        if sa_score is not None:
+            if sa_score < 3.0:
+                sa_desc = "Easy synthetic accessibility"
+            elif sa_score <= 6.0:
+                sa_desc = "Moderate synthetic accessibility"
+            else:
+                sa_desc = "Difficult / complex synthesis"
+        else:
+            sa_desc = "N/A"
 
         # Plasma Protein Binding (PPB) heuristic
         if logp > 3.5:
@@ -129,6 +185,16 @@ class ADMEProfiler:
         brenk_matches = _brenk_catalog.GetMatches(mol)
         brenk_list = [entry.GetDescription() for entry in brenk_matches]
 
+        # NIH Screening alert catalog (reactive / unwanted groups)
+        nih_matches = _nih_catalog.GetMatches(mol)
+        nih_list = [entry.GetDescription() for entry in nih_matches]
+
+        # ZINC Screening alert catalog (problematic / aggregator chemotypes)
+        zinc_matches = _zinc_catalog.GetMatches(mol)
+        zinc_list = [entry.GetDescription() for entry in zinc_matches]
+
+        total_alerts = len(pains_list) + len(brenk_list) + len(nih_list) + len(zinc_list)
+
         return {
             "physicochemical": {
                 "molecular_weight": {"value": mw, "unit": "g/mol", "description": "Molecular Weight"},
@@ -140,7 +206,14 @@ class ADMEProfiler:
                 "molar_refractivity": {"value": mr, "unit": "cm³/mol", "description": "Molar Refractivity"},
                 "heavy_atoms": {"value": heavy_atoms, "unit": "count", "description": "Non-hydrogen heavy atoms"},
                 "aromatic_rings": {"value": aromatic_rings, "unit": "count", "description": "Aromatic ring systems"},
-                "fsp3": {"value": fsp3, "unit": "ratio", "description": "Carbon saturation index (sp3 carbons / total carbons)"}
+                "fsp3": {"value": fsp3, "unit": "ratio", "description": "Carbon saturation index (sp3 carbons / total carbons)"},
+                "sascore": {
+                    "value": sa_score,
+                    "unit": "scale 1-10",
+                    "interpretation": sa_desc,
+                    "description": "Synthetic Accessibility Score (1=easy, 10=very difficult)",
+                    "citation": "Ertl & Schuffenhauer, J. Cheminform. 2009"
+                }
             },
             "drug_likeness": {
                 "lipinski": {
@@ -168,13 +241,13 @@ class ADMEProfiler:
             "pharmacokinetics": {
                 "gi_absorption": {
                     "level": gi_absorption,
-                    "model": "BOILED-Egg / Egan Ellipse criteria (WLogP & TPSA)",
-                    "citation": "Daina & Zoete, ChemMedChem 2016; Egan et al., J. Med. Chem. 2000"
+                    "model": "BOILED-Egg published ellipse model (WLogP & TPSA)",
+                    "citation": "Daina & Zoete, ChemMedChem 2016, 11, 1117-1121"
                 },
                 "bbb_permeation": {
                     "status": bbb_status,
-                    "model": "Clark's polar surface area (<90 Å²) & molecular size heuristic",
-                    "citation": "Clark, Drug Discov Today 2003"
+                    "model": "BOILED-Egg yolk ellipse model (WLogP & TPSA)",
+                    "citation": "Daina & Zoete, ChemMedChem 2016, 11, 1117-1121"
                 },
                 "plasma_protein_binding": {
                     "tier": ppb_tier,
@@ -190,6 +263,8 @@ class ADMEProfiler:
                 }
             },
             "medicinal_chemistry_safety": {
+                "total_alerts_count": total_alerts,
+                "overall_status": "Clean (No alerts)" if total_alerts == 0 else f"{total_alerts} alert(s) across 4 catalogs",
                 "pains_alerts": {
                     "count": len(pains_list),
                     "alerts": pains_list,
@@ -198,9 +273,21 @@ class ADMEProfiler:
                 },
                 "brenk_alerts": {
                     "count": len(brenk_list),
-                    "alerts": brenk_list[:5], # top 5
+                    "alerts": brenk_list[:5],
                     "status": "Clear" if len(brenk_list) == 0 else f"{len(brenk_list)} structural alert(s)",
                     "citation": "Brenk et al., ChemMedChem 2008"
+                },
+                "nih_alerts": {
+                    "count": len(nih_list),
+                    "alerts": nih_list[:5],
+                    "status": "Clear" if len(nih_list) == 0 else f"{len(nih_list)} NIH alert(s)",
+                    "citation": "NIH Molecular Libraries Program Clinical Alerts"
+                },
+                "zinc_alerts": {
+                    "count": len(zinc_list),
+                    "alerts": zinc_list[:5],
+                    "status": "Clear" if len(zinc_list) == 0 else f"{len(zinc_list)} ZINC alert(s)",
+                    "citation": "Irwin & Shoichet, J. Chem. Inf. Model. 2005"
                 }
             }
         }

@@ -328,6 +328,40 @@ class BindoraApp {
       batchBtn.addEventListener("click", () => this.runBatchScreening());
     }
 
+    // Batch Mode Switching (Candidates / Ensemble / Pharmacophore)
+    const setBatchMode = (mode) => {
+      ['candidates', 'ensemble', 'pharmacophore'].forEach(m => {
+        const panel = document.getElementById(`panel-batch-${m}`);
+        const btn = document.getElementById(`btn-batch-mode-${m}`);
+        if (panel) panel.classList.toggle('hidden', m !== mode);
+        if (btn) {
+          if (m === mode) {
+            btn.className = m === 'pharmacophore' 
+              ? 'py-1 px-3 rounded font-medium bg-purple-600 text-white shadow transition'
+              : m === 'ensemble'
+              ? 'py-1 px-3 rounded font-medium bg-emerald-600 text-white shadow transition'
+              : 'py-1 px-3 rounded font-medium bg-cyan-600 text-white shadow transition';
+          } else {
+            btn.className = m === 'pharmacophore'
+              ? 'py-1 px-3 rounded font-medium text-purple-600 dark:text-purple-300 hover:text-white border border-purple-800/40 bg-purple-950/20 transition'
+              : 'py-1 px-3 rounded font-medium text-slate-600 dark:text-slate-400 hover:text-white transition';
+          }
+        }
+      });
+      if (mode === 'ensemble') {
+        this.loadEnsembleStructures();
+      }
+    };
+    document.getElementById("btn-batch-mode-candidates")?.addEventListener("click", () => setBatchMode('candidates'));
+    document.getElementById("btn-batch-mode-ensemble")?.addEventListener("click", () => setBatchMode('ensemble'));
+    document.getElementById("btn-batch-mode-pharmacophore")?.addEventListener("click", () => setBatchMode('pharmacophore'));
+
+    // Ensemble run trigger
+    document.getElementById("btn-run-ensemble")?.addEventListener("click", () => this.runEnsembleDocking());
+
+    // Pharmacophore screen trigger
+    document.getElementById("btn-run-pharmacophore-screen")?.addEventListener("click", () => this.runPharmacophoreScreen());
+
     // Batch Library Presets
     const librarySelect = document.getElementById("select-batch-library");
     const batchTextarea = document.getElementById("input-batch-candidates");
@@ -766,6 +800,11 @@ class BindoraApp {
     if (tabId === "ai-narrative" && this.state.docking && !this.state.narrative) {
       this.generateNarrativeReport();
     }
+
+    // If switching to batch tab, check pharmacophore eligibility
+    if (tabId === "batch") {
+      this.checkPharmacophoreEligibility();
+    }
   }
 
   showToast(message, type = "info") {
@@ -1065,6 +1104,8 @@ class BindoraApp {
         title: bm.target_name,
         ...recRes
       };
+      this.checkPharmacophoreEligibility();
+      this.state.ensembleStructures = null;
 
       // 3. Update UI
       this.updateStudioCards();
@@ -1135,6 +1176,8 @@ class BindoraApp {
           ...entry,
           ...recPrep
         };
+        this.checkPharmacophoreEligibility();
+        this.state.ensembleStructures = null;
         this.updateStudioCards();
         this.updatePathwayInfo();
         this.updateDossierView();
@@ -1151,6 +1194,8 @@ class BindoraApp {
           ...first,
           ...recPrep
         };
+        this.checkPharmacophoreEligibility();
+        this.state.ensembleStructures = null;
         this.updateStudioCards();
         this.updatePathwayInfo();
         this.updateDossierView();
@@ -1290,6 +1335,8 @@ class BindoraApp {
         pdb_content: pdbContent,
         ...recPrep
       };
+      this.checkPharmacophoreEligibility();
+      this.state.ensembleStructures = null;
       this.updateStudioCards();
       this.updatePathwayInfo();
       this.updateDossierView();
@@ -1330,7 +1377,10 @@ class BindoraApp {
     this.state.crosscheck = null;
     this.state.narrative = null;
     this.state.redockingValidation = null;
+    this.state.ensembleStructures = null;
+    this.state.pharmacophore = null;
     this.state.currentPoseIdx = 0;
+    document.getElementById("btn-batch-mode-pharmacophore")?.classList.add("hidden");
 
     if (this.viewer) {
       this.viewer.clear();
@@ -1436,8 +1486,17 @@ class BindoraApp {
               <div>RotB: <span class="font-semibold text-white">${p.rotatable_bonds?.value ?? l.rotatable_bonds ?? "—"}</span></div>
               <div>TPSA: <span class="font-semibold text-white">${p.tpsa?.value ?? "—"} Å²</span></div>
             </div>
+            <div class="pt-2 border-t border-slate-700/60 flex flex-col space-y-1.5">
+              <button id="btn-find-similar" class="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center space-x-1 font-medium transition cursor-pointer self-start">
+                <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <span>Find similar compounds (PubChem)</span>
+              </button>
+              <div id="similar-compounds-container" class="hidden space-y-1.5 pt-1"></div>
+            </div>
           </div>
         `;
+
+        document.getElementById("btn-find-similar")?.addEventListener("click", () => this.findSimilarCompounds());
       } else {
         ligCard.innerHTML = `<p class="text-xs text-slate-400 italic">No ligand loaded yet. Search PubChem or pick a benchmark above.</p>`;
       }
@@ -1450,6 +1509,9 @@ class BindoraApp {
         const r = this.state.receptor;
         const pocket = r.detected_pocket || {};
         const redock = this.state.redockingValidation;
+        const hasNative = r.native_ligand?.has_native;
+        const detectedPockets = r.detected_pockets || [];
+
         const validationHtml = redock ? `
           <div class="mt-2 pt-2 border-t border-slate-700/60 flex items-center justify-between">
             <span class="text-[11px] text-slate-400">Protocol Validation:</span>
@@ -1457,12 +1519,56 @@ class BindoraApp {
               ${redock.validation_badge} (RMSD ${redock.rmsd_angstroms} Å)
             </span>
           </div>
-        ` : (r.native_ligand?.has_native ? `
+        ` : (hasNative ? `
           <div class="mt-2 pt-2 border-t border-slate-700/60 flex items-center justify-between">
             <span class="text-[11px] text-slate-400">Protocol Validation:</span>
             <span id="rec-val-status" class="text-[10px] text-cyan-400 flex items-center"><svg class="animate-spin -ml-1 mr-1.5 h-3 w-3 inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Validating native ligand...</span>
           </div>
         ` : '');
+
+        let pocketHtml = '';
+        if (hasNative) {
+          pocketHtml = `
+            <div class="text-xs text-slate-400 pt-2 border-t border-slate-700/60 space-y-1">
+              <div>Binding Pocket: <span class="text-emerald-300 font-medium">${pocket.description || "Auto-centered on co-crystallized native ligand pocket"}</span></div>
+              <div class="font-mono text-[11px] text-slate-400">
+                Center: (${pocket.center?.x}, ${pocket.center?.y}, ${pocket.center?.z}) | Size: (${pocket.size?.x}, ${pocket.size?.y}, ${pocket.size?.z})
+              </div>
+            </div>
+          `;
+        } else if (detectedPockets.length > 0) {
+          pocketHtml = `
+            <div class="text-xs text-slate-400 pt-2 border-t border-slate-700/60 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-amber-300 font-semibold flex items-center space-x-1">
+                  <svg class="w-3.5 h-3.5 text-amber-400 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span>Blind Pocket Selection</span>
+                </span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/60">${detectedPockets.length} candidate pockets (fpocket)</span>
+              </div>
+              <p class="text-[11px] text-slate-400 leading-tight">No native ligand found — select candidate pocket ranked by druggability:</p>
+              <select id="select-detected-pocket" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-xs text-slate-200">
+                ${detectedPockets.map((p, idx) => `
+                  <option value="${idx}" ${idx === (r.selected_pocket_idx || 0) ? 'selected' : ''}>
+                    Pocket #${p.rank || idx + 1}: Druggability ${(p.druggability_score || 0).toFixed(2)} (Vol: ${Math.round(p.volume_a3 || 0)} Å³)
+                  </option>
+                `).join('')}
+              </select>
+              <div class="font-mono text-[11px] text-slate-400">
+                Center: (${pocket.center?.x}, ${pocket.center?.y}, ${pocket.center?.z}) | Size: (${pocket.size?.x}, ${pocket.size?.y}, ${pocket.size?.z})
+              </div>
+            </div>
+          `;
+        } else {
+          pocketHtml = `
+            <div class="text-xs text-slate-400 pt-2 border-t border-slate-700/60 space-y-1">
+              <div>Binding Pocket: <span class="text-emerald-300 font-medium">${pocket.description || "Auto-detected"}</span></div>
+              <div class="font-mono text-[11px] text-slate-400">
+                Center: (${pocket.center?.x}, ${pocket.center?.y}, ${pocket.center?.z}) | Size: (${pocket.size?.x}, ${pocket.size?.y}, ${pocket.size?.z})
+              </div>
+            </div>
+          `;
+        }
 
         recCard.innerHTML = `
           <div class="space-y-2">
@@ -1471,15 +1577,37 @@ class BindoraApp {
               <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono">${r.atom_count || 0} atoms</span>
             </div>
             <p class="text-xs text-slate-300 font-medium">${r.title || "Macromolecular target"}</p>
-            <div class="text-xs text-slate-400 pt-2 border-t border-slate-700/60 space-y-1">
-              <div>Binding Pocket: <span class="text-emerald-300 font-medium">${pocket.description || "Auto-detected"}</span></div>
-              <div class="font-mono text-[11px] text-slate-400">
-                Center: (${pocket.center?.x}, ${pocket.center?.y}, ${pocket.center?.z}) | Size: (${pocket.size?.x}, ${pocket.size?.y}, ${pocket.size?.z})
-              </div>
-            </div>
+            ${pocketHtml}
             ${validationHtml}
           </div>
         `;
+
+        const pocketSelect = document.getElementById("select-detected-pocket");
+        if (pocketSelect) {
+          pocketSelect.addEventListener("change", (e) => {
+            const idx = parseInt(e.target.value, 10);
+            const selPocket = detectedPockets[idx];
+            if (selPocket) {
+              r.selected_pocket_idx = idx;
+              r.detected_pocket = {
+                center: selPocket.center,
+                size: selPocket.size,
+                description: selPocket.description || `Pocket #${selPocket.rank} (Druggability: ${(selPocket.druggability_score || 0).toFixed(2)})`
+              };
+              const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+              setVal("grid-cx", selPocket.center?.x || 0);
+              setVal("grid-cy", selPocket.center?.y || 0);
+              setVal("grid-cz", selPocket.center?.z || 0);
+              setVal("grid-sx", selPocket.size?.x || 22);
+              setVal("grid-sy", selPocket.size?.y || 22);
+              setVal("grid-sz", selPocket.size?.z || 22);
+              if (this.viewer && this.viewer.renderGridBox) {
+                this.viewer.renderGridBox(selPocket.center, selPocket.size);
+              }
+              this.updateStudioCards();
+            }
+          });
+        }
 
         // Auto-trigger redocking validation if native ligand detected and not yet cached/run
         if (r.native_ligand?.has_native && !this.state.redockingValidation && !this._redockingRunning) {
@@ -1747,7 +1875,10 @@ class BindoraApp {
 
       const p = this.state.ligand.adme?.physicochemical || {};
 
-      const dockResult = await BindoraAPI.runDocking({
+      const flexCheckboxes = document.querySelectorAll("#flex-residues-container input[type='checkbox']:checked");
+      const flexResidues = Array.from(flexCheckboxes).map(cb => cb.value);
+
+      const dockPayload = {
         receptor_pdbqt: this.state.receptor.pdbqt_text,
         receptor_pdb: this.state.receptor.cleaned_pdb,
         ligand_pdbqt: this.state.ligand.pdbqt_text,
@@ -1759,7 +1890,12 @@ class BindoraApp {
         heavy_atoms: p.heavy_atoms?.value || this.state.ligand.heavy_atom_count || 20,
         molecular_weight: p.molecular_weight?.value || this.state.ligand.weight || 300.0,
         smiles: this.state.ligand.canonical_smiles || this.state.ligand.smiles || ""
-      });
+      };
+      if (flexResidues.length > 0) {
+        dockPayload.flexible_residues = flexResidues;
+      }
+
+      const dockResult = await BindoraAPI.runDocking(dockPayload);
 
       this.state.docking = dockResult;
       this.state.currentPoseIdx = 0;
@@ -1770,6 +1906,11 @@ class BindoraApp {
         if (dockResult.interactions) {
           this.viewer.renderInteractions(dockResult.interactions);
         }
+      }
+
+      // Populate flexible active site residues for user inspection / induced-fit tuning
+      if (dockResult.interactions?.flexible_candidates) {
+        this.updateFlexibleResiduesUI(dockResult.interactions.flexible_candidates);
       }
 
       // Render pose score badges
@@ -1938,6 +2079,10 @@ class BindoraApp {
       if (diagramContainer && contacts.diagram_svg) {
         diagramContainer.innerHTML = contacts.diagram_svg;
         this.setupDiagramPanZoom(diagramContainer);
+      }
+
+      if (contacts?.flexible_candidates) {
+        this.updateFlexibleResiduesUI(contacts.flexible_candidates);
       }
     } catch (e) {
       console.warn("Could not re-analyze pose interactions:", e);
@@ -2316,18 +2461,24 @@ class BindoraApp {
     setVal("adme-hba-val", p.hba?.value ?? "—");
     setVal("adme-rotb-val", p.rotatable_bonds?.value ?? "—");
     setVal("adme-tpsa-val", p.tpsa?.value ?? "—");
+    setVal("adme-sascore-val", p.sascore?.value != null ? `${p.sascore.value}` : "—");
+    const sasEl = document.getElementById("adme-sascore-val");
+    if (sasEl && p.sascore?.interpretation) {
+      sasEl.title = `${p.sascore.interpretation} (Ertl & Schuffenhauer 2009)`;
+    }
 
-    setVal("adme-gi-val", pk.gi_absorption?.level || "—");
+    setVal("adme-gi-val", pk.gi_absorption?.level || pk.gi_absorption?.status || "—");
     setVal("adme-bbb-val", pk.bbb_permeation?.status?.split(" ")[0] || "—");
     setVal("adme-ppb-val", pk.plasma_protein_binding?.tier?.split(" ")[0] || "—");
 
-    // PAINS / Brenk Alerts
+    // Structural Alerts (PAINS, Brenk, NIH, ZINC)
     const safety = adme.medicinal_chemistry_safety || {};
-    const pains = safety.pains_alerts || {};
     const painsEl = document.getElementById("adme-pains-val");
     if (painsEl) {
-      painsEl.textContent = pains.status || "Clear";
-      painsEl.className = pains.count > 0 ? "font-bold text-rose-400" : "font-bold text-emerald-400";
+      const totalAlerts = safety.total_alerts_count ?? (safety.pains_alerts?.count || 0);
+      const statusText = safety.overall_status || (totalAlerts === 0 ? "Clean (0 alerts)" : `${totalAlerts} Alert(s) Detected`);
+      painsEl.textContent = statusText;
+      painsEl.className = totalAlerts > 0 ? "font-bold text-rose-400" : "font-bold text-emerald-400";
     }
 
     // CYP450 Heuristic Liability
@@ -2988,5 +3139,401 @@ class BindoraApp {
         </tr>
       `;
     }).join("");
+
+    const sub = document.getElementById("batch-matrix-subtitle");
+    if (sub) sub.textContent = "Consensus = ΔG (50%) + LE (scaled) + H-Bond Bonus";
+  }
+
+  updateFlexibleResiduesUI(flexCandidates) {
+    const container = document.getElementById("flex-residues-container");
+    if (!container) return;
+    if (!flexCandidates || flexCandidates.length === 0) {
+      if (!container.querySelector("input[type='checkbox']")) {
+        container.innerHTML = `<span class="text-[11px] text-slate-500 italic">No contacting active site residues detected yet.</span>`;
+      }
+      return;
+    }
+    const previouslyChecked = new Set(
+      Array.from(container.querySelectorAll("input[type='checkbox']:checked")).map(cb => cb.value)
+    );
+    container.innerHTML = flexCandidates.map(c => `
+      <label class="inline-flex items-center space-x-1.5 px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 cursor-pointer transition text-[11px]">
+        <input type="checkbox" value="${c.id}" ${previouslyChecked.has(c.id) ? 'checked' : ''} class="rounded text-cyan-500 focus:ring-0 focus:ring-offset-0 bg-slate-900 border-slate-600">
+        <span class="font-mono text-cyan-300 font-medium">${c.res_name} ${c.res_num}</span>
+        <span class="text-[10px] text-slate-400">(${c.chain})</span>
+      </label>
+    `).join("");
+  }
+
+  async findSimilarCompounds() {
+    const l = this.state.ligand;
+    if (!l) {
+      this.showToast("Please load a ligand first.", "error");
+      return;
+    }
+    const smiles = l.canonical_smiles || l.smiles || "";
+    if (!smiles) {
+      this.showToast("No valid SMILES available for current ligand.", "error");
+      return;
+    }
+    const container = document.getElementById("similar-compounds-container");
+    if (!container) return;
+    container.classList.remove("hidden");
+    container.innerHTML = `<div class="text-[11px] text-cyan-400 animate-pulse flex items-center space-x-1.5 py-1">
+      <svg class="animate-spin w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+      <span>Searching PubChem 2D fast similarity (≥85%)...</span>
+    </div>`;
+
+    try {
+      const res = await BindoraAPI.getSimilarCompounds(smiles, 85, 5);
+      const compounds = res.similar_compounds || [];
+      if (compounds.length === 0) {
+        container.innerHTML = `<span class="text-[11px] text-slate-400 italic">No similar compounds found in PubChem at &ge;85% Tanimoto threshold.</span>`;
+        return;
+      }
+      container.innerHTML = `
+        <div class="text-[11px] font-semibold text-cyan-300 mb-1 flex items-center justify-between">
+          <span>Found ${compounds.length} Similar Analogues (PubChem):</span>
+          <button onclick="document.getElementById('similar-compounds-container').classList.add('hidden')" class="text-slate-400 hover:text-white text-xs">&times;</button>
+        </div>
+        <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+          ${compounds.map(c => `
+            <div class="p-2 rounded bg-slate-800/80 border border-slate-700/60 flex items-center justify-between text-[11px]">
+              <div class="truncate mr-2">
+                <span class="font-bold text-white block truncate" title="${c.title || `CID ${c.cid}`}">${c.title || `CID ${c.cid}`}</span>
+                <span class="text-[10px] text-slate-400 font-mono">MW: ${c.molecular_weight || '—'} Da | CID: ${c.cid}</span>
+              </div>
+              <div class="flex items-center space-x-1 flex-shrink-0">
+                <button onclick="window.bindoraApp.loadSimilarAsLigand('${encodeURIComponent(c.smiles)}', '${encodeURIComponent(c.title || `CID ${c.cid}`)}')" class="px-2 py-0.5 rounded bg-cyan-700 hover:bg-cyan-600 text-white text-[10px] font-medium transition cursor-pointer">Use</button>
+                <button onclick="window.bindoraApp.addSimilarToBatch('${encodeURIComponent(c.title || `CID ${c.cid}`)}', '${encodeURIComponent(c.smiles)}')" class="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-cyan-300 text-[10px] font-medium transition cursor-pointer">+ Batch</button>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    } catch (e) {
+      container.innerHTML = `<span class="text-[11px] text-rose-400">Similarity search failed: ${e.message}</span>`;
+    }
+  }
+
+  async loadSimilarAsLigand(encodedSmiles, encodedName) {
+    const smiles = decodeURIComponent(encodedSmiles);
+    const name = decodeURIComponent(encodedName);
+    this.showToast(`Loading similar compound: ${name}...`, "info");
+    try {
+      const ligPrep = await BindoraAPI.prepareLigand(smiles, false);
+      this.state.ligand = {
+        name: name,
+        smiles: smiles,
+        weight: ligPrep.adme?.physicochemical?.molecular_weight?.value,
+        ...ligPrep
+      };
+      this.updateStudioCards();
+      this.updateDossierView();
+      if (this.viewer && ligPrep.pdb_block) {
+        this.viewer.loadLigand(ligPrep.pdb_block);
+      }
+      this.showToast(`Loaded ${name} as active ligand!`, "success");
+    } catch (e) {
+      this.showToast(`Failed to load compound: ${e.message}`, "error");
+    }
+  }
+
+  addSimilarToBatch(encodedName, encodedSmiles) {
+    const name = decodeURIComponent(encodedName);
+    const smiles = decodeURIComponent(encodedSmiles);
+    const batchInput = document.getElementById("input-batch-candidates");
+    if (batchInput) {
+      const existing = batchInput.value.trim();
+      batchInput.value = (existing ? existing + "\n" : "") + `${name}, ${smiles}`;
+      this.showToast(`Added '${name}' to batch candidate list!`, "success");
+    }
+  }
+
+  async checkPharmacophoreEligibility() {
+    const r = this.state.receptor;
+    const btn = document.getElementById("btn-batch-mode-pharmacophore");
+    if (!r) {
+      if (btn) btn.classList.add("hidden");
+      return;
+    }
+    const targetName = r.title || r.pdb_id || "";
+    const chemblId = r.chembl_id || "";
+    try {
+      const data = await BindoraAPI.getPharmacophoreActives(targetName, chemblId, 10);
+      if (data.eligible && data.actives_count >= 3) {
+        this.state.pharmacophore = data;
+        if (btn) btn.classList.remove("hidden");
+        const badge = document.getElementById("pharmacophore-actives-badge");
+        if (badge) badge.textContent = `${data.actives_count} ChEMBL Actives`;
+        const summary = document.getElementById("pharmacophore-profile-summary");
+        if (summary && data.consensus_profile) {
+          const reqs = data.consensus_profile.core_requirements || {};
+          const features = Object.entries(reqs).map(([f, cnt]) => `<span class="inline-block px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 mr-1 mb-1 font-mono text-[10px]">${f}: &ge;${cnt}</span>`).join("");
+          summary.innerHTML = `
+            <div class="text-[11px] text-purple-300 font-semibold mb-1">Target: ${targetName.substring(0, 35)} (${data.actives_count} actives)</div>
+            <div class="flex flex-wrap">${features || '<span class="text-slate-400">Consensus features mapped.</span>'}</div>
+          `;
+        }
+      } else {
+        if (btn) btn.classList.add("hidden");
+      }
+    } catch (e) {
+      if (btn) btn.classList.add("hidden");
+    }
+  }
+
+  async loadEnsembleStructures() {
+    const listEl = document.getElementById("ensemble-structures-list");
+    const r = this.state.receptor;
+    if (!r) {
+      if (listEl) listEl.innerHTML = `<span class="text-xs text-slate-500 italic">No target receptor loaded yet. Search RCSB or pick a benchmark in Tab 1.</span>`;
+      return;
+    }
+
+    const acc = r.uniprot?.accession || r.uniprot_accession || r.pdb_id;
+    if (!acc) {
+      if (listEl) listEl.innerHTML = `<span class="text-xs text-slate-500 italic">No UniProt accession found for target.</span>`;
+      return;
+    }
+
+    if (listEl) {
+      listEl.innerHTML = `<div class="text-xs text-emerald-400 animate-pulse flex items-center space-x-1.5 py-2"><svg class="animate-spin w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>Querying UniProt cross-references for deposited structures...</span></div>`;
+    }
+
+    try {
+      const data = await BindoraAPI.getEnsembleStructures(acc, 8);
+      const structures = data.structures || [];
+      this.state.ensembleStructures = structures;
+
+      const badge = document.getElementById("ensemble-count-badge");
+      if (badge) badge.textContent = `${structures.length} Deposited PDBs`;
+
+      if (structures.length === 0) {
+        if (listEl) listEl.innerHTML = `<span class="text-xs text-slate-500 italic">No alternative crystal structures deposited for ${acc}.</span>`;
+        return;
+      }
+
+      const currentPdb = (r.pdb_id || "").toUpperCase();
+      if (listEl) {
+        listEl.innerHTML = structures.map((s, idx) => {
+          const isCurrent = s.pdb_id.toUpperCase() === currentPdb;
+          const checked = idx < 4;
+          return `
+            <label class="flex items-center justify-between p-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 cursor-pointer transition text-xs">
+              <div class="flex items-center space-x-2">
+                <input type="checkbox" value="${s.pdb_id}" ${checked ? 'checked' : ''} class="ensemble-struct-checkbox rounded text-emerald-500 focus:ring-0 focus:ring-offset-0 bg-slate-900 border-slate-600">
+                <span class="font-mono font-bold text-white">${s.pdb_id}</span>
+                <span class="text-[10px] text-slate-400">${s.method}</span>
+                ${isCurrent ? '<span class="text-[9px] font-bold px-1 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">Current</span>' : ''}
+              </div>
+              <span class="font-mono text-[11px] text-emerald-400">${s.resolution}</span>
+            </label>
+          `;
+        }).join("");
+      }
+    } catch (e) {
+      if (listEl) listEl.innerHTML = `<span class="text-xs text-rose-400">Failed to query UniProt structures: ${e.message}</span>`;
+    }
+  }
+
+  async runEnsembleDocking() {
+    const r = this.state.receptor;
+    const l = this.state.ligand;
+    if (!r) {
+      this.showToast("Please load a target receptor first.", "error");
+      return;
+    }
+    if (!l) {
+      this.showToast("Please load a ligand first.", "error");
+      return;
+    }
+
+    const checkboxes = document.querySelectorAll(".ensemble-struct-checkbox:checked");
+    const pdbIds = Array.from(checkboxes).map(cb => cb.value);
+    if (pdbIds.length === 0) {
+      this.showToast("Please select at least one PDB structure for ensemble docking.", "error");
+      return;
+    }
+
+    const smiles = l.canonical_smiles || l.smiles || "";
+    if (!smiles) {
+      this.showToast("Ligand SMILES required for ensemble docking.", "error");
+      return;
+    }
+
+    const btn = document.getElementById("btn-run-ensemble");
+    const originalText = btn ? btn.innerHTML : "";
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Cross-docking...';
+    }
+
+    this.showToast(`Starting ensemble cross-docking across ${pdbIds.length} target structures...`, "info");
+
+    try {
+      const res = await BindoraAPI.runEnsembleDocking({
+        pdb_ids: pdbIds,
+        ligand_smiles: smiles,
+        exhaustiveness: 4
+      });
+
+      this.renderEnsembleLeaderboard(res);
+      const s = res.summary || {};
+      this.showToast(`Ensemble docking complete! Mean ΔG: ${s.mean_affinity ?? '—'} ± ${s.std_affinity ?? 0} kcal/mol`, "success");
+    } catch (e) {
+      this.showToast(`Ensemble docking failed: ${e.message}`, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalText || '<span>Run Ensemble Cross-Docking</span>';
+      }
+    }
+  }
+
+  renderEnsembleLeaderboard(res) {
+    const tbody = document.getElementById("batch-leaderboard-rows");
+    if (!tbody) return;
+
+    const structures = res.structures || [];
+    if (structures.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" class="text-center p-6 text-xs text-slate-500 italic">No ensemble docking results produced.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = structures.map((s, idx) => {
+      if (s.affinity_kcal == null) {
+        return `
+          <tr class="border-b border-rose-950/60 bg-rose-950/20 text-rose-300">
+            <td class="p-2.5 font-bold text-center text-slate-500">—</td>
+            <td class="p-2.5 font-semibold text-rose-300 font-sans">${s.pdb_id} (${s.resolution || 'N/A'})</td>
+            <td class="p-2.5 text-slate-500">—</td>
+            <td class="p-2.5 text-slate-500">—</td>
+            <td class="p-2.5 text-slate-500">—</td>
+            <td class="p-2.5 text-slate-500">—</td>
+            <td class="p-2.5 text-slate-500">—</td>
+            <td class="p-2.5 text-slate-500">—</td>
+            <td class="p-2.5 text-slate-500">—</td>
+            <td class="p-2.5"><span class="px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 text-[10px]">${s.status || 'Failed'}</span></td>
+          </tr>
+        `;
+      }
+
+      const isWeak = s.affinity_kcal > -6.0;
+      return `
+        <tr class="border-b border-slate-800 hover:bg-slate-800/50">
+          <td class="p-2.5 font-bold text-center text-emerald-400">#${idx + 1}</td>
+          <td class="p-2.5 font-semibold text-white font-sans">
+            <span class="font-mono text-emerald-300">${s.pdb_id}</span>
+            <span class="text-[10px] text-slate-400 block">${s.title || ''} (${s.resolution || 'N/A'})</span>
+          </td>
+          <td class="p-2.5 font-mono font-bold ${isWeak ? 'text-amber-400' : 'text-emerald-400'}">${s.affinity_kcal}</td>
+          <td class="p-2.5 font-mono text-cyan-300 font-semibold">${s.vinardo_score ?? "—"}</td>
+          <td class="p-2.5 font-mono font-bold text-cyan-300">${s.affinity_kcal ? (s.affinity_kcal * 0.9).toFixed(2) : "—"}</td>
+          <td class="p-2.5"><span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-bold inline-block">Conformation</span></td>
+          <td class="p-2.5 font-mono text-slate-300">${s.kd_nanomolar ?? "—"}</td>
+          <td class="p-2.5 font-mono text-slate-300">${s.ligand_efficiency ?? "—"}</td>
+          <td class="p-2.5 font-mono text-slate-300">${s.hbond_count ?? 0}</td>
+          <td class="p-2.5 text-[10px]">
+            <span class="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800">Docked</span>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    const s = res.summary || {};
+    const sub = document.getElementById("batch-matrix-subtitle");
+    if (sub && s.mean_affinity != null) {
+      sub.textContent = `Ensemble Consensus: Mean ΔG = ${s.mean_affinity} ± ${s.std_affinity} kcal/mol (Spread: ${s.spread_kcal} kcal/mol across ${s.successful_runs} structures)`;
+    }
+  }
+
+  async runPharmacophoreScreen() {
+    if (!this.state.pharmacophore?.consensus_profile) {
+      this.showToast("No active consensus pharmacophore profile loaded.", "error");
+      return;
+    }
+
+    const rawText = document.getElementById("input-batch-candidates")?.value || "";
+    const lines = rawText.split("\n");
+    const candidates = [];
+    for (const line of lines) {
+      const parts = line.split(",");
+      if (parts.length >= 2) {
+        candidates.push({ name: parts[0].trim(), smiles: parts[1].trim() });
+      } else if (line.trim().length > 3) {
+        candidates.push({ name: `Candidate ${candidates.length+1}`, smiles: line.trim() });
+      }
+    }
+
+    if (candidates.length === 0) {
+      this.showToast("No valid candidates found in text input.", "error");
+      return;
+    }
+
+    const btn = document.getElementById("btn-run-pharmacophore-screen");
+    const originalText = btn ? btn.innerHTML : "";
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Screening...';
+    }
+
+    this.showToast(`Screening ${candidates.length} candidate(s) against 3D consensus pharmacophore...`, "info");
+
+    try {
+      const data = await BindoraAPI.screenPharmacophore(candidates, this.state.pharmacophore.consensus_profile);
+      this.renderPharmacophoreLeaderboard(data);
+      this.showToast(`Pharmacophore screening complete! Screened ${data.total} candidates.`, "success");
+    } catch (e) {
+      this.showToast(`Pharmacophore screening failed: ${e.message}`, "error");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalText || '<span>Screen Candidates vs Pharmacophore</span>';
+      }
+    }
+  }
+
+  renderPharmacophoreLeaderboard(data) {
+    const tbody = document.getElementById("batch-leaderboard-rows");
+    if (!tbody) return;
+
+    const screened = data.screened || [];
+    if (screened.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" class="text-center p-6 text-xs text-slate-500 italic">No candidates screened against pharmacophore.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = screened.map((c, idx) => {
+      const matchPct = c.match_score_pct ?? 0;
+      const pass = c.matches_all_core;
+      return `
+        <tr class="border-b border-slate-800 hover:bg-slate-800/50">
+          <td class="p-2.5 font-bold text-center text-purple-400">#${idx + 1}</td>
+          <td class="p-2.5 font-semibold text-white font-sans" title="${c.smiles}">${c.name}</td>
+          <td class="p-2.5 font-mono font-bold ${matchPct >= 80 ? 'text-purple-300' : 'text-slate-300'}">${matchPct.toFixed(1)}%</td>
+          <td class="p-2.5 font-mono text-slate-400">${c.matched_count} / ${c.total_profile_features}</td>
+          <td class="p-2.5 font-mono font-bold text-purple-300">${(matchPct / 10).toFixed(2)}</td>
+          <td class="p-2.5">
+            <span class="px-1.5 py-0.5 rounded ${pass ? 'bg-purple-950 text-purple-300 border border-purple-800' : 'bg-slate-800 text-slate-400 border border-slate-700'} text-[10px] font-bold inline-block">
+              ${pass ? 'Core Match' : 'Partial'}
+            </span>
+          </td>
+          <td class="p-2.5 font-mono text-slate-400">—</td>
+          <td class="p-2.5 font-mono text-slate-400">—</td>
+          <td class="p-2.5 font-mono text-purple-300">${c.feature_counts?.['Hydrogen Acceptors'] ?? 0} HBA</td>
+          <td class="p-2.5 text-[10px]">
+            <span class="px-1.5 py-0.5 rounded ${pass ? 'bg-purple-950/80 text-purple-300 border border-purple-800' : 'bg-amber-950/80 text-amber-300 border border-amber-800'}">
+              ${pass ? 'Profile Pass' : 'Sub-consensus'}
+            </span>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    const sub = document.getElementById("batch-matrix-subtitle");
+    if (sub) {
+      sub.textContent = `Pharmacophore Consensus: Screened ${data.total} candidates against active inhibitor profile`;
+    }
   }
 }

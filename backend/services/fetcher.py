@@ -148,6 +148,58 @@ class StructureFetcher:
         return result
 
     @staticmethod
+    def search_similar_compounds(smiles: str, threshold: int = 85, max_records: int = 5) -> List[Dict[str, Any]]:
+        """Search PubChem for structurally similar 2D compounds given a query SMILES string."""
+        if not smiles or not smiles.strip():
+            return []
+
+        cache_key = f"pubchem_sim_{urllib.parse.quote_plus(smiles.strip())}_{threshold}_{max_records}.json"
+        cache_file = CACHE_DIR / cache_key
+        if cache_file.exists():
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+
+        try:
+            url = f"{PUBCHEM_BASE_URL}/compound/fastsimilarity_2d/smiles/{urllib.parse.quote(smiles.strip())}/cids/JSON?Threshold={threshold}&MaxRecords={max_records}"
+            data = _get_json(url, timeout=12)
+            cids = data.get("IdentifierList", {}).get("CID", []) if data else []
+            if not cids:
+                return []
+
+            cids_str = ",".join(map(str, cids[:max_records]))
+            prop_url = f"{PUBCHEM_BASE_URL}/compound/cid/{cids_str}/property/Title,MolecularWeight,ConnectivitySMILES,CanonicalSMILES/JSON"
+            prop_data = _get_json(prop_url, timeout=12)
+            results = []
+            if prop_data and "PropertyTable" in prop_data:
+                for item in prop_data["PropertyTable"].get("Properties", []):
+                    item_smi = item.get("ConnectivitySMILES") or item.get("CanonicalSMILES") or ""
+                    comp_name = item.get("Title") or f"Compound #{item.get('CID')}"
+                    comp_weight = float(item.get("MolecularWeight", 0.0))
+                    results.append({
+                        "cid": item.get("CID"),
+                        "name": comp_name,
+                        "title": comp_name,
+                        "weight": comp_weight,
+                        "molecular_weight": comp_weight,
+                        "smiles": item_smi,
+                        "url": f"https://pubchem.ncbi.nlm.nih.gov/compound/{item.get('CID')}"
+                    })
+
+            try:
+                with open(cache_file, "w", encoding="utf-8") as f:
+                    json.dump(results, f, indent=2)
+            except Exception:
+                pass
+
+            return results
+        except Exception as e:
+            print(f"[SIMILARITY SEARCH ERROR] {e}")
+            return []
+
+    @staticmethod
     def fetch_rcsb_pdb(pdb_id: str) -> Optional[Dict[str, Any]]:
         """Fetch macromolecule PDB file and metadata by 4-letter PDB code."""
         pdb_id = pdb_id.strip().upper()

@@ -127,6 +127,38 @@ class BindoraAPI {
   static async getReproducibilityVersions() {
     return this.request("/api/reproducibility/versions");
   }
+
+  static async getSimilarCompounds(smiles, threshold = 85, maxRecords = 5) {
+    return this.request(`/api/ligand/similar?smiles=${encodeURIComponent(smiles)}&threshold=${threshold}&max=${maxRecords}`);
+  }
+
+  static async getEnsembleStructures(accession, limit = 8) {
+    return this.request(`/api/ensemble/structures?accession=${encodeURIComponent(accession)}&limit=${limit}`);
+  }
+
+  static async runEnsembleDocking(params) {
+    return this.request("/api/ensemble/run", {
+      method: "POST",
+      body: JSON.stringify(params)
+    });
+  }
+
+  static async getPharmacophoreActives(target = "", chemblId = "", maxActives = 10) {
+    let url = `/api/pharmacophore/actives?max_actives=${maxActives}`;
+    if (target) url += `&target=${encodeURIComponent(target)}`;
+    if (chemblId) url += `&chembl_id=${encodeURIComponent(chemblId)}`;
+    return this.request(url);
+  }
+
+  static async screenPharmacophore(candidates, consensusProfile) {
+    return this.request("/api/pharmacophore/screen", {
+      method: "POST",
+      body: JSON.stringify({
+        candidates: candidates,
+        consensus_profile: consensusProfile
+      })
+    });
+  }
 }
 
 // Primary export + backward compatibility alias

@@ -157,16 +157,35 @@ class DockingEngine:
             center_z = sum(c[2] for c in coords) / len(coords)
             size_x, size_y, size_z = 22.0, 22.0, 22.0
             pocket_desc = f"Auto-centered on co-crystallized native ligand pocket ({co_ligand_name} in Chain {best_candidate['chain']})"
-        elif all_ca_coords:
-            center_x = sum(c[0] for c in all_ca_coords) / len(all_ca_coords)
-            center_y = sum(c[1] for c in all_ca_coords) / len(all_ca_coords)
-            center_z = sum(c[2] for c in all_ca_coords) / len(all_ca_coords)
-            size_x, size_y, size_z = 26.0, 26.0, 26.0
-            pocket_desc = "Auto-centered on protein geometric Cα centroid"
+            detected_pockets_list = []
         else:
-            center_x, center_y, center_z = 0.0, 0.0, 0.0
-            size_x, size_y, size_z = 24.0, 24.0, 24.0
-            pocket_desc = "Default center"
+            # Fallback: Detect pockets using fpocket / Voronoi alpha-sphere cavity clustering
+            detected_pockets_list = []
+            try:
+                from backend.services.pocket_detection import PocketDetectionService
+                detected_pockets_list = PocketDetectionService.detect_pockets(pdb_content)
+            except Exception as pe:
+                print(f"[RECEPTOR PREP] Blind pocket detection warning: {pe}")
+
+            if detected_pockets_list:
+                top_pocket = detected_pockets_list[0]
+                center_x = top_pocket["center"]["x"]
+                center_y = top_pocket["center"]["y"]
+                center_z = top_pocket["center"]["z"]
+                size_x = top_pocket["size"]["x"]
+                size_y = top_pocket["size"]["y"]
+                size_z = top_pocket["size"]["z"]
+                pocket_desc = f"Blind pocket #1 detected ({top_pocket.get('method', 'fpocket')}, Druggability: {top_pocket.get('druggability_score', 0.5):.2f})"
+            elif all_ca_coords:
+                center_x = sum(c[0] for c in all_ca_coords) / len(all_ca_coords)
+                center_y = sum(c[1] for c in all_ca_coords) / len(all_ca_coords)
+                center_z = sum(c[2] for c in all_ca_coords) / len(all_ca_coords)
+                size_x, size_y, size_z = 26.0, 26.0, 26.0
+                pocket_desc = "Auto-centered on protein geometric Cα centroid"
+            else:
+                center_x, center_y, center_z = 0.0, 0.0, 0.0
+                size_x, size_y, size_z = 24.0, 24.0, 24.0
+                pocket_desc = "Default center"
 
         # Calculate Blind Docking Bounding Box (Whole Protein Surface)
         all_px = [float(l[30:38]) for l in protein_lines]
@@ -257,7 +276,8 @@ class DockingEngine:
                 "description": pocket_desc,
                 "center": {"x": round(center_x, 2), "y": round(center_y, 2), "z": round(center_z, 2)},
                 "size": {"x": round(size_x, 1), "y": round(size_y, 1), "z": round(size_z, 1)}
-            }
+            },
+            "detected_pockets": detected_pockets_list
         }
 
     @staticmethod
@@ -564,9 +584,11 @@ class DockingEngine:
         num_modes: int = 9,
         replicates: int = 1,
         seed: Optional[int] = None,
-        reference_pdb: Optional[str] = None
+        reference_pdb: Optional[str] = None,
+        flexible_residues: Optional[List[str]] = None,
+        receptor_pdb: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Run AutoDock Vina on the prepared receptor and ligand PDBQT files with optional multi-seed replicate sampling."""
+        """Run AutoDock Vina on the prepared receptor and ligand PDBQT files with optional multi-seed replicate sampling and flexible side chains."""
         vina_path = ensure_vina()
 
         # Support both dict {"x":.., "y":.., "z":..} and list/tuple [x, y, z]
@@ -574,6 +596,39 @@ class DockingEngine:
             center = {"x": float(center[0]), "y": float(center[1]), "z": float(center[2])}
         if isinstance(size, (list, tuple)) and len(size) >= 3:
             size = {"x": float(size[0]), "y": float(size[1]), "z": float(size[2])}
+
+        # Prepare flexible receptor side chains using Meeko if requested
+        flex_pdbqt_str = ""
+        active_flex_residues = []
+        if flexible_residues and receptor_pdb:
+            try:
+                from meeko import Polymer, MoleculePreparation, PDBQTWriterLegacy
+                poly = Polymer.from_pdb_string(receptor_pdb, allow_bad_res=True)
+                mk_prep = MoleculePreparation()
+                valid_monomers = poly.get_valid_monomers()
+                for fres in flexible_residues:
+                    norm_id = str(fres).strip()
+                    if " " in norm_id and ":" in norm_id:
+                        parts = norm_id.split()
+                        r_num, r_chain = parts[1].split(":")
+                        norm_id = f"{r_chain}:{r_num}"
+                    elif ":" not in norm_id and norm_id.isdigit():
+                        norm_id = f"A:{norm_id}"
+
+                    if norm_id in valid_monomers:
+                        poly.flexibilize_sidechain(norm_id, mk_prep)
+                        active_flex_residues.append(norm_id)
+                    elif f"A:{norm_id}" in valid_monomers:
+                        poly.flexibilize_sidechain(f"A:{norm_id}", mk_prep)
+                        active_flex_residues.append(f"A:{norm_id}")
+
+                if active_flex_residues:
+                    rigid_pdbqt_out, flex_dict = PDBQTWriterLegacy.write_from_polymer(poly)
+                    if flex_dict:
+                        receptor_pdbqt = rigid_pdbqt_out
+                        flex_pdbqt_str = "".join(flex_dict.values())
+            except Exception as fe:
+                print(f"[DOCKING ENGINE] Flexible residue preparation warning: {fe}")
 
         # Determine seeds to run
         if replicates > 1:
@@ -609,6 +664,11 @@ class DockingEngine:
                     "--num_modes", str(num_modes),
                     "--out", str(out_file)
                 ]
+                if flex_pdbqt_str:
+                    flex_file = tmp_path / "flex.pdbqt"
+                    flex_file.write_text(flex_pdbqt_str, encoding="utf-8")
+                    cmd.extend(["--flex", str(flex_file)])
+
                 if s is not None:
                     cmd.extend(["--seed", str(s)])
 
@@ -656,7 +716,8 @@ class DockingEngine:
                         "rmsd_lb": current_rmsd_lb,
                         "rmsd_ub": current_rmsd_ub,
                         "pdbqt_content": pose_pdbqt,
-                        "pdb_block": pdb_block
+                        "pdb_block": pdb_block,
+                        "flexible_residues_used": active_flex_residues
                     })
                     current_lines = []
                 else:
@@ -1110,10 +1171,29 @@ class DockingEngine:
             if key not in unique_hydrophobics or unique_hydrophobics[key]["distance"] > hp["distance"]:
                 unique_hydrophobics[key] = hp
 
+        # Build flexible residue candidates list formatted for Meeko (Chain:Num)
+        flex_candidates = []
+        for cr in sorted(list(contact_residues)):
+            try:
+                parts = cr.split()
+                rname = parts[0]
+                rnum_chain = parts[1]
+                rnum, rchain = rnum_chain.split(":")
+                flex_candidates.append({
+                    "id": f"{rchain}:{rnum}",
+                    "label": cr,
+                    "res_name": rname,
+                    "res_num": int(rnum),
+                    "chain": rchain
+                })
+            except Exception:
+                pass
+
         return {
             "hydrogen_bonds": list(unique_hbonds.values()),
             "hydrophobic_contacts": list(unique_hydrophobics.values())[:12],
             "interacting_residues": sorted(list(contact_residues)),
+            "flexible_candidates": flex_candidates,
             "total_hbond_count": len(unique_hbonds),
             "total_hydrophobic_count": len(unique_hydrophobics)
         }

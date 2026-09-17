@@ -17,6 +17,8 @@ from backend.services.adme import ADMEProfiler
 from backend.services.bioactivity import BioactivityService
 from backend.services.narrative import NarrativeExplainer
 from backend.services.batch import BatchScreeningService
+from backend.services.ensemble import EnsembleDockingService
+from backend.services.pharmacophore import PharmacophoreService
 from backend.utils.vina_setup import ensure_vina
 
 app = Flask(__name__, static_folder=str(FRONTEND_DIR), static_url_path="")
@@ -131,6 +133,23 @@ def search_pubchem_cid(cid):
     result["adme"] = adme_data
     return jsonify(result)
 
+@app.route("/api/ligand/similar", methods=["GET"])
+def get_similar_compounds():
+    smiles = request.args.get("smiles", "").strip()
+    if not smiles:
+        return jsonify({"error": "Query parameter 'smiles' is required"}), 400
+    try:
+        threshold = int(request.args.get("threshold", 85))
+    except (ValueError, TypeError):
+        threshold = 85
+    try:
+        max_records = int(request.args.get("max", 5))
+    except (ValueError, TypeError):
+        max_records = 5
+
+    results = StructureFetcher.search_similar_compounds(smiles, threshold=threshold, max_records=max_records)
+    return jsonify({"similar_compounds": results, "total": len(results)})
+
 @app.route("/api/search/rcsb", methods=["GET"])
 def search_rcsb():
     query = request.args.get("query", "").strip()
@@ -210,6 +229,7 @@ def run_docking():
     heavy_atoms = int(data.get("heavy_atoms", 20))
     mw = float(data.get("molecular_weight", 300.0))
     smiles = data.get("smiles", "")
+    flexible_residues = data.get("flexible_residues")
 
     if not receptor_pdbqt or not ligand_pdbqt or not center or not size:
         return jsonify({"error": "Missing required docking parameters (receptor, ligand, center, size)"}), 400
@@ -223,7 +243,9 @@ def run_docking():
             size,
             exhaustiveness=exhaustiveness,
             num_modes=num_modes,
-            replicates=replicates
+            replicates=replicates,
+            flexible_residues=flexible_residues,
+            receptor_pdb=receptor_pdb
         )
 
         if not poses:
@@ -399,6 +421,66 @@ def batch_docking():
         return jsonify({"leaderboard": leaderboard, "total_screened": len(leaderboard)})
     except Exception as e:
         return jsonify({"error": f"Batch docking failed: {str(e)}"}), 500
+
+@app.route("/api/ensemble/structures", methods=["GET"])
+def get_ensemble_structures():
+    accession = request.args.get("accession", "").strip()
+    if not accession:
+        return jsonify({"error": "Query parameter 'accession' is required"}), 400
+    structures = EnsembleDockingService.fetch_ensemble_structures(accession, limit=8)
+    return jsonify({"structures": structures, "total": len(structures)})
+
+@app.route("/api/ensemble/run", methods=["POST"])
+def run_ensemble():
+    data = request.get_json() or {}
+    pdb_ids = data.get("pdb_ids", [])
+    ligand_smiles = data.get("ligand_smiles", "").strip()
+    exhaustiveness = int(data.get("exhaustiveness", 4))
+
+    if not pdb_ids or not ligand_smiles:
+        return jsonify({"error": "Missing 'pdb_ids' or 'ligand_smiles' in request body"}), 400
+
+    results = EnsembleDockingService.run_ensemble_docking(pdb_ids, ligand_smiles, exhaustiveness=exhaustiveness)
+    return jsonify(results)
+
+@app.route("/api/pharmacophore/actives", methods=["GET"])
+def get_pharmacophore_actives():
+    target = request.args.get("target", "").strip()
+    chembl_id = request.args.get("chembl_id", "").strip() or None
+    if not target and not chembl_id:
+        return jsonify({"error": "Either 'target' or 'chembl_id' is required"}), 400
+
+    actives = PharmacophoreService.fetch_target_actives(target, chembl_target_id=chembl_id, max_actives=10)
+    profile = PharmacophoreService.build_consensus_profile(actives) if len(actives) >= 3 else None
+    return jsonify({
+        "actives_count": len(actives),
+        "eligible": len(actives) >= 3,
+        "actives": actives,
+        "consensus_profile": profile
+    })
+
+@app.route("/api/pharmacophore/screen", methods=["POST"])
+def screen_pharmacophore():
+    data = request.get_json() or {}
+    candidates = data.get("candidates", [])
+    consensus_profile = data.get("consensus_profile")
+
+    if not candidates or not consensus_profile:
+        return jsonify({"error": "Missing 'candidates' or 'consensus_profile' in request body"}), 400
+
+    results = []
+    for cand in candidates:
+        smi = cand.get("smiles", "")
+        name = cand.get("name", "Candidate")
+        match = PharmacophoreService.match_candidate(smi, consensus_profile)
+        results.append({
+            "name": name,
+            "smiles": smi,
+            **match
+        })
+
+    results.sort(key=lambda x: x.get("match_score_pct", 0.0), reverse=True)
+    return jsonify({"screened": results, "total": len(results)})
 
 if __name__ == "__main__":
     print(f"Starting Bindora Server on http://{HOST}:{PORT}")

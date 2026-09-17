@@ -49,15 +49,20 @@ Unlike black-box docking wrappers or cherry-picked demos, Bindora v2.0 enforces 
 | Module | Engine / Source | Methodology & Scientific References |
 |:---|:---|:---|
 | **Molecular Docking** | AutoDock Vina 1.2.7 | Iterated local search + Monte Carlo sampling (Trott & Olson, 2010; Eberhardt et al., *JCIM* 2021). |
+| **Flexible Side Chains** | Meeko + Vina `--flex` | Induced-fit modeling allowing active-site side chains to flex during docking (`meeko.Polymer.flexibilize_sidechain`). |
+| **Blind Pocket Detection** | `fpocket` + SciPy Voronoi | Automated cavity tessellation via alpha spheres ($2.8\text{ \AA} \le r \le 5.0\text{ \AA}$) and druggability scoring fallback. |
 | **Vinardo Scoring** | AutoDock Vina v1.2.7 | Optimized empirical scoring function with improved affinity predictions (Quiroga & Villarreal, *PLoS ONE* 2016). |
-| **GNINA Adapter** | GNINA (Optional) | CNN scoring adapter extracting `CNNscore` and `CNNaffinity` with resilient fallback on Windows. |
-| **Consensus Matrix** | Dual-Engine Calibration | Strict multi-engine ranking agreement: delta Rank <= 1 and |delta delta G| <= 3.0 kcal/mol. |
+| **Consensus Matrix** | Multi-Engine Calibration | Multi-metric consensus ranking combining Vina ΔG, Vinardo score, and ligand efficiency. |
+| **Ensemble Cross-Docking** | UniProt PDB Xrefs + Vina | Multi-structure docking across deposited crystal conformations with mean affinity ± SD and consistency metrics. |
+| **Similarity Search** | PubChem `fastsimilarity_2d` | Instant retrieval of structural analogues and scaffolds with Tanimoto threshold filtering ($\ge 85\%$). |
+| **Pharmacophore Matching** | ChEMBL + RDKit BaseFeatures | Active-ligand derived consensus chemical feature profiling ($\text{IC}_{50} \le 1000\text{ nM}$) and candidate screening. |
 | **2D Interaction Diagrams** | RDKit `MolDraw2DSVG` | LigPlot-style radial schematics with dashed H-bond lines and hydrophobic contact arcs. |
 | **Ligand Prep & Torsions** | Meeko + RDKit | ETKDGv3 conformer generation, MMFF94 minimization, Gasteiger charges with finite-charge fallback, flexible torsions. |
 | **Receptor Ingestion** | RCSB PDB & Meeko | Water/heteroatom stripping, pH 7.4 protonation, AD4 atom typing, auto pocket centroiding. |
-| **PK / ADME Profiling** | RDKit Descriptors | Lipinski Rule of 5 (1997), Veber Oral Bioavailability (2002), Egan BOILED-Egg (2016). |
-| **Safety & PAINS** | RDKit FilterCatalog | Substructure screening for Pan-Assay Interference Compounds (Baell & Holloway, 2010). |
-| **Thermodynamic Kd** | Statistical Mechanics | delta G = R T ln Kd => Kd = exp(delta G / (R * T)). Ligand Efficiency LE = -delta G / HeavyAtoms. |
+| **Published BOILED-Egg** | Daina & Zoete (2016 SI) | Exact 101-point polygon coordinates for GIA (white) and BBB (yolk) evaluated via ray-casting point-in-polygon. |
+| **SAScore Engine** | RDKit Contrib SA_Score | Fragment contribution and ring complexity score on 1–10 scale (Ertl & Schuffenhauer, 2009). |
+| **Structural Alert Catalogs** | RDKit FilterCatalogs | Multi-catalog substructure screening: PAINS (A/B/C), Brenk, NIH clinical reactive, and ZINC filters. |
+| **Thermodynamic Kd** | Statistical Mechanics | $\Delta G = RT \ln K_d \implies K_d = \exp(\Delta G / RT)$. Ligand Efficiency $\text{LE} = -\Delta G / N_{\text{heavy}}$. |
 | **Bioactivity Validation** | ChEMBL REST Services | Curated wet-lab Ki / IC50 / EC50 matching against target organism assays. |
 | **Pathway Annotations** | UniProtKB REST API | SIFTS cross-referencing (`query=xref:pdb-{pdb_id}`) for biological function & catalytic activity. |
 | **AI Explanation Layer** | DeepSeek / Rules Engine | Grounded educational narrative explaining active site contacts with zero-hallucination rules. |
@@ -231,14 +236,20 @@ Bindora/
 |   |-- app.py                 # Flask REST API server with CORS & static proxy
 |   |-- config.py              # Central paths & external API endpoints
 |   |-- services/
-|   |   |-- docking.py         # Vina, Vinardo, Meeko charge fallbacks, contact analysis
+|   |   |-- docking.py         # Vina, Vinardo, flexible residues, Meeko fallback
+|   |   |-- pocket_detection.py# fpocket binary + SciPy Voronoi cavity tessellation
+|   |   |-- ensemble.py        # UniProt PDB cross-docking & conformational consensus
+|   |   |-- pharmacophore.py   # ChEMBL active-derived consensus feature screening
 |   |   |-- interaction_diagram.py # 2D LigPlot-style radial SVG generator (RDKit)
-|   |   |-- fetcher.py         # PubChem, RCSB PDB, UniProt SIFTS client
-|   |   |-- adme.py            # RDKit Lipinski, Veber, Egan, CYP450, PAINS profiler
+|   |   |-- fetcher.py         # PubChem, RCSB PDB, fastsimilarity_2d, UniProt SIFTS
+|   |   |-- adme.py            # Published BOILED-Egg, SAScore, PAINS, Brenk, NIH, ZINC
+|   |   |-- boiled_egg_coords.json # Exact 101-pt polygon coordinates (Daina & Zoete 2016)
 |   |   |-- bioactivity.py     # Thermodynamic Kd converter & ChEMBL crosscheck
 |   |   |-- narrative.py       # DeepSeek AI explainer with intelligent disk caching
 |   |   `-- batch.py           # Multi-ligand virtual screening with consensus matrix
 |   `-- utils/
+|       |-- sascorer.py        # Synthetic accessibility scorer (Ertl & Schuffenhauer)
+|       |-- fpscores.pkl.gz    # SA_Score fragment contribution database
 |       |-- vina_setup.py      # Automated AutoDock Vina binary bootstrap
 |       |-- report_emitter.py  # SHA-256 report verification & integrity enforcement
 |       `-- rmsd_calculator.py # RDKit symmetry-corrected graph automorphism RMSD
@@ -253,7 +264,7 @@ Bindora/
 |   |-- js/
 |   |   |-- app.js             # Main controller, tab management, redocking cache
 |   |   |-- viewer.js          # 3Dmol.js WebGL molecular viewer
-|   |   |-- api.js             # Frontend API client
+|   |   |-- api.js             # Frontend API client (Ensemble, Pharmacophore, Similarity)
 |   |   |-- charts.js          # Chart.js ADME Radar & Energy Landscape
 |   |   `-- firebase-auth.js   # Client Firebase auth & history synchronization
 |   `-- lib/
@@ -263,6 +274,7 @@ Bindora/
 |   |-- benchmark_casf2016.py  # CASF-2016 285-complex core set benchmark suite
 |   |-- benchmark_screening.py # DUD-E & ChEMBL virtual screening enrichment suite
 |   |-- benchmark_accuracy.py  # PDBbind 25-complex validation suite
+|   |-- test_capabilities_expansion.py # 8-capability expansion test suite
 |   |-- test_research_grade.py # Astex Diverse Set gold-standard redocking (1HSG, 1AQ1, 1MZC)
 |   |-- test_docking.py        # Docking, Vinardo scoring, 2D diagram unit tests
 |   `-- verify_full_pipeline.py# 8-step end-to-end integration test
@@ -287,3 +299,5 @@ When publishing or citing results generated with Bindora Dock, please cite:
 5. **DUD-E Virtual Screening Standard:** M. M. Mysinger et al. *Directory of useful decoys, enhanced (DUD-E): better ligands and decoys for better benchmarking.* J. Med. Chem. 2012, 55(14), 6582-6594. DOI: [`10.1021/jm300687e`](https://doi.org/10.1021/jm300687e).
 6. **ChEMBL Bioactivity Repository:** D. Mendez et al. *ChEMBL: towards direct deposition of bioassay data.* Nucleic Acids Res. 2019, 47(D1), D930-D940. DOI: [`10.1093/nar/gky1075`](https://doi.org/10.1093/nar/gky1075).
 7. **Vinardo Scoring:** R. Quiroga, M. A. Villarreal. *Vinardo: A Scoring Function Based on Autodock Vina Improving Scoring, Ranking, and Screening Performance.* PLoS ONE 2016, 11(5), e0155182. DOI: [`10.1371/journal.pone.0155182`](https://doi.org/10.1371/journal.pone.0155182).
+8. **BOILED-Egg Model:** A. Daina, V. Zoete. *A BOILED-Egg To Predict Gastrointestinal Absorption and Brain Penetration of Small Molecules.* ChemMedChem 2016, 11(11), 1117-1121. DOI: [`10.1002/cmdc.201600182`](https://doi.org/10.1002/cmdc.201600182).
+9. **Synthetic Accessibility Score (SAScore):** P. Ertl, A. Schuffenhauer. *Estimation of synthetic accessibility score of drug-like molecules based on molecular complexity and fragment contributions.* J. Cheminform. 2009, 1, 8. DOI: [`10.1186/1758-2946-1-8`](https://doi.org/10.1186/1758-2946-1-8).

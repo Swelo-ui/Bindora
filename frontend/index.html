@@ -1363,6 +1363,25 @@
               </div>
             </div>
 
+            <!-- Advanced Engine Settings: Flexible Side Chains (Collapsed by default) -->
+            <details id="details-flex-residues" class="group border border-slate-700/60 rounded-lg p-2.5 bg-slate-900/40 text-xs">
+              <summary class="cursor-pointer font-medium text-slate-300 hover:text-cyan-300 flex items-center justify-between select-none">
+                <div class="flex items-center space-x-1.5">
+                  <svg class="w-3.5 h-3.5 text-slate-400 group-open:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  <span>Advanced: Flexible Side Chains</span>
+                </div>
+                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40">Beta</span>
+              </summary>
+              <div class="mt-2.5 pt-2 border-t border-slate-800 space-y-2">
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                  Allow specific active-site residue side chains to flex during docking (Vina induced-fit modeling, slower execution).
+                </p>
+                <div id="flex-residues-container" class="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                  <span class="text-[11px] text-slate-500 italic">Run docking to discover contacting active site residues.</span>
+                </div>
+              </div>
+            </details>
+
             <!-- Weak-Binder Warning Banner (Dynamically Shown) -->
             <div id="weak-binder-alert" class="hidden p-3 rounded-xl border border-amber-300 dark:border-amber-500/60 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 text-xs space-y-1 shadow-lg animate-pulse">
               <div class="flex items-center space-x-1.5 font-bold text-amber-800 dark:text-amber-300">
@@ -1506,7 +1525,7 @@
       </div>
 
       <!-- Physicochemical Descriptor Cards -->
-      <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <div class="glass-panel p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
           <span class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">MW</span>
           <span id="adme-mw-val" class="text-lg font-extrabold text-cyan-600 dark:text-cyan-400 font-mono mt-1 block">—</span>
@@ -1537,6 +1556,11 @@
           <span id="adme-tpsa-val" class="text-lg font-extrabold text-rose-600 dark:text-rose-400 font-mono mt-1 block">—</span>
           <span class="text-[10px] text-slate-500">Å²</span>
         </div>
+        <div class="glass-panel p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+          <span class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">SAScore</span>
+          <span id="adme-sascore-val" class="text-lg font-extrabold text-blue-600 dark:text-blue-400 font-mono mt-1 block">—</span>
+          <span class="text-[10px] text-slate-500">Scale 1–10</span>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1556,13 +1580,13 @@
           <div class="glass-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800">
             <span class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">GI Absorption</span>
             <span id="adme-gi-val" class="text-xl font-bold text-cyan-600 dark:text-cyan-400 mt-1 block">—</span>
-            <span class="text-[10px] text-slate-500">BOILED-Egg model (Egan et al.)</span>
+            <span class="text-[10px] text-slate-500">BOILED-Egg ellipse (Daina &amp; Zoete 2016)</span>
           </div>
 
           <div class="glass-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800">
             <span class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">BBB Permeability</span>
             <span id="adme-bbb-val" class="text-xl font-bold text-purple-600 dark:text-purple-400 mt-1 block">—</span>
-            <span class="text-[10px] text-slate-500">Clark CNS penetration heuristic</span>
+            <span class="text-[10px] text-slate-500">BOILED-Egg yolk (Daina &amp; Zoete 2016)</span>
           </div>
 
           <div class="glass-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800">
@@ -1572,9 +1596,9 @@
           </div>
 
           <div class="glass-panel p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-            <span class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">PAINS Filter</span>
+            <span class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">Structural Alerts</span>
             <span id="adme-pains-val" class="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 block">—</span>
-            <span class="text-[10px] text-slate-500">Pan-Assay interference alerts</span>
+            <span class="text-[10px] text-slate-500">PAINS, Brenk, NIH &amp; ZINC catalogs</span>
           </div>
 
           <!-- CYP450 Heuristic Alert Card -->
@@ -1678,15 +1702,23 @@
     <!-- ==================== TAB 6: BATCH SCREENING ==================== -->
     <section id="tab-batch" class="tab-pane hidden space-y-6">
       
-      <div class="pb-2 border-b border-slate-200 dark:border-slate-800">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Multi-Ligand Comparative Batch Screening</h2>
-        <p class="text-xs text-slate-500 dark:text-slate-400">Screen candidate compound libraries against the current target receptor and rank by binding affinity &amp; consensus score</p>
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-slate-200 dark:border-slate-800 gap-3">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900 dark:text-white">Batch Screening &amp; SAR Explorer</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Screen candidate libraries, explore conformational ensembles, or match against active pharmacophores</p>
+        </div>
+        <!-- Mode Switcher -->
+        <div class="flex items-center space-x-1.5 p-1 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
+          <button id="btn-batch-mode-candidates" class="py-1 px-3 rounded font-medium bg-cyan-600 text-white shadow transition">Screen Candidates</button>
+          <button id="btn-batch-mode-ensemble" class="py-1 px-3 rounded font-medium text-slate-600 dark:text-slate-400 hover:text-white transition">Ensemble Structures</button>
+          <button id="btn-batch-mode-pharmacophore" class="hidden py-1 px-3 rounded font-medium text-purple-600 dark:text-purple-300 hover:text-white border border-purple-800/40 bg-purple-950/20 transition">Pharmacophore Mode</button>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <!-- Candidate Library Input -->
-        <div class="glass-panel p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+        <!-- Mode 1: Candidate Library Input (Default) -->
+        <div id="panel-batch-candidates" class="glass-panel p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
           <div class="flex items-center justify-between">
             <label class="text-xs font-bold text-slate-900 dark:text-white block">Candidate Library:</label>
             <select id="select-batch-library" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-[11px] text-cyan-700 dark:text-cyan-300 focus:outline-none focus:border-cyan-500">
@@ -1706,11 +1738,45 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
           </button>
         </div>
 
+        <!-- Mode 2: Ensemble Structures Selection (Hidden by default) -->
+        <div id="panel-batch-ensemble" class="glass-panel p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 hidden">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-slate-900 dark:text-white block">Alternative Target Structures:</label>
+            <span id="ensemble-count-badge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">UniProt PDBs</span>
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Dock the loaded ligand across multiple deposited crystal structures of this target to evaluate conformational consistency.
+          </p>
+          <div id="ensemble-structures-list" class="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+            <span class="text-xs text-slate-500 italic">Load a target receptor with UniProt annotation to populate structures.</span>
+          </div>
+          <button id="btn-run-ensemble" class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center space-x-2">
+            <span>Run Ensemble Cross-Docking</span>
+          </button>
+        </div>
+
+        <!-- Mode 3: Pharmacophore Mode (Hidden by default, self-gating) -->
+        <div id="panel-batch-pharmacophore" class="glass-panel p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 hidden">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-purple-400 block">Active Ligand Pharmacophore:</label>
+            <span id="pharmacophore-actives-badge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800">ChEMBL Actives</span>
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Screen candidate molecules against the 3D consensus chemical features derived from known active inhibitors.
+          </p>
+          <div id="pharmacophore-profile-summary" class="p-2.5 rounded bg-slate-900/60 border border-slate-800 text-xs space-y-1 font-mono text-slate-300">
+            <span>Awaiting active profile...</span>
+          </div>
+          <button id="btn-run-pharmacophore-screen" class="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center justify-center space-x-2">
+            <span>Screen Candidates vs Pharmacophore</span>
+          </button>
+        </div>
+
         <!-- Ranked Leaderboard Table -->
         <div class="lg:col-span-2 glass-panel p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
           <div class="flex items-center justify-between">
             <h3 class="font-bold text-sm text-slate-900 dark:text-white">Comparative Ranking Matrix</h3>
-            <span class="text-[11px] text-slate-500 dark:text-slate-400">Consensus = ΔG (50%) + LE (scaled) + H-Bond Bonus</span>
+            <span id="batch-matrix-subtitle" class="text-[11px] text-slate-500 dark:text-slate-400">Consensus = ΔG (50%) + LE (scaled) + H-Bond Bonus</span>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-xs text-left border border-slate-200 dark:border-slate-800 rounded-lg">
