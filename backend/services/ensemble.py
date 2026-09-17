@@ -163,6 +163,9 @@ class EnsembleDockingService:
 
                 # Thermodynamics
                 thermo = BioactivityService.calculate_thermodynamics(aff, heavy_atoms, mw)
+                le_val = thermo.get("ligand_efficiency", {}).get("value", 0.0) if isinstance(thermo.get("ligand_efficiency"), dict) else thermo.get("ligand_efficiency", 0.0)
+                kd_val = thermo.get("theoretical_kd_nm")
+                consensus = round((aff * 0.6) + (vinardo * 0.4), 2) if vinardo is not None else round(aff, 2)
 
                 results.append({
                     "pdb_id": pdb_id,
@@ -170,8 +173,10 @@ class EnsembleDockingService:
                     "resolution": meta.get("resolution", "N/A"),
                     "affinity_kcal": round(aff, 2),
                     "vinardo_score": vinardo,
-                    "kd_nanomolar": thermo.get("kd_nanomolar"),
-                    "ligand_efficiency": thermo.get("ligand_efficiency"),
+                    "consensus_score": consensus,
+                    "kd_nanomolar": kd_val,
+                    "theoretical_kd_nm": kd_val,
+                    "ligand_efficiency": le_val,
                     "hbond_count": hbond_cnt,
                     "status": "Completed",
                     "top_pose_pdbqt": best["pdbqt_content"]

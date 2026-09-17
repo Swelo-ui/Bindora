@@ -3420,6 +3420,12 @@ class BindoraApp {
       }
 
       const isWeak = s.affinity_kcal > -6.0;
+      const leVal = (typeof s.ligand_efficiency === 'object' && s.ligand_efficiency !== null)
+        ? (s.ligand_efficiency.value ?? "—")
+        : (s.ligand_efficiency ?? "—");
+      const kdVal = s.kd_nanomolar ?? s.theoretical_kd_nm ?? "—";
+      const consensusVal = s.consensus_score ?? (s.vinardo_score != null ? ((s.affinity_kcal * 0.6) + (s.vinardo_score * 0.4)).toFixed(2) : s.affinity_kcal);
+
       return `
         <tr class="border-b border-slate-800 hover:bg-slate-800/50">
           <td class="p-2.5 font-bold text-center text-emerald-400">#${idx + 1}</td>
@@ -3429,10 +3435,10 @@ class BindoraApp {
           </td>
           <td class="p-2.5 font-mono font-bold ${isWeak ? 'text-amber-400' : 'text-emerald-400'}">${s.affinity_kcal}</td>
           <td class="p-2.5 font-mono text-cyan-300 font-semibold">${s.vinardo_score ?? "—"}</td>
-          <td class="p-2.5 font-mono font-bold text-cyan-300">${s.affinity_kcal ? (s.affinity_kcal * 0.9).toFixed(2) : "—"}</td>
+          <td class="p-2.5 font-mono font-bold text-cyan-300">${consensusVal}</td>
           <td class="p-2.5"><span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-bold inline-block">Conformation</span></td>
-          <td class="p-2.5 font-mono text-slate-300">${s.kd_nanomolar ?? "—"}</td>
-          <td class="p-2.5 font-mono text-slate-300">${s.ligand_efficiency ?? "—"}</td>
+          <td class="p-2.5 font-mono text-slate-300">${kdVal}</td>
+          <td class="p-2.5 font-mono text-slate-300">${leVal}</td>
           <td class="p-2.5 font-mono text-slate-300">${s.hbond_count ?? 0}</td>
           <td class="p-2.5 text-[10px]">
             <span class="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800">Docked</span>
