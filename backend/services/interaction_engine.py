@@ -530,6 +530,41 @@ class InteractionEngine:
                             "end_coord": [float(c) for c in centroid]
                         })
 
+        # Check receptor cations (LYS NZ, ARG guanidinium) to ligand aromatic rings
+        if mol:
+            conf = mol.GetConformer() if mol.GetNumConformers() > 0 else None
+            ring_info = mol.GetRingInfo()
+            for r_atom_indices in ring_info.AtomRings():
+                if all(mol.GetAtomWithIdx(idx).GetIsAromatic() for idx in r_atom_indices):
+                    coords = []
+                    for idx in r_atom_indices:
+                        match_lat = next((la for la in lig_atoms if la.get("atom_idx") == idx), None)
+                        if match_lat is not None:
+                            coords.append(match_lat["coord"])
+                        elif conf:
+                            p = conf.GetAtomPosition(idx)
+                            coords.append(np.array([p.x, p.y, p.z]))
+                    if len(coords) >= 5:
+                        lring_centroid = np.mean(np.array(coords), axis=0)
+                        for (rname, rnum, rchain), c_coords in rec_cations.items():
+                            cation_center = np.mean(c_coords, axis=0)
+                            d = float(np.linalg.norm(cation_center - lring_centroid))
+                            if d <= max_dist:
+                                res_id = f"{rname} {rnum}:{rchain}"
+                                pi_cations.append({
+                                    "type": "π-Cation",
+                                    "subtype": "Receptor Cation - Ligand π-Ring",
+                                    "distance": round(d, 2),
+                                    "residue": res_id,
+                                    "res_name": rname,
+                                    "res_num": rnum,
+                                    "chain": rchain,
+                                    "ligand_atom": f"Ring ({len(r_atom_indices)} atoms)",
+                                    "ligand_atom_idx": r_atom_indices[0],
+                                    "start_coord": [float(c) for c in cation_center],
+                                    "end_coord": [float(c) for c in lring_centroid]
+                                })
+
         return pi_cations
 
     @classmethod
