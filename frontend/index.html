@@ -1229,32 +1229,50 @@
               <!-- H-Bonds -->
               <label class="flex items-center space-x-1.5 cursor-pointer text-yellow-400 hover:text-yellow-300 transition font-medium text-[11px]">
                 <input id="toggle-hbonds" type="checkbox" checked class="rounded bg-slate-950 border-yellow-500/60 text-yellow-500 focus:ring-0">
-                <span>🟡 H-Bonds</span>
+                <span class="flex items-center space-x-1.5">
+                  <span class="w-2 h-2 rounded-full bg-yellow-400 inline-block shadow-sm"></span>
+                  <span>H-Bonds</span>
+                </span>
               </label>
               <!-- Salt Bridges -->
               <label class="flex items-center space-x-1.5 cursor-pointer text-pink-400 hover:text-pink-300 transition font-medium text-[11px]">
                 <input id="toggle-salt-bridges" type="checkbox" checked class="rounded bg-slate-950 border-pink-500/60 text-pink-500 focus:ring-0">
-                <span>🟣 Salt Bridges</span>
+                <span class="flex items-center space-x-1.5">
+                  <span class="w-2 h-2 rounded-full bg-fuchsia-400 inline-block shadow-sm"></span>
+                  <span>Salt Bridges</span>
+                </span>
               </label>
               <!-- Pi-Pi Stacking -->
               <label class="flex items-center space-x-1.5 cursor-pointer text-emerald-400 hover:text-emerald-300 transition font-medium text-[11px]">
                 <input id="toggle-pi-stacking" type="checkbox" checked class="rounded bg-slate-950 border-emerald-500/60 text-emerald-500 focus:ring-0">
-                <span>🟢 π-π Stacking</span>
+                <span class="flex items-center space-x-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block shadow-sm"></span>
+                  <span>π-π Stacking</span>
+                </span>
               </label>
               <!-- Pi-Cation -->
               <label class="flex items-center space-x-1.5 cursor-pointer text-orange-400 hover:text-orange-300 transition font-medium text-[11px]">
                 <input id="toggle-pi-cation" type="checkbox" checked class="rounded bg-slate-950 border-orange-500/60 text-orange-500 focus:ring-0">
-                <span>🟠 π-Cation</span>
+                <span class="flex items-center space-x-1.5">
+                  <span class="w-2 h-2 rounded-full bg-orange-400 inline-block shadow-sm"></span>
+                  <span>π-Cation</span>
+                </span>
               </label>
               <!-- Halogen Bonds -->
               <label class="flex items-center space-x-1.5 cursor-pointer text-purple-400 hover:text-purple-300 transition font-medium text-[11px]">
                 <input id="toggle-halogen" type="checkbox" checked class="rounded bg-slate-950 border-purple-500/60 text-purple-500 focus:ring-0">
-                <span>🟪 Halogen Bonds</span>
+                <span class="flex items-center space-x-1.5">
+                  <span class="w-2 h-2 rounded-full bg-purple-400 inline-block shadow-sm"></span>
+                  <span>Halogen Bonds</span>
+                </span>
               </label>
               <!-- Hydrophobic -->
               <label class="flex items-center space-x-1.5 cursor-pointer text-sky-400 hover:text-sky-300 transition font-medium text-[11px]">
                 <input id="toggle-hydrophobic" type="checkbox" class="rounded bg-slate-950 border-sky-500/60 text-sky-500 focus:ring-0">
-                <span>🔵 Hydrophobic</span>
+                <span class="flex items-center space-x-1.5">
+                  <span class="w-2 h-2 rounded-full bg-sky-400 inline-block shadow-sm"></span>
+                  <span>Hydrophobic</span>
+                </span>
               </label>
             </div>
           </div>
@@ -1411,8 +1429,8 @@
                   <span class="font-semibold text-slate-200">Flexible Side Chains</span>
                 </div>
                 <div class="flex items-center space-x-1.5">
-                  <span id="flex-selected-count-badge" class="hidden text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/60 font-bold shadow-sm shadow-cyan-500/20">0 Selected</span>
-                  <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-950/70 text-amber-300 border border-amber-800/50 flex items-center space-x-1">
+                  <span id="flex-selected-count-badge" class="hidden text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-200 border border-slate-700 font-medium">0 Selected</span>
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 flex items-center space-x-1.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
                     <span>Induced Fit</span>
                   </span>
@@ -1420,27 +1438,24 @@
               </summary>
               <div class="mt-2.5 pt-2.5 border-t border-slate-800/80 space-y-2.5">
                 <p class="text-[11px] text-slate-400 leading-relaxed">
-                  <strong class="text-cyan-300 font-semibold">Induced-Fit Simulation:</strong> Select 1–3 contacting residues to enable dynamic rotatable sidechains during AutoDock Vina & Meeko docking.
+                  <strong class="text-slate-200 font-semibold">Induced-Fit Simulation:</strong> Select 1–3 contacting residues to enable dynamic rotatable sidechains during AutoDock Vina &amp; Meeko docking.
                 </p>
 
-                <!-- Structured Action Callout (No awkward line breaks or squished text) -->
-                <div id="flex-action-hint" class="hidden rounded-xl p-2.5 bg-gradient-to-r from-cyan-950/90 to-slate-900/90 border border-cyan-500/60 shadow-md text-xs space-y-2">
-                  <div class="flex items-center justify-between border-b border-cyan-900/50 pb-1.5">
-                    <div class="flex items-center space-x-1.5 font-bold text-cyan-300">
-                      <svg class="w-3.5 h-3.5 text-cyan-400 animate-spin" style="animation-duration: 6s;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9" stroke-dasharray="8 6"/></svg>
-                      <span id="flex-action-hint-badge">Induced-Fit Active</span>
+                <!-- Clean, Professional Scientific Callout Box -->
+                <div id="flex-action-hint" class="hidden rounded-lg p-2.5 bg-slate-800/80 border border-slate-700/80 text-xs space-y-2">
+                  <div class="flex items-center justify-between border-b border-slate-700/60 pb-1.5">
+                    <div class="flex items-center space-x-1.5 font-semibold text-slate-200">
+                      <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+                      <span id="flex-action-hint-badge">Flexible Side Chains Active</span>
                     </div>
-                    <button id="btn-clear-flex-residues" type="button" class="text-[10px] text-slate-400 hover:text-rose-400 font-mono transition underline underline-offset-2">Clear All</button>
+                    <button id="btn-clear-flex-residues" type="button" class="text-[10px] text-slate-400 hover:text-slate-200 font-mono transition underline underline-offset-2">Clear Selection</button>
                   </div>
-                  <div id="flex-action-hint-text" class="text-[11px] text-cyan-100 font-mono">
+                  <div id="flex-action-hint-text" class="text-[11px] text-slate-300 font-mono">
                     1 residue selected
                   </div>
-                  <div class="flex items-center justify-between text-[11px] pt-1 border-t border-cyan-900/50 text-slate-300">
-                    <span class="text-slate-400 text-[10px]">Rotamer search ready</span>
-                    <span class="font-bold text-cyan-300 flex items-center space-x-1">
-                      <span>Re-run Docking Below</span>
-                      <svg class="w-3.5 h-3.5 inline animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                    </span>
+                  <div class="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-700/60 text-slate-400">
+                    <span class="text-[10px] text-slate-400">Rotamer sampling enabled</span>
+                    <span class="font-medium text-slate-300">Re-run docking below to apply</span>
                   </div>
                 </div>
 
@@ -2316,7 +2331,7 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
               <button onclick="navigator.clipboard.writeText('python bindora_cli.py'); window.bindoraApp.showToast('Copied: python bindora_cli.py', 'success');" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] transition cursor-pointer">Copy</button>
             </div>
             <div class="p-2 rounded bg-emerald-950/40 border border-emerald-500/20 text-[11px] text-emerald-200">
-              🎮 <strong>Navigation:</strong> Use <kbd class="px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 font-mono">&uarr;</kbd> and <kbd class="px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 font-mono">&darr;</kbd> Arrow Keys to highlight options, press <kbd class="px-1.5 py-0.5 rounded bg-slate-800 text-emerald-300 font-mono">Enter</kbd> to select, or press numbers <kbd class="px-1 py-0.5 rounded bg-slate-800 text-white font-mono">1-7</kbd>.
+              <strong>Navigation:</strong> Use <kbd class="px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 font-mono">&uarr;</kbd> and <kbd class="px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 font-mono">&darr;</kbd> Arrow Keys to highlight options, press <kbd class="px-1.5 py-0.5 rounded bg-slate-800 text-emerald-300 font-mono">Enter</kbd> to select, or press numbers <kbd class="px-1 py-0.5 rounded bg-slate-800 text-white font-mono">1-7</kbd>.
             </div>
           </div>
         </div>

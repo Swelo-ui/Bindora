@@ -3669,15 +3669,15 @@ class BindoraApp {
     container.innerHTML = flexCandidates.map(c => {
       const isChecked = previouslyChecked.has(c.id);
       return `
-        <div class="flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none ${isChecked ? 'bg-gradient-to-r from-cyan-950/90 to-slate-900 border-cyan-400 text-cyan-100 shadow-md shadow-cyan-500/20 ring-1 ring-cyan-400/50' : 'bg-slate-800/60 hover:bg-slate-750/80 border-slate-700/60 text-slate-300 hover:border-cyan-500/40'}"
+        <div class="flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none ${isChecked ? 'bg-slate-800 border-slate-500 text-slate-100 shadow-sm' : 'bg-slate-800/50 hover:bg-slate-750/70 border-slate-700/60 text-slate-300 hover:border-slate-600'}"
              data-id="${c.id}" data-chain="${c.chain}" data-resnum="${c.res_num}" data-resname="${c.res_name}" title="Click to focus in 3D viewer & toggle flexible rotamers">
           <input type="checkbox" value="${c.id}" ${isChecked ? 'checked' : ''} class="hidden flex-residue-cb">
           <div class="flex items-center space-x-1.5 min-w-0">
-            <span class="font-mono font-bold text-slate-200">${c.res_name} ${c.res_num}</span>
+            <span class="font-mono font-semibold ${isChecked ? 'text-white' : 'text-slate-200'}">${c.res_name} ${c.res_num}</span>
             <span class="text-[9px] px-1 py-0.2 rounded bg-slate-900/90 text-slate-400 border border-slate-800 font-mono">Ch:${c.chain}</span>
           </div>
           <div class="flex items-center space-x-1.5 flex-shrink-0">
-            <span class="flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition ${isChecked ? 'bg-cyan-500 text-slate-950 border-cyan-400' : 'border-slate-600 text-transparent'}">✓</span>
+            <span class="flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition ${isChecked ? 'bg-slate-200 text-slate-900 border-slate-300' : 'border-slate-600 text-transparent'}">✓</span>
           </div>
         </div>
       `;
@@ -3715,7 +3715,7 @@ class BindoraApp {
               const rChain = card?.getAttribute('data-chain') || '';
               return `${rName} ${rNum} (${rChain})`;
             }).join(', ');
-            actionHintText.innerHTML = `<span class="text-cyan-300 font-bold">${names}</span>`;
+            actionHintText.innerHTML = `<span class="text-slate-200 font-mono font-semibold">${names}</span>`;
           }
         } else {
           actionHint.classList.add("hidden");
@@ -3741,12 +3741,12 @@ class BindoraApp {
 
         const indicator = card.querySelector(".flex-check-indicator");
         if (newCheckedState) {
-          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-gradient-to-r from-cyan-950/90 to-slate-900 border-cyan-400 text-cyan-100 shadow-md shadow-cyan-500/20 ring-1 ring-cyan-400/50";
+          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-slate-800 border-slate-500 text-slate-100 shadow-sm";
           if (indicator) {
-            indicator.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition bg-cyan-500 text-slate-950 border-cyan-400";
+            indicator.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition bg-slate-200 text-slate-900 border-slate-300";
           }
         } else {
-          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-slate-800/60 hover:bg-slate-750/80 border-slate-700/60 text-slate-300 hover:border-cyan-500/40";
+          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-slate-800/50 hover:bg-slate-750/70 border-slate-700/60 text-slate-300 hover:border-slate-600";
           if (indicator) {
             indicator.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition border-slate-600 text-transparent";
           }
@@ -3763,7 +3763,7 @@ class BindoraApp {
         }
 
         if (newCheckedState) {
-          this.showToast(`✨ ${resName} ${resNum}:${chain} highlighted in 3D & marked as flexible rotamer.`, "info");
+          this.showToast(`${resName} ${resNum}:${chain} selected for induced-fit docking.`, "info");
         } else {
           this.showToast(`${resName} ${resNum}:${chain} deselected. Highlight cleared.`, "info");
         }
@@ -3777,7 +3777,7 @@ class BindoraApp {
         e.stopPropagation();
         container.querySelectorAll(".flex-residue-cb").forEach(cb => { cb.checked = false; });
         container.querySelectorAll(".flex-residue-card").forEach(card => {
-          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-slate-800/60 hover:bg-slate-750/80 border-slate-700/60 text-slate-300 hover:border-cyan-500/40";
+          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-slate-800/50 hover:bg-slate-750/70 border-slate-700/60 text-slate-300 hover:border-slate-600";
           const ind = card.querySelector(".flex-check-indicator");
           if (ind) ind.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition border-slate-600 text-transparent";
         });
@@ -3891,7 +3891,7 @@ class BindoraApp {
     const chemblId = r.chembl_id || "";
 
     if (summary && !this.state.pharmacophore) {
-      summary.innerHTML = `<span class="text-purple-300 animate-pulse text-[11px]">⚡ Deriving 3D consensus pharmacophore from ChEMBL actives...</span>`;
+      summary.innerHTML = `<span class="text-purple-300 text-[11px] font-mono">Deriving 3D consensus pharmacophore from ChEMBL actives...</span>`;
     }
 
     try {

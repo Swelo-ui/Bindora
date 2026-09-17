@@ -873,60 +873,37 @@ class MolecularViewer {
         return;
       }
 
-      // If enabling / selecting: GLOWING NEON HALO EFFECT
+      // If enabling / selecting: Professional Crystallographic Focus
       this.viewer.zoomTo(sel, 600);
 
-      // Clean existing shapes if re-selecting
+      // Clean existing shapes/labels if re-selecting
       if (this.flexHighlights.has(key)) {
         const old = this.flexHighlights.get(key);
         if (old.shapes) old.shapes.forEach(s => { try { this.viewer.removeShape(s); } catch (e) {} });
         if (old.labels) old.labels.forEach(l => { try { this.viewer.removeLabel(l); } catch (e) {} });
       }
 
-      // Style sidechain with crisp sticks keeping elemental amino acid coloring
+      // Render sidechain with clean, high-clarity sticks (standard PyMOL / Maestro crystallographic style)
       this.receptorModel.setStyle(sel, {
-        cartoon: { color: '#06b6d4', opacity: 0.95 },
-        stick: { radius: 0.28, colorscheme: 'amino' }
+        cartoon: { color: '#38bdf8', opacity: 0.95, thickness: 0.5 },
+        stick: { radius: 0.26, colorscheme: 'amino' }
       });
 
-      // Add translucent glowing halo spheres around sidechain heavy atoms
       const shapes = [];
+      const labels = [];
       const atoms = this.receptorModel.selectedAtoms(sel);
+
       if (atoms && atoms.length > 0) {
-        atoms.forEach(at => {
-          if (at.elem !== 'H') {
-            // Soft inner glow
-            const s1 = this.viewer.addSphere({
-              center: { x: at.x, y: at.y, z: at.z },
-              radius: 0.72,
-              color: '#38bdf8',
-              opacity: 0.45
-            });
-            if (s1) shapes.push(s1);
-
-            // Outer radiant wireframe aura (sci-fi holographic glow effect)
-            const s2 = this.viewer.addSphere({
-              center: { x: at.x, y: at.y, z: at.z },
-              radius: 1.15,
-              color: '#06b6d4',
-              opacity: 0.25,
-              wireframe: true
-            });
-            if (s2) shapes.push(s2);
-          }
-        });
-
-        // Add 3D floating tag
-        const labels = [];
+        // Clean 3D floating academic label without emojis
         const ca = atoms.find(a => a.atom === 'CA') || atoms[0];
         const displayLabel = resName ? `${resName} ${num}:${chain || 'A'}` : `${num}:${chain || 'A'}`;
-        const lbl = this.viewer.addLabel(`⚡ ${displayLabel} (Flex)`, {
+        const lbl = this.viewer.addLabel(`[Flex] ${displayLabel}`, {
           position: { x: ca.x, y: ca.y + 1.2, z: ca.z },
-          backgroundColor: 'rgba(8, 47, 73, 0.92)',
-          fontColor: '#38bdf8',
+          backgroundColor: 'rgba(15, 23, 42, 0.92)',
+          fontColor: '#f8fafc',
           fontSize: 11,
-          borderThickness: 1.5,
-          borderColor: '#0284c7',
+          borderThickness: 1,
+          borderColor: '#475569',
           inFront: true
         });
         if (lbl) labels.push(lbl);

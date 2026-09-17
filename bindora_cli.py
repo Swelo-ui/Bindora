@@ -75,7 +75,7 @@ def print_info(msg: str):
     print(f"{Colors.CYAN}ℹ {msg}{Colors.RESET}")
 
 def print_warning(msg: str):
-    print(f"{Colors.YELLOW}⚠ {msg}{Colors.RESET}")
+    print(f"{Colors.YELLOW}[!] {msg}{Colors.RESET}")
 
 def print_error(msg: str):
     print(f"{Colors.RED}✖ {msg}{Colors.RESET}")
@@ -426,13 +426,13 @@ def cmd_adme(args):
 def run_interactive_wizard():
     while True:
         main_options = [
-            "🔬  Run Custom Molecular Docking (Receptor PDB + Ligand)",
-            "💊  Calculate ADME & Pharmacokinetics Profile (from SMILES)",
-            "🏆  Run CASF-2016 Benchmark Suite (Field-Standard 285 complexes)",
-            "🎯  Run DUD-E Virtual Screening Benchmark (ROC-AUC / Enrichment)",
-            "🌐  Launch Web Studio UI (localhost:5000 in Browser)",
-            "❓  Help & Command Line Cheatsheet",
-            "❌  Exit"
+            "Run Custom Molecular Docking (Receptor PDB + Ligand)",
+            "Calculate ADME & Pharmacokinetics Profile (from SMILES)",
+            "Run CASF-2016 Benchmark Suite (Field-Standard 285 complexes)",
+            "Run DUD-E Virtual Screening Benchmark (ROC-AUC / Enrichment)",
+            "Launch Web Studio UI (localhost:5000 in Browser)",
+            "Help & Command Line Cheatsheet",
+            "Exit"
         ]
 
         choice = interactive_menu("MAIN MENU — Select Action", main_options)
@@ -440,13 +440,13 @@ def run_interactive_wizard():
         if choice == 0:
             # Submenu: Docking setup
             dock_options = [
-                "⚡  Quick Demo: Cyclooxygenase-2 (1CX2) vs Aspirin",
-                "⚡  Quick Demo: Abl1 Kinase (1IEP) vs Imatinib",
-                "⚡  Quick Demo: CDK2 Kinase (1AQ1) vs Staurosporine",
-                "🔍  Custom RCSB PDB ID + Drug Name (Auto-downloaded)",
-                "📁  Local Protein .PDB File + Chemical SMILES",
-                "📁  Local Protein .PDB File + Multi-conformer .SDF File",
-                "🔙  Back to Main Menu"
+                "Quick Demo: Cyclooxygenase-2 (1CX2) vs Aspirin",
+                "Quick Demo: Abl1 Kinase (1IEP) vs Imatinib",
+                "Quick Demo: CDK2 Kinase (1AQ1) vs Staurosporine",
+                "Custom RCSB PDB ID + Drug Name (Auto-downloaded)",
+                "Local Protein .PDB File + Chemical SMILES",
+                "Local Protein .PDB File + Multi-conformer .SDF File",
+                "<-- Back to Main Menu"
             ]
 
             dock_choice = interactive_menu("DOCKING WIZARD — Choose Input Type", dock_options)
@@ -524,7 +524,7 @@ def run_interactive_wizard():
                 "●  Quick Smoke Test (5 Complexes, ~5 min)",
                 "●  Medium Validation (20 Complexes, ~20 min)",
                 "●  Full CASF-2016 Core Set (285 Complexes, Overnight / Resumable)",
-                "🔙 Back to Main Menu"
+                "<-- Back to Main Menu"
             ]
             bm_choice = interactive_menu("CASF-2016 BENCHMARK — Select Evaluation Scale", bm_options)
             if bm_choice == 3 or bm_choice == -1:
@@ -547,7 +547,7 @@ def run_interactive_wizard():
                 "●  Proto-oncogene Tyrosine Kinase Src (src)",
                 "●  Vascular Endothelial Growth Factor Receptor 2 (vegfr2)",
                 "●  Custom Target Name",
-                "🔙 Back to Main Menu"
+                "<-- Back to Main Menu"
             ]
             dud_choice = interactive_menu("DUD-E VIRTUAL SCREENING — Select Target", dud_options)
             if dud_choice == 5 or dud_choice == -1:
