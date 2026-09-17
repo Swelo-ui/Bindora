@@ -3081,17 +3081,17 @@ class BindoraApp {
     const thead = document.getElementById("batch-table-head");
     if (thead) {
       thead.innerHTML = `
-        <tr>
-          <th class="p-2.5 text-center">Rank</th>
-          <th class="p-2.5">Candidate</th>
-          <th class="p-2.5">Vina ΔG</th>
-          <th class="p-2.5">Vinardo</th>
-          <th class="p-2.5">Consensus</th>
-          <th class="p-2.5">Confidence</th>
-          <th class="p-2.5">Kd (nM)</th>
-          <th class="p-2.5">LE</th>
-          <th class="p-2.5">H-Bonds</th>
-          <th class="p-2.5">Status</th>
+        <tr class="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-mono text-[11px] whitespace-nowrap">
+          <th class="py-2.5 px-2 text-center w-8">#</th>
+          <th class="py-2.5 px-2.5 min-w-[120px]">Candidate</th>
+          <th class="py-2.5 px-2 text-center">Vina ΔG</th>
+          <th class="py-2.5 px-2 text-center">Vinardo</th>
+          <th class="py-2.5 px-2 text-center">Consensus</th>
+          <th class="py-2.5 px-2 text-center">Confidence</th>
+          <th class="py-2.5 px-2 text-center">Kd (nM)</th>
+          <th class="py-2.5 px-2 text-center">LE</th>
+          <th class="py-2.5 px-2 text-center">H-Bonds</th>
+          <th class="py-2.5 px-2 text-center">Status</th>
         </tr>
       `;
     }
@@ -3442,17 +3442,17 @@ class BindoraApp {
     const thead = document.getElementById("batch-table-head");
     if (thead) {
       thead.innerHTML = `
-        <tr>
-          <th class="p-2.5 text-center">Rank</th>
-          <th class="p-2.5">Target Conformation (PDB)</th>
-          <th class="p-2.5">Vina ΔG</th>
-          <th class="p-2.5">Vinardo</th>
-          <th class="p-2.5">Consensus</th>
-          <th class="p-2.5">Confidence</th>
-          <th class="p-2.5">Kd (nM)</th>
-          <th class="p-2.5">LE</th>
-          <th class="p-2.5">H-Bonds</th>
-          <th class="p-2.5">Status</th>
+        <tr class="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-mono text-[11px] whitespace-nowrap">
+          <th class="py-2.5 px-2 text-center w-8">#</th>
+          <th class="py-2.5 px-2.5 min-w-[140px]">Target Conformation (PDB)</th>
+          <th class="py-2.5 px-2 text-center">Vina ΔG</th>
+          <th class="py-2.5 px-2 text-center">Vinardo</th>
+          <th class="py-2.5 px-2 text-center">Consensus</th>
+          <th class="py-2.5 px-2 text-center">Mode</th>
+          <th class="py-2.5 px-2 text-center">Kd (nM)</th>
+          <th class="py-2.5 px-2 text-center">LE</th>
+          <th class="py-2.5 px-2 text-center">H-Bonds</th>
+          <th class="py-2.5 px-2 text-center">Status</th>
         </tr>
       `;
     }
@@ -3578,16 +3578,16 @@ class BindoraApp {
     if (thead) {
       thead.innerHTML = `
         <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800 font-mono text-[11px] whitespace-nowrap">
-          <th class="py-3 px-2 text-center w-12">Rank</th>
-          <th class="py-3 px-3 min-w-[140px]">Candidate Compound</th>
-          <th class="py-3 px-2 text-center">Match %</th>
-          <th class="py-3 px-2 text-center">Score (0-10)</th>
-          <th class="py-3 px-2 text-center">Aromatic (${reqs.Aromatic ? '&ge;' + reqs.Aromatic : 'Aro'})</th>
-          <th class="py-3 px-2 text-center">Hydrophobic (${reqs.Hydrophobe ? '&ge;' + reqs.Hydrophobe : 'Hyd'})</th>
-          <th class="py-3 px-2 text-center">Donors (${reqs.Donor ? '&ge;' + reqs.Donor : 'HBD'})</th>
-          <th class="py-3 px-2 text-center">Acceptors (${reqs.Acceptor ? '&ge;' + reqs.Acceptor : 'HBA'})</th>
-          <th class="py-3 px-2.5 text-center">Alignment Profile</th>
-          <th class="py-3 px-2 text-center">Status</th>
+          <th class="py-2.5 px-2 text-center w-8">#</th>
+          <th class="py-2.5 px-2.5 min-w-[120px]">Candidate</th>
+          <th class="py-2.5 px-2 text-center w-16">Match %</th>
+          <th class="py-2.5 px-2 text-center w-16">Score</th>
+          <th class="py-2.5 px-1.5 text-center w-12" title="Aromatic Rings (Required: &ge; ${reqs.Aromatic || 1})">Aro (${reqs.Aromatic ? '&ge;' + reqs.Aromatic : 'Aro'})</th>
+          <th class="py-2.5 px-1.5 text-center w-12" title="Hydrophobic Centers (Required: &ge; ${reqs.Hydrophobe || 1})">Hyd (${reqs.Hydrophobe ? '&ge;' + reqs.Hydrophobe : 'Hyd'})</th>
+          <th class="py-2.5 px-1.5 text-center w-12" title="H-Bond Donors (Required: &ge; ${reqs.Donor || 1})">HBD (${reqs.Donor ? '&ge;' + reqs.Donor : 'HBD'})</th>
+          <th class="py-2.5 px-1.5 text-center w-12" title="H-Bond Acceptors (Required: &ge; ${reqs.Acceptor || 1})">HBA (${reqs.Acceptor ? '&ge;' + reqs.Acceptor : 'HBA'})</th>
+          <th class="py-2.5 px-2 text-center w-24">Alignment</th>
+          <th class="py-2.5 px-2 text-center w-16">Status</th>
         </tr>
       `;
     }
@@ -3616,37 +3616,37 @@ class BindoraApp {
 
       return `
         <tr class="border-b border-slate-800 hover:bg-slate-800/40 transition">
-          <td class="py-2.5 px-2 font-bold text-center text-purple-400 font-mono align-middle">#${idx + 1}</td>
-          <td class="py-2.5 px-3 font-sans align-middle max-w-[180px]" title="${c.smiles}">
+          <td class="py-2 px-2 font-bold text-center text-purple-400 font-mono align-middle">#${idx + 1}</td>
+          <td class="py-2 px-2.5 font-sans align-middle max-w-[150px]" title="${c.smiles}">
             <span class="text-white font-semibold text-xs block truncate">${c.name}</span>
-            <span class="text-[10px] text-slate-400 font-mono block truncate">${c.smiles}</span>
+            <span class="text-[9px] text-slate-400 font-mono block truncate">${c.smiles}</span>
           </td>
-          <td class="py-2.5 px-2 font-mono font-bold text-center align-middle whitespace-nowrap ${isStrong ? 'text-emerald-400' : isModerate ? 'text-purple-300' : 'text-slate-400'}">
+          <td class="py-2 px-2 font-mono font-bold text-center align-middle whitespace-nowrap ${isStrong ? 'text-emerald-400' : isModerate ? 'text-purple-300' : 'text-slate-400'}">
             ${matchPct.toFixed(1)}%
           </td>
-          <td class="py-2.5 px-2 font-mono font-bold text-center align-middle whitespace-nowrap text-purple-300">
-            ${(matchPct / 10).toFixed(1)} / 10
+          <td class="py-2 px-2 font-mono font-bold text-center align-middle whitespace-nowrap text-purple-300">
+            ${(matchPct / 10).toFixed(1)}
           </td>
-          <td class="py-2.5 px-2 font-mono text-center align-middle whitespace-nowrap ${aroMet ? 'text-emerald-300 font-semibold' : 'text-slate-400'}">
+          <td class="py-2 px-1.5 font-mono text-center align-middle whitespace-nowrap ${aroMet ? 'text-emerald-300 font-semibold' : 'text-slate-400'}">
             ${feats.Aromatic ?? 0}
           </td>
-          <td class="py-2.5 px-2 font-mono text-center align-middle whitespace-nowrap ${hydMet ? 'text-emerald-300 font-semibold' : 'text-slate-400'}">
+          <td class="py-2 px-1.5 font-mono text-center align-middle whitespace-nowrap ${hydMet ? 'text-emerald-300 font-semibold' : 'text-slate-400'}">
             ${feats.Hydrophobe ?? 0}
           </td>
-          <td class="py-2.5 px-2 font-mono text-center align-middle whitespace-nowrap ${donMet ? 'text-emerald-300 font-semibold' : 'text-slate-400'}">
+          <td class="py-2 px-1.5 font-mono text-center align-middle whitespace-nowrap ${donMet ? 'text-emerald-300 font-semibold' : 'text-slate-400'}">
             ${feats.Donor ?? 0}
           </td>
-          <td class="py-2.5 px-2 font-mono text-center align-middle whitespace-nowrap ${accMet ? 'text-emerald-300 font-semibold' : 'text-slate-400'}">
+          <td class="py-2 px-1.5 font-mono text-center align-middle whitespace-nowrap ${accMet ? 'text-emerald-300 font-semibold' : 'text-slate-400'}">
             ${feats.Acceptor ?? 0}
           </td>
-          <td class="py-2.5 px-2.5 text-center align-middle whitespace-nowrap">
+          <td class="py-2 px-2 text-center align-middle whitespace-nowrap">
             <span class="px-2 py-0.5 rounded-full ${isStrong ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : isModerate ? 'bg-purple-950 text-purple-300 border border-purple-800' : 'bg-slate-800 text-slate-400 border border-slate-700'} text-[10px] font-bold inline-block cursor-help" title="${alignTooltip}">
-              ${isStrong ? 'Strong Match' : isModerate ? 'Moderate Match' : 'Low Match'}
+              ${isStrong ? 'Strong Match' : isModerate ? 'Moderate' : 'Low Match'}
             </span>
           </td>
-          <td class="py-2.5 px-2 text-center align-middle whitespace-nowrap">
-            <span class="px-2 py-0.5 rounded ${isStrong ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800 text-slate-400 border border-slate-700'} text-[10px] font-bold tracking-wider uppercase">
-              ${isStrong ? 'Pass' : 'Sub-match'}
+          <td class="py-2 px-2 text-center align-middle whitespace-nowrap">
+            <span class="px-2 py-0.5 rounded ${isStrong ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800 text-slate-400 border border-slate-700'} text-[9px] font-bold tracking-wider uppercase">
+              ${isStrong ? 'Pass' : 'Sub'}
             </span>
           </td>
         </tr>
