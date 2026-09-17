@@ -1382,7 +1382,6 @@ class BindoraApp {
     this.state.ensembleStructures = null;
     this.state.pharmacophore = null;
     this.state.currentPoseIdx = 0;
-    document.getElementById("btn-batch-mode-pharmacophore")?.classList.add("hidden");
 
     if (this.viewer) {
       this.viewer.clear();
@@ -3254,11 +3253,9 @@ class BindoraApp {
 
   async checkPharmacophoreEligibility() {
     const r = this.state.receptor;
-    const btn = document.getElementById("btn-batch-mode-pharmacophore");
     const summary = document.getElementById("pharmacophore-profile-summary");
     if (!r) {
-      if (btn) btn.classList.add("hidden");
-      if (summary) summary.innerHTML = `<span class="text-xs text-slate-500 italic">No target receptor loaded yet. Search RCSB or pick a benchmark in Tab 1.</span>`;
+      if (summary) summary.innerHTML = `<span class="text-xs text-slate-400 italic">No target receptor loaded yet. Please search RCSB or load 1HSG in Tab 1 to derive consensus pharmacophore features.</span>`;
       return;
     }
 
@@ -3275,7 +3272,6 @@ class BindoraApp {
       const data = await BindoraAPI.getPharmacophoreActives(targetName, chemblId, pdbId, uniprotAcc, 10);
       if (data.eligible && data.actives_count >= 3) {
         this.state.pharmacophore = data;
-        if (btn) btn.classList.remove("hidden");
         const badge = document.getElementById("pharmacophore-actives-badge");
         if (badge) badge.textContent = `${data.actives_count} ChEMBL Actives`;
         if (summary && data.consensus_profile) {
@@ -3288,7 +3284,6 @@ class BindoraApp {
           `;
         }
       } else {
-        if (btn) btn.classList.remove("hidden");
         if (summary) {
           summary.innerHTML = `<span class="text-slate-400 text-[11px]">No curated ChEMBL actives (IC50 &le; 10 µM) found for target "${pdbId || targetName.substring(0, 25)}". Pharmacophore profile requires &ge;3 known active binders.</span>`;
         }
