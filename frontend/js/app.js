@@ -2090,7 +2090,11 @@ class BindoraApp {
     const elMode = document.getElementById("dock-current-mode-label");
     if (elMode) elMode.textContent = `Mode ${currentPose.mode || (this.state.currentPoseIdx + 1)} / ${poses.length}`;
 
-    // Pose Table (Clean, Professional Scientific Rows - No Wrapping)
+    // Pose Modes Count Header
+    const elModeCount = document.getElementById("dock-poses-mode-count");
+    if (elModeCount) elModeCount.textContent = `${poses.length} Mode${poses.length !== 1 ? 's' : ''}`;
+
+    // Pose Table (Clean, Professional Scientific Rows - No Clipping)
     const poseTable = document.getElementById("pose-table-rows");
     if (poseTable) {
       poseTable.innerHTML = poses.map((p, idx) => {
@@ -2105,28 +2109,28 @@ class BindoraApp {
 
         let badgeHtml = '';
         if (typeCount >= 5) {
-          badgeHtml = `<span class="ml-1 px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/80 text-[9px] font-mono font-bold" title="Contains ${typeCount}/6 interaction classes">${typeCount}/6 Types</span>`;
+          badgeHtml = `<span class="ml-1 px-1 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/80 text-[9px] font-mono font-bold" title="Contains ${typeCount}/6 interaction classes">${typeCount}/6</span>`;
         } else if (typeCount > 0) {
-          badgeHtml = `<span class="ml-1 text-[9px] text-slate-400 font-mono">(${typeCount} types)</span>`;
+          badgeHtml = `<span class="ml-1 text-[9px] text-slate-400 font-mono">(${typeCount})</span>`;
         }
 
         const isSelected = idx === this.state.currentPoseIdx;
         return `
         <tr class="cursor-pointer transition select-none ${isSelected ? 'bg-cyan-950/70 text-white font-semibold border-l-2 border-l-cyan-400' : 'hover:bg-slate-800/40 text-slate-300'}" onclick="window.bindoraApp ? window.bindoraApp.selectPose(${idx}) : window.app.selectPose(${idx})">
-          <td class="px-2.5 py-1.5 whitespace-nowrap font-mono text-cyan-300">
+          <td class="px-2 py-1.5 whitespace-nowrap font-mono text-cyan-300">
             <span class="font-bold">Pose ${p.mode}</span> ${badgeHtml}
           </td>
-          <td class="px-2 py-1.5 font-mono text-right text-slate-100 font-semibold whitespace-nowrap">
-            ${p.affinity_kcal != null ? p.affinity_kcal : '—'} <span class="text-[9px] text-slate-500 font-normal">kcal/mol</span>
+          <td class="px-1.5 py-1.5 font-mono text-right text-slate-100 font-semibold whitespace-nowrap">
+            ${p.affinity_kcal != null ? p.affinity_kcal : '—'}
           </td>
-          <td class="px-2 py-1.5 font-mono text-right text-emerald-400 whitespace-nowrap">
+          <td class="px-1.5 py-1.5 font-mono text-right text-emerald-400 whitespace-nowrap">
             ${p.vinardo_affinity_kcal != null ? p.vinardo_affinity_kcal : '—'}
           </td>
-          <td class="px-2 py-1.5 font-mono text-right text-slate-400 whitespace-nowrap">
-            ${p.rmsd_lb != null ? p.rmsd_lb : '0'} Å
+          <td class="px-1.5 py-1.5 font-mono text-right text-slate-400 whitespace-nowrap">
+            ${p.rmsd_lb != null ? p.rmsd_lb : '0'}
           </td>
-          <td class="px-2 py-1.5 font-mono text-right text-slate-400 whitespace-nowrap">
-            ${p.rmsd_ub != null ? p.rmsd_ub : '0'} Å
+          <td class="px-2.5 py-1.5 font-mono text-right text-slate-400 whitespace-nowrap">
+            ${p.rmsd_ub != null ? p.rmsd_ub : '0'}
           </td>
         </tr>
       `;
@@ -2358,19 +2362,70 @@ class BindoraApp {
       hydrophobic: hp
     };
 
-    // Toggle contact lines and distance pills
-    Object.entries(visibility).forEach(([itype, isVis]) => {
-      svg.querySelectorAll(`.itype-${itype}`).forEach(el => {
-        el.style.display = isVis ? "" : "none";
-      });
+    const isLight = document.documentElement.classList.contains("light") || svg.classList.contains("theme-light");
+
+    const darkStyles = {
+      salt_bridge: { border: "#db2777", bg: "#380a24", text: "#f472b6" },
+      hbond: { border: "#ca8a04", bg: "#2a2004", text: "#fde047" },
+      pi_stack: { border: "#059669", bg: "#062c1d", text: "#6ee7b7" },
+      pi_cation: { border: "#ea580c", bg: "#381604", text: "#fdba74" },
+      halogen: { border: "#9333ea", bg: "#2a0845", text: "#d8b4fe" },
+      hydrophobic: { border: "#64748b", bg: "#1e293b", text: "#cbd5e1" }
+    };
+
+    const lightStyles = {
+      salt_bridge: { border: "#db2777", bg: "#fdf2f8", text: "#9d174d" },
+      hbond: { border: "#ca8a04", bg: "#fefce8", text: "#713f12" },
+      pi_stack: { border: "#059669", bg: "#ecfdf5", text: "#065f46" },
+      pi_cation: { border: "#ea580c", bg: "#fff7ed", text: "#9a3412" },
+      halogen: { border: "#9333ea", bg: "#faf5ff", text: "#6b21a8" },
+      hydrophobic: { border: "#94a3b8", bg: "#f1f5f9", text: "#334155" }
+    };
+
+    const palette = isLight ? lightStyles : darkStyles;
+    const priorityOrder = ["salt_bridge", "hbond", "pi_stack", "pi_cation", "halogen", "hydrophobic"];
+
+    // 1. Toggle contact lines and distance pills specifically
+    svg.querySelectorAll(".interaction-contact[data-type]").forEach(el => {
+      const type = el.getAttribute("data-type");
+      el.style.display = visibility[type] ? "" : "none";
     });
 
-    // Toggle residue badge nodes: visible if ANY connected interaction class is visible
+    // 2. Toggle residue badge nodes and dynamically adapt styling & dots
     svg.querySelectorAll(".interaction-badge-node").forEach(badge => {
       const typesAttr = badge.getAttribute("data-types") || "";
       const types = typesAttr.split(" ").filter(Boolean);
-      const isVisible = types.length === 0 || types.some(t => visibility[t]);
-      badge.style.display = isVisible ? "" : "none";
+      // Active types are only those that are currently enabled by the checkboxes
+      const activeTypes = types.filter(t => visibility[t]);
+
+      if (activeTypes.length === 0) {
+        // No active interactions for this residue: completely hide badge
+        badge.style.display = "none";
+        return;
+      }
+
+      badge.style.display = "";
+
+      // Toggle individual dots matching interaction status
+      badge.querySelectorAll(".badge-dot[data-dot-type]").forEach(dot => {
+        const dotType = dot.getAttribute("data-dot-type");
+        dot.style.display = visibility[dotType] ? "" : "none";
+      });
+
+      // Recolor badge border, fill, and text to match the highest-priority active interaction
+      const topType = priorityOrder.find(p => activeTypes.includes(p)) || activeTypes[0];
+      const style = palette[topType];
+      if (style) {
+        const rect = badge.querySelector("rect.badge-bg") || badge.querySelector("rect");
+        if (rect) {
+          rect.setAttribute("stroke", style.border);
+          rect.setAttribute("fill", style.bg);
+        }
+        const text = badge.querySelector("text.badge-text") || badge.querySelector("text");
+        if (text) {
+          text.setAttribute("fill", style.text);
+        }
+      }
     });
   }
 

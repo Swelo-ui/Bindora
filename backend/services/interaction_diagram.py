@@ -170,6 +170,27 @@ class InteractionDiagramGenerator:
                     "target_pts": []
                 }
 
+            # If this is a hydrophobic contact and the residue already has specific polar/aromatic contacts, skip to avoid clutter
+            if itype == "hydrophobic" and len(grouped_residues[key]["types_set"]) > 0:
+                return
+
+            # Check if there is already a contact of the same type for this residue
+            existing = None
+            for c in grouped_residues[key]["contacts"]:
+                if c["type"] == itype:
+                    existing = c
+                    break
+
+            if existing is not None:
+                # Keep closest contact
+                curr_d = existing["distance"] if existing["distance"] is not None else 999.0
+                new_d = dist if dist is not None else 999.0
+                if new_d < curr_d:
+                    existing["distance"] = dist
+                    existing["target_pt"] = target_pt
+                    existing["latom_idx"] = latom_idx
+                return
+
             grouped_residues[key]["contacts"].append({
                 "type": itype,
                 "distance": dist,
@@ -386,16 +407,16 @@ class InteractionDiagramGenerator:
             for d_idx, dtype in enumerate(sorted_types[:3]):
                 d_color = interaction_styles[dtype]["color"]
                 dx_pos = dot_start_x + (d_idx * 7.5)
-                dots_svg.append(f'<circle cx="{dx_pos:.1f}" cy="0" r="3.2" fill="{d_color}"/>')
+                dots_svg.append(f'<circle class="badge-dot" data-dot-type="{dtype}" cx="{dx_pos:.1f}" cy="0" r="3.2" fill="{d_color}"/>')
 
             text_offset_x = 4.0 if len(sorted_types) <= 1 else 7.0
 
             badge_svg = (
-                f'<g class="interaction-badge-node {types_class_str}" data-types="{types_data_str}" transform="translate({res_x:.1f},{res_y:.1f})">\n'
-                f'  <rect x="-42" y="-12" width="84" height="24" rx="6" '
+                f'<g class="interaction-badge-node {types_class_str}" data-types="{types_data_str}" data-primary-type="{r["primary_type"]}" transform="translate({res_x:.1f},{res_y:.1f})">\n'
+                f'  <rect class="badge-bg" x="-42" y="-12" width="84" height="24" rx="6" '
                 f'fill="{primary_style["pill_bg"]}" stroke="{primary_style["badge_border"]}" stroke-width="1.4"/>\n'
                 f'  {"".join(dots_svg)}\n'
-                f'  <text x="{text_offset_x}" y="3.8" fill="{primary_style["pill_text"]}" '
+                f'  <text class="badge-text" x="{text_offset_x}" y="3.8" fill="{primary_style["pill_text"]}" '
                 f'font-family="system-ui, -apple-system, sans-serif" font-size="9.5" font-weight="bold" text-anchor="middle">{res_label}</text>\n'
                 f'</g>'
             )

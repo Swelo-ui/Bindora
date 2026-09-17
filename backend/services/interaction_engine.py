@@ -396,7 +396,13 @@ class InteractionEngine:
                             "end_coord": [float(c) for c in center]
                         })
 
-        return salt_bridges
+        # Deduplicate to closest salt bridge per residue
+        unique_sb = {}
+        for sb in salt_bridges:
+            key = sb["residue"]
+            if key not in unique_sb or unique_sb[key]["distance"] > sb["distance"]:
+                unique_sb[key] = sb
+        return list(unique_sb.values())
 
     @classmethod
     def _find_ligand_aromatic_rings(
@@ -554,7 +560,13 @@ class InteractionEngine:
                         "end_coord": [float(c) for c in r_centroid]
                     })
 
-        return stacks
+        # Deduplicate to closest pi-pi stacking per residue
+        unique_ps = {}
+        for ps in stacks:
+            key = ps["residue"]
+            if key not in unique_ps or unique_ps[key]["distance"] > ps["distance"]:
+                unique_ps[key] = ps
+        return list(unique_ps.values())
 
     @classmethod
     def _find_pi_cation(
@@ -662,7 +674,13 @@ class InteractionEngine:
                         "end_coord": [float(c) for c in lring_centroid]
                     })
 
-        return pi_cations
+        # Deduplicate to closest pi-cation per residue
+        unique_pc = {}
+        for pc in pi_cations:
+            key = pc["residue"]
+            if key not in unique_pc or unique_pc[key]["distance"] > pc["distance"]:
+                unique_pc[key] = pc
+        return list(unique_pc.values())
 
     @classmethod
     def _find_halogen_bonds(
@@ -716,7 +734,13 @@ class InteractionEngine:
                             "end_coord": [float(c) for c in r_coord]
                         })
 
-        return halogens
+        # Deduplicate to closest halogen bond per residue
+        unique_hb = {}
+        for hb in halogens:
+            key = hb["residue"]
+            if key not in unique_hb or unique_hb[key]["distance"] > hb["distance"]:
+                unique_hb[key] = hb
+        return list(unique_hb.values())
 
     @classmethod
     def _find_hydrophobic_contacts(
