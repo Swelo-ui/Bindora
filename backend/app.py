@@ -258,24 +258,29 @@ def run_docking():
         if not poses:
             return jsonify({"error": "AutoDock Vina finished but returned no binding poses."}), 500
 
+        lig_mol = Chem.MolFromSmiles(smiles) if smiles else None
+
+        # Pre-compute biophysical interactions for ALL poses so switching modes is instant
+        for p in poses:
+            try:
+                p_contacts = DockingEngine.analyze_interactions(receptor_pdb, p["pdbqt_content"], ligand_mol=lig_mol)
+                if smiles:
+                    try:
+                        from backend.services.interaction_diagram import InteractionDiagramGenerator
+                        p_contacts["diagram_svg"] = InteractionDiagramGenerator.generate_diagram_svg(smiles, p_contacts)
+                    except Exception:
+                        pass
+                p["interactions"] = p_contacts
+            except Exception as pe:
+                p["interactions"] = {}
+
         best_pose = poses[0]
         affinity = best_pose["affinity_kcal"]
         replicate_stats = best_pose.get("replicate_stats")
 
         # Calculate thermodynamics and Ligand Efficiency
         thermo = BioactivityService.calculate_thermodynamics(affinity, heavy_atoms, mw)
-
-        # Calculate atomic interactions (H-bonds, salt bridges, pi-stacking, hydrophobic)
-        contacts = {}
-        if receptor_pdb:
-            lig_mol = Chem.MolFromSmiles(smiles) if smiles else None
-            contacts = DockingEngine.analyze_interactions(receptor_pdb, best_pose["pdbqt_content"], ligand_mol=lig_mol)
-            if smiles:
-                try:
-                    from backend.services.interaction_diagram import InteractionDiagramGenerator
-                    contacts["diagram_svg"] = InteractionDiagramGenerator.generate_diagram_svg(smiles, contacts)
-                except Exception as ex:
-                    print(f"[DIAGRAM ERROR] {ex}")
+        contacts = best_pose.get("interactions", {})
 
         return jsonify({
             "poses": poses,
@@ -287,6 +292,27 @@ def run_docking():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": f"Docking execution failed: {str(e)}"}), 500
+
+@app.route("/api/docking/analyze-interactions", methods=["POST"])
+def analyze_interactions_endpoint():
+    data = request.get_json() or {}
+    receptor_pdb = data.get("receptor_pdb", "")
+    pose_pdbqt = data.get("pose_pdbqt", "")
+    smiles = data.get("smiles", "")
+    if not receptor_pdb or not pose_pdbqt:
+        return jsonify({"error": "Missing 'receptor_pdb' or 'pose_pdbqt'"}), 400
+    try:
+        lig_mol = Chem.MolFromSmiles(smiles) if smiles else None
+        contacts = DockingEngine.analyze_interactions(receptor_pdb, pose_pdbqt, ligand_mol=lig_mol)
+        if smiles:
+            try:
+                from backend.services.interaction_diagram import InteractionDiagramGenerator
+                contacts["diagram_svg"] = InteractionDiagramGenerator.generate_diagram_svg(smiles, contacts)
+            except Exception:
+                pass
+        return jsonify(contacts)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/docking/interaction-diagram", methods=["POST"])
 def get_interaction_diagram():

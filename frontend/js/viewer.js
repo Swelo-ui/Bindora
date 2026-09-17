@@ -17,6 +17,8 @@ class MolecularViewer {
     this.measureMarkers = [];
     this.measureLabels = [];   // track only distance labels for selective removal
     this.isSpinning = false;
+    this.flexHighlights = new Map();
+    this.lastInteractingResidues = new Set();
     
     // Default display settings
     this.settings = {
@@ -85,6 +87,7 @@ class MolecularViewer {
     });
     this.interactionShapes = [];
     this.viewer.removeAllLabels();
+    this.clearFlexibleHighlights();
   }
 
   clearMeasurements() {
@@ -291,6 +294,7 @@ class MolecularViewer {
       interacting_residues = []
     } = interactions;
 
+    this.lastInteractingResidues = new Set();
     if (this.receptorModel && interacting_residues.length > 0) {
       interacting_residues.forEach(resStr => {
         const parts = resStr.split(' ');
@@ -298,6 +302,7 @@ class MolecularViewer {
         const numChain = parts[1] || '';
         const [resNumStr, chain] = numChain.split(':');
         const resNum = parseInt(resNumStr);
+        this.lastInteractingResidues.add(`${chain || 'A'}:${resNum}`);
 
         const sel = { resi: resNum };
         if (chain) sel.chain = chain;
@@ -818,22 +823,153 @@ class MolecularViewer {
     }
   }
 
-  focusResidue(chain, resNum) {
+  focusResidue(chain, resNum, enable = true, resName = '') {
     if (!this.viewer || !this.receptorModel) return;
     try {
       const num = parseInt(resNum);
       const sel = { resi: num };
       if (chain) sel.chain = chain;
+      const key = `${chain || 'A'}:${num}`;
+
+      if (!this.flexHighlights) {
+        this.flexHighlights = new Map();
+      }
+
+      // If disabling / unselecting: Cleanly remove glow and restore original residue style
+      if (!enable) {
+        if (this.flexHighlights.has(key)) {
+          const item = this.flexHighlights.get(key);
+          if (item.shapes) {
+            item.shapes.forEach(s => {
+              try { this.viewer.removeShape(s); } catch (e) {}
+            });
+          }
+          if (item.labels) {
+            item.labels.forEach(l => {
+              try { this.viewer.removeLabel(l); } catch (e) {}
+            });
+          }
+          this.flexHighlights.delete(key);
+        }
+
+        // Restore original style cleanly (no lingering color)
+        const isInteracting = this.lastInteractingResidues && this.lastInteractingResidues.has(key);
+        if (isInteracting) {
+          this.receptorModel.setStyle(sel, {
+            cartoon: { color: '#38bdf8', opacity: 0.9 },
+            stick: { radius: 0.22, colorscheme: 'amino' }
+          });
+        } else {
+          const currentStyle = this.settings.proteinStyle || 'cartoon';
+          if (currentStyle === 'cartoon') {
+            this.receptorModel.setStyle(sel, {
+              cartoon: { colorscheme: 'chain', opacity: 0.85, thickness: 0.4 }
+            });
+          } else {
+            this.applyReceptorStyle();
+          }
+        }
+        this.viewer.render();
+        return;
+      }
+
+      // If enabling / selecting: GLOWING NEON HALO EFFECT
       this.viewer.zoomTo(sel, 600);
-      
-      // Temporarily highlight with warm stick representation
+
+      // Clean existing shapes if re-selecting
+      if (this.flexHighlights.has(key)) {
+        const old = this.flexHighlights.get(key);
+        if (old.shapes) old.shapes.forEach(s => { try { this.viewer.removeShape(s); } catch (e) {} });
+        if (old.labels) old.labels.forEach(l => { try { this.viewer.removeLabel(l); } catch (e) {} });
+      }
+
+      // Style sidechain with crisp sticks keeping elemental amino acid coloring
       this.receptorModel.setStyle(sel, {
-        cartoon: { color: '#f59e0b', opacity: 1.0 },
-        stick: { radius: 0.32, color: '#f59e0b' }
+        cartoon: { color: '#06b6d4', opacity: 0.95 },
+        stick: { radius: 0.28, colorscheme: 'amino' }
       });
+
+      // Add translucent glowing halo spheres around sidechain heavy atoms
+      const shapes = [];
+      const atoms = this.receptorModel.selectedAtoms(sel);
+      if (atoms && atoms.length > 0) {
+        atoms.forEach(at => {
+          if (at.elem !== 'H') {
+            // Soft inner glow
+            const s1 = this.viewer.addSphere({
+              center: { x: at.x, y: at.y, z: at.z },
+              radius: 0.72,
+              color: '#38bdf8',
+              opacity: 0.45
+            });
+            if (s1) shapes.push(s1);
+
+            // Outer radiant wireframe aura (sci-fi holographic glow effect)
+            const s2 = this.viewer.addSphere({
+              center: { x: at.x, y: at.y, z: at.z },
+              radius: 1.15,
+              color: '#06b6d4',
+              opacity: 0.25,
+              wireframe: true
+            });
+            if (s2) shapes.push(s2);
+          }
+        });
+
+        // Add 3D floating tag
+        const labels = [];
+        const ca = atoms.find(a => a.atom === 'CA') || atoms[0];
+        const displayLabel = resName ? `${resName} ${num}:${chain || 'A'}` : `${num}:${chain || 'A'}`;
+        const lbl = this.viewer.addLabel(`⚡ ${displayLabel} (Flex)`, {
+          position: { x: ca.x, y: ca.y + 1.2, z: ca.z },
+          backgroundColor: 'rgba(8, 47, 73, 0.92)',
+          fontColor: '#38bdf8',
+          fontSize: 11,
+          borderThickness: 1.5,
+          borderColor: '#0284c7',
+          inFront: true
+        });
+        if (lbl) labels.push(lbl);
+
+        this.flexHighlights.set(key, { shapes, labels, sel });
+      }
+
       this.viewer.render();
     } catch (e) {
       console.warn('[3Dmol] focusResidue notice:', e);
+    }
+  }
+
+  clearFlexibleHighlights() {
+    if (!this.viewer) return;
+    if (this.flexHighlights && this.flexHighlights.size > 0) {
+      this.flexHighlights.forEach((item, key) => {
+        if (item.shapes) {
+          item.shapes.forEach(s => {
+            try { this.viewer.removeShape(s); } catch (e) {}
+          });
+        }
+        if (item.labels) {
+          item.labels.forEach(l => {
+            try { this.viewer.removeLabel(l); } catch (e) {}
+          });
+        }
+        if (this.receptorModel && item.sel) {
+          const isInteracting = this.lastInteractingResidues && this.lastInteractingResidues.has(key);
+          if (isInteracting) {
+            this.receptorModel.setStyle(item.sel, {
+              cartoon: { color: '#38bdf8', opacity: 0.9 },
+              stick: { radius: 0.22, colorscheme: 'amino' }
+            });
+          } else {
+            this.receptorModel.setStyle(item.sel, {
+              cartoon: { colorscheme: 'chain', opacity: 0.85, thickness: 0.4 }
+            });
+          }
+        }
+      });
+      this.flexHighlights.clear();
+      this.viewer.render();
     }
   }
 

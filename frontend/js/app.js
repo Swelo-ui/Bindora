@@ -2087,15 +2087,33 @@ class BindoraApp {
     // Pose Table
     const poseTable = document.getElementById("pose-table-rows");
     if (poseTable) {
-      poseTable.innerHTML = poses.map((p, idx) => `
+      poseTable.innerHTML = poses.map((p, idx) => {
+        const pInt = p.interactions || {};
+        const hb = pInt.total_hbond_count || (pInt.hydrogen_bonds ? pInt.hydrogen_bonds.length : 0);
+        const sb = pInt.total_salt_bridge_count || (pInt.salt_bridges ? pInt.salt_bridges.length : 0);
+        const ps = pInt.total_pi_stacking_count || (pInt.pi_stacking ? pInt.pi_stacking.length : 0);
+        const pc = pInt.total_pi_cation_count || (pInt.pi_cation ? pInt.pi_cation.length : 0);
+        const hal = pInt.total_halogen_count || (pInt.halogen_bonds ? pInt.halogen_bonds.length : 0);
+        const hp = pInt.total_hydrophobic_count || (pInt.hydrophobic_contacts ? pInt.hydrophobic_contacts.length : 0);
+        const typeCount = [hb, sb, ps, pc, hal, hp].filter(c => c > 0).length;
+
+        let badgeHtml = '';
+        if (typeCount >= 5) {
+          badgeHtml = `<span class="ml-1.5 px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-bold" title="Contains ${typeCount}/6 interaction classes">${typeCount}/6 Types</span>`;
+        } else if (typeCount > 0) {
+          badgeHtml = `<span class="ml-1.5 text-[10px] text-slate-400 font-mono">(${typeCount} types)</span>`;
+        }
+
+        return `
         <tr class="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40 cursor-pointer ${idx === this.state.currentPoseIdx ? 'bg-cyan-50 dark:bg-cyan-950/40 font-semibold' : ''}" onclick="window.app.selectPose(${idx})">
-          <td class="px-3 py-2 text-cyan-700 dark:text-cyan-300">Mode ${p.mode}</td>
+          <td class="px-3 py-2 text-cyan-700 dark:text-cyan-300 flex items-center">Mode ${p.mode} ${badgeHtml}</td>
           <td class="px-3 py-2 font-mono text-slate-900 dark:text-white font-semibold">${p.affinity_kcal}</td>
           <td class="px-3 py-2 font-mono text-emerald-600 dark:text-emerald-400">${p.vinardo_affinity_kcal != null ? p.vinardo_affinity_kcal : '—'}</td>
           <td class="px-3 py-2 font-mono text-slate-600 dark:text-slate-400">${p.rmsd_lb}</td>
           <td class="px-3 py-2 font-mono text-slate-600 dark:text-slate-400">${p.rmsd_ub}</td>
         </tr>
-      `).join("");
+      `;
+      }).join("");
     }
 
     // Interacting Residues Chips
@@ -2135,29 +2153,38 @@ class BindoraApp {
     this.state.currentPoseIdx = idx;
     const pose = this.state.docking.poses[idx];
 
-    // Re-analyze interactions for this pose
-    try {
-      const smiles = this.state.ligand?.canonical_smiles || this.state.ligand?.smiles || "";
-      const contacts = await BindoraAPI.analyzeInteractions(this.state.receptor.cleaned_pdb, pose.pdbqt_content, smiles);
-      this.state.docking.interactions = contacts;
-
-      if (this.viewer) {
-        this.viewer.loadLigand(pose.pdb_block);
-        this.viewer.renderInteractions(contacts);
+    let contacts = pose.interactions;
+    if (!contacts || Object.keys(contacts).length === 0) {
+      try {
+        const smiles = this.state.ligand?.canonical_smiles || this.state.ligand?.smiles || "";
+        contacts = await BindoraAPI.analyzeInteractions(this.state.receptor.cleaned_pdb, pose.pdbqt_content, smiles);
+        pose.interactions = contacts;
+      } catch (e) {
+        console.warn("Could not re-analyze pose interactions:", e);
+        contacts = this.state.docking.interactions || {};
       }
+    }
 
-      // Update 2D interaction diagram for the selected pose
-      const diagramContainer = document.getElementById("dock-interaction-diagram-container");
-      if (diagramContainer && contacts.diagram_svg) {
+    this.state.docking.interactions = contacts;
+
+    if (this.viewer) {
+      this.viewer.loadLigand(pose.pdb_block);
+      this.viewer.renderInteractions(contacts);
+    }
+
+    // Update 2D interaction diagram for the selected pose
+    const diagramContainer = document.getElementById("dock-interaction-diagram-container");
+    if (diagramContainer) {
+      if (contacts && contacts.diagram_svg) {
         diagramContainer.innerHTML = contacts.diagram_svg;
         this.setupDiagramPanZoom(diagramContainer);
+      } else {
+        diagramContainer.innerHTML = `<span class="text-xs text-slate-500 italic">No 2D interaction schematic available for this pose</span>`;
       }
+    }
 
-      if (contacts?.flexible_candidates) {
-        this.updateFlexibleResiduesUI(contacts.flexible_candidates);
-      }
-    } catch (e) {
-      console.warn("Could not re-analyze pose interactions:", e);
+    if (contacts?.flexible_candidates) {
+      this.updateFlexibleResiduesUI(contacts.flexible_candidates);
     }
 
     this.updateDockingScoresUI();
@@ -3628,27 +3655,40 @@ class BindoraApp {
     const container = document.getElementById("flex-residues-container");
     if (!container) return;
     if (!flexCandidates || flexCandidates.length === 0) {
-      if (!container.querySelector("input[type='checkbox']")) {
-        container.innerHTML = `<span class="text-[11px] text-slate-500 italic">No contacting active site residues detected yet.</span>`;
+      if (!container.querySelector(".flex-residue-card")) {
+        container.innerHTML = `<span class="col-span-2 text-[11px] text-slate-500 italic p-2 text-center">No contacting active site residues detected yet.</span>`;
       }
       return;
     }
+
     const previouslyChecked = new Set(
       Array.from(container.querySelectorAll("input[type='checkbox']:checked")).map(cb => cb.value)
     );
-    container.innerHTML = flexCandidates.map(c => `
-      <label class="inline-flex items-center space-x-1.5 px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 cursor-pointer transition text-[11px] select-none" data-chain="${c.chain}" data-resnum="${c.res_num}" data-resname="${c.res_name}" title="Click to view ${c.res_name} ${c.res_num} in 3D viewer">
-        <input type="checkbox" value="${c.id}" ${previouslyChecked.has(c.id) ? 'checked' : ''} class="rounded text-cyan-500 focus:ring-0 focus:ring-offset-0 bg-slate-900 border-slate-600 flex-residue-cb">
-        <span class="font-mono text-cyan-300 font-medium">${c.res_name} ${c.res_num}</span>
-        <span class="text-[10px] text-slate-400">(${c.chain})</span>
-      </label>
-    `).join("");
+
+    // Render clean 2-column cards (no awkward wrapping)
+    container.innerHTML = flexCandidates.map(c => {
+      const isChecked = previouslyChecked.has(c.id);
+      return `
+        <div class="flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none ${isChecked ? 'bg-gradient-to-r from-cyan-950/90 to-slate-900 border-cyan-400 text-cyan-100 shadow-md shadow-cyan-500/20 ring-1 ring-cyan-400/50' : 'bg-slate-800/60 hover:bg-slate-750/80 border-slate-700/60 text-slate-300 hover:border-cyan-500/40'}"
+             data-id="${c.id}" data-chain="${c.chain}" data-resnum="${c.res_num}" data-resname="${c.res_name}" title="Click to focus in 3D viewer & toggle flexible rotamers">
+          <input type="checkbox" value="${c.id}" ${isChecked ? 'checked' : ''} class="hidden flex-residue-cb">
+          <div class="flex items-center space-x-1.5 min-w-0">
+            <span class="font-mono font-bold text-slate-200">${c.res_name} ${c.res_num}</span>
+            <span class="text-[9px] px-1 py-0.2 rounded bg-slate-900/90 text-slate-400 border border-slate-800 font-mono">Ch:${c.chain}</span>
+          </div>
+          <div class="flex items-center space-x-1.5 flex-shrink-0">
+            <span class="flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition ${isChecked ? 'bg-cyan-500 text-slate-950 border-cyan-400' : 'border-slate-600 text-transparent'}">✓</span>
+          </div>
+        </div>
+      `;
+    }).join("");
 
     const updateSelectionState = () => {
       const checkedBoxes = container.querySelectorAll("input[type='checkbox']:checked");
       const count = checkedBoxes.length;
       const countBadge = document.getElementById("flex-selected-count-badge");
       const actionHint = document.getElementById("flex-action-hint");
+      const actionHintBadge = document.getElementById("flex-action-hint-badge");
       const actionHintText = document.getElementById("flex-action-hint-text");
       const dockBtnSpan = document.querySelector("#btn-run-docking span");
 
@@ -3664,12 +3704,18 @@ class BindoraApp {
       if (actionHint) {
         if (count > 0) {
           actionHint.classList.remove("hidden");
+          if (actionHintBadge) {
+            actionHintBadge.textContent = `${count} Flexible Residue${count > 1 ? 's' : ''} Active`;
+          }
           if (actionHintText) {
             const names = Array.from(checkedBoxes).map(cb => {
-              const lbl = cb.closest('label');
-              return lbl?.querySelector('.font-mono')?.textContent || cb.value;
+              const card = cb.closest('.flex-residue-card');
+              const rName = card?.getAttribute('data-resname') || '';
+              const rNum = card?.getAttribute('data-resnum') || '';
+              const rChain = card?.getAttribute('data-chain') || '';
+              return `${rName} ${rNum} (${rChain})`;
             }).join(', ');
-            actionHintText.innerHTML = `<span class="font-bold text-white">${count} residue${count > 1 ? 's' : ''} (${names})</span> marked for Induced-Fit.`;
+            actionHintText.innerHTML = `<span class="text-cyan-300 font-bold">${names}</span>`;
           }
         } else {
           actionHint.classList.add("hidden");
@@ -3678,40 +3724,70 @@ class BindoraApp {
 
       if (dockBtnSpan) {
         if (count > 0) {
-          dockBtnSpan.textContent = `Execute 3D Molecular Docking (Induced-Fit: ${count} Flex Residue${count > 1 ? 's' : ''})`;
+          dockBtnSpan.textContent = `Execute Induced-Fit Docking (${count} Flex Residue${count > 1 ? 's' : ''})`;
         } else {
           dockBtnSpan.textContent = "Execute 3D Molecular Docking";
         }
       }
     };
 
-    container.querySelectorAll(".flex-residue-cb").forEach(cb => {
-      cb.addEventListener("change", (e) => {
-        updateSelectionState();
-        const lbl = cb.closest('label');
-        const chain = lbl.getAttribute('data-chain');
-        const resNum = lbl.getAttribute('data-resnum');
-        const resName = lbl.getAttribute('data-resname');
-        if (cb.checked) {
-          this.showToast(`${resName} ${resNum}:${chain} marked as flexible side chain. Re-run docking to apply induced-fit.`, "info");
-          if (this.viewer && this.viewer.focusResidue) {
-            this.viewer.focusResidue(chain, resNum);
+    // Card click handler
+    container.querySelectorAll(".flex-residue-card").forEach(card => {
+      card.addEventListener("click", () => {
+        const cb = card.querySelector(".flex-residue-cb");
+        const isCurrentlyChecked = cb.checked;
+        const newCheckedState = !isCurrentlyChecked;
+        cb.checked = newCheckedState;
+
+        const indicator = card.querySelector(".flex-check-indicator");
+        if (newCheckedState) {
+          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-gradient-to-r from-cyan-950/90 to-slate-900 border-cyan-400 text-cyan-100 shadow-md shadow-cyan-500/20 ring-1 ring-cyan-400/50";
+          if (indicator) {
+            indicator.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition bg-cyan-500 text-slate-950 border-cyan-400";
           }
+        } else {
+          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-slate-800/60 hover:bg-slate-750/80 border-slate-700/60 text-slate-300 hover:border-cyan-500/40";
+          if (indicator) {
+            indicator.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition border-slate-600 text-transparent";
+          }
+        }
+
+        updateSelectionState();
+
+        const chain = card.getAttribute('data-chain');
+        const resNum = card.getAttribute('data-resnum');
+        const resName = card.getAttribute('data-resname');
+
+        if (this.viewer && this.viewer.focusResidue) {
+          this.viewer.focusResidue(chain, resNum, newCheckedState, resName);
+        }
+
+        if (newCheckedState) {
+          this.showToast(`✨ ${resName} ${resNum}:${chain} highlighted in 3D & marked as flexible rotamer.`, "info");
+        } else {
+          this.showToast(`${resName} ${resNum}:${chain} deselected. Highlight cleared.`, "info");
         }
       });
     });
 
-    container.querySelectorAll("label").forEach(lbl => {
-      lbl.addEventListener("click", (e) => {
-        if (e.target.tagName !== 'INPUT') {
-          const chain = lbl.getAttribute('data-chain');
-          const resNum = lbl.getAttribute('data-resnum');
-          if (this.viewer && this.viewer.focusResidue) {
-            this.viewer.focusResidue(chain, resNum);
-          }
+    // Clear All button in action hint
+    const clearBtn = document.getElementById("btn-clear-flex-residues");
+    if (clearBtn) {
+      clearBtn.onclick = (e) => {
+        e.stopPropagation();
+        container.querySelectorAll(".flex-residue-cb").forEach(cb => { cb.checked = false; });
+        container.querySelectorAll(".flex-residue-card").forEach(card => {
+          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-slate-800/60 hover:bg-slate-750/80 border-slate-700/60 text-slate-300 hover:border-cyan-500/40";
+          const ind = card.querySelector(".flex-check-indicator");
+          if (ind) ind.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition border-slate-600 text-transparent";
+        });
+        if (this.viewer && this.viewer.clearFlexibleHighlights) {
+          this.viewer.clearFlexibleHighlights();
         }
-      });
-    });
+        updateSelectionState();
+        this.showToast("All flexible residues cleared.", "info");
+      };
+    }
 
     updateSelectionState();
   }

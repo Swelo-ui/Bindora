@@ -134,6 +134,17 @@ class BindoraAPI {
     });
   }
 
+  static async analyzeInteractions(receptorPdb, posePdbqt, smiles = "") {
+    return this.request("/api/docking/analyze-interactions", {
+      method: "POST",
+      body: JSON.stringify({
+        receptor_pdb: receptorPdb,
+        pose_pdbqt: posePdbqt,
+        smiles: smiles
+      })
+    });
+  }
+
   static async getInteractionDiagram(smiles, interactions) {
     return this.request("/api/docking/interaction-diagram", {
       method: "POST",

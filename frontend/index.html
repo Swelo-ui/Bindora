@@ -1404,27 +1404,49 @@
             </div>
 
             <!-- Advanced Engine Settings: Flexible Side Chains (Collapsed by default) -->
-            <details id="details-flex-residues" class="group border border-slate-700/60 rounded-lg p-2.5 bg-slate-900/40 text-xs">
+            <details id="details-flex-residues" class="group border border-slate-700/70 dark:border-slate-800 rounded-xl p-3 bg-slate-900/60 dark:bg-slate-900/80 text-xs shadow-sm transition-all">
               <summary class="cursor-pointer font-medium text-slate-300 hover:text-cyan-300 flex items-center justify-between select-none">
-                <div class="flex items-center space-x-1.5">
+                <div class="flex items-center space-x-2">
                   <svg class="w-3.5 h-3.5 text-slate-400 group-open:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                  <span>Advanced: Flexible Side Chains</span>
+                  <span class="font-semibold text-slate-200">Flexible Side Chains</span>
                 </div>
                 <div class="flex items-center space-x-1.5">
-                  <span id="flex-selected-count-badge" class="hidden text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold">0 Selected</span>
-                  <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40">Induced Fit</span>
+                  <span id="flex-selected-count-badge" class="hidden text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/60 font-bold shadow-sm shadow-cyan-500/20">0 Selected</span>
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-950/70 text-amber-300 border border-amber-800/50 flex items-center space-x-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span>Induced Fit</span>
+                  </span>
                 </div>
               </summary>
-              <div class="mt-2.5 pt-2 border-t border-slate-800 space-y-2">
+              <div class="mt-2.5 pt-2.5 border-t border-slate-800/80 space-y-2.5">
                 <p class="text-[11px] text-slate-400 leading-relaxed">
-                  <strong class="text-cyan-300">Induced-Fit Modeling:</strong> Standard docking treats the receptor as frozen. Tick 1–3 contacting residues below to allow their amino acid side chains to rotate dynamically during docking.
+                  <strong class="text-cyan-300 font-semibold">Induced-Fit Simulation:</strong> Select 1–3 contacting residues to enable dynamic rotatable sidechains during AutoDock Vina & Meeko docking.
                 </p>
-                <div id="flex-action-hint" class="hidden p-2 rounded-lg bg-cyan-950/70 border border-cyan-500/50 text-[11px] text-cyan-200 font-sans flex items-center justify-between shadow-sm animate-pulse">
-                  <span id="flex-action-hint-text">1 residue selected.</span>
-                  <span class="font-bold text-cyan-300 flex items-center space-x-1"><span>Re-run Docking Below</span> <svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg></span>
+
+                <!-- Structured Action Callout (No awkward line breaks or squished text) -->
+                <div id="flex-action-hint" class="hidden rounded-xl p-2.5 bg-gradient-to-r from-cyan-950/90 to-slate-900/90 border border-cyan-500/60 shadow-md text-xs space-y-2">
+                  <div class="flex items-center justify-between border-b border-cyan-900/50 pb-1.5">
+                    <div class="flex items-center space-x-1.5 font-bold text-cyan-300">
+                      <svg class="w-3.5 h-3.5 text-cyan-400 animate-spin" style="animation-duration: 6s;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9" stroke-dasharray="8 6"/></svg>
+                      <span id="flex-action-hint-badge">Induced-Fit Active</span>
+                    </div>
+                    <button id="btn-clear-flex-residues" type="button" class="text-[10px] text-slate-400 hover:text-rose-400 font-mono transition underline underline-offset-2">Clear All</button>
+                  </div>
+                  <div id="flex-action-hint-text" class="text-[11px] text-cyan-100 font-mono">
+                    1 residue selected
+                  </div>
+                  <div class="flex items-center justify-between text-[11px] pt-1 border-t border-cyan-900/50 text-slate-300">
+                    <span class="text-slate-400 text-[10px]">Rotamer search ready</span>
+                    <span class="font-bold text-cyan-300 flex items-center space-x-1">
+                      <span>Re-run Docking Below</span>
+                      <svg class="w-3.5 h-3.5 inline animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                    </span>
+                  </div>
                 </div>
-                <div id="flex-residues-container" class="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-                  <span class="text-[11px] text-slate-500 italic">Load receptor or run docking to discover active site residues.</span>
+
+                <!-- Grid of Flexible Residue Cards (2 Columns - clean & proportional) -->
+                <div id="flex-residues-container" class="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto pr-1">
+                  <span class="col-span-2 text-[11px] text-slate-500 italic p-2 text-center">Load receptor or run docking to discover active site residues.</span>
                 </div>
               </div>
             </details>
