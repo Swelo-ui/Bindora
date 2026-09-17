@@ -818,6 +818,25 @@ class MolecularViewer {
     }
   }
 
+  focusResidue(chain, resNum) {
+    if (!this.viewer || !this.receptorModel) return;
+    try {
+      const num = parseInt(resNum);
+      const sel = { resi: num };
+      if (chain) sel.chain = chain;
+      this.viewer.zoomTo(sel, 600);
+      
+      // Temporarily highlight with warm stick representation
+      this.receptorModel.setStyle(sel, {
+        cartoon: { color: '#f59e0b', opacity: 1.0 },
+        stick: { radius: 0.32, color: '#f59e0b' }
+      });
+      this.viewer.render();
+    } catch (e) {
+      console.warn('[3Dmol] focusResidue notice:', e);
+    }
+  }
+
   resetCamera() {
     if (!this.viewer) return;
     if (this.ligandModel && this.receptorModel) {

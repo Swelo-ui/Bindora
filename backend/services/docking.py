@@ -328,6 +328,32 @@ class DockingEngine:
             "active_pocket_centering": pocket_desc
         }
 
+        # Extract candidate active site residues in proximity to pocket center (for flexible sidechain induced-fit)
+        pocket_residues = []
+        seen_pocket_res = set()
+        for pline in protein_lines:
+            try:
+                px = float(pline[30:38])
+                py = float(pline[38:46])
+                pz = float(pline[46:54])
+                d_sq = (px - center_x)**2 + (py - center_y)**2 + (pz - center_z)**2
+                if d_sq <= 8.5**2:
+                    rname = pline[17:20].strip()
+                    rnum = int(pline[22:26])
+                    rchain = pline[21].strip() or "A"
+                    rkey = (rchain, rnum)
+                    if rkey not in seen_pocket_res:
+                        seen_pocket_res.add(rkey)
+                        pocket_residues.append({
+                            "id": f"{rchain}:{rnum}",
+                            "label": f"{rname} {rnum}:{rchain}",
+                            "res_name": rname,
+                            "res_num": rnum,
+                            "chain": rchain
+                        })
+            except Exception:
+                continue
+
         native_smiles = None
         if has_co_ligand and co_ligand_pdb:
             try:
@@ -359,7 +385,8 @@ class DockingEngine:
                 "co_ligand_name": co_ligand_name,
                 "description": pocket_desc,
                 "center": {"x": round(center_x, 2), "y": round(center_y, 2), "z": round(center_z, 2)},
-                "size": {"x": round(size_x, 1), "y": round(size_y, 1), "z": round(size_z, 1)}
+                "size": {"x": round(size_x, 1), "y": round(size_y, 1), "z": round(size_z, 1)},
+                "residues": pocket_residues[:24]
             },
             "detected_pockets": detected_pockets_list
         }

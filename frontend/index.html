@@ -1410,14 +1410,21 @@
                   <svg class="w-3.5 h-3.5 text-slate-400 group-open:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                   <span>Advanced: Flexible Side Chains</span>
                 </div>
-                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40">Beta</span>
+                <div class="flex items-center space-x-1.5">
+                  <span id="flex-selected-count-badge" class="hidden text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold">0 Selected</span>
+                  <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40">Induced Fit</span>
+                </div>
               </summary>
               <div class="mt-2.5 pt-2 border-t border-slate-800 space-y-2">
                 <p class="text-[11px] text-slate-400 leading-relaxed">
-                  Allow specific active-site residue side chains to flex during docking (Vina induced-fit modeling, slower execution).
+                  <strong class="text-cyan-300">Induced-Fit Modeling:</strong> Standard docking treats the receptor as frozen. Tick 1–3 contacting residues below to allow their amino acid side chains to rotate dynamically during docking.
                 </p>
+                <div id="flex-action-hint" class="hidden p-2 rounded-lg bg-cyan-950/70 border border-cyan-500/50 text-[11px] text-cyan-200 font-sans flex items-center justify-between shadow-sm animate-pulse">
+                  <span id="flex-action-hint-text">1 residue selected.</span>
+                  <span class="font-bold text-cyan-300 flex items-center space-x-1"><span>Re-run Docking Below</span> <svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg></span>
+                </div>
                 <div id="flex-residues-container" class="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-                  <span class="text-[11px] text-slate-500 italic">Run docking to discover contacting active site residues.</span>
+                  <span class="text-[11px] text-slate-500 italic">Load receptor or run docking to discover active site residues.</span>
                 </div>
               </div>
             </details>

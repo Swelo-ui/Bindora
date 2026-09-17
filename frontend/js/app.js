@@ -1711,6 +1711,9 @@ class BindoraApp {
           true
         );
       }
+      if (p.residues && p.residues.length > 0) {
+        this.updateFlexibleResiduesUI(p.residues);
+      }
     }
 
     // Native Ligand Redocking Validation Status
@@ -3634,12 +3637,83 @@ class BindoraApp {
       Array.from(container.querySelectorAll("input[type='checkbox']:checked")).map(cb => cb.value)
     );
     container.innerHTML = flexCandidates.map(c => `
-      <label class="inline-flex items-center space-x-1.5 px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 cursor-pointer transition text-[11px]">
-        <input type="checkbox" value="${c.id}" ${previouslyChecked.has(c.id) ? 'checked' : ''} class="rounded text-cyan-500 focus:ring-0 focus:ring-offset-0 bg-slate-900 border-slate-600">
+      <label class="inline-flex items-center space-x-1.5 px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 cursor-pointer transition text-[11px] select-none" data-chain="${c.chain}" data-resnum="${c.res_num}" data-resname="${c.res_name}" title="Click to view ${c.res_name} ${c.res_num} in 3D viewer">
+        <input type="checkbox" value="${c.id}" ${previouslyChecked.has(c.id) ? 'checked' : ''} class="rounded text-cyan-500 focus:ring-0 focus:ring-offset-0 bg-slate-900 border-slate-600 flex-residue-cb">
         <span class="font-mono text-cyan-300 font-medium">${c.res_name} ${c.res_num}</span>
         <span class="text-[10px] text-slate-400">(${c.chain})</span>
       </label>
     `).join("");
+
+    const updateSelectionState = () => {
+      const checkedBoxes = container.querySelectorAll("input[type='checkbox']:checked");
+      const count = checkedBoxes.length;
+      const countBadge = document.getElementById("flex-selected-count-badge");
+      const actionHint = document.getElementById("flex-action-hint");
+      const actionHintText = document.getElementById("flex-action-hint-text");
+      const dockBtnSpan = document.querySelector("#btn-run-docking span");
+
+      if (countBadge) {
+        if (count > 0) {
+          countBadge.classList.remove("hidden");
+          countBadge.textContent = `${count} Selected`;
+        } else {
+          countBadge.classList.add("hidden");
+        }
+      }
+
+      if (actionHint) {
+        if (count > 0) {
+          actionHint.classList.remove("hidden");
+          if (actionHintText) {
+            const names = Array.from(checkedBoxes).map(cb => {
+              const lbl = cb.closest('label');
+              return lbl?.querySelector('.font-mono')?.textContent || cb.value;
+            }).join(', ');
+            actionHintText.innerHTML = `<span class="font-bold text-white">${count} residue${count > 1 ? 's' : ''} (${names})</span> marked for Induced-Fit.`;
+          }
+        } else {
+          actionHint.classList.add("hidden");
+        }
+      }
+
+      if (dockBtnSpan) {
+        if (count > 0) {
+          dockBtnSpan.textContent = `Execute 3D Molecular Docking (Induced-Fit: ${count} Flex Residue${count > 1 ? 's' : ''})`;
+        } else {
+          dockBtnSpan.textContent = "Execute 3D Molecular Docking";
+        }
+      }
+    };
+
+    container.querySelectorAll(".flex-residue-cb").forEach(cb => {
+      cb.addEventListener("change", (e) => {
+        updateSelectionState();
+        const lbl = cb.closest('label');
+        const chain = lbl.getAttribute('data-chain');
+        const resNum = lbl.getAttribute('data-resnum');
+        const resName = lbl.getAttribute('data-resname');
+        if (cb.checked) {
+          this.showToast(`${resName} ${resNum}:${chain} marked as flexible side chain. Re-run docking to apply induced-fit.`, "info");
+          if (this.viewer && this.viewer.focusResidue) {
+            this.viewer.focusResidue(chain, resNum);
+          }
+        }
+      });
+    });
+
+    container.querySelectorAll("label").forEach(lbl => {
+      lbl.addEventListener("click", (e) => {
+        if (e.target.tagName !== 'INPUT') {
+          const chain = lbl.getAttribute('data-chain');
+          const resNum = lbl.getAttribute('data-resnum');
+          if (this.viewer && this.viewer.focusResidue) {
+            this.viewer.focusResidue(chain, resNum);
+          }
+        }
+      });
+    });
+
+    updateSelectionState();
   }
 
   async findSimilarCompounds() {
