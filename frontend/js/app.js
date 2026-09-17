@@ -279,11 +279,12 @@ class BindoraApp {
       });
     }
 
-    // Interactive Non-Covalent Interactions Toolbar Toggles
+    // Interactive Non-Covalent Interactions Toolbar Toggles (Synced with 3D and 2D)
     const hbToggle = document.getElementById("toggle-hbonds");
     if (hbToggle) {
       hbToggle.addEventListener("change", (e) => {
         if (this.viewer) this.viewer.toggleHBonds(e.target.checked);
+        this.sync2DInteractionsVisibility();
       });
     }
 
@@ -291,6 +292,7 @@ class BindoraApp {
     if (sbToggle) {
       sbToggle.addEventListener("change", (e) => {
         if (this.viewer) this.viewer.toggleSaltBridges(e.target.checked);
+        this.sync2DInteractionsVisibility();
       });
     }
 
@@ -298,6 +300,7 @@ class BindoraApp {
     if (piToggle) {
       piToggle.addEventListener("change", (e) => {
         if (this.viewer) this.viewer.togglePiStacking(e.target.checked);
+        this.sync2DInteractionsVisibility();
       });
     }
 
@@ -305,6 +308,7 @@ class BindoraApp {
     if (piCatToggle) {
       piCatToggle.addEventListener("change", (e) => {
         if (this.viewer) this.viewer.togglePiCation(e.target.checked);
+        this.sync2DInteractionsVisibility();
       });
     }
 
@@ -312,6 +316,7 @@ class BindoraApp {
     if (halToggle) {
       halToggle.addEventListener("change", (e) => {
         if (this.viewer) this.viewer.toggleHalogenBonds(e.target.checked);
+        this.sync2DInteractionsVisibility();
       });
     }
 
@@ -319,6 +324,7 @@ class BindoraApp {
     if (hydroToggle) {
       hydroToggle.addEventListener("change", (e) => {
         if (this.viewer) this.viewer.toggleHydrophobic(e.target.checked);
+        this.sync2DInteractionsVisibility();
       });
     }
 
@@ -2084,7 +2090,7 @@ class BindoraApp {
     const elMode = document.getElementById("dock-current-mode-label");
     if (elMode) elMode.textContent = `Mode ${currentPose.mode || (this.state.currentPoseIdx + 1)} / ${poses.length}`;
 
-    // Pose Table
+    // Pose Table (Clean, Professional Scientific Rows - No Wrapping)
     const poseTable = document.getElementById("pose-table-rows");
     if (poseTable) {
       poseTable.innerHTML = poses.map((p, idx) => {
@@ -2099,18 +2105,29 @@ class BindoraApp {
 
         let badgeHtml = '';
         if (typeCount >= 5) {
-          badgeHtml = `<span class="ml-1.5 px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] font-bold" title="Contains ${typeCount}/6 interaction classes">${typeCount}/6 Types</span>`;
+          badgeHtml = `<span class="ml-1 px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/80 text-[9px] font-mono font-bold" title="Contains ${typeCount}/6 interaction classes">${typeCount}/6 Types</span>`;
         } else if (typeCount > 0) {
-          badgeHtml = `<span class="ml-1.5 text-[10px] text-slate-400 font-mono">(${typeCount} types)</span>`;
+          badgeHtml = `<span class="ml-1 text-[9px] text-slate-400 font-mono">(${typeCount} types)</span>`;
         }
 
+        const isSelected = idx === this.state.currentPoseIdx;
         return `
-        <tr class="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40 cursor-pointer ${idx === this.state.currentPoseIdx ? 'bg-cyan-50 dark:bg-cyan-950/40 font-semibold' : ''}" onclick="window.app.selectPose(${idx})">
-          <td class="px-3 py-2 text-cyan-700 dark:text-cyan-300 flex items-center">Mode ${p.mode} ${badgeHtml}</td>
-          <td class="px-3 py-2 font-mono text-slate-900 dark:text-white font-semibold">${p.affinity_kcal}</td>
-          <td class="px-3 py-2 font-mono text-emerald-600 dark:text-emerald-400">${p.vinardo_affinity_kcal != null ? p.vinardo_affinity_kcal : '—'}</td>
-          <td class="px-3 py-2 font-mono text-slate-600 dark:text-slate-400">${p.rmsd_lb}</td>
-          <td class="px-3 py-2 font-mono text-slate-600 dark:text-slate-400">${p.rmsd_ub}</td>
+        <tr class="cursor-pointer transition select-none ${isSelected ? 'bg-cyan-950/70 text-white font-semibold border-l-2 border-l-cyan-400' : 'hover:bg-slate-800/40 text-slate-300'}" onclick="window.bindoraApp ? window.bindoraApp.selectPose(${idx}) : window.app.selectPose(${idx})">
+          <td class="px-2.5 py-1.5 whitespace-nowrap font-mono text-cyan-300">
+            <span class="font-bold">Pose ${p.mode}</span> ${badgeHtml}
+          </td>
+          <td class="px-2 py-1.5 font-mono text-right text-slate-100 font-semibold whitespace-nowrap">
+            ${p.affinity_kcal != null ? p.affinity_kcal : '—'} <span class="text-[9px] text-slate-500 font-normal">kcal/mol</span>
+          </td>
+          <td class="px-2 py-1.5 font-mono text-right text-emerald-400 whitespace-nowrap">
+            ${p.vinardo_affinity_kcal != null ? p.vinardo_affinity_kcal : '—'}
+          </td>
+          <td class="px-2 py-1.5 font-mono text-right text-slate-400 whitespace-nowrap">
+            ${p.rmsd_lb != null ? p.rmsd_lb : '0'} Å
+          </td>
+          <td class="px-2 py-1.5 font-mono text-right text-slate-400 whitespace-nowrap">
+            ${p.rmsd_ub != null ? p.rmsd_ub : '0'} Å
+          </td>
         </tr>
       `;
       }).join("");
@@ -2135,6 +2152,7 @@ class BindoraApp {
       if (interactions.diagram_svg) {
         diagramContainer.innerHTML = interactions.diagram_svg;
         this.setupDiagramPanZoom(diagramContainer);
+        this.sync2DInteractionsVisibility();
       } else {
         diagramContainer.innerHTML = `<span class="text-xs text-slate-500 italic">No 2D interaction schematic available for this pose</span>`;
       }
@@ -2178,6 +2196,7 @@ class BindoraApp {
       if (contacts && contacts.diagram_svg) {
         diagramContainer.innerHTML = contacts.diagram_svg;
         this.setupDiagramPanZoom(diagramContainer);
+        this.sync2DInteractionsVisibility();
       } else {
         diagramContainer.innerHTML = `<span class="text-xs text-slate-500 italic">No 2D interaction schematic available for this pose</span>`;
       }
@@ -2317,6 +2336,42 @@ class BindoraApp {
     if (btnExportSvg) {
       btnExportSvg.onclick = () => this.exportDiagramSVG(svg);
     }
+  }
+
+  sync2DInteractionsVisibility() {
+    const svg = document.getElementById("bindora-2d-interaction-svg");
+    if (!svg) return;
+
+    const hb = document.getElementById("toggle-hbonds")?.checked ?? true;
+    const sb = document.getElementById("toggle-salt-bridges")?.checked ?? true;
+    const ps = document.getElementById("toggle-pi-stacking")?.checked ?? true;
+    const pc = document.getElementById("toggle-pi-cation")?.checked ?? true;
+    const hal = document.getElementById("toggle-halogen")?.checked ?? true;
+    const hp = document.getElementById("toggle-hydrophobic")?.checked ?? false;
+
+    const visibility = {
+      hbond: hb,
+      salt_bridge: sb,
+      pi_stack: ps,
+      pi_cation: pc,
+      halogen: hal,
+      hydrophobic: hp
+    };
+
+    // Toggle contact lines and distance pills
+    Object.entries(visibility).forEach(([itype, isVis]) => {
+      svg.querySelectorAll(`.itype-${itype}`).forEach(el => {
+        el.style.display = isVis ? "" : "none";
+      });
+    });
+
+    // Toggle residue badge nodes: visible if ANY connected interaction class is visible
+    svg.querySelectorAll(".interaction-badge-node").forEach(badge => {
+      const typesAttr = badge.getAttribute("data-types") || "";
+      const types = typesAttr.split(" ").filter(Boolean);
+      const isVisible = types.length === 0 || types.some(t => visibility[t]);
+      badge.style.display = isVisible ? "" : "none";
+    });
   }
 
   exportDiagramPNG(svgElement) {

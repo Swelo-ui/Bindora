@@ -481,7 +481,7 @@ class MolecularViewer {
           end: { x: rx, y: ry, z: rz },
           radius: 0.06,
           dashed: true,
-          color: '#38bdf8',
+          color: '#94a3b8',
           fromCap: 1,
           toCap: 1
         });

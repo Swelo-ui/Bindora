@@ -256,3 +256,64 @@ def test_advanced_3d_interaction_types():
     assert "start_coord" in sb and len(sb["start_coord"]) == 3
     assert "end_coord" in sb and len(sb["end_coord"]) == 3
     assert sb["distance"] <= 3.5
+
+def test_2d_diagram_collision_free_and_grouping():
+    import re
+    # Lapatinib-like dense interaction complex
+    smiles = "CS(=O)(=O)CCNCc1ccc(o1)c2ccc3c(c2)c(ncn3)Nc4ccc(c(c4)Cl)OCc5cccc(c5)F"
+    interactions = {
+        "hydrogen_bonds": [
+            {"res_name": "ASP", "res_num": 855, "chain": "A", "distance": 3.18, "ligand_atom_idx": 5},
+            {"res_name": "LYS", "res_num": 745, "chain": "A", "distance": 3.26, "ligand_atom_idx": 6},
+            {"res_name": "MET", "res_num": 793, "chain": "A", "distance": 2.95, "ligand_atom_idx": 15},
+        ],
+        "salt_bridges": [
+            {"res_name": "ASP", "res_num": 855, "chain": "A", "distance": 3.85, "ligand_atom_idx": 5}
+        ],
+        "pi_stacking": [
+            {"res_name": "PHE", "res_num": 723, "chain": "A", "distance": 4.10, "ligand_atom_idx": 20}
+        ],
+        "pi_cation": [
+            {"res_name": "LYS", "res_num": 745, "chain": "A", "distance": 4.34, "ligand_atom_idx": 22}
+        ],
+        "halogen_bonds": [
+            {"res_name": "GLU", "res_num": 762, "chain": "A", "distance": 3.42, "ligand_atom_idx": 25},
+            {"res_name": "LYS", "res_num": 745, "chain": "A", "distance": 3.55, "ligand_atom_idx": 25}
+        ],
+        "hydrophobic_contacts": [
+            {"res_name": "LEU", "res_num": 718, "chain": "A", "ligand_atom_idx": 10},
+            {"res_name": "LEU", "res_num": 844, "chain": "A", "ligand_atom_idx": 12},
+            {"res_name": "VAL", "res_num": 726, "chain": "A", "ligand_atom_idx": 14},
+            {"res_name": "CYS", "res_num": 797, "chain": "A", "ligand_atom_idx": 16},
+            {"res_name": "ALA", "res_num": 722, "chain": "A", "ligand_atom_idx": 18}
+        ]
+    }
+
+    svg = InteractionDiagramGenerator.generate_diagram_svg(smiles, interactions)
+
+    # 1. Interactive toggle classes
+    assert "itype-hbond" in svg
+    assert "itype-salt_bridge" in svg
+    assert "itype-pi_stack" in svg
+    assert "itype-pi_cation" in svg
+    assert "itype-halogen" in svg
+    assert "itype-hydrophobic" in svg
+
+    # 2. Slate Gray hydrophobic styling
+    assert "#94a3b8" in svg
+    assert "Hydrophobic (Slate)" in svg
+
+    # 3. Residue grouping: ASP 855:A appears once as a unified node (no duplicate boxes)
+    badge_labels = re.findall(r'<text [^>]*>ASP 855:A</text>', svg)
+    assert len(badge_labels) == 1, f"Expected 1 unified ASP 855:A badge, found {len(badge_labels)}"
+
+    # 4. Check for badge collision clearance (no two badges overlap)
+    translations = re.findall(r'transform="translate\(([\d\.\-]+),([\d\.\-]+)\)"', svg)
+    coords = [(float(x), float(y)) for x, y in translations if not (float(x) == 15.0 and float(y) > 400)]
+
+    for i in range(len(coords)):
+        for j in range(i + 1, len(coords)):
+            dx = abs(coords[i][0] - coords[j][0])
+            dy = abs(coords[i][1] - coords[j][1])
+            assert not (dx < 80.0 and dy < 22.0), f"Badges overlap at {coords[i]} and {coords[j]}"
+

@@ -1267,10 +1267,10 @@
                 </span>
               </label>
               <!-- Hydrophobic -->
-              <label class="flex items-center space-x-1.5 cursor-pointer text-sky-400 hover:text-sky-300 transition font-medium text-[11px]">
-                <input id="toggle-hydrophobic" type="checkbox" class="rounded bg-slate-950 border-sky-500/60 text-sky-500 focus:ring-0">
+              <label class="flex items-center space-x-1.5 cursor-pointer text-slate-300 hover:text-white transition font-medium text-[11px]">
+                <input id="toggle-hydrophobic" type="checkbox" class="rounded bg-slate-950 border-slate-600 text-slate-400 focus:ring-0">
                 <span class="flex items-center space-x-1.5">
-                  <span class="w-2 h-2 rounded-full bg-sky-400 inline-block shadow-sm"></span>
+                  <span class="w-2 h-2 rounded-full bg-slate-400 inline-block shadow-sm"></span>
                   <span>Hydrophobic</span>
                 </span>
               </label>
@@ -1551,25 +1551,29 @@
             </div>
           </div>
 
-          <!-- Poses Ranked Table -->
-          <div class="glass-panel p-4 rounded-xl border border-slate-800 space-y-2">
-            <div class="flex items-center justify-between">
-              <h4 class="font-bold text-xs text-white">Calculated Binding Poses</h4>
-              <span class="text-[10px] text-slate-400">Click row to preview</span>
+          <!-- Poses Ranked Table (Professional Scientific Layout - No Slider / Scrollbar) -->
+          <div class="glass-panel p-3.5 rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between pb-1 border-b border-slate-800/80">
+              <div class="flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                <h4 class="font-bold text-xs text-white">Calculated Binding Poses</h4>
+                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">9 Modes</span>
+              </div>
+              <span class="text-[10px] text-slate-400 font-mono">Select row to view 3D pose</span>
             </div>
-            <div class="max-h-56 overflow-y-auto">
-              <table class="w-full text-xs text-left">
-                <thead class="bg-slate-900/80 text-slate-400 font-medium border-b border-slate-800">
+            <div class="rounded-lg border border-slate-800/80 bg-slate-950/60 overflow-hidden">
+              <table class="w-full text-[11px] text-left">
+                <thead class="bg-slate-900/95 text-slate-300 font-semibold border-b border-slate-800">
                   <tr>
-                    <th class="px-3 py-1.5">Mode</th>
-                    <th class="px-3 py-1.5">Vina ΔG</th>
-                    <th class="px-3 py-1.5">Vinardo</th>
-                    <th class="px-3 py-1.5">RMSD l.b.</th>
-                    <th class="px-3 py-1.5">RMSD u.b.</th>
+                    <th class="px-2.5 py-1.5 text-left font-mono">Pose</th>
+                    <th class="px-2 py-1.5 text-right font-mono">Vina ΔG</th>
+                    <th class="px-2 py-1.5 text-right font-mono">Vinardo</th>
+                    <th class="px-2 py-1.5 text-right font-mono">RMSD l.b.</th>
+                    <th class="px-2 py-1.5 text-right font-mono">RMSD u.b.</th>
                   </tr>
                 </thead>
-                <tbody id="pose-table-rows" class="divide-y divide-slate-800/60">
-                  <tr><td colspan="5" class="px-3 py-4 text-center text-slate-500 italic">No docking run executed yet</td></tr>
+                <tbody id="pose-table-rows" class="divide-y divide-slate-800/50">
+                  <tr><td colspan="5" class="px-3 py-4 text-center text-slate-500 italic font-mono">No docking run executed yet</td></tr>
                 </tbody>
               </table>
             </div>
