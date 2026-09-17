@@ -1704,19 +1704,20 @@
       
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-slate-200 dark:border-slate-800 gap-3">
         <div>
-          <div class="flex items-center space-x-2">
+          <div class="flex items-center space-x-2.5">
             <h2 class="text-lg font-bold text-slate-900 dark:text-white">Batch Screening &amp; SAR Explorer</h2>
-            <button id="btn-batch-workflow-info" type="button" title="Pipeline Guide: How Virtual Screening, Ensemble &amp; Pharmacophore work together" class="w-5 h-5 rounded-full bg-slate-800 hover:bg-cyan-900/60 border border-slate-700 hover:border-cyan-500/60 text-slate-300 hover:text-cyan-300 transition flex items-center justify-center text-[11px] font-bold cursor-pointer shadow-sm">
-              i
+            <button id="btn-batch-workflow-info" type="button" title="Pipeline Guide: How Virtual Screening, Ensemble &amp; Pharmacophore work together" class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-800/60 hover:border-cyan-500 text-cyan-300 text-[11px] font-medium transition cursor-pointer shadow-sm">
+              <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span>Pipeline Guide</span>
             </button>
           </div>
           <p class="text-xs text-slate-500 dark:text-slate-400">Screen candidate libraries, explore conformational ensembles, or match against active pharmacophores</p>
         </div>
         <!-- Mode Switcher -->
-        <div class="flex items-center space-x-1.5 p-1 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
-          <button id="btn-batch-mode-candidates" class="py-1 px-3 rounded font-medium bg-cyan-600 text-white shadow transition">Screen Candidates</button>
-          <button id="btn-batch-mode-ensemble" class="py-1 px-3 rounded font-medium text-slate-600 dark:text-slate-400 hover:text-white transition">Ensemble Structures</button>
-          <button id="btn-batch-mode-pharmacophore" class="py-1 px-3 rounded font-medium text-purple-600 dark:text-purple-300 hover:text-white border border-purple-800/40 bg-purple-950/20 transition">Pharmacophore Mode</button>
+        <div class="flex items-center space-x-1.5 p-1 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs flex-wrap sm:flex-nowrap">
+          <button id="btn-batch-mode-candidates" class="py-1.5 px-3.5 rounded-md font-semibold text-xs bg-cyan-600 text-white shadow-sm transition whitespace-nowrap">Screen Candidates</button>
+          <button id="btn-batch-mode-ensemble" class="py-1.5 px-3.5 rounded-md font-medium text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition whitespace-nowrap">Ensemble Structures</button>
+          <button id="btn-batch-mode-pharmacophore" class="py-1.5 px-3.5 rounded-md font-medium text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-purple-800/40 bg-purple-950/20 transition whitespace-nowrap">Pharmacophore Mode</button>
         </div>
       </div>
 
@@ -2337,126 +2338,173 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
   </div>
 
   <!-- ==================== BATCH & SAR PIPELINE GUIDE MODAL ==================== -->
-  <div id="modal-batch-workflow-guide" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center hidden p-4">
-    <div class="glass-panel border border-slate-700/80 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-7 space-y-6 shadow-2xl relative">
+  <div id="modal-batch-workflow-guide" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-start sm:items-center justify-center hidden p-3 sm:p-5 overflow-y-auto">
+    <div class="glass-panel border border-slate-700/80 rounded-2xl max-w-4xl w-full max-h-[88vh] flex flex-col shadow-2xl relative my-auto bg-slate-950/95 overflow-hidden">
       
-      <!-- Modal Header -->
-      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+      <!-- Sticky Modal Header -->
+      <div class="flex-shrink-0 flex items-center justify-between border-b border-slate-800/80 px-5 sm:px-6 py-3.5 bg-slate-900/70 backdrop-blur">
         <div class="flex items-center space-x-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-500/20 via-cyan-500/20 to-emerald-500/20 border border-cyan-500/40 flex items-center justify-center flex-shrink-0">
-            <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500/20 via-purple-500/20 to-emerald-500/20 border border-cyan-500/40 flex items-center justify-center flex-shrink-0 shadow-sm">
+            <svg class="w-4 h-4 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
             </svg>
           </div>
           <div>
-            <h3 class="font-bold text-base text-white flex items-center gap-2">
+            <h3 class="font-bold text-sm sm:text-base text-white flex items-center gap-2">
               <span>Virtual Screening &amp; SAR Pipeline Guide</span>
               <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800 font-mono font-bold">Research Workflow</span>
             </h3>
-            <p class="text-xs text-slate-400">How the 3 screening modes interconnect in publication-grade computational drug discovery</p>
+            <p class="text-[11px] text-slate-400">How the 3 screening modes interconnect in publication-grade computational drug discovery</p>
           </div>
         </div>
         <button id="btn-close-batch-workflow-guide" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition text-2xl leading-none cursor-pointer" title="Close Guide">&times;</button>
       </div>
 
-      <!-- Core Research Concept Banner -->
-      <div class="p-4 rounded-xl bg-gradient-to-r from-blue-950/40 via-cyan-950/30 to-purple-950/30 border border-cyan-800/40 space-y-2">
-        <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center space-x-1.5">
-          <svg class="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-          <span>The Modern In-Silico Drug Discovery Funnel</span>
-        </h4>
-        <p class="text-xs text-slate-300 leading-relaxed">
-          Standard molecular docking against a single static receptor typically suffers from a <strong>30–50% false-positive rate</strong> because rigid scoring functions reward large hydrophobic surface contacts ("grease balls") regardless of directional chemistry or target flexibility. Bindora resolves this by combining <strong>High-Throughput Scoring</strong>, <strong>Experimental Pharmacophore Validation</strong>, and <strong>Conformational Ensemble Cross-Docking</strong> into a single synergistic cascade.
-        </p>
-      </div>
-
-      <!-- The 3 Interconnected Pillars -->
-      <div class="space-y-4">
-        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-1">
-          The 3 Pillars of Preclinical Lead Identification
-        </h4>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-          
-          <!-- Pillar 1: Candidate Screening -->
-          <div class="p-3.5 rounded-xl bg-slate-900/70 border border-cyan-800/50 space-y-2 flex flex-col justify-between">
-            <div class="space-y-1.5">
-              <div class="flex items-center justify-between">
-                <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">Stage 1 &bull; Fast Funnel</span>
-                <span class="text-xs font-mono text-cyan-400 font-bold">Vina &amp; Vinardo</span>
-              </div>
-              <h5 class="text-xs font-bold text-white">Candidate Virtual Screening</h5>
-              <p class="text-[11px] text-slate-400 leading-relaxed">
-                Screens multi-compound libraries (SMILES) against the rigid binding pocket. Calculates binding free energy (&Delta;G in kcal/mol), estimated dissociation constant (K<sub>d</sub>), and Ligand Efficiency (LE).
-              </p>
-            </div>
-            <div class="p-2 rounded-lg bg-black/40 border border-slate-800 text-[10px] text-slate-400">
-              <strong class="text-cyan-300 block mb-0.5">Scientific Role:</strong>
-              Ranks hundreds of chemotypes rapidly to eliminate non-binding or sterically clashing compounds.
-            </div>
-          </div>
-
-          <!-- Pillar 2: Pharmacophore Consensus -->
-          <div class="p-3.5 rounded-xl bg-slate-900/70 border border-purple-800/50 space-y-2 flex flex-col justify-between">
-            <div class="space-y-1.5">
-              <div class="flex items-center justify-between">
-                <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800">Stage 2 &bull; Bio Filter</span>
-                <span class="text-xs font-mono text-purple-400 font-bold">ChEMBL Actives</span>
-              </div>
-              <h5 class="text-xs font-bold text-white">Pharmacophore Matching</h5>
-              <p class="text-[11px] text-slate-400 leading-relaxed">
-                Queries curated EMBL-EBI wet-lab binders (IC<sub>50</sub> &le; 10 &mu;M) to build a 3D consensus profile of essential interaction anchors: Aromatic (&pi;-&pi;), Hydrophobic cores, H-Bond Donors, and Acceptors.
-              </p>
-            </div>
-            <div class="p-2 rounded-lg bg-black/40 border border-slate-800 text-[10px] text-slate-400">
-              <strong class="text-purple-300 block mb-0.5">Scientific Role:</strong>
-              <strong>Eliminates false positives!</strong> Ensures high-affinity hits genuinely satisfy the spatial chemistry proven in wet-lab experiments.
-            </div>
-          </div>
-
-          <!-- Pillar 3: Ensemble Cross-Docking -->
-          <div class="p-3.5 rounded-xl bg-slate-900/70 border border-emerald-800/50 space-y-2 flex flex-col justify-between">
-            <div class="space-y-1.5">
-              <div class="flex items-center justify-between">
-                <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">Stage 3 &bull; Robustness</span>
-                <span class="text-xs font-mono text-emerald-400 font-bold">Multi-PDB</span>
-              </div>
-              <h5 class="text-xs font-bold text-white">Ensemble Cross-Docking</h5>
-              <p class="text-[11px] text-slate-400 leading-relaxed">
-                Cross-docks your prioritized lead across multiple crystallographic structures (apo, holo, mutant variants) to account for receptor conformational flexibility and induced-fit movements.
-              </p>
-            </div>
-            <div class="p-2 rounded-lg bg-black/40 border border-slate-800 text-[10px] text-slate-400">
-              <strong class="text-emerald-300 block mb-0.5">Scientific Role:</strong>
-              <strong>Overcomes the rigid receptor flaw!</strong> Verifies that binding affinity is resilient (Mean &Delta;G &plusmn; SD) across biological protein conformations.
-            </div>
-          </div>
-
+      <!-- Scrollable Modal Body -->
+      <div class="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-4.5 text-slate-300 custom-scrollbar">
+        
+        <!-- Core Research Concept Banner -->
+        <div class="p-3.5 sm:p-4 rounded-xl bg-gradient-to-r from-blue-950/40 via-cyan-950/30 to-purple-950/30 border border-cyan-800/40 space-y-1.5">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center space-x-1.5">
+            <svg class="w-4 h-4 text-cyan-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span>The Modern In-Silico Drug Discovery Funnel</span>
+          </h4>
+          <p class="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
+            Standard molecular docking against a single static receptor typically suffers from a <strong class="text-amber-300">30–50% false-positive rate</strong> because rigid scoring functions reward large hydrophobic surface contacts ("grease balls") regardless of directional chemistry or target flexibility. Bindora resolves this by cascading <strong class="text-cyan-300">High-Throughput Scoring</strong> &rarr; <strong class="text-purple-300">Experimental Pharmacophore Filtering</strong> &rarr; <strong class="text-emerald-300">Conformational Ensemble Validation</strong>.
+          </p>
         </div>
+
+        <!-- The 3 Interconnected Pillars -->
+        <div class="space-y-2.5">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-1 flex items-center justify-between">
+            <span>The 3 Pillars of Preclinical Lead Identification</span>
+            <span class="text-[10px] font-mono text-slate-400 font-normal">Triad Architecture</span>
+          </h4>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+            
+            <!-- Pillar 1: Candidate Screening -->
+            <div class="p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-cyan-800/50 flex flex-col justify-between hover:border-cyan-600/70 transition space-y-3">
+              <div class="space-y-2">
+                <div class="flex items-center justify-between border-b border-cyan-900/40 pb-2">
+                  <div class="flex items-center space-x-1.5">
+                    <span class="w-5 h-5 rounded-md bg-cyan-500/20 text-cyan-300 font-mono font-bold text-[11px] flex items-center justify-center border border-cyan-500/40">1</span>
+                    <span class="text-[11px] font-mono font-bold text-cyan-400 uppercase tracking-wider">Fast Funnel</span>
+                  </div>
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 text-cyan-300 border border-cyan-800/60 whitespace-nowrap">Vina &amp; Vinardo</span>
+                </div>
+                <h5 class="text-xs font-bold text-white tracking-wide">Candidate Screening</h5>
+                <p class="text-[11px] text-slate-300 leading-relaxed">
+                  Screens multi-compound libraries (SMILES) against the rigid binding pocket. Calculates binding free energy (&Delta;G in kcal/mol), estimated dissociation constant (K<sub>d</sub>), and Ligand Efficiency (LE).
+                </p>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-950/80 border border-cyan-900/40 text-[11px] leading-relaxed space-y-1">
+                <div class="flex items-center space-x-1.5 text-[10px] font-bold uppercase tracking-wider text-cyan-300">
+                  <svg class="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                  <span>Scientific Role</span>
+                </div>
+                <p class="text-slate-300 text-[11px]">Ranks hundreds of chemotypes rapidly to eliminate non-binding or sterically clashing compounds.</p>
+              </div>
+            </div>
+
+            <!-- Pillar 2: Pharmacophore Consensus -->
+            <div class="p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-purple-800/50 flex flex-col justify-between hover:border-purple-600/70 transition space-y-3">
+              <div class="space-y-2">
+                <div class="flex items-center justify-between border-b border-purple-900/40 pb-2">
+                  <div class="flex items-center space-x-1.5">
+                    <span class="w-5 h-5 rounded-md bg-purple-500/20 text-purple-300 font-mono font-bold text-[11px] flex items-center justify-center border border-purple-500/40">2</span>
+                    <span class="text-[11px] font-mono font-bold text-purple-400 uppercase tracking-wider">Bio Filter</span>
+                  </div>
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 text-purple-300 border border-purple-800/60 whitespace-nowrap">ChEMBL Actives</span>
+                </div>
+                <h5 class="text-xs font-bold text-white tracking-wide">Pharmacophore Consensus</h5>
+                <p class="text-[11px] text-slate-300 leading-relaxed">
+                  Queries curated EMBL-EBI wet-lab binders (IC<sub>50</sub> &le; 10 &mu;M) to extract 3D consensus interaction anchors: Aromatic (&pi;-&pi;), Hydrophobic cores, H-Bond Donors, and Acceptors.
+                </p>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-950/80 border border-purple-900/40 text-[11px] leading-relaxed space-y-1">
+                <div class="flex items-center space-x-1.5 text-[10px] font-bold uppercase tracking-wider text-purple-300">
+                  <svg class="w-3.5 h-3.5 text-purple-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                  <span>Scientific Role</span>
+                </div>
+                <p class="text-slate-300 text-[11px]"><strong class="text-purple-300">Eliminates false positives!</strong> Ensures hits satisfy the spatial chemistry proven in wet-lab assays.</p>
+              </div>
+            </div>
+
+            <!-- Pillar 3: Ensemble Cross-Docking -->
+            <div class="p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-emerald-800/50 flex flex-col justify-between hover:border-emerald-600/70 transition space-y-3">
+              <div class="space-y-2">
+                <div class="flex items-center justify-between border-b border-emerald-900/40 pb-2">
+                  <div class="flex items-center space-x-1.5">
+                    <span class="w-5 h-5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono font-bold text-[11px] flex items-center justify-center border border-emerald-500/40">3</span>
+                    <span class="text-[11px] font-mono font-bold text-emerald-400 uppercase tracking-wider">Target Dynamics</span>
+                  </div>
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-950 text-emerald-300 border border-emerald-800/60 whitespace-nowrap">Multi-PDB Ensemble</span>
+                </div>
+                <h5 class="text-xs font-bold text-white tracking-wide">Ensemble Cross-Docking</h5>
+                <p class="text-[11px] text-slate-300 leading-relaxed">
+                  Cross-docks your prioritized lead across multiple crystallographic structures (apo, holo, mutant variants) to account for receptor conformational flexibility and induced-fit movements.
+                </p>
+              </div>
+              <div class="p-2.5 rounded-lg bg-slate-950/80 border border-emerald-900/40 text-[11px] leading-relaxed space-y-1">
+                <div class="flex items-center space-x-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+                  <svg class="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  <span>Scientific Role</span>
+                </div>
+                <p class="text-slate-300 text-[11px]"><strong class="text-emerald-300">Overcomes rigid receptor flaw!</strong> Verifies binding resilience across induced-fit conformations.</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Recommended Protocol (Step-by-Step SOP) -->
+        <div class="space-y-2.5">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-1.5 flex items-center justify-between">
+            <span>Recommended Academic Screening SOP</span>
+            <span class="text-[10px] font-mono text-slate-400 font-normal">Sequential Execution</span>
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-cyan-900/40 space-y-1.5">
+              <div class="flex items-center space-x-2">
+                <span class="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono font-bold text-[10px] flex items-center justify-center border border-cyan-500/30">01</span>
+                <span class="text-xs font-bold text-cyan-300">Screen Candidate Library</span>
+              </div>
+              <p class="text-[11px] text-slate-300 leading-relaxed">
+                Input candidate SMILES or load a library preset. Click <strong class="text-white font-semibold">Run Batch Virtual Screening</strong> to score compounds by &Delta;G and rank the chemotypes.
+              </p>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-purple-900/40 space-y-1.5">
+              <div class="flex items-center space-x-2">
+                <span class="w-5 h-5 rounded-full bg-purple-500/20 text-purple-300 font-mono font-bold text-[10px] flex items-center justify-center border border-purple-500/30">02</span>
+                <span class="text-xs font-bold text-purple-300">Pharmacophore Filtering</span>
+              </div>
+              <p class="text-[11px] text-slate-300 leading-relaxed">
+                Switch to <strong class="text-white font-semibold">Pharmacophore Mode</strong> and screen candidates. Prioritize hits showing <strong class="text-purple-300 font-semibold">&ge; 70% match</strong> with known active ChEMBL features.
+              </p>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-emerald-900/40 space-y-1.5">
+              <div class="flex items-center space-x-2">
+                <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-bold text-[10px] flex items-center justify-center border border-emerald-500/30">03</span>
+                <span class="text-xs font-bold text-emerald-300">Target Ensemble Validation</span>
+              </div>
+              <p class="text-[11px] text-slate-300 leading-relaxed">
+                Switch to <strong class="text-white font-semibold">Ensemble Structures</strong>. Select multiple target PDB structures to confirm consistent binding (<strong class="text-emerald-300 font-semibold">SD &le; 1.0 kcal/mol</strong>).
+              </p>
+            </div>
+
+          </div>
+        </div>
+
       </div>
 
-      <!-- Recommended Protocol (Step-by-Step SOP) -->
-      <div class="space-y-2">
-        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-1">
-          Recommended Academic Screening SOP
-        </h4>
-        <ol class="space-y-2 text-xs text-slate-300 list-decimal list-inside leading-relaxed bg-slate-900/50 p-3.5 rounded-xl border border-slate-800 font-sans">
-          <li>
-            <strong class="text-cyan-300">Run Candidate Virtual Screening:</strong> Input candidate SMILES or load a library preset (e.g. Kinase or Antiviral). Click <em>Run Batch Virtual Screening</em> to compute &Delta;G and rank the library.
-          </li>
-          <li>
-            <strong class="text-purple-300">Filter with Pharmacophore Mode:</strong> Switch to <em>Pharmacophore Mode</em> and click <em>Screen Candidates vs Pharmacophore</em>. Prioritize hits showing &ge; 70% match with known wet-lab ChEMBL active features.
-          </li>
-          <li>
-            <strong class="text-emerald-300">Validate Target Robustness via Ensemble Docking:</strong> Switch to <em>Ensemble Structures</em>. Select multiple PDB structures of this protein and click <em>Run Ensemble Cross-Docking</em> to verify stable binding (SD &le; 1.0 kcal/mol) across receptor conformations.
-          </li>
-        </ol>
-      </div>
-
-      <!-- Modal Footer -->
-      <div class="border-t border-slate-800 pt-3 text-xs text-slate-400 flex items-center justify-between">
-        <span class="font-mono text-[11px] text-slate-500">Bindora Preclinical SAR Engine &bull; CASF-2016 Compliant</span>
-        <button id="btn-got-it-batch-workflow-guide" class="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-lg text-xs transition cursor-pointer shadow">Got it, Return to Screening</button>
+      <!-- Sticky Modal Footer -->
+      <div class="flex-shrink-0 border-t border-slate-800/80 px-5 sm:px-6 py-3 flex items-center justify-between bg-slate-900/70 backdrop-blur text-xs text-slate-400">
+        <span class="font-mono text-[11px] text-slate-500 hidden sm:inline">Bindora Preclinical SAR Engine &bull; CASF-2016 Compliant</span>
+        <button id="btn-got-it-batch-workflow-guide" class="w-full sm:w-auto px-4 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-lg text-xs transition cursor-pointer shadow">Got it, Return to Screening</button>
       </div>
 
     </div>
