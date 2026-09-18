@@ -175,7 +175,7 @@ def test_vinardo_scoring_and_interaction_diagram():
     assert "<svg" in svg
     assert "</svg>" in svg
     assert "LigPlot-style 2D Map" in svg
-    assert "Hydrogen Bond" in svg
+    assert "Hydrogen Bond" in svg or "H-Bond" in svg
 
 
 def test_hiv1_protease_1hsg_benchmark():

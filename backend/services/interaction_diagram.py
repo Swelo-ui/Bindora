@@ -94,7 +94,7 @@ class InteractionDiagramGenerator:
         # Color definitions for all 6 interaction types (Scientific standard palette)
         interaction_styles = {
             "hbond": {
-                "name": "H-Bond",
+                "name": "Hydrogen Bond",
                 "color": "#facc15",          # Gold / Yellow
                 "line_dash": "5,4",
                 "line_width": "2.0",
@@ -537,7 +537,7 @@ class InteractionDiagramGenerator:
             f'<rect x="-5" y="-13" width="{width - 20}" height="26" rx="5" '
             f'fill="var(--bd-legend-bg, #121319)" stroke="var(--bd-legend-border, #22242e)" stroke-width="1"/>'
             f'<line x1="8" y1="0" x2="22" y2="0" stroke="#facc15" stroke-width="2" stroke-dasharray="4,3"/>'
-            f'<text x="26" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9">H-Bond</text>'
+            f'<text x="26" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9"><title>Hydrogen Bond</title>H-Bond</text>'
             f'<line x1="82" y1="0" x2="96" y2="0" stroke="#ec4899" stroke-width="2" stroke-dasharray="4,3"/>'
             f'<text x="100" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9">Salt Bridge</text>'
             f'<line x1="168" y1="0" x2="182" y2="0" stroke="#10b981" stroke-width="2" stroke-dasharray="4,3"/>'
