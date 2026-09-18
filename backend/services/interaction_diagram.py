@@ -11,8 +11,8 @@ class InteractionDiagramGenerator:
     def generate_diagram_svg(
         smiles_or_mol: Any,
         interactions: Dict[str, Any],
-        width: int = 700,
-        height: int = 520
+        width: int = 720,
+        height: int = 540
     ) -> str:
         """
         Render a 2D interaction diagram showing the central ligand surrounded by
@@ -29,7 +29,7 @@ class InteractionDiagramGenerator:
         if not mol:
             return (
                 f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">'
-                f'<rect width="100%" height="100%" fill="#091428" rx="8"/>'
+                f'<rect width="100%" height="100%" fill="#090a0f" rx="8"/>'
                 f'<text x="50%" y="50%" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">'
                 f'Structure unavailable for 2D diagram</text></svg>'
             )
@@ -41,11 +41,11 @@ class InteractionDiagramGenerator:
         except Exception:
             pass
 
-        # Prepare RDKit SVG Drawer
+        # Prepare RDKit SVG Drawer with ample perimeter margin (30%)
         drawer = rdMolDraw2D.MolDraw2DSVG(width, height)
         opts = drawer.drawOptions()
         opts.clearBackground = False
-        opts.padding = 0.28  # Ensures ample margin around molecule for interaction badges
+        opts.padding = 0.30
         opts.bondLineWidth = 2.4
         opts.minFontSize = 11
         opts.maxFontSize = 16
@@ -54,11 +54,12 @@ class InteractionDiagramGenerator:
         drawer.FinishDrawing()
         base_svg = drawer.GetDrawingText()
 
-        # Extract canvas center
+        # Canvas center and bottom legend offset
+        legend_y = height - 20
         cx = width / 2.0
-        cy = (height - 35) / 2.0  # Slightly offset upward for bottom legend bar
+        cy = 245.0
 
-        # Get atom drawing positions
+        # Extract precise 2D atom coordinates
         num_atoms = mol_copy.GetNumAtoms()
         atom_coords = []
         for i in range(num_atoms):
@@ -67,6 +68,21 @@ class InteractionDiagramGenerator:
                 atom_coords.append((pt.x, pt.y))
             except Exception:
                 atom_coords.append((cx, cy))
+
+        if atom_coords:
+            min_atom_x = min(p[0] for p in atom_coords)
+            max_atom_x = max(p[0] for p in atom_coords)
+            min_atom_y = min(p[1] for p in atom_coords)
+            max_atom_y = max(p[1] for p in atom_coords)
+            mol_w = max(10.0, max_atom_x - min_atom_x)
+            mol_h = max(10.0, max_atom_y - min_atom_y)
+            lig_cx = (min_atom_x + max_atom_x) / 2.0
+            lig_cy = (min_atom_y + max_atom_y) / 2.0
+        else:
+            min_atom_x, max_atom_x = cx - 50, cx + 50
+            min_atom_y, max_atom_y = cy - 50, cy + 50
+            mol_w, mol_h = 100.0, 100.0
+            lig_cx, lig_cy = cx, cy
 
         hbonds: List[Dict[str, Any]] = interactions.get("hydrogen_bonds", [])
         salt_bridges: List[Dict[str, Any]] = interactions.get("salt_bridges", [])
@@ -79,7 +95,7 @@ class InteractionDiagramGenerator:
         interaction_styles = {
             "hbond": {
                 "name": "H-Bond",
-                "color": "#facc15",          # Gold / Yellow (Universally recognized for H-bonds)
+                "color": "#facc15",          # Gold / Yellow
                 "line_dash": "5,4",
                 "line_width": "2.0",
                 "pill_bg": "var(--bd-hb-bg, #2a2004)",
@@ -89,7 +105,7 @@ class InteractionDiagramGenerator:
             },
             "salt_bridge": {
                 "name": "Salt Bridge",
-                "color": "#ec4899",          # Magenta / Deep Pink (Ionic ion-pair standard)
+                "color": "#ec4899",          # Magenta / Deep Pink
                 "line_dash": "4,4",
                 "line_width": "2.0",
                 "pill_bg": "#380a24",
@@ -99,7 +115,7 @@ class InteractionDiagramGenerator:
             },
             "pi_stack": {
                 "name": "π-π Stacking",
-                "color": "#10b981",          # Emerald / Forest Green (Aromatic stacking standard)
+                "color": "#10b981",          # Emerald / Forest Green
                 "line_dash": "4,4",
                 "line_width": "2.0",
                 "pill_bg": "#062c1d",
@@ -109,7 +125,7 @@ class InteractionDiagramGenerator:
             },
             "pi_cation": {
                 "name": "π-Cation",
-                "color": "#f97316",          # Warm Amber / Orange (Cation-aromatic standard)
+                "color": "#f97316",          # Warm Amber / Orange
                 "line_dash": "4,4",
                 "line_width": "1.8",
                 "pill_bg": "#381604",
@@ -119,7 +135,7 @@ class InteractionDiagramGenerator:
             },
             "halogen": {
                 "name": "Halogen Bond",
-                "color": "#a855f7",          # Violet / Purple (Halogen sigma-hole standard)
+                "color": "#a855f7",          # Violet / Purple
                 "line_dash": "4,4",
                 "line_width": "1.8",
                 "pill_bg": "#2a0845",
@@ -129,7 +145,7 @@ class InteractionDiagramGenerator:
             },
             "hydrophobic": {
                 "name": "Hydrophobic",
-                "color": "#94a3b8",          # Neutral Cool Slate / Charcoal Gray (Non-polar carbon standard)
+                "color": "#94a3b8",          # Neutral Cool Slate
                 "line_dash": "2,3",
                 "line_width": "1.5",
                 "pill_bg": "#1e293b",
@@ -140,7 +156,6 @@ class InteractionDiagramGenerator:
         }
 
         # Step 1: Collect and group interactions by unique residue (res_name, res_num, chain)
-        # In structural biology (PoseView, LigPlot+), contacts to the same amino acid converge on that residue
         grouped_residues: Dict[str, Dict[str, Any]] = {}
 
         def get_target_pt(latom_idx: Optional[int], fallback_idx: int) -> tuple:
@@ -148,7 +163,7 @@ class InteractionDiagramGenerator:
                 return atom_coords[latom_idx]
             elif atom_coords:
                 return atom_coords[fallback_idx % len(atom_coords)]
-            return (cx, cy)
+            return (lig_cx, lig_cy)
 
         def add_contact(itype: str, data: Dict[str, Any], fallback_idx: int, default_dist: Optional[float] = None):
             res_name = data.get('res_name', 'RES')
@@ -161,6 +176,7 @@ class InteractionDiagramGenerator:
             key = f"{res_name}_{res_num}_{chain}"
             if key not in grouped_residues:
                 grouped_residues[key] = {
+                    "key": key,
                     "res_name": res_name,
                     "res_num": res_num,
                     "chain": chain,
@@ -170,25 +186,21 @@ class InteractionDiagramGenerator:
                     "target_pts": []
                 }
 
-            # If this is a hydrophobic contact and the residue already has specific polar/aromatic contacts, skip to avoid clutter
+            # If hydrophobic and the residue already has directional polar/aromatic contacts, skip
             if itype == "hydrophobic" and len(grouped_residues[key]["types_set"]) > 0:
                 return
 
-            # Check if there is already a contact of the same type for this residue
-            existing = None
-            for c in grouped_residues[key]["contacts"]:
-                if c["type"] == itype:
-                    existing = c
-                    break
-
-            if existing is not None:
-                # Keep closest contact
-                curr_d = existing["distance"] if existing["distance"] is not None else 999.0
-                new_d = dist if dist is not None else 999.0
-                if new_d < curr_d:
+            # For hydrophobic residues, strictly enforce AT MOST ONE contact (closest one) to avoid clutter
+            if itype == "hydrophobic" and "hydrophobic" in grouped_residues[key]["types_set"]:
+                existing = [c for c in grouped_residues[key]["contacts"] if c["type"] == "hydrophobic"][0]
+                if dist is not None and (existing["distance"] is None or dist < existing["distance"]):
                     existing["distance"] = dist
                     existing["target_pt"] = target_pt
                     existing["latom_idx"] = latom_idx
+                return
+
+            # For directional contacts, limit to at most 2 contacts per residue
+            if itype != "hydrophobic" and len([c for c in grouped_residues[key]["contacts"] if c["type"] == itype]) >= 2:
                 return
 
             grouped_residues[key]["contacts"].append({
@@ -200,7 +212,7 @@ class InteractionDiagramGenerator:
             grouped_residues[key]["types_set"].add(itype)
             grouped_residues[key]["target_pts"].append(target_pt)
 
-        # Populate from top contacts (prioritizing strong directional bonds first)
+        # Populate from top contacts
         for idx, hb in enumerate(hbonds[:8]):
             add_contact("hbond", hb, idx, default_dist=3.0)
 
@@ -236,12 +248,10 @@ class InteractionDiagramGenerator:
             avg_y = sum(p[1] for p in pts) / len(pts)
             r["avg_target"] = (avg_x, avg_y)
 
-            dx = avg_x - cx
-            dy = avg_y - cy
-            angle = math.atan2(dy, dx)
-            r["angle"] = angle
+            dx = avg_x - lig_cx
+            dy = avg_y - lig_cy
+            r["angle"] = math.atan2(dy, dx)
 
-            # Hierarchy priority for primary badge theme:
             priority_order = ["salt_bridge", "hbond", "pi_stack", "pi_cation", "halogen", "hydrophobic"]
             primary_type = "hydrophobic"
             for ptype in priority_order:
@@ -250,11 +260,21 @@ class InteractionDiagramGenerator:
                     break
             r["primary_type"] = primary_type
 
-        # Sort circularly by angle around the ligand
+            # Dynamic badge dimensions with generous text and dot separation
+            n_dots = min(len(r["types_set"]), 4)
+            text_width = len(r["label"]) * 7.2
+            if n_dots > 0:
+                badge_w = max(94.0, 24.0 + (n_dots - 1) * 9.0 + 10.0 + text_width + 14.0)
+            else:
+                badge_w = max(76.0, text_width + 24.0)
+            r["badge_w"] = badge_w
+            r["half_w"] = badge_w / 2.0
+
+        # Sort circularly by angle around the ligand center
         residue_list.sort(key=lambda r: r["angle"])
         n_res = len(residue_list)
 
-        # Enforce angular separation to prevent initial overlap
+        # Enforce minimum angular separation
         if n_res > 1:
             min_angular_sep = (2.0 * math.pi) / max(n_res + 1, 10)
             for i in range(1, n_res):
@@ -262,71 +282,146 @@ class InteractionDiagramGenerator:
                 if diff < min_angular_sep:
                     residue_list[i]["angle"] = residue_list[i-1]["angle"] + min_angular_sep
 
-        # Multi-Tier Radial Distribution
-        base_rx = min(width, height) * 0.40
-        base_ry = min(width, height) * 0.33
-        tier_offsets = [0.0, 48.0, 85.0]
+        # Multi-tier radial distribution: ray from ligand center outward past molecular boundary
+        tier_offsets = [0.0, 32.0] if n_res <= 8 else [0.0, 28.0, 52.0]
 
         nodes = []
         for idx, r in enumerate(residue_list):
-            tier = idx % 2 if n_res <= 10 else idx % 3
-            radial_offset = tier_offsets[tier]
-
             ang = r["angle"]
-            rx = base_rx + radial_offset * 1.1
-            ry = base_ry + radial_offset * 0.9
+            tier = idx % len(tier_offsets)
+            r_tier = tier_offsets[tier]
 
-            px = cx + rx * math.cos(ang)
-            py = cy + ry * math.sin(ang)
+            # Ray distance from ligand center to molecular envelope along angle
+            r_lig = math.sqrt((mol_w * 0.5 * math.cos(ang))**2 + (mol_h * 0.5 * math.sin(ang))**2) + 56.0
+            r_total = r_lig + r_tier
 
-            px = max(60.0, min(width - 60.0, px))
-            py = max(34.0, min(height - 52.0, py))
+            px = lig_cx + r_total * math.cos(ang)
+            py = lig_cy + r_total * math.sin(ang)
+
+            # Guaranteed canvas insetting: badge border can NEVER clip SVG boundary
+            min_x = r["half_w"] + 14.0
+            max_x = width - r["half_w"] - 14.0
+            min_y = 24.0
+            max_y = legend_y - 26.0
+
+            px = max(min_x, min(max_x, px))
+            py = max(min_y, min(max_y, py))
 
             nodes.append({
                 "res": r,
                 "x": px,
                 "y": py,
-                "angle": ang
+                "min_x": min_x,
+                "max_x": max_x,
+                "min_y": min_y,
+                "max_y": max_y
             })
 
-        # Step 3: Full 2D AABB Box Collision Relaxation (Both X and Y axes)
-        box_w = 94.0
-        box_h = 32.0
-
-        for _ in range(30):
+        # Step 3: Exact 2D AABB Box Collision Relaxation for Badges (35 passes)
+        for _ in range(35):
             for i in range(len(nodes)):
                 for j in range(i + 1, len(nodes)):
                     dx = nodes[i]["x"] - nodes[j]["x"]
                     dy = nodes[i]["y"] - nodes[j]["y"]
-                    overlap_x = box_w - abs(dx)
-                    overlap_y = box_h - abs(dy)
+                    req_w = nodes[i]["res"]["half_w"] + nodes[j]["res"]["half_w"] + 10.0
+                    req_h = 30.0
+                    overlap_x = req_w - abs(dx)
+                    overlap_y = req_h - abs(dy)
 
                     if overlap_x > 0 and overlap_y > 0:
                         if overlap_x < overlap_y:
-                            shift = overlap_x / 2.0 + 1.5
-                            sign = 1.0 if dx >= 0 else -1.0
-                            nodes[i]["x"] += shift * sign
-                            nodes[j]["x"] -= shift * sign
+                            shift = overlap_x / 2.0 + 1.0
+                            sgn = 1.0 if dx >= 0 else -1.0
+                            nodes[i]["x"] += shift * sgn
+                            nodes[j]["x"] -= shift * sgn
                         else:
-                            shift = overlap_y / 2.0 + 1.5
-                            sign = 1.0 if dy >= 0 else -1.0
-                            nodes[i]["y"] += shift * sign
-                            nodes[j]["y"] -= shift * sign
+                            shift = overlap_y / 2.0 + 1.0
+                            sgn = 1.0 if dy >= 0 else -1.0
+                            nodes[i]["y"] += shift * sgn
+                            nodes[j]["y"] -= shift * sgn
 
-                        nodes[i]["x"] = max(58.0, min(width - 58.0, nodes[i]["x"]))
-                        nodes[i]["y"] = max(32.0, min(height - 50.0, nodes[i]["y"]))
-                        nodes[j]["x"] = max(58.0, min(width - 58.0, nodes[j]["x"]))
-                        nodes[j]["y"] = max(32.0, min(height - 50.0, nodes[j]["y"]))
+                        nodes[i]["x"] = max(nodes[i]["min_x"], min(nodes[i]["max_x"], nodes[i]["x"]))
+                        nodes[i]["y"] = max(nodes[i]["min_y"], min(nodes[i]["max_y"], nodes[i]["y"]))
+                        nodes[j]["x"] = max(nodes[j]["min_x"], min(nodes[j]["max_x"], nodes[j]["x"]))
+                        nodes[j]["y"] = max(nodes[j]["min_y"], min(nodes[j]["max_y"], nodes[j]["y"]))
 
-        # Step 4: Render annotations (lines, distance pills, badges)
+        # Step 4: Distance Pill Optimizer & Annotation Rendering
         contact_elements_svg = []
         badge_elements_svg = []
         placed_pills = []
+
+        def find_best_distance_pill_position(res_x: float, res_y: float, half_w: float, target_pt: tuple, latom_idx: Optional[int]):
+            vx = target_pt[0] - res_x
+            vy = target_pt[1] - res_y
+            line_len = math.hypot(vx, vy)
+            if line_len < 32.0:
+                return None
+
+            dir_x = vx / line_len
+            dir_y = vy / line_len
+            norm_x = -dir_y
+            norm_y = dir_x
+
+            best_cand = None
+            best_penalty = 1e9
+
+            # Evaluate 63 candidate positions around the line (7 longitudinal x 9 lateral offsets)
+            for t in [0.20, 0.28, 0.38, 0.48, 0.58, 0.68, 0.78]:
+                base_x = res_x + dir_x * (line_len * t)
+                base_y = res_y + dir_y * (line_len * t)
+
+                for lat in [0.0, 18.0, -18.0, 28.0, -28.0, 38.0, -38.0, 50.0, -50.0]:
+                    cpx = base_x + norm_x * lat
+                    cpy = base_y + norm_y * lat
+
+                    # Check canvas boundaries with padding
+                    if cpx < 22.0 or cpx > width - 22.0 or cpy < 18.0 or cpy > legend_y - 18.0:
+                        continue
+
+                    penalty = 0.0
+
+                    # 1. Box collision test with the residue badge
+                    if abs(cpx - res_x) < (half_w + 12.0) and abs(cpy - res_y) < 22.0:
+                        penalty += 60000.0
+
+                    # 2. Distance to target interacting atom (must be >= 22 px)
+                    d_tpt = math.hypot(cpx - target_pt[0], cpy - target_pt[1])
+                    if d_tpt < 22.0:
+                        penalty += 4000.0 * (22.0 - d_tpt)
+
+                    # 3. Distance to ALL other ligand atoms (strictly prevent landing inside aromatic rings or on bonds)
+                    for a_idx, ap in enumerate(atom_coords):
+                        if a_idx == latom_idx:
+                            continue
+                        d_atom = math.hypot(cpx - ap[0], cpy - ap[1])
+                        if d_atom < 22.0:
+                            penalty += 5000.0 * (22.0 - d_atom)
+
+                    # 4. Box clearance from all previously placed distance pills (must be >= 38px X and >= 18px Y)
+                    for prev in placed_pills:
+                        dx = abs(cpx - prev['x'])
+                        dy = abs(cpy - prev['y'])
+                        if dx < 38.0 and dy < 18.0:
+                            penalty += 80000.0 * (1.0 + (38.0 - dx) + (18.0 - dy))
+
+                    # Minor preference for centered t and smaller lateral displacement
+                    penalty += abs(lat) * 1.5 + abs(t - 0.45) * 10.0
+
+                    if penalty < best_penalty:
+                        best_penalty = penalty
+                        best_cand = (cpx, cpy)
+
+            # If all candidates have collision penalties, suppress visual pill to prevent overlapping numbers
+            if best_penalty >= 20000.0:
+                return None
+
+            return best_cand
 
         for node in nodes:
             r = node["res"]
             res_x = node["x"]
             res_y = node["y"]
+            half_w = r["half_w"]
             res_label = r["label"]
             primary_style = interaction_styles[r["primary_type"]]
             types_class_str = " ".join([f"itype-{t}" for t in r["types_set"]])
@@ -338,106 +433,100 @@ class InteractionDiagramGenerator:
                 target_pt = c["target_pt"]
                 cstyle = interaction_styles[ctype]
 
+                # Vector from ligand atom to residue badge center
                 vx = res_x - target_pt[0]
                 vy = res_y - target_pt[1]
                 line_len = math.hypot(vx, vy)
                 if line_len < 1.0:
                     line_len = 1.0
 
-                t_start = min(0.12, 10.0 / line_len)
-                t_end = max(0.85, (line_len - 44.0) / line_len)
+                dir_x = vx / line_len
+                dir_y = vy / line_len
 
-                lx1 = target_pt[0] + vx * t_start
-                ly1 = target_pt[1] + vy * t_start
-                lx2 = target_pt[0] + vx * t_end
-                ly2 = target_pt[1] + vy * t_end
+                # Line starts right outside the ligand atom circle
+                lx1 = target_pt[0] + dir_x * 12.0
+                ly1 = target_pt[1] + dir_y * 12.0
+
+                # Line terminates precisely on the residue badge box border
+                dx_to_target = target_pt[0] - res_x
+                dy_to_target = target_pt[1] - res_y
+                if abs(dx_to_target) > 1e-4 and abs(dy_to_target) > 1e-4:
+                    scale_to_edge = min((half_w + 2.0) / abs(dx_to_target), 14.0 / abs(dy_to_target))
+                    lx2 = res_x + dx_to_target * scale_to_edge
+                    ly2 = res_y + dy_to_target * scale_to_edge
+                else:
+                    lx2 = res_x
+                    ly2 = res_y
+
+                dist_str = f"{dist:.2f}Å" if dist is not None else ""
+                tooltip_title = f"{cstyle['name']}: {dist_str} to {res_label}" if dist_str else f"{cstyle['name']} to {res_label}"
 
                 line_svg = (
-                    f'<line class="interaction-line" x1="{lx1:.1f}" y1="{ly1:.1f}" x2="{lx2:.1f}" y2="{ly2:.1f}" '
+                    f'<line class="interaction-line" data-res-key="{r["key"]}" data-target-x="{target_pt[0]:.1f}" data-target-y="{target_pt[1]:.1f}" '
+                    f'x1="{lx1:.1f}" y1="{ly1:.1f}" x2="{lx2:.1f}" y2="{ly2:.1f}" '
                     f'stroke="{cstyle["color"]}" stroke-width="{cstyle["line_width"]}" '
-                    f'stroke-dasharray="{cstyle["line_dash"]}" opacity="0.9"/>'
+                    f'stroke-dasharray="{cstyle["line_dash"]}" opacity="0.9">'
+                    f'<title>{tooltip_title}</title></line>'
                 )
 
                 pill_svg = ""
-                if line_len >= 52.0 and dist is not None:
-                    # Stagger multiple contacts from the same residue along the line length to prevent pill collisions
-                    n_contacts = len(r["contacts"])
-                    if n_contacts == 1:
-                        t_pill = 0.44
-                    elif n_contacts == 2:
-                        t_pill = 0.32 if c_idx == 0 else 0.62
-                    else:
-                        t_pill = 0.28 + (c_idx * 0.20)
-
-                    px = target_pt[0] + vx * t_pill
-                    py = target_pt[1] + vy * t_pill
-
-                    d_res = math.hypot(px - res_x, py - res_y)
-                    if d_res < 46.0:
-                        px = res_x - (vx / line_len) * 46.0
-                        py = res_y - (vy / line_len) * 46.0
-
-                    d_target = math.hypot(px - target_pt[0], py - target_pt[1])
-                    if d_target < 22.0:
-                        px = target_pt[0] + (vx / line_len) * 22.0
-                        py = target_pt[1] + (vy / line_len) * 22.0
-
-                    # Multi-pass collision relaxation against all placed pills
-                    norm_x = -vy / line_len
-                    norm_y = vx / line_len
-                    for _ in range(6):
-                        collision = False
-                        for prev_p in placed_pills:
-                            dx = px - prev_p["x"]
-                            dy = py - prev_p["y"]
-                            if abs(dx) < 36.0 and abs(dy) < 18.0:
-                                collision = True
-                                px += norm_x * 16.0
-                                py += norm_y * 16.0
-                                break
-                        if not collision:
-                            break
-
-                    placed_pills.append({"x": px, "y": py})
-
-                    pill_svg = (
-                        f'<g class="interaction-distance-pill">'
-                        f'<rect x="{px - 17.0:.1f}" y="{py - 7.5:.1f}" width="34" height="15" rx="3.5" '
-                        f'fill="{cstyle["pill_bg"]}" stroke="{cstyle["pill_border"]}" stroke-width="1"/>'
-                        f'<text x="{px:.1f}" y="{py + 3.5:.1f}" fill="{cstyle["pill_text"]}" '
-                        f'font-family="system-ui, monospace" font-size="8.5" font-weight="bold" text-anchor="middle">{dist}Å</text>'
-                        f'</g>'
-                    )
+                # Distance pills are displayed ONLY on directional/polar bonds (H-bonds, salt bridges, halogens, pi)
+                # Hydrophobic contacts remain clean non-polar dashed lines with hover tooltip (matching LigPlot & PoseView)
+                is_directional = ctype in ("hbond", "salt_bridge", "halogen", "pi_stack", "pi_cation")
+                if is_directional and dist is not None and line_len >= 34.0:
+                    best_pos = find_best_distance_pill_position(res_x, res_y, half_w, target_pt, c.get("latom_idx"))
+                    if best_pos:
+                        px, py = best_pos
+                        placed_pills.append({"x": px, "y": py})
+                        pill_svg = (
+                            f'<g class="interaction-distance-pill" data-dist-type="{ctype}" data-res-key="{r["key"]}" data-target-x="{target_pt[0]:.1f}" data-target-y="{target_pt[1]:.1f}">\n'
+                            f'  <rect x="{px - 17.0:.1f}" y="{py - 7.5:.1f}" width="34" height="15" rx="3.5" '
+                            f'fill="{cstyle["pill_bg"]}" stroke="{cstyle["pill_border"]}" stroke-width="1"/>\n'
+                            f'  <text x="{px:.1f}" y="{py + 3.5:.1f}" fill="{cstyle["pill_text"]}" '
+                            f'font-family="system-ui, monospace" font-size="8.5" font-weight="bold" text-anchor="middle">{dist_str}</text>\n'
+                            f'  <title>{cstyle["name"]}: {dist_str}</title>\n'
+                            f'</g>'
+                        )
 
                 contact_elements_svg.append(
-                    f'<g class="interaction-contact itype-{ctype}" data-type="{ctype}">\n'
+                    f'<g class="interaction-contact itype-{ctype}" data-type="{ctype}" data-res-key="{r["key"]}">\n'
                     f'  {line_svg}\n'
                     f'  {pill_svg}\n'
                     f'</g>'
                 )
 
+            # Build residue badge with multi-type interaction indicators
             dots_svg = []
             priority_order = ["salt_bridge", "hbond", "pi_stack", "pi_cation", "halogen", "hydrophobic"]
             sorted_types = sorted(list(r["types_set"]), key=lambda t: priority_order.index(t) if t in priority_order else 99)
-            
-            n_dots = min(len(sorted_types), 4)
-            badge_w = max(88.0, 36.0 + n_dots * 9.5 + len(res_label) * 6.2)
-            half_w = badge_w / 2.0
-            dot_start_x = -half_w + 10.0
-            for d_idx, dtype in enumerate(sorted_types[:4]):
-                d_color = interaction_styles[dtype]["color"]
-                dx_pos = dot_start_x + (d_idx * 8.0)
-                dots_svg.append(f'<circle class="badge-dot" data-dot-type="{dtype}" cx="{dx_pos:.1f}" cy="0" r="3.2" fill="{d_color}"/>')
 
-            text_offset_x = (dot_start_x + (n_dots * 8.0) + half_w) / 2.0 if n_dots > 0 else 0.0
+            n_dots = min(len(sorted_types), 4)
+            badge_w = r["badge_w"]
+            half_w = r["half_w"]
+
+            if n_dots > 0:
+                dot_start_x = -half_w + 12.0
+                for d_idx, dtype in enumerate(sorted_types[:4]):
+                    d_color = interaction_styles[dtype]["color"]
+                    dx_pos = dot_start_x + (d_idx * 9.0)
+                    dots_svg.append(f'<circle class="badge-dot" data-dot-type="{dtype}" cx="{dx_pos:.1f}" cy="0" r="3.2" fill="{d_color}"/>')
+
+                # Guaranteed clean 10px separation after the last dot so text NEVER sticks to or intrudes into dots
+                last_dot_right = dot_start_x + (n_dots - 1) * 9.0 + 3.2
+                text_x = last_dot_right + 10.0
+                text_anchor = "start"
+            else:
+                text_x = 0.0
+                text_anchor = "middle"
 
             badge_svg = (
-                f'<g class="interaction-badge-node {types_class_str}" data-types="{types_data_str}" data-primary-type="{r["primary_type"]}" transform="translate({res_x:.1f},{res_y:.1f})">\n'
+                f'<g class="interaction-badge-node {types_class_str}" data-res-key="{r["key"]}" data-types="{types_data_str}" data-primary-type="{r["primary_type"]}" transform="translate({res_x:.1f},{res_y:.1f})" style="cursor: grab;">\n'
                 f'  <rect class="badge-bg" x="{-half_w:.1f}" y="-12" width="{badge_w:.1f}" height="24" rx="6" '
                 f'fill="{primary_style["pill_bg"]}" stroke="{primary_style["badge_border"]}" stroke-width="1.4"/>\n'
                 f'  {"".join(dots_svg)}\n'
-                f'  <text class="badge-text" x="{text_offset_x:.1f}" y="3.8" fill="{primary_style["pill_text"]}" '
-                f'font-family="system-ui, -apple-system, sans-serif" font-size="9.5" font-weight="bold" text-anchor="middle">{res_label}</text>\n'
+                f'  <text class="badge-text" x="{text_x:.1f}" y="3.8" fill="{primary_style["pill_text"]}" '
+                f'font-family="system-ui, -apple-system, sans-serif" font-size="9.5" font-weight="bold" text-anchor="{text_anchor}">{res_label}</text>\n'
+                f'  <title>{res_label} ({", ".join(r["types_set"])})</title>\n'
                 f'</g>'
             )
             badge_elements_svg.append(badge_svg)

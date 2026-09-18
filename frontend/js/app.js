@@ -1894,7 +1894,7 @@ class BindoraApp {
         }
       }
 
-      this.updateReceptorView();
+      this.updateStudioCards();
       this.updateDossierView();
       if (!isAuto) {
         this.showToast(`Redocking validation finished! RMSD = ${res.rmsd_angstroms} Å (${res.benchmark_status})`, res.is_validated ? "success" : "warning");
@@ -1912,6 +1912,169 @@ class BindoraApp {
     }
   }
 
+  startDockingProgress(exhaustiveness = 8, replicates = 1) {
+    const banner = document.getElementById("docking-status-banner");
+    if (!banner) return;
+
+    banner.classList.remove("hidden");
+    banner.classList.remove("opacity-0");
+    banner.className = "glass-panel p-4 rounded-xl border border-[#22242f] bg-[#121319]/95 shadow-xl transition-all duration-300 mb-3";
+
+    const titleEl = document.getElementById("docking-status-title");
+    const subEl = document.getElementById("docking-status-subtitle");
+    const timerEl = document.getElementById("docking-timer-display");
+    const percentEl = document.getElementById("docking-percent-label");
+    const barFill = document.getElementById("docking-progress-bar-fill");
+    const logText = document.getElementById("docking-log-text");
+    const iconEl = document.getElementById("docking-status-icon");
+
+    if (titleEl) titleEl.textContent = "AutoDock Vina Simulation Engine";
+    if (subEl) subEl.textContent = `Iterated Local Search & Monte Carlo Conformational Sampling (Exhaustiveness = ${exhaustiveness}, Replicates = ${replicates})`;
+    if (iconEl) {
+      iconEl.innerHTML = `<svg class="animate-spin w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+    }
+
+    // Reset stages
+    for (let i = 1; i <= 5; i++) {
+      const stageEl = document.getElementById(`dock-stage-${i}`);
+      if (stageEl) {
+        stageEl.className = "dock-stage-pill flex flex-col items-center p-1.5 rounded-lg bg-[#181923] border border-[#252736] text-slate-400 transition-all";
+        const dot = stageEl.querySelector(".stage-dot");
+        if (dot) dot.className = "stage-dot w-2 h-2 rounded-full bg-slate-600";
+      }
+    }
+
+    if (barFill) barFill.style.width = "0%";
+    if (percentEl) {
+      percentEl.textContent = "0%";
+      percentEl.className = "font-mono font-extrabold text-xs text-cyan-400";
+    }
+    if (timerEl) timerEl.textContent = "00:00.0s";
+
+    // Expected duration in seconds based on exhaustiveness & replicates
+    const expectedDuration = Math.max(2.5, (exhaustiveness * 0.45) * Math.max(1, replicates * 0.85));
+    const startTime = performance.now();
+
+    const stagesInfo = [
+      { maxPct: 15, name: "Validation", log: "Stage 1/5: Validating receptor PDBQT & ligand rotatable torsions..." },
+      { maxPct: 35, name: "Grid Maps", log: "Stage 2/5: Allocating steric potential energy grids and affinity maps..." },
+      { maxPct: 75, name: "Monte Carlo", log: "Stage 3/5: Iterated Local Search & Monte Carlo energy sampling on CPU cores..." },
+      { maxPct: 90, name: "Clustering", log: "Stage 4/5: Clustering binding poses by heavy-atom RMSD & ranking ΔG scores..." },
+      { maxPct: 98, name: "PLIP Analysis", log: "Stage 5/5: Detecting 3D non-covalent contacts (H-bonds, salt bridges, π-stacking)..." }
+    ];
+
+    clearInterval(this._dockingProgressTimer);
+
+    this._dockingProgressTimer = setInterval(() => {
+      const elapsed = (performance.now() - startTime) / 1000;
+      const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+      const secs = (elapsed % 60).toFixed(1).padStart(4, '0');
+      if (timerEl) timerEl.textContent = `${mins}:${secs}s`;
+
+      const ratio = elapsed / expectedDuration;
+      let pct = 0;
+      if (ratio < 1.0) {
+        pct = Math.min(95, Math.round(ratio * 95));
+      } else {
+        pct = Math.min(98, Math.round(95 + (1 - Math.exp(-(ratio - 1))) * 3));
+      }
+
+      if (barFill) barFill.style.width = `${pct}%`;
+      if (percentEl) percentEl.textContent = `${pct}%`;
+
+      let activeStageIdx = 0;
+      if (pct < 15) activeStageIdx = 0;
+      else if (pct < 35) activeStageIdx = 1;
+      else if (pct < 75) activeStageIdx = 2;
+      else if (pct < 90) activeStageIdx = 3;
+      else activeStageIdx = 4;
+
+      if (logText) logText.textContent = stagesInfo[activeStageIdx].log;
+
+      for (let i = 1; i <= 5; i++) {
+        const stageEl = document.getElementById(`dock-stage-${i}`);
+        if (!stageEl) continue;
+        const dot = stageEl.querySelector(".stage-dot");
+        if (i - 1 < activeStageIdx) {
+          stageEl.className = "dock-stage-pill flex flex-col items-center p-1.5 rounded-lg bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 transition-all";
+          if (dot) dot.className = "stage-dot w-2 h-2 rounded-full bg-emerald-400";
+        } else if (i - 1 === activeStageIdx) {
+          stageEl.className = "dock-stage-pill flex flex-col items-center p-1.5 rounded-lg bg-cyan-950/60 border border-cyan-500/80 text-cyan-200 shadow-sm transition-all";
+          if (dot) dot.className = "stage-dot w-2 h-2 rounded-full bg-cyan-400 animate-pulse";
+        } else {
+          stageEl.className = "dock-stage-pill flex flex-col items-center p-1.5 rounded-lg bg-[#181923] border border-[#252736] text-slate-400 transition-all";
+          if (dot) dot.className = "stage-dot w-2 h-2 rounded-full bg-slate-600";
+        }
+      }
+    }, 60);
+  }
+
+  finishDockingProgress(result) {
+    clearInterval(this._dockingProgressTimer);
+
+    const barFill = document.getElementById("docking-progress-bar-fill");
+    const percentEl = document.getElementById("docking-percent-label");
+    const logText = document.getElementById("docking-log-text");
+    const titleEl = document.getElementById("docking-status-title");
+    const iconEl = document.getElementById("docking-status-icon");
+
+    const timerEl = document.getElementById("docking-timer-display");
+
+    if (barFill) barFill.style.width = "100%";
+    if (percentEl) percentEl.textContent = "100%";
+    if (timerEl && result?.execution_duration_s) {
+      timerEl.textContent = `${result.execution_duration_s.toFixed(2)}s (Backend)`;
+    }
+
+    for (let i = 1; i <= 5; i++) {
+      const stageEl = document.getElementById(`dock-stage-${i}`);
+      if (stageEl) {
+        stageEl.className = "dock-stage-pill flex flex-col items-center p-1.5 rounded-lg bg-emerald-950/50 border border-emerald-500/60 text-emerald-300 transition-all";
+        const dot = stageEl.querySelector(".stage-dot");
+        if (dot) dot.className = "stage-dot w-2 h-2 rounded-full bg-emerald-400";
+      }
+    }
+
+    const topAff = result?.top_pose?.affinity_kcal !== undefined ? `${result.top_pose.affinity_kcal} kcal/mol` : "Complete";
+    if (titleEl) titleEl.textContent = `Simulation Converged • Top Pose: ${topAff}`;
+    if (iconEl) {
+      iconEl.innerHTML = `<svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>`;
+    }
+    if (logText) {
+      logText.textContent = `All ${result?.poses?.length || 9} binding modes generated and clustered. 3D interactions mapped.`;
+    }
+
+    setTimeout(() => {
+      const banner = document.getElementById("docking-status-banner");
+      if (banner) {
+        banner.classList.add("opacity-0");
+        setTimeout(() => {
+          banner.classList.add("hidden");
+          banner.classList.remove("opacity-0");
+        }, 400);
+      }
+    }, 2000);
+  }
+
+  errorDockingProgress(errMsg) {
+    clearInterval(this._dockingProgressTimer);
+
+    const titleEl = document.getElementById("docking-status-title");
+    const logText = document.getElementById("docking-log-text");
+    const iconEl = document.getElementById("docking-status-icon");
+    const percentEl = document.getElementById("docking-percent-label");
+
+    if (titleEl) titleEl.textContent = "Simulation Failed";
+    if (iconEl) {
+      iconEl.innerHTML = `<svg class="w-4 h-4 text-rose-400" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+    }
+    if (percentEl) {
+      percentEl.textContent = "Error";
+      percentEl.className = "font-mono font-bold text-xs text-rose-400";
+    }
+    if (logText) logText.textContent = errMsg || "An error occurred during AutoDock Vina execution.";
+  }
+
   async runDockingPipeline() {
     if (!this.state.ligand || !this.state.receptor) {
       this.showToast("Please load both a ligand and a receptor first.", "error");
@@ -1925,24 +2088,10 @@ class BindoraApp {
       dockBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Running AutoDock Vina...`;
     }
 
-    const statusBanner = document.getElementById("docking-status-banner");
-    const statusIcon = document.getElementById("docking-status-icon");
-    const statusTitle = document.getElementById("docking-status-title");
-    const statusSub = document.getElementById("docking-status-subtitle");
-    const statusExtra = document.getElementById("docking-status-extra");
-
     const exhaustiveness = parseInt(document.getElementById("docking-exhaustiveness")?.value) || 8;
     const replicates = parseInt(document.getElementById("docking-replicates")?.value) || 1;
 
-    if (statusBanner) {
-      statusBanner.classList.remove("hidden");
-      statusBanner.className = "glass-panel p-3.5 rounded-xl border border-cyan-500/50 bg-cyan-950/80 transition-all duration-300 mb-2 animate-pulse";
-      if (statusIcon) statusIcon.innerHTML = `<svg class="animate-spin w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
-      if (statusTitle) statusTitle.textContent = "AutoDock Vina Docking in Progress...";
-      if (statusSub) statusSub.textContent = `Sampling conformational space (exhaustiveness = ${exhaustiveness}, modes = 9, ${replicates > 1 ? '3 replicate seeds' : 'single seed'}) on CPU...`;
-      if (statusExtra) statusExtra.textContent = replicates > 1 ? "Replicates Running..." : "Running Monte Carlo...";
-    }
-
+    this.startDockingProgress(exhaustiveness, replicates);
     this.showToast(`Launching AutoDock Vina (${replicates > 1 ? '3-seed replicate' : 'single run'})...`, "info");
 
     try {
@@ -2021,14 +2170,8 @@ class BindoraApp {
         if (weakAlert) weakAlert.classList.add("hidden");
       }
 
-      // Update completion banner
-      if (statusBanner) {
-        statusBanner.className = "glass-panel p-3.5 rounded-xl border border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-100 transition-all duration-300 mb-2";
-        if (statusIcon) statusIcon.innerHTML = `<span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>`;
-        if (statusTitle) statusTitle.textContent = `Docking Complete: ΔG = ${dockResult.top_pose.affinity_kcal} kcal/mol`;
-        if (statusSub) statusSub.textContent = `Theoretical Kd: ${dockResult.thermodynamics?.theoretical_kd_nm || "—"} nM | ${dockResult.interactions?.total_hbond_count || 0} H-Bonds | Top binding pose loaded.`;
-        if (statusExtra) statusExtra.textContent = "Finished";
-      }
+      // Update completion in live progress monitor
+      this.finishDockingProgress(dockResult);
 
       // Switch to 3D docking tab
       this.switchTab("docking");
@@ -2037,13 +2180,7 @@ class BindoraApp {
 
     } catch (e) {
       console.error("Docking error:", e);
-      if (statusBanner) {
-        statusBanner.className = "glass-panel p-3.5 rounded-xl border border-rose-500/50 bg-rose-50 dark:bg-rose-950/80 text-rose-950 dark:text-rose-100 transition-all duration-300 mb-2";
-        if (statusIcon) statusIcon.innerHTML = `<span class="w-6 h-6 rounded-full bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold text-sm"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>`;
-        if (statusTitle) statusTitle.textContent = "Docking Execution Failed";
-        if (statusSub) statusSub.textContent = e.message;
-        if (statusExtra) statusExtra.textContent = "Error";
-      }
+      this.errorDockingProgress(e.message);
       this.showToast(`Docking execution failed: ${e.message}`, "error");
     } finally {
       if (dockBtn) {
@@ -2227,11 +2364,14 @@ class BindoraApp {
 
     const contentGroup = svg.querySelector("#bindora-diagram-content") || svg;
 
-    // Diagram center coordinates (650 x 500)
-    const cx = 325;
-    const cy = 235;
+    // Dynamic diagram center coordinates matching SVG viewBox (720 x 540)
+    const vb = svg.viewBox && svg.viewBox.baseVal;
+    const vbWidth = (vb && vb.width) ? vb.width : 720;
+    const vbHeight = (vb && vb.height) ? vb.height : 540;
+    const cx = vbWidth / 2;
+    const cy = (vbHeight - 35) / 2;
 
-    // State
+    // Viewport pan & zoom state
     let currentScale = 1.0;
     let panX = 0;
     let panY = 0;
@@ -2246,18 +2386,65 @@ class BindoraApp {
     };
     applyTransform();
 
-    // Mouse drag to pan
-    let isDragging = false;
-    let startX = 0;
-    let startY = 0;
+    // Canvas panning state
+    let isDraggingCanvas = false;
+    let startCanvasX = 0;
+    let startCanvasY = 0;
     let startPanX = 0;
     let startPanY = 0;
 
+    // Residue badge dragging state (interactive repositioning with live bond line tracking)
+    let isDraggingBadge = false;
+    let draggedBadge = null;
+    let draggedResKey = null;
+    let badgeStartPos = { x: 0, y: 0 };
+    let mouseStartPos = { x: 0, y: 0 };
+    let connectedLines = [];
+    let connectedPills = [];
+
+    const getTranslate = (el) => {
+      const transform = el.getAttribute("transform") || "";
+      const match = transform.match(/translate\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/);
+      if (match) {
+        return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+      }
+      return { x: 0, y: 0 };
+    };
+
+    // Wire draggable badges
+    svg.querySelectorAll(".interaction-badge-node").forEach(badge => {
+      badge.style.cursor = "grab";
+      badge.onmousedown = (e) => {
+        if (e.button !== 0) return;
+        e.stopPropagation(); // Stop background canvas pan
+        e.preventDefault();
+
+        isDraggingBadge = true;
+        draggedBadge = badge;
+        draggedResKey = badge.getAttribute("data-res-key");
+        badge.style.cursor = "grabbing";
+
+        const currentPos = getTranslate(badge);
+        badgeStartPos = { ...currentPos };
+        mouseStartPos = { x: e.clientX, y: e.clientY };
+
+        if (draggedResKey) {
+          connectedLines = Array.from(svg.querySelectorAll(`.interaction-line[data-res-key="${draggedResKey}"]`));
+          connectedPills = Array.from(svg.querySelectorAll(`.interaction-distance-pill[data-res-key="${draggedResKey}"]`));
+        } else {
+          connectedLines = [];
+          connectedPills = [];
+        }
+      };
+    });
+
+    // Container background pan
     container.onmousedown = (e) => {
       if (e.button !== 0) return; // Only primary mouse button
-      isDragging = true;
-      startX = e.clientX;
-      startY = e.clientY;
+      if (isDraggingBadge) return;
+      isDraggingCanvas = true;
+      startCanvasX = e.clientX;
+      startCanvasY = e.clientY;
       startPanX = panX;
       startPanY = panY;
       container.style.cursor = "grabbing";
@@ -2265,21 +2452,112 @@ class BindoraApp {
     };
 
     const handleMouseMove = (e) => {
-      if (!isDragging) return;
-      const rect = container.getBoundingClientRect();
-      const scaleFactor = 650 / (rect.width || 650);
-      const dx = (e.clientX - startX) * scaleFactor;
-      const dy = (e.clientY - startY) * scaleFactor;
+      // 1. Badge Dragging with live bond and pill updates
+      if (isDraggingBadge && draggedBadge) {
+        const rect = container.getBoundingClientRect();
+        const scaleFactor = vbWidth / (rect.width || vbWidth);
+        const dx = (e.clientX - mouseStartPos.x) * (scaleFactor / currentScale);
+        const dy = (e.clientY - mouseStartPos.y) * (scaleFactor / currentScale);
 
-      // Clamp panning bounds so molecule is never lost
-      panX = Math.max(-280, Math.min(280, startPanX + dx));
-      panY = Math.max(-220, Math.min(220, startPanY + dy));
-      applyTransform();
+        const newBadgeX = badgeStartPos.x + dx;
+        const newBadgeY = badgeStartPos.y + dy;
+
+        // Move badge
+        draggedBadge.setAttribute("transform", `translate(${newBadgeX.toFixed(1)}, ${newBadgeY.toFixed(1)})`);
+
+        // Badge half width for border intersection
+        const rectEl = draggedBadge.querySelector("rect.badge-bg") || draggedBadge.querySelector("rect");
+        const badgeW = rectEl ? parseFloat(rectEl.getAttribute("width") || "100") : 100;
+        const halfW = badgeW / 2;
+
+        // Dynamically update connected bond lines
+        connectedLines.forEach(line => {
+          const targetX = parseFloat(line.getAttribute("data-target-x") || line.getAttribute("x1"));
+          const targetY = parseFloat(line.getAttribute("data-target-y") || line.getAttribute("y1"));
+
+          const vx = newBadgeX - targetX;
+          const vy = newBadgeY - targetY;
+          const lineLen = Math.hypot(vx, vy);
+
+          if (lineLen > 1) {
+            const dirX = vx / lineLen;
+            const dirY = vy / lineLen;
+
+            const lx1 = targetX + dirX * 12.0;
+            const ly1 = targetY + dirY * 12.0;
+
+            const dxToTarget = targetX - newBadgeX;
+            const dyToTarget = targetY - newBadgeY;
+            let lx2 = newBadgeX;
+            let ly2 = newBadgeY;
+
+            if (Math.abs(dxToTarget) > 1e-4 && Math.abs(dyToTarget) > 1e-4) {
+              const scaleToEdge = Math.min((halfW + 2.0) / Math.abs(dxToTarget), 14.0 / Math.abs(dyToTarget));
+              lx2 = newBadgeX + dxToTarget * scaleToEdge;
+              ly2 = newBadgeY + dyToTarget * scaleToEdge;
+            }
+
+            line.setAttribute("x1", lx1.toFixed(1));
+            line.setAttribute("y1", ly1.toFixed(1));
+            line.setAttribute("x2", lx2.toFixed(1));
+            line.setAttribute("y2", ly2.toFixed(1));
+          }
+        });
+
+        // Dynamically update connected distance pills
+        connectedPills.forEach(pillGroup => {
+          const targetX = parseFloat(pillGroup.getAttribute("data-target-x") || newBadgeX);
+          const targetY = parseFloat(pillGroup.getAttribute("data-target-y") || newBadgeY);
+
+          const vx = newBadgeX - targetX;
+          const vy = newBadgeY - targetY;
+          const lineLen = Math.hypot(vx, vy);
+
+          if (lineLen > 32) {
+            const px = targetX + vx * 0.50;
+            const py = targetY + vy * 0.50;
+
+            const pRect = pillGroup.querySelector("rect");
+            const pText = pillGroup.querySelector("text");
+            if (pRect) {
+              pRect.setAttribute("x", (px - 17.0).toFixed(1));
+              pRect.setAttribute("y", (py - 7.5).toFixed(1));
+            }
+            if (pText) {
+              pText.setAttribute("x", px.toFixed(1));
+              pText.setAttribute("y", (py + 3.5).toFixed(1));
+            }
+          }
+        });
+
+        return;
+      }
+
+      // 2. Canvas Background Pan
+      if (isDraggingCanvas) {
+        const rect = container.getBoundingClientRect();
+        const scaleFactor = vbWidth / (rect.width || vbWidth);
+        const dx = (e.clientX - startCanvasX) * scaleFactor;
+        const dy = (e.clientY - startCanvasY) * scaleFactor;
+
+        // Clamp panning bounds so molecule is never lost
+        panX = Math.max(-320, Math.min(320, startPanX + dx));
+        panY = Math.max(-260, Math.min(260, startPanY + dy));
+        applyTransform();
+      }
     };
 
     const handleMouseUp = () => {
-      if (isDragging) {
-        isDragging = false;
+      if (isDraggingBadge && draggedBadge) {
+        draggedBadge.style.cursor = "grab";
+        isDraggingBadge = false;
+        draggedBadge = null;
+        draggedResKey = null;
+        connectedLines = [];
+        connectedPills = [];
+      }
+      if (isDraggingCanvas) {
+        isDraggingCanvas = false;
         container.style.cursor = "grab";
       }
     };
@@ -2440,9 +2718,9 @@ class BindoraApp {
       cloneContent.setAttribute("transform", "matrix(1 0 0 1 0 0)");
     }
 
-    clone.setAttribute("viewBox", "0 0 650 500");
-    clone.setAttribute("width", "2600");
-    clone.setAttribute("height", "2000");
+    clone.setAttribute("viewBox", "0 0 720 540");
+    clone.setAttribute("width", "2880");
+    clone.setAttribute("height", "2160");
     if (isLight) {
       clone.classList.add("theme-light");
     } else {
@@ -2456,8 +2734,8 @@ class BindoraApp {
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      canvas.width = 2600;
-      canvas.height = 2000;
+      canvas.width = 2880;
+      canvas.height = 2160;
       const ctx = canvas.getContext("2d");
 
       // Solid background fill for publication clarity

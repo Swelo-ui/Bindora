@@ -55,9 +55,36 @@ class MolecularViewer {
     if (M) {
       this.viewer = M.createViewer(el, {
         backgroundColor: '0x090a0f',
+        disableFog: true,
         antialias: true
       });
-      console.log('[3Dmol] Viewer initialized successfully.');
+
+      // Completely disable depth fogging so the receptor protein never fades into black fog
+      try {
+        if (this.viewer.getConfig()) {
+          this.viewer.getConfig().disableFog = true;
+        }
+        if (typeof this.viewer.enableFog === 'function') {
+          this.viewer.enableFog(false);
+        }
+        // Intercept setSlabAndFog to guarantee ample camera depth and zero black fog at all times
+        if (typeof this.viewer.setSlabAndFog === 'function') {
+          const origSetSlabAndFog = this.viewer.setSlabAndFog.bind(this.viewer);
+          this.viewer.setSlabAndFog = () => {
+            this.viewer.slabNear = Math.min(this.viewer.slabNear || -50, -300);
+            this.viewer.slabFar = Math.max(this.viewer.slabFar || 50, 300);
+            if (this.viewer.getConfig()) this.viewer.getConfig().disableFog = true;
+            origSetSlabAndFog();
+            if (this.viewer.scene && this.viewer.scene.fog) {
+              this.viewer.scene.fog.near = this.viewer.scene.fog.far;
+            }
+          };
+        }
+      } catch (fe) {
+        console.warn('[3Dmol] Fog configuration notice:', fe);
+      }
+
+      console.log('[3Dmol] Viewer initialized successfully with zero-fog high-depth camera.');
     } else {
       console.warn('[3Dmol] 3Dmol.js library not loaded yet.');
     }
@@ -158,13 +185,13 @@ class MolecularViewer {
     }
 
     if (style === 'cartoon') {
-      this.receptorModel.setStyle({}, { cartoon: { ...colorScheme, opacity: 0.85, thickness: 0.4 } });
+      this.receptorModel.setStyle({}, { cartoon: { ...colorScheme, opacity: 0.98, thickness: 0.48 } });
     } else if (style === 'stick') {
       this.receptorModel.setStyle({}, { stick: { radius: 0.18, colorscheme: 'Jmol' } });
     } else if (style === 'sphere') {
       this.receptorModel.setStyle({}, { sphere: { radius: 0.75, colorscheme: 'Jmol' } });
     } else if (style === 'ribbon') {
-      this.receptorModel.setStyle({}, { cartoon: { ...colorScheme, opacity: 0.9, style: 'trace', thickness: 0.6 } });
+      this.receptorModel.setStyle({}, { cartoon: { ...colorScheme, opacity: 0.98, style: 'trace', thickness: 0.6 } });
     } else if (style === 'hidden') {
       this.receptorModel.setStyle({}, {});
     }
@@ -187,7 +214,16 @@ class MolecularViewer {
       this.applyLigandStyle();
 
       this.viewer.zoomTo({ model: this.ligandModel }, 600);
+      if (typeof this.viewer.setSlab === 'function') {
+        this.viewer.setSlab(-300, 300);
+      }
       this.viewer.render();
+      setTimeout(() => {
+        if (this.viewer && typeof this.viewer.setSlab === 'function') {
+          this.viewer.setSlab(-300, 300);
+          this.viewer.render();
+        }
+      }, 650);
 
       if (this.settings.showSurface) {
         this.updateSurface();
@@ -941,7 +977,7 @@ class MolecularViewer {
           const currentStyle = this.settings.proteinStyle || 'cartoon';
           if (currentStyle === 'cartoon') {
             this.receptorModel.setStyle(sel, {
-              cartoon: { colorscheme: 'chain', opacity: 0.85, thickness: 0.4 }
+              cartoon: { colorscheme: 'chain', opacity: 0.98, thickness: 0.48 }
             });
           } else {
             this.applyReceptorStyle();

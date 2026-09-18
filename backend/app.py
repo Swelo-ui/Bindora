@@ -287,7 +287,8 @@ def run_docking():
             "top_pose": best_pose,
             "thermodynamics": thermo,
             "interactions": contacts,
-            "replicate_stats": replicate_stats
+            "replicate_stats": replicate_stats,
+            "execution_duration_s": best_pose.get("execution_duration_s", 0.0)
         })
     except Exception as e:
         traceback.print_exc()

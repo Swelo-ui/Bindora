@@ -1,5 +1,6 @@
 import re
 import math
+import time
 import subprocess
 import tempfile
 from pathlib import Path
@@ -747,6 +748,7 @@ class DockingEngine:
         else:
             seeds = [seed] if seed is not None else [None]
 
+        t_overall_start = time.time()
         all_runs_top_affinities = []
         best_poses = []
         best_top_affinity = 999.0
@@ -876,6 +878,11 @@ class DockingEngine:
                         p["mode1_rmsd_angstroms"] = p_rmsd
             except Exception as ex:
                 print(f"[RMSD REFERENCE NOTICE] {ex}")
+
+        total_duration = round(time.time() - t_overall_start, 2)
+        if best_poses:
+            for p in best_poses:
+                p["execution_duration_s"] = total_duration
 
         return best_poses
 
