@@ -73,24 +73,16 @@ def static_proxy(path):
 
 # ----------------- API Endpoints -----------------
 
-from backend.services.hardware_profiler import HardwareProfiler
-
 @app.route("/api/health", methods=["GET"])
 def health():
     vina_ok = VINA_EXE.exists() and VINA_EXE.stat().st_size > 100000
-    hw_profile = HardwareProfiler.get_hardware_profile()
     return jsonify({
         "status": "healthy",
         "service": "Bindora 3D Drug-Receptor & PK/PD Analyzer",
         "vina_available": vina_ok,
         "vina_path": str(VINA_EXE) if vina_ok else None,
-        "cpu_count": hw_profile["specs"]["cpu_count"],
-        "hardware_profile": hw_profile
+        "cpu_count": os.cpu_count() or 1
     })
-
-@app.route("/api/system/profile", methods=["GET"])
-def system_profile():
-    return jsonify(HardwareProfiler.get_hardware_profile())
 
 @app.route("/api/benchmarks", methods=["GET"])
 def get_benchmarks():
@@ -271,8 +263,14 @@ def run_docking():
     receptor_pdb = data.get("receptor_pdb")
     center = data.get("center")
     size = data.get("size")
-    power_mode = str(data.get("power_mode", "smart"))
-    rotb = int(data.get("rotatable_bonds", 0))
+    try:
+        exhaustiveness = int(data.get("exhaustiveness", 8))
+        if exhaustiveness < 1 or exhaustiveness > 64:
+            exhaustiveness = 8
+    except (ValueError, TypeError):
+        exhaustiveness = 8
+    num_modes = int(data.get("num_modes", 9))
+    replicates = int(data.get("replicates", 1))
     heavy_atoms = int(data.get("heavy_atoms", 20))
     mw = float(data.get("molecular_weight", 300.0))
     smiles = data.get("smiles", "")
@@ -284,19 +282,6 @@ def run_docking():
         except (ValueError, TypeError):
             cpu = None
 
-    # Calculate smart hardware-adaptive exhaustiveness
-    raw_exh = data.get("exhaustiveness")
-    adaptive_exh, adaptive_reason = HardwareProfiler.calculate_adaptive_exhaustiveness(
-        requested_exhaustiveness=raw_exh,
-        rotatable_bonds=rotb,
-        heavy_atoms=heavy_atoms,
-        power_mode=power_mode
-    )
-    exhaustiveness = adaptive_exh
-
-    num_modes = int(data.get("num_modes", 9))
-    replicates = int(data.get("replicates", 1))
-
     if not receptor_pdbqt or not ligand_pdbqt or not center or not size:
         return jsonify({"error": "Missing required docking parameters (receptor, ligand, center, size)"}), 400
     
@@ -306,7 +291,7 @@ def run_docking():
         return jsonify({"error": grid_validation.error, "field": "grid_box"}), 400
 
     try:
-        # Run AutoDock Vina with multi-core parallel optimization & hardware profiling
+        # Run AutoDock Vina with multi-core parallel optimization
         poses = DockingEngine.run_docking(
             receptor_pdbqt,
             ligand_pdbqt,
@@ -317,8 +302,7 @@ def run_docking():
             replicates=replicates,
             flexible_residues=flexible_residues,
             receptor_pdb=receptor_pdb,
-            cpu=cpu,
-            power_mode=power_mode
+            cpu=cpu
         )
 
         if not poses:
@@ -373,7 +357,6 @@ def run_docking():
         except Exception as db_err:
             print(f"[DATABASE WARNING] Failed to record session: {db_err}", file=sys.stderr)
 
-        hw_info = HardwareProfiler.get_hardware_profile()
         return jsonify({
             "poses": poses,
             "top_pose": best_pose,
@@ -381,11 +364,7 @@ def run_docking():
             "interactions": contacts,
             "replicate_stats": replicate_stats,
             "execution_duration_s": best_pose.get("execution_duration_s", 0.0),
-            "cpu_count": best_pose.get("cpu_count_used", hw_info["specs"]["cpu_count"]),
-            "hardware_tier": best_pose.get("hardware_tier", hw_info["tier_name"]),
-            "hardware_badge": best_pose.get("hardware_badge", hw_info["badge"]),
-            "exhaustiveness_used": exhaustiveness,
-            "adaptive_reason": adaptive_reason,
+            "cpu_count": best_pose.get("cpu_count_used", os.cpu_count() or 1),
             "session_id": session_id
         })
     except Exception as e:

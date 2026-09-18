@@ -699,16 +699,20 @@ class DockingEngine:
         reference_pdb: Optional[str] = None,
         flexible_residues: Optional[List[str]] = None,
         receptor_pdb: Optional[str] = None,
-        cpu: Optional[int] = None,
-        power_mode: str = "smart"
+        cpu: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """Run AutoDock Vina on the prepared receptor and ligand PDBQT files with optional multi-seed replicate sampling and flexible side chains."""
         vina_path = ensure_vina()
 
-        # Multi-core CPU optimization & intelligent hardware profiling
-        from backend.services.hardware_profiler import HardwareProfiler
-        hw_profile = HardwareProfiler.get_hardware_profile()
-        cpu = HardwareProfiler.get_optimal_threads(cpu, power_mode=power_mode)
+        # Multi-core CPU optimization: AutoDock Vina defaults to single core if not explicitly provided on Windows/containers.
+        # Explicitly passing --cpu ensures all CPU threads are utilized in parallel.
+        if cpu is None or cpu <= 0:
+            try:
+                import os, multiprocessing
+                detected_cores = os.cpu_count() or multiprocessing.cpu_count() or 1
+                cpu = max(1, int(detected_cores))
+            except Exception:
+                cpu = 1
 
         # Support both dict {"x":.., "y":.., "z":..} and list/tuple [x, y, z]
         if isinstance(center, (list, tuple)) and len(center) >= 3:
@@ -892,8 +896,6 @@ class DockingEngine:
             for p in best_poses:
                 p["execution_duration_s"] = total_duration
                 p["cpu_count_used"] = cpu
-                p["hardware_tier"] = hw_profile.get("tier_name")
-                p["hardware_badge"] = hw_profile.get("badge")
 
         return best_poses
 
