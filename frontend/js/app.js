@@ -381,10 +381,10 @@ class BindoraApp {
       batchBtn.addEventListener("click", () => this.runBatchScreening());
     }
 
-    // Batch Mode Switching (Candidates / Ensemble / Pharmacophore)
+    // Batch Mode Switching (Candidates / Pharmacophore / Ensemble)
     const setBatchMode = (mode) => {
       this.state.batchMode = mode;
-      ['candidates', 'ensemble', 'pharmacophore'].forEach(m => {
+      ['candidates', 'pharmacophore', 'ensemble'].forEach(m => {
         const panel = document.getElementById(`panel-batch-${m}`);
         const btn = document.getElementById(`btn-batch-mode-${m}`);
         if (panel) panel.classList.toggle('hidden', m !== mode);
@@ -400,16 +400,16 @@ class BindoraApp {
           }
         }
       });
-      if (mode === 'ensemble') {
-        this.loadEnsembleStructures();
-      } else if (mode === 'pharmacophore') {
+      if (mode === 'pharmacophore') {
         this.checkPharmacophoreEligibility();
+      } else if (mode === 'ensemble') {
+        this.loadEnsembleStructures();
       }
       this.updateBatchMatrixView(mode);
     };
     document.getElementById("btn-batch-mode-candidates")?.addEventListener("click", () => setBatchMode('candidates'));
-    document.getElementById("btn-batch-mode-ensemble")?.addEventListener("click", () => setBatchMode('ensemble'));
     document.getElementById("btn-batch-mode-pharmacophore")?.addEventListener("click", () => setBatchMode('pharmacophore'));
+    document.getElementById("btn-batch-mode-ensemble")?.addEventListener("click", () => setBatchMode('ensemble'));
 
     // Workflow Guide (i) Modal Event Listeners
     const btnWorkflowInfo = document.getElementById("btn-batch-workflow-info");
@@ -878,17 +878,81 @@ class BindoraApp {
   }
 
   showToast(message, type = "info") {
+    // Ensure toast container exists
+    let container = document.getElementById("toast-container");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "toast-container";
+      container.className = "fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none";
+      document.body.appendChild(container);
+    }
+
+    // Create toast element
     const toast = document.createElement("div");
-    const bg = type === "error" ? "bg-rose-900/90 border-rose-600 text-rose-200" :
-               type === "success" ? "bg-emerald-900/90 border-emerald-600 text-emerald-200" :
-               "bg-blue-900/90 border-blue-600 text-blue-200";
-    toast.className = `fixed bottom-5 right-5 z-50 px-4 py-2.5 rounded-lg border shadow-xl text-sm font-medium transition-all transform duration-300 ${bg}`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => {
-      toast.style.opacity = "0";
-      setTimeout(() => toast.remove(), 300);
-    }, 3500);
+    
+    // Icon SVGs for each type
+    const icons = {
+      success: '<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+      error: '<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+      warning: '<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>',
+      info: '<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+    };
+
+    // Color schemes for each type
+    const colors = {
+      error: "bg-rose-900/95 border-rose-600 text-rose-100",
+      success: "bg-emerald-900/95 border-emerald-600 text-emerald-100",
+      warning: "bg-amber-900/95 border-amber-600 text-amber-100",
+      info: "bg-blue-900/95 border-blue-600 text-blue-100"
+    };
+
+    const icon = icons[type] || icons.info;
+    const colorScheme = colors[type] || colors.info;
+    
+    toast.className = `flex items-start gap-3 px-4 py-3 rounded-lg border shadow-2xl backdrop-blur-sm text-sm font-medium pointer-events-auto transform transition-all duration-300 ease-out ${colorScheme}`;
+    toast.style.opacity = "0";
+    toast.style.transform = "translateX(100%)";
+    
+    toast.innerHTML = `
+      <div class="flex-shrink-0 mt-0.5">${icon}</div>
+      <div class="flex-1 leading-snug">${message}</div>
+      <button class="flex-shrink-0 ml-2 opacity-70 hover:opacity-100 transition-opacity" onclick="this.parentElement.remove()">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Trigger entrance animation
+    requestAnimationFrame(() => {
+      toast.style.opacity = "1";
+      toast.style.transform = "translateX(0)";
+    });
+    
+    // Auto-dismiss after 4 seconds
+    const dismissTimeout = setTimeout(() => {
+      dismissToast(toast);
+    }, 4000);
+    
+    // Clear timeout on manual close
+    toast.querySelector("button").addEventListener("click", () => {
+      clearTimeout(dismissTimeout);
+      dismissToast(toast);
+    });
+    
+    function dismissToast(toastEl) {
+      toastEl.style.opacity = "0";
+      toastEl.style.transform = "translateX(100%)";
+      setTimeout(() => {
+        toastEl.remove();
+        // Remove container if empty
+        if (container && container.children.length === 0) {
+          container.remove();
+        }
+      }, 300);
+    }
   }
 
   // Publication-grade markdown → HTML renderer for AI narratives & reports
