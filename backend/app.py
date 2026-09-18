@@ -80,7 +80,8 @@ def health():
         "status": "healthy",
         "service": "Bindora 3D Drug-Receptor & PK/PD Analyzer",
         "vina_available": vina_ok,
-        "vina_path": str(VINA_EXE) if vina_ok else None
+        "vina_path": str(VINA_EXE) if vina_ok else None,
+        "cpu_count": os.cpu_count() or 1
     })
 
 @app.route("/api/benchmarks", methods=["GET"])
@@ -274,6 +275,12 @@ def run_docking():
     mw = float(data.get("molecular_weight", 300.0))
     smiles = data.get("smiles", "")
     flexible_residues = data.get("flexible_residues")
+    cpu = data.get("cpu")
+    if cpu is not None:
+        try:
+            cpu = int(cpu)
+        except (ValueError, TypeError):
+            cpu = None
 
     if not receptor_pdbqt or not ligand_pdbqt or not center or not size:
         return jsonify({"error": "Missing required docking parameters (receptor, ligand, center, size)"}), 400
@@ -284,7 +291,7 @@ def run_docking():
         return jsonify({"error": grid_validation.error, "field": "grid_box"}), 400
 
     try:
-        # Run AutoDock Vina
+        # Run AutoDock Vina with multi-core parallel optimization
         poses = DockingEngine.run_docking(
             receptor_pdbqt,
             ligand_pdbqt,
@@ -294,7 +301,8 @@ def run_docking():
             num_modes=num_modes,
             replicates=replicates,
             flexible_residues=flexible_residues,
-            receptor_pdb=receptor_pdb
+            receptor_pdb=receptor_pdb,
+            cpu=cpu
         )
 
         if not poses:
@@ -356,6 +364,7 @@ def run_docking():
             "interactions": contacts,
             "replicate_stats": replicate_stats,
             "execution_duration_s": best_pose.get("execution_duration_s", 0.0),
+            "cpu_count": best_pose.get("cpu_count_used", os.cpu_count() or 1),
             "session_id": session_id
         })
     except Exception as e:

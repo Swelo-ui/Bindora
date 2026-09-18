@@ -52,6 +52,7 @@ Examples:
     parser.add_argument("--chain", default=None, help="Target protein chain (default: auto-detect)")
     parser.add_argument("--exhaustiveness", type=int, default=8, help="Vina search exhaustiveness (default: 8)")
     parser.add_argument("--modes", type=int, default=9, help="Number of binding poses to generate (default: 9)")
+    parser.add_argument("--cpu", type=int, default=None, help="Number of CPU cores for AutoDock Vina (default: all available)")
     parser.add_argument("--out", help="Output file to save the top docked pose (PDBQT format)")
     parser.add_argument("--json", help="Save complete computational run metrics to a JSON file")
     parser.add_argument("--adme", action="store_true", help="Print RDKit ADME & Drug-likeness profile")
@@ -143,7 +144,8 @@ Examples:
             pocket["center"],
             pocket["size"],
             exhaustiveness=args.exhaustiveness,
-            num_modes=args.modes
+            num_modes=args.modes,
+            cpu=args.cpu
         )
     except Exception as e:
         print(f"[!] Docking execution failed: {e}", file=sys.stderr)

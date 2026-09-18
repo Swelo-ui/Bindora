@@ -698,10 +698,21 @@ class DockingEngine:
         seed: Optional[int] = None,
         reference_pdb: Optional[str] = None,
         flexible_residues: Optional[List[str]] = None,
-        receptor_pdb: Optional[str] = None
+        receptor_pdb: Optional[str] = None,
+        cpu: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """Run AutoDock Vina on the prepared receptor and ligand PDBQT files with optional multi-seed replicate sampling and flexible side chains."""
         vina_path = ensure_vina()
+
+        # Multi-core CPU optimization: AutoDock Vina defaults to single core if not explicitly provided on Windows/containers.
+        # Explicitly passing --cpu ensures all CPU threads are utilized in parallel.
+        if cpu is None or cpu <= 0:
+            try:
+                import os, multiprocessing
+                detected_cores = os.cpu_count() or multiprocessing.cpu_count() or 1
+                cpu = max(1, int(detected_cores))
+            except Exception:
+                cpu = 1
 
         # Support both dict {"x":.., "y":.., "z":..} and list/tuple [x, y, z]
         if isinstance(center, (list, tuple)) and len(center) >= 3:
@@ -775,6 +786,7 @@ class DockingEngine:
                     "--size_z", str(size["z"]),
                     "--exhaustiveness", str(exhaustiveness),
                     "--num_modes", str(num_modes),
+                    "--cpu", str(cpu),
                     "--out", str(out_file)
                 ]
                 if flex_pdbqt_str:
@@ -883,6 +895,7 @@ class DockingEngine:
         if best_poses:
             for p in best_poses:
                 p["execution_duration_s"] = total_duration
+                p["cpu_count_used"] = cpu
 
         return best_poses
 
@@ -1012,7 +1025,8 @@ class DockingEngine:
         pocket_center: Dict[str, float],
         pocket_size: Dict[str, float],
         exhaustiveness: int = 8,
-        seed: Optional[int] = 42
+        seed: Optional[int] = 42,
+        cpu: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Redock native co-crystallized ligand into its binding pocket and compute heavy-atom RMSD for protocol validation.
@@ -1053,7 +1067,8 @@ class DockingEngine:
             pocket_size,
             exhaustiveness=exhaustiveness,
             num_modes=5,
-            seed=seed
+            seed=seed,
+            cpu=cpu
         )
 
         if not poses:

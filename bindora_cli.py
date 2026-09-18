@@ -294,7 +294,8 @@ def cmd_dock(args):
             size=pocket["size"],
             exhaustiveness=exh,
             num_modes=modes,
-            seed=args.seed
+            seed=args.seed,
+            cpu=getattr(args, "cpu", None)
         )
     except Exception as e:
         print_error(f"AutoDock Vina execution failed: {e}")
@@ -687,6 +688,7 @@ Examples:
     dock_parser.add_argument("--exhaustiveness", type=int, default=8, help="Vina search exhaustiveness (default: 8)")
     dock_parser.add_argument("--modes", type=int, default=9, help="Number of binding poses to produce (default: 9)")
     dock_parser.add_argument("--seed", type=int, default=42, help="Random seed for full reproducibility (default: 42)")
+    dock_parser.add_argument("--cpu", type=int, default=None, help="Number of CPU cores for AutoDock Vina (default: all available)")
     dock_parser.add_argument("--center", nargs=3, type=float, default=None, help="Search grid center: X Y Z (Å)")
     dock_parser.add_argument("--size", nargs=3, type=float, default=None, help="Search grid size: X Y Z (Å)")
     dock_parser.add_argument("--out", default=None, help="Directory to save docked pose PDBQT, cleaned PDB, and JSON report")

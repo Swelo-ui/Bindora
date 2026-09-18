@@ -491,6 +491,19 @@ class BindoraApp {
       });
     }
 
+    const guestAuthBtn = document.getElementById("btn-continue-as-guest");
+    if (guestAuthBtn && authModal) {
+      guestAuthBtn.addEventListener("click", () => authModal.classList.add("hidden"));
+    }
+
+    if (authModal) {
+      authModal.addEventListener("click", (e) => {
+        if (e.target === authModal) {
+          authModal.classList.add("hidden");
+        }
+      });
+    }
+
     if (googleAuthBtn) {
       googleAuthBtn.addEventListener("click", async () => {
         const errorEl = document.getElementById("auth-error-msg");
@@ -501,7 +514,16 @@ class BindoraApp {
           this.updateAuthModalView();
         } catch (e) {
           if (errorEl) {
-            errorEl.textContent = e.message || "Google sign-in failed.";
+            const msg = e.message || String(e);
+            if (msg.includes("unauthorized-domain") || msg.includes("auth/unauthorized-domain")) {
+              errorEl.innerHTML = `<div class="p-2.5 rounded-lg bg-amber-950/60 border border-amber-800 text-amber-200 space-y-1">
+                <div class="font-semibold text-amber-300">Codespaces Cloud Domain Detected</div>
+                <div class="text-[11px] text-slate-300 leading-relaxed">Firebase blocks OAuth on new cloud URLs by default. You can click <strong>"Continue as Guest"</strong> below to use the 3D Docking Studio immediately without signing in.</div>
+                <div class="text-[10px] text-slate-400">To enable Google login on this cloud URL, add <code class="font-mono bg-black/40 px-1 py-0.5 rounded text-cyan-300">github.dev</code> to Firebase Console &rarr; Auth &rarr; Settings &rarr; Authorized domains.</div>
+              </div>`;
+            } else {
+              errorEl.textContent = msg;
+            }
             errorEl.classList.remove("hidden");
           }
         }
@@ -534,7 +556,15 @@ class BindoraApp {
           this.updateAuthModalView();
         } catch (e) {
           if (errorEl) {
-            errorEl.textContent = e.message;
+            const msg = e.message || String(e);
+            if (msg.includes("unauthorized-domain") || msg.includes("auth/unauthorized-domain")) {
+              errorEl.innerHTML = `<div class="p-2.5 rounded-lg bg-amber-950/60 border border-amber-800 text-amber-200 space-y-1">
+                <div class="font-semibold text-amber-300">Codespaces Cloud Domain Detected</div>
+                <div class="text-[11px] text-slate-300 leading-relaxed">Firebase blocks auth on new cloud URLs by default. Click <strong>"Continue as Guest"</strong> below to use 3D Docking without sign in.</div>
+              </div>`;
+            } else {
+              errorEl.textContent = msg;
+            }
             errorEl.classList.remove("hidden");
           }
         }
