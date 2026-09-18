@@ -50,6 +50,14 @@ class BindoraApp {
           statusBadge.className = "hidden lg:flex px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-950/80 text-amber-300 border border-amber-800 items-center whitespace-nowrap flex-shrink-0";
         }
       }
+
+      const hwBadge = document.getElementById("hardware-profile-badge");
+      if (hwBadge && health.hardware_profile) {
+        const hw = health.hardware_profile;
+        hwBadge.innerHTML = `<span class="mr-1">${hw.icon}</span><span>${hw.badge}</span>`;
+        hwBadge.title = `${hw.tier_name}: ${hw.description} (${hw.specs.cpu_count} Logical Cores, ${hw.specs.total_ram_gb || 'N/A'} GB RAM)`;
+        hwBadge.classList.remove("hidden");
+      }
     } catch (e) {
       console.warn("Backend health check failed:", e);
     }
@@ -2182,11 +2190,12 @@ class BindoraApp {
       dockBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Running AutoDock Vina...`;
     }
 
-    const exhaustiveness = parseInt(document.getElementById("docking-exhaustiveness")?.value) || 8;
+    const exhRaw = document.getElementById("docking-exhaustiveness")?.value;
+    const exhaustiveness = (exhRaw === "auto" || !exhRaw) ? "auto" : (parseInt(exhRaw) || 8);
     const replicates = parseInt(document.getElementById("docking-replicates")?.value) || 1;
 
-    this.startDockingProgress(exhaustiveness, replicates);
-    this.showToast(`Launching AutoDock Vina (${replicates > 1 ? '3-seed replicate' : 'single run'})...`, "info");
+    this.startDockingProgress(exhaustiveness === "auto" ? 8 : exhaustiveness, replicates);
+    this.showToast(`Launching AutoDock Vina (${replicates > 1 ? replicates + '-seed replicate' : 'single seed'}, ${exhaustiveness === 'auto' ? 'Smart Adaptive' : 'Exh=' + exhaustiveness})...`, "info");
 
     try {
       // Read grid parameters
@@ -2210,13 +2219,19 @@ class BindoraApp {
         replicates: replicates,
         heavy_atoms: p.heavy_atoms?.value || this.state.ligand.heavy_atom_count || 20,
         molecular_weight: p.molecular_weight?.value || this.state.ligand.weight || 300.0,
-        smiles: this.state.ligand.canonical_smiles || this.state.ligand.smiles || ""
+        rotatable_bonds: this.state.ligand.rotatable_bonds || p.rotatable_bonds?.value || 0,
+        smiles: this.state.ligand.canonical_smiles || this.state.ligand.smiles || "",
+        power_mode: "smart"
       };
       if (flexResidues.length > 0) {
         dockPayload.flexible_residues = flexResidues;
       }
 
       const dockResult = await BindoraAPI.runDocking(dockPayload);
+
+      if (dockResult.adaptive_reason) {
+        this.showToast(`${dockResult.adaptive_reason} (Duration: ${dockResult.execution_duration_s}s, ${dockResult.cpu_count} Cores)`, "success");
+      }
 
       this.state.docking = dockResult;
       this.state.currentPoseIdx = 0;

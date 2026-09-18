@@ -281,9 +281,20 @@ def cmd_dock(args):
     print_success(f"Ligand 3D conformation minimized with MMFF94 forcefield ({lig_prep.get('heavy_atom_count', 0)} heavy atoms, {lig_prep.get('rotatable_bonds', 0)} rotatable bonds)")
 
     print_section("STEP 3: Scripps AutoDock Vina v1.2.7 Docking Execution")
-    exh = args.exhaustiveness
+    from backend.services.hardware_profiler import HardwareProfiler
+    hw = HardwareProfiler.get_hardware_profile()
+    power_mode = getattr(args, "power_mode", "smart")
+
+    exh, exh_reason = HardwareProfiler.calculate_adaptive_exhaustiveness(
+        requested_exhaustiveness=args.exhaustiveness,
+        rotatable_bonds=lig_prep.get("rotatable_bonds", 0),
+        heavy_atoms=lig_prep.get("heavy_atom_count", 0),
+        power_mode=power_mode
+    )
     modes = args.modes
-    print_info(f"Starting Monte Carlo local search (Exhaustiveness = {exh}, Modes = {modes}, Seed = {args.seed})...")
+    print_info(f"Hardware Profile: {hw['icon']} {hw['tier_name']} ({hw['badge']})")
+    print_info(f"Conformational Strategy: {exh_reason}")
+    print_info(f"Starting Monte Carlo search (Exhaustiveness = {exh}, Modes = {modes}, Seed = {args.seed}, Power = {power_mode})...")
 
     t_dock0 = time.time()
     try:
@@ -295,7 +306,8 @@ def cmd_dock(args):
             exhaustiveness=exh,
             num_modes=modes,
             seed=args.seed,
-            cpu=getattr(args, "cpu", None)
+            cpu=getattr(args, "cpu", None),
+            power_mode=power_mode
         )
     except Exception as e:
         print_error(f"AutoDock Vina execution failed: {e}")
@@ -689,6 +701,7 @@ Examples:
     dock_parser.add_argument("--modes", type=int, default=9, help="Number of binding poses to produce (default: 9)")
     dock_parser.add_argument("--seed", type=int, default=42, help="Random seed for full reproducibility (default: 42)")
     dock_parser.add_argument("--cpu", type=int, default=None, help="Number of CPU cores for AutoDock Vina (default: all available)")
+    dock_parser.add_argument("--power-mode", choices=["smart", "performance", "eco"], default="smart", help="Adaptive compute mode (default: smart)")
     dock_parser.add_argument("--center", nargs=3, type=float, default=None, help="Search grid center: X Y Z (Å)")
     dock_parser.add_argument("--size", nargs=3, type=float, default=None, help="Search grid size: X Y Z (Å)")
     dock_parser.add_argument("--out", default=None, help="Directory to save docked pose PDBQT, cleaned PDB, and JSON report")

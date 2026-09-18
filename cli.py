@@ -53,6 +53,7 @@ Examples:
     parser.add_argument("--exhaustiveness", type=int, default=8, help="Vina search exhaustiveness (default: 8)")
     parser.add_argument("--modes", type=int, default=9, help="Number of binding poses to generate (default: 9)")
     parser.add_argument("--cpu", type=int, default=None, help="Number of CPU cores for AutoDock Vina (default: all available)")
+    parser.add_argument("--power-mode", choices=["smart", "performance", "eco"], default="smart", help="Adaptive compute mode (default: smart)")
     parser.add_argument("--out", help="Output file to save the top docked pose (PDBQT format)")
     parser.add_argument("--json", help="Save complete computational run metrics to a JSON file")
     parser.add_argument("--adme", action="store_true", help="Print RDKit ADME & Drug-likeness profile")
@@ -60,8 +61,12 @@ Examples:
 
     args = parser.parse_args()
 
+    from backend.services.hardware_profiler import HardwareProfiler
+    hw = HardwareProfiler.get_hardware_profile()
+
     print("=" * 65)
     print("  BINDORA DOCK v2.0 - COMMAND LINE RESEARCH INTERFACE")
+    print(f"  {hw['icon']} Hardware Profile: {hw['tier_name']} ({hw['badge']})")
     print("=" * 65)
 
     # 1. Resolve Receptor
@@ -135,17 +140,25 @@ Examples:
     smiles = lig_prep.get("canonical_smiles") or lig_raw
     print(f"    -> Heavy Atoms: {lig_prep.get('heavy_atom_count')}, Rotatable Torsions: {lig_prep.get('rotatable_bonds')}")
 
-    # 5. Run Docking
-    print(f"[*] Executing AutoDock Vina (exhaustiveness={args.exhaustiveness}, modes={args.modes})...")
+    # 5. Run Docking with Adaptive Hardware Strategy
+    exh, exh_reason = HardwareProfiler.calculate_adaptive_exhaustiveness(
+        requested_exhaustiveness=args.exhaustiveness,
+        rotatable_bonds=lig_prep.get("rotatable_bonds", 0),
+        heavy_atoms=lig_prep.get("heavy_atom_count", 0),
+        power_mode=args.power_mode
+    )
+    print(f"[*] Search Strategy: {exh_reason}")
+    print(f"[*] Executing AutoDock Vina (exhaustiveness={exh}, modes={args.modes}, power_mode={args.power_mode})...")
     try:
         poses = DockingEngine.run_docking(
             rec_prep["pdbqt_text"],
             lig_prep["pdbqt_text"],
             pocket["center"],
             pocket["size"],
-            exhaustiveness=args.exhaustiveness,
+            exhaustiveness=exh,
             num_modes=args.modes,
-            cpu=args.cpu
+            cpu=args.cpu,
+            power_mode=args.power_mode
         )
     except Exception as e:
         print(f"[!] Docking execution failed: {e}", file=sys.stderr)

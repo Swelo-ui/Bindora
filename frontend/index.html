@@ -104,6 +104,12 @@
 
       <!-- Right Controls: Status, Auth, Theme, Reset, Info -->
       <div class="flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0">
+        <!-- Hardware Profile Badge (Auto-Detects Laptop/Server Cores & RAM) -->
+        <div id="hardware-profile-badge" class="hidden md:flex px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-900/90 text-cyan-300 border border-slate-700/80 items-center space-x-1.5 whitespace-nowrap flex-shrink-0 cursor-help" title="Hardware Profile: Intelligent CPU & RAM Detection">
+          <span id="hardware-profile-icon">⚡</span>
+          <span id="hardware-profile-text">Detecting CPU...</span>
+        </div>
+
         <div id="backend-status-badge" class="hidden lg:flex px-2.5 py-1 text-xs font-semibold rounded-full bg-[#13141b] text-slate-300 border border-[#242633] items-center whitespace-nowrap flex-shrink-0">
           <span class="inline-block w-2 h-2 rounded-full bg-slate-500 mr-1.5 flex-shrink-0"></span> Connecting...
         </div>
@@ -1487,8 +1493,9 @@
               <div>
                 <label class="text-xs text-slate-500 dark:text-slate-400 font-medium">Exhaustiveness:</label>
                 <select id="docking-exhaustiveness" class="w-full mt-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded p-1.5 text-xs text-slate-800 dark:text-white">
+                  <option value="auto" selected>⚡ Smart Adaptive (Hardware-Tuned)</option>
                   <option value="4">4 (Fast Screening)</option>
-                  <option value="8" selected>8 (Standard Academic)</option>
+                  <option value="8">8 (Standard Academic)</option>
                   <option value="16">16 (Publication Grade)</option>
                   <option value="32">32 (Deep Search / Validation)</option>
                 </select>
@@ -1496,8 +1503,8 @@
               <div>
                 <label class="text-xs text-slate-500 dark:text-slate-400 font-medium">Sampling Mode:</label>
                 <select id="docking-replicates" class="w-full mt-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded p-1.5 text-xs text-slate-800 dark:text-white">
-                  <option value="1">1 (Single Seed - Fast Exploration)</option>
-                  <option value="3" selected>3 Seeds (Mean ± SD - Academic Standard)</option>
+                  <option value="1" selected>1 (Single Seed - High Speed)</option>
+                  <option value="3">3 Seeds (Mean ± SD - Academic Standard)</option>
                   <option value="5">5 Seeds (Mean ± SD - Publication Grade)</option>
                 </select>
               </div>
