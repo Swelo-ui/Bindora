@@ -1,0 +1,55 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+dist
+build
+.eggs
+
+# Testing
+tests/
+.pytest_cache
+.coverage
+htmlcov
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+bin/vina.exe
+bin/*.exe
+data/cache/*
+data/benchmarks/*.log
+docking_*
+*.pdbqt
+*.log
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

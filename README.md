@@ -201,8 +201,11 @@ python bindora_cli.py
 ### Prerequisites
 * Python 3.10+ (Tested on Python 3.10, 3.11, 3.12, 3.13)
 * Any standard modern web browser with WebGL (Chrome, Edge, Firefox, Safari)
+* Docker (optional, for containerized deployment)
 
 ### Installation
+
+#### Option A: Local Python Installation
 
 ```bash
 # 1. Clone repository
@@ -214,16 +217,69 @@ pip install -r requirements.txt
 
 # 3. Verify AutoDock Vina binary bootstrap
 python backend/utils/vina_setup.py
+
+# 4. Initialize database (creates data/bindora.db)
+python -c "from backend.db.database import init_db; from backend.config import DATABASE_URL; init_db(DATABASE_URL)"
+```
+
+#### Option B: Docker Deployment (Recommended for Production)
+
+```bash
+# 1. Clone repository
+git clone https://github.com/Swelo-ui/Bindora.git
+cd Bindora
+
+# 2. Build and start with Docker Compose
+docker-compose up -d
+
+# 3. Access the application
+# Web Studio: http://localhost:5000
+# Health check: http://localhost:5000/api/health
 ```
 
 ### Launching the Web Studio
 
+#### Development Mode (Local Python)
+
 ```bash
 python backend/app.py
 ```
+
+#### Production Mode (Gunicorn WSGI)
+
+```bash
+gunicorn --config gunicorn_config.py backend.app:app
+```
+
 Open your browser and navigate to:
 ```
 http://localhost:5000
+```
+
+### Configuration
+
+Create a `.env` file from the template:
+
+```bash
+cp .env.example .env
+```
+
+Key configuration variables:
+
+```bash
+# Security
+BINDORA_DEBUG=False              # Set to False in production
+BINDORA_CORS_ORIGINS=http://localhost:5000,http://127.0.0.1:5000
+
+# Database
+DATABASE_URL=sqlite:///data/bindora.db
+
+# Server
+BINDORA_HOST=0.0.0.0            # 0.0.0.0 for Docker, 127.0.0.1 for local
+BINDORA_PORT=5000
+
+# Payload limits
+BINDORA_MAX_CONTENT_LENGTH=33554432  # 32 MB
 ```
 
 ---
@@ -287,7 +343,110 @@ Bindora/
 
 ---
 
-## 8. Educational & Citation Notice
+## 8. Production Deployment & Security
+
+### 8.1. Security Best Practices
+
+**Production Hardening Checklist:**
+
+✅ **Input Validation**
+- All SMILES strings validated before processing (length, syntax, sanitization)
+- PDB content validated (size limits, coordinate bounds, minimum atom count)
+- Grid box parameters validated (numeric types, positive sizes, acceptable ranges)
+
+✅ **Security Configuration**
+- `DEBUG=False` by default (prevents stack trace leaks)
+- `MAX_CONTENT_LENGTH=32MB` (protects against buffer exhaustion)
+- CORS origin whitelisting (prevents unauthorized cross-origin requests)
+- No hardcoded secrets (all keys in environment variables)
+
+✅ **Container Security**
+- Non-root user execution (UID 1000 "bindora")
+- Minimal base image (python:3.11-slim)
+- Health checks for monitoring
+- Persistent volumes for data isolation
+
+### 8.2. Database & Session History
+
+Bindora v2.0 includes SQLite-backed session persistence:
+
+```python
+# Access session history via API
+GET /api/sessions/list?limit=50&offset=0
+GET /api/sessions/<session_id>
+DELETE /api/sessions/<session_id>
+```
+
+Database location: `data/bindora.db`
+
+### 8.3. Docker Production Deployment
+
+**Single-command deployment:**
+
+```bash
+# Start container in detached mode
+docker-compose up -d
+
+# View logs
+docker-compose logs -f bindora-app
+
+# Stop container
+docker-compose down
+
+# Stop and remove volumes (clears data)
+docker-compose down -v
+```
+
+**Environment variables for production:**
+
+```bash
+# .env file
+BINDORA_DEBUG=False
+BINDORA_HOST=0.0.0.0
+BINDORA_PORT=5000
+CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+DATABASE_URL=sqlite:////app/data/bindora.db
+```
+
+**Volume management:**
+
+```bash
+# Backup database
+docker cp bindora-dock:/app/data/bindora.db ./backup_bindora.db
+
+# Restore database
+docker cp ./backup_bindora.db bindora-dock:/app/data/bindora.db
+```
+
+### 8.4. Monitoring & Health Checks
+
+**Health endpoint:**
+
+```bash
+curl http://localhost:5000/api/health
+```
+
+**Response:**
+
+```json
+{
+  "status": "healthy",
+  "service": "Bindora 3D Drug-Receptor & PK/PD Analyzer",
+  "vina_available": true,
+  "vina_path": "/usr/local/bin/vina"
+}
+```
+
+**Container health status:**
+
+```bash
+docker ps  # Check "STATUS" column for health
+docker inspect bindora-dock | grep -A 5 Health
+```
+
+---
+
+## 9. Educational & Citation Notice
 
 Bindora Dock is developed under **NexPharmaTech** for computational pharmacology research, professional drug discovery education, and academic benchmarking.
 

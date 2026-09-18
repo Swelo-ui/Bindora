@@ -9,8 +9,13 @@ from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 
 from backend.config import (
-    BASE_DIR, FRONTEND_DIR, BENCHMARKS_DIR, VINA_EXE, HOST, PORT, DEBUG
+    BASE_DIR, FRONTEND_DIR, BENCHMARKS_DIR, VINA_EXE, HOST, PORT, DEBUG,
+    MAX_CONTENT_LENGTH, CORS_ORIGINS, DATABASE_URL
 )
+from backend.utils.validators import validate_smiles, validate_pdb_content, validate_grid_box
+from backend.db.database import init_db, get_db
+from backend.db.models import DockingSession
+from backend.routes.session_routes import session_bp
 from backend.services.fetcher import StructureFetcher
 from backend.services.docking import DockingEngine
 from backend.services.adme import ADMEProfiler
@@ -24,13 +29,34 @@ from backend.utils.vina_setup import ensure_vina
 from rdkit import Chem
 
 app = Flask(__name__, static_folder=str(FRONTEND_DIR), static_url_path="")
-CORS(app)
+
+# Security configuration
+app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
+CORS(app, origins=CORS_ORIGINS.split(","))
+
+# Error handler for payload too large
+@app.errorhandler(413)
+def payload_too_large(e):
+    return jsonify({
+        "error": "Payload too large",
+        "message": f"Request size exceeds maximum allowed size of {MAX_CONTENT_LENGTH / (1024*1024):.0f} MB"
+    }), 413
 
 # Ensure Vina binary is ready on startup
 try:
     ensure_vina()
 except Exception as e:
     print(f"[STARTUP WARNING] Vina initialization warning: {e}", file=sys.stderr)
+
+# Initialize database
+try:
+    init_db(DATABASE_URL)
+    print(f"[DATABASE] Ready at {DATABASE_URL}")
+except Exception as e:
+    print(f"[STARTUP WARNING] Database initialization warning: {e}", file=sys.stderr)
+
+# Register blueprints
+app.register_blueprint(session_bp)
 
 # ----------------- Static Frontend Routes -----------------
 
@@ -181,6 +207,12 @@ def prepare_ligand():
     
     if not smiles_or_sdf:
         return jsonify({"error": "Structure content or SMILES string is required"}), 400
+    
+    # Validate SMILES if not SDF
+    if not is_sdf:
+        validation = validate_smiles(smiles_or_sdf)
+        if not validation.valid:
+            return jsonify({"error": validation.error, "field": "structure"}), 400
 
     try:
         prep_result = DockingEngine.prepare_ligand(smiles_or_sdf, is_sdf=is_sdf)
@@ -205,6 +237,11 @@ def prepare_receptor():
 
     if not pdb_content:
         return jsonify({"error": "Receptor PDB content or valid PDB ID is required"}), 400
+    
+    # Validate PDB content
+    validation = validate_pdb_content(pdb_content)
+    if not validation.valid:
+        return jsonify({"error": validation.error, "field": "pdb_content"}), 400
 
     try:
         retain_waters = bool(data.get("retain_structural_waters", False))
@@ -240,6 +277,11 @@ def run_docking():
 
     if not receptor_pdbqt or not ligand_pdbqt or not center or not size:
         return jsonify({"error": "Missing required docking parameters (receptor, ligand, center, size)"}), 400
+    
+    # Validate grid box parameters
+    grid_validation = validate_grid_box(center, size)
+    if not grid_validation.valid:
+        return jsonify({"error": grid_validation.error, "field": "grid_box"}), 400
 
     try:
         # Run AutoDock Vina
@@ -281,6 +323,31 @@ def run_docking():
         # Calculate thermodynamics and Ligand Efficiency
         thermo = BioactivityService.calculate_thermodynamics(affinity, heavy_atoms, mw)
         contacts = best_pose.get("interactions", {})
+        
+        # Record session to database
+        session_id = None
+        try:
+            with get_db() as db:
+                pdb_id = data.get("pdb_id", "")
+                ligand_name = data.get("ligand_name", "Unknown")
+                
+                session = DockingSession(
+                    pdb_id=pdb_id if pdb_id else None,
+                    ligand_name=ligand_name,
+                    ligand_smiles=smiles if smiles else None,
+                    affinity_kcal=affinity,
+                    rmsd_lb=best_pose.get("rmsd_lower_bound"),
+                    rmsd_ub=best_pose.get("rmsd_upper_bound"),
+                    execution_duration_s=best_pose.get("execution_duration_s", 0.0),
+                    exhaustiveness=exhaustiveness,
+                    num_modes=num_modes
+                )
+                db.add(session)
+                db.commit()
+                session_id = session.id
+                print(f"[DATABASE] Recorded docking session: {session_id}")
+        except Exception as db_err:
+            print(f"[DATABASE WARNING] Failed to record session: {db_err}", file=sys.stderr)
 
         return jsonify({
             "poses": poses,
@@ -288,7 +355,8 @@ def run_docking():
             "thermodynamics": thermo,
             "interactions": contacts,
             "replicate_stats": replicate_stats,
-            "execution_duration_s": best_pose.get("execution_duration_s", 0.0)
+            "execution_duration_s": best_pose.get("execution_duration_s", 0.0),
+            "session_id": session_id
         })
     except Exception as e:
         traceback.print_exc()
@@ -430,6 +498,11 @@ def calculate_adme():
     smiles = data.get("smiles", "").strip()
     if not smiles:
         return jsonify({"error": "SMILES string is required"}), 400
+    
+    # Validate SMILES
+    validation = validate_smiles(smiles)
+    if not validation.valid:
+        return jsonify({"error": validation.error, "field": "smiles"}), 400
 
     result = ADMEProfiler.calculate_adme(smiles)
     return jsonify(result)

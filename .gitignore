@@ -19,6 +19,9 @@ bin/vina.exe
 bin/*.exe
 
 # Data cache and temp files
+*.db
+*.sqlite3
+data/*.db
 data/cache/*
 !data/cache/.gitkeep
 data/benchmarks/cache/*
