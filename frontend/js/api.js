@@ -18,11 +18,23 @@ class BindoraAPI {
 
     try {
       const response = await fetch(`${API_BASE}${endpoint}`, config);
-      const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        let errMsg = `HTTP error! status: ${response.status}`;
+        try {
+          const errData = await response.json();
+          errMsg = errData.error || errData.message || errMsg;
+        } catch {
+          if (response.status === 504 || response.status === 502) {
+            errMsg = `Cloud Proxy Timeout (${response.status}) — The calculation took over 90s. Please reduce Exhaustiveness to 8 or 4, or run via Terminal CLI.`;
+          }
+        }
+        throw new Error(errMsg);
       }
-      return data;
+      try {
+        return await response.json();
+      } catch (parseErr) {
+        throw new Error("Invalid or truncated response received from server. The process may have timed out or been terminated.");
+      }
     } catch (error) {
       console.error(`[API Error] ${endpoint}:`, error);
       throw error;
