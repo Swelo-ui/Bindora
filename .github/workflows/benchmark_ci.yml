@@ -72,6 +72,9 @@ jobs:
         run: python -m pytest tests/test_docking.py tests/test_adme.py -v --tb=short -x
         timeout-minutes: 10
 
+      - name: Verify README documentation is in sync with benchmark data
+        run: python scripts/sync_benchmarks_to_readme.py --check
+
       - name: Upload benchmark artifacts
         uses: actions/upload-artifact@v4
         if: always()
