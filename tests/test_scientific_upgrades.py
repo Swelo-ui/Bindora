@@ -167,7 +167,11 @@ def test_complex_pose_refinement():
 
     refine_res = ComplexRefinementService.refine_pose(rec_pdb, docked_pose, smiles="CC(=O)O")
     assert "method" in refine_res
-    assert refine_res["mmgbsa_dG_kcal"] is not None
+    assert "method_note" in refine_res
+    assert (
+        refine_res.get("complex_relaxation_delta_kcal") is not None
+        or refine_res.get("ligand_strain_relaxation_kcal") is not None
+    )
     assert "status" in refine_res
 
 def test_ptm_and_nonstandard_residue_preparation():
