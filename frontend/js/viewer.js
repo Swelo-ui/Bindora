@@ -173,6 +173,12 @@ class MolecularViewer {
     const style = this.settings.proteinStyle || 'cartoon';
     const colorType = this.settings.proteinColor || 'spectrum';
 
+    // Remove any previously-added pocket surface when switching styles
+    if (this._pocketSurface) {
+      try { this.viewer.removeSurface(this._pocketSurface); } catch (e) {}
+      this._pocketSurface = null;
+    }
+
     let colorScheme = {};
     if (colorType === 'spectrum') {
       colorScheme = { color: 'spectrum' };
@@ -186,18 +192,99 @@ class MolecularViewer {
 
     if (style === 'cartoon') {
       this.receptorModel.setStyle({}, { cartoon: { ...colorScheme, opacity: 0.98, thickness: 0.48 } });
+
     } else if (style === 'stick') {
       this.receptorModel.setStyle({}, { stick: { radius: 0.18, colorscheme: 'Jmol' } });
+
     } else if (style === 'sphere') {
       this.receptorModel.setStyle({}, { sphere: { radius: 0.75, colorscheme: 'Jmol' } });
+
     } else if (style === 'ribbon') {
       this.receptorModel.setStyle({}, { cartoon: { ...colorScheme, opacity: 0.98, style: 'trace', thickness: 0.6 } });
+
+    } else if (style === 'tube') {
+      // Minimalist smooth backbone tube — great for publication figures
+      this.receptorModel.setStyle({}, { cartoon: { ...colorScheme, style: 'tube', thickness: 0.4, opacity: 0.95 } });
+
+    } else if (style === 'pocket_surface') {
+      // Cartoon ribbon base + translucent pocket cavity surface within 5Å of ligand
+      this.receptorModel.setStyle({}, { cartoon: { color: 'lightgray', opacity: 0.55, thickness: 0.4 } });
+      if (this.ligandModel) {
+        try {
+          this._pocketSurface = this.viewer.addSurface(
+            $3Dmol.SurfaceType.VDW,
+            { opacity: 0.72, colorscheme: 'whiteCarbon' },
+            { model: this.receptorModel },
+            { model: this.ligandModel, within: { distance: 5.0, sel: {} } }
+          );
+        } catch (e) {
+          console.warn('[3Dmol] Pocket surface fallback:', e);
+        }
+      }
+
+    } else if (style === 'pocket_sticks') {
+      // Hide full protein, show only residues within 5Å of ligand as colored sticks
+      this.receptorModel.setStyle({}, { cartoon: { color: 'lightgray', opacity: 0.12, thickness: 0.35 } });
+      if (this.ligandModel) {
+        const ligandAtoms = this.ligandModel.selectedAtoms({});
+        if (ligandAtoms && ligandAtoms.length > 0) {
+          // Build residue set from proximity — iterate over all receptor atoms and pick those close to any ligand atom
+          const receptorAtoms = this.receptorModel.selectedAtoms({});
+          const nearResidues = new Set();
+          const thresh2 = 5.0 * 5.0;
+          receptorAtoms.forEach(ra => {
+            for (const la of ligandAtoms) {
+              const dx = ra.x - la.x, dy = ra.y - la.y, dz = ra.z - la.z;
+              if (dx * dx + dy * dy + dz * dz <= thresh2) {
+                nearResidues.add(`${ra.chain}:${ra.resi}`);
+                break;
+              }
+            }
+          });
+          nearResidues.forEach(key => {
+            const [chain, resi] = key.split(':');
+            this.receptorModel.setStyle(
+              { chain, resi: parseInt(resi) },
+              { stick: { radius: 0.22, colorscheme: 'amino' }, cartoon: { color: 'lightgray', opacity: 0.12, thickness: 0.35 } }
+            );
+          });
+        }
+      }
+
+    } else if (style === 'bfactor') {
+      // Color cartoon ribbon by crystallographic B-factor (rigid=blue, flexible=red)
+      this.receptorModel.setStyle({}, {
+        cartoon: {
+          colorscheme: { gradient: 'roygb', prop: 'b', min: 10, max: 60 },
+          opacity: 0.97,
+          thickness: 0.48
+        }
+      });
+
+    } else if (style === 'electrostatic') {
+      // Approximate electrostatic surface: color by residue charge character
+      // Acidic (Asp/Glu) = red, Basic (Arg/Lys/His) = blue, Polar/Other = white
+      this.receptorModel.setStyle({}, { cartoon: { color: 'white', opacity: 0.92, thickness: 0.46 } });
+      // Acidic residues — red
+      this.receptorModel.setStyle({ resn: 'ASP' }, { cartoon: { color: '#ef4444', opacity: 0.95, thickness: 0.46 } });
+      this.receptorModel.setStyle({ resn: 'GLU' }, { cartoon: { color: '#f87171', opacity: 0.95, thickness: 0.46 } });
+      // Basic residues — blue
+      this.receptorModel.setStyle({ resn: 'ARG' }, { cartoon: { color: '#3b82f6', opacity: 0.95, thickness: 0.46 } });
+      this.receptorModel.setStyle({ resn: 'LYS' }, { cartoon: { color: '#60a5fa', opacity: 0.95, thickness: 0.46 } });
+      this.receptorModel.setStyle({ resn: 'HIS' }, { cartoon: { color: '#93c5fd', opacity: 0.95, thickness: 0.46 } });
+      // Polar uncharged — teal tint
+      this.receptorModel.setStyle({ resn: 'SER' }, { cartoon: { color: '#99f6e4', opacity: 0.90, thickness: 0.46 } });
+      this.receptorModel.setStyle({ resn: 'THR' }, { cartoon: { color: '#99f6e4', opacity: 0.90, thickness: 0.46 } });
+      this.receptorModel.setStyle({ resn: 'ASN' }, { cartoon: { color: '#67e8f9', opacity: 0.90, thickness: 0.46 } });
+      this.receptorModel.setStyle({ resn: 'GLN' }, { cartoon: { color: '#67e8f9', opacity: 0.90, thickness: 0.46 } });
+
     } else if (style === 'hidden') {
       this.receptorModel.setStyle({}, {});
     }
     
     this.viewer.render();
   }
+
 
   loadLigand(pdbOrPdbqtContent, format = 'pdb') {
     if (!this.viewer || !pdbOrPdbqtContent) return;
