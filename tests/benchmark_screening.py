@@ -458,8 +458,6 @@ def screen_target(
         fails = 0
         all_ligs = [(s, 1) for s in act] + [(s, 0) for s in dec]
         for i, (smi, lbl) in enumerate(all_ligs):
-            if (i + 1) % 100 == 0:
-                logger.info("    [" + tgt + "] " + str(i+1) + "/" + str(len(all_ligs)) + " screened, " + str(fails) + " failures")
             try:
                 lig = DockingEngine.prepare_ligand(smi)
                 poses = DockingEngine.run_docking(
@@ -468,14 +466,21 @@ def screen_target(
                     exhaustiveness=exh, num_modes=1, seed=42,
                 )
                 if poses and poses[0].get("affinity_kcal") is not None:
-                    scores.append(-poses[0]["affinity_kcal"])
+                    aff = poses[0]["affinity_kcal"]
+                    scores.append(-aff)
                     labels.append(lbl)
                     if lbl == 1: result["n_actives_docked"] += 1
                     else: result["n_decoys_docked"] += 1
+                    logger.info(
+                        "    [%s] %d/%d (%s) -> dG = %.2f kcal/mol",
+                        tgt, i + 1, len(all_ligs), "Active" if lbl == 1 else "Decoy", aff,
+                    )
                 else:
                     fails += 1
+                    logger.warning("    [%s] %d/%d failed docking", tgt, i + 1, len(all_ligs))
             except Exception:
                 fails += 1
+                logger.warning("    [%s] %d/%d exception during docking", tgt, i + 1, len(all_ligs))
         if not scores:
             raise RuntimeError("No ligands successfully docked for " + tgt)
         result["roc_auc"] = roc_auc(labels, scores)

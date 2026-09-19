@@ -131,11 +131,11 @@ python tests/benchmark_screening.py --subset diverse --exhaustiveness 4
 <!-- BENCHMARK_DUDE_START -->
 **Preliminary Screening Results (1 Target Smoke Test):**
 * **Targets Evaluated:** 1 (`vegfr2` / PDB: 2OH4)
-* **Mean ROC-AUC:** **0.12**
+* **Mean ROC-AUC:** **0.84**
 
 | Target | Protein | PDB ID | Actives | Decoys | ROC-AUC | EF1% | EF5% | EF10% | Status |
 | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| `vegfr2` | VEGFR2 | `2OH4` | 5 | 10 | 0.120 | 0.00 | 0.00 | 0.00 | Preliminary Smoke Test |
+| `vegfr2` | VEGFR2 | `2OH4` | 5 | 10 | 0.840 | 20.00 | 4.00 | 2.00 | Preliminary Smoke Test |
 
 > [!IMPORTANT]
 > **Scientific Interpretation & Sample-Size Context:**
