@@ -138,10 +138,11 @@ python tests/benchmark_screening.py --subset diverse --exhaustiveness 4
 | `vegfr2` | VEGFR2 | `2OH4` | 5 | 10 | 0.840 | 20.00 | 4.00 | 2.00 | Preliminary Smoke Test |
 
 > [!IMPORTANT]
-> **Scientific Interpretation & Sample-Size Context:**
-> 1. **Sample Size Insufficiency ($N=15$):** The reported ROC-AUC (0.12) comes from a preliminary single-target smoke test (VEGFR2) consisting of only 5 actives and 10 decoys ($N=15$). In empirical chemoinformatics, $N=15$ is statistically uninformative—neither strong nor poor general screening ability can be concluded from this sample.
-> 2. **Pose Accuracy vs. Screening Power:** AutoDock Vina's empirical scoring function was designed for crystallographic pose reconstruction (local energetic minimum in a pocket), not library-scale ranking against property-matched decoys. Raw Vina scores typically require specialized rescoring functions (Vinardo, CNN/GNINA, or machine learning scoring) to achieve high enrichment against property-matched decoys (Mysinger et al., 2012).
-> 3. **Roadmap:** The complete **8-Target Diverse Screening Suite** (covering multiple therapeutic target classes with statistical power) is scheduled under Phase 3 of the Bindora v2.0 Roadmap.
+> **Scientific Interpretation & Statistical Caveats:**
+> 1. **Sample-Size Context ($N=15$):** The single-target smoke test (VEGFR2: 5 actives, 10 decoys) demonstrates a directional ROC-AUC of **0.84** following ChEMBL nM unit-scale calibration. At $N=15$, statistical confidence intervals remain broad (approx. $\pm 0.15$ to $0.20$); this serves as an initial smoke test rather than definitive library-wide validation.
+> 2. **Enrichment Factor (EF%) Quantization Floor:** At $N=15$, EF1% is subject to severe quantization distortion ($\text{int}(15 \times 0.01) = 0 \implies \max(1, 0) = 1$). A value of EF1% = 20.0 simply indicates that rank-1 was an active, rather than sustained 20-fold early recovery. Statistically interpretable EF% figures require screening libraries of $N \ge 100+$ compounds per class.
+> 3. **Pose Accuracy vs. Screening Power:** AutoDock Vina's empirical scoring function was designed for crystallographic pose reconstruction (local energetic minimum in a pocket), not library-scale ranking against property-matched decoys. Raw Vina scores typically benefit from consensus or ML rescoring functions (Vinardo, CNN/GNINA) against property-matched decoys (Mysinger et al., 2012).
+> 4. **Roadmap:** The comprehensive **8-Target Diverse Screening Suite** (multi-target class evaluation with statistical sample size) is actively tracked under Phase 3.
 <!-- BENCHMARK_DUDE_END -->
 
 ---
