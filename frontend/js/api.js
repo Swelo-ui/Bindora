@@ -191,6 +191,5 @@ class BindoraAPI {
   }
 }
 
-// Primary export + backward compatibility alias
+// Primary export
 window.BindoraAPI = BindoraAPI;
-window.AnuDockAPI = BindoraAPI;

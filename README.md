@@ -1,4 +1,4 @@
-# Bindora Dock v2.0 — Research-Grade Computational Pharmacology & Virtual Screening Suite
+# Bindora Dock v2.0 — Computational Pharmacology & Virtual Screening Suite (Beta / Under Validation)
 
 > **A High-Precision, Low-Resource Computational Pharmacology & Molecular Docking Platform by NexPharmaTech.**  
 > *Available as both an interactive Terminal CLI and a Modern Web Studio.*
@@ -18,9 +18,9 @@
 
 ## 1. Overview & Architectural Vision
 
-**Bindora Dock v2.0** is an enterprise-grade computational drug discovery system built for medicinal chemists, pharmacologists, structural biologists, and academic researchers. Designed to run on resource-constrained hardware (down to 2GB RAM / standard consumer CPU) without compromising scientific integrity, Bindora v2.0 bridges **atomic-level structural biophysics** and **clinical pharmacokinetics (PK/PD)**.
+**Bindora Dock v2.0** is a computational drug discovery system built for medicinal chemists, pharmacologists, structural biologists, and academic researchers. Designed to run on resource-constrained hardware (down to 2GB RAM / standard consumer CPU) without compromising scientific integrity, Bindora v2.0 bridges **atomic-level structural biophysics** and **clinical pharmacokinetics (PK/PD)**.
 
-Unlike black-box docking wrappers or cherry-picked demos, Bindora v2.0 enforces **100% scientific reproducibility**:
+Unlike black-box docking wrappers or cherry-picked demos, Bindora v2.0 enforces rigorous scientific reproducibility:
 * **Dual Interface:** Full graphical Web Studio (WebGL 3D viewer + 2D interaction maps) + Modern Interactive Terminal CLI with arrow-key keyboard navigation.
 * **Scripps AutoDock Vina v1.2.7 Engine:** Native Monte Carlo iterated local search with multithreading.
 * **Dual Scoring Functions:** Empirical Vina scoring + Vinardo scoring function (Quiroga & Villarreal, 2016) + optional GNINA CNN deep learning rescoring.
@@ -31,14 +31,14 @@ Unlike black-box docking wrappers or cherry-picked demos, Bindora v2.0 enforces 
 
 ## 2. Bindora Dock v1.0 vs v2.0 Evolution Matrix
 
-| Feature / Dimension | Bindora Dock v1.0 | Bindora Dock v2.0 (Research-Grade) | Scientific & Engineering Impact |
+| Feature / Dimension | Bindora Dock v1.0 | Bindora Dock v2.0 (Beta) | Scientific & Engineering Impact |
 |:---|:---|:---|:---|
 | **User Interfaces** | Web-only interface | **Dual:** Interactive Terminal CLI + Responsive Web Studio | Headless cluster compatibility, HPC pipeline automation, accessible on any machine. |
 | **CLI Usability** | None | Full TUI with **Arrow Key Navigation**, Status Dashboard & 5 Guided Wizards | Zero learning curve for terminal users; direct keyboard driven workflow. |
 | **Validation Benchmark** | 5 self-selected kinase complexes | **CASF-2016 Core Set (285 complexes)** + **DUD-E / ChEMBL Virtual Screening** | Field-standard validation matching peer-reviewed industry benchmarks (Glide, GOLD, Vina). |
 | **Virtual Screening Suite** | Basic multi-ligand batching | Full **DUD-E & ChEMBL Suite** with ROC-AUC, EF1%, EF5%, EF10% metrics | Evaluates true virtual screening enrichment and early-stage hit-finding power. |
 | **Data Authenticity** | Pre-bundled small sets | **Live ChEMBL REST Integration** (IC50 <= 1 uM actives, >= 50 uM inactives) | Zero hardcoded cheating; authentic experimental wet-lab bioactivity data. |
-| **Chemistry Robustness** | Failed on phosphorylated ligands | **3-Tier Meeko Charge Fallback** (Gasteiger -> Formal -> Zero) | Flawless preparation of ADP, ATP, phospho-tyrosine without NaN aborts. |
+| **Chemistry Robustness** | Failed on phosphorylated ligands | **3-Tier Meeko Charge Fallback** (Gasteiger -> Formal -> Zero) | Reliable preparation of ADP, ATP, phospho-tyrosine without NaN aborts. |
 | **Scientific Integrity** | Unsigned reports | **SHA-256 Checksums** & `ScientificIntegrityError` enforcement | Reports cannot conceal failures or strip mandatory scientific caveats. |
 | **Execution Resilience** | Fragile loops (single fail crashes job) | **Per-Complex Isolation** + JSON Checkpoint Auto-Resume | Multi-hour screens can be stopped and resumed seamlessly without losing progress. |
 
@@ -65,7 +65,7 @@ Unlike black-box docking wrappers or cherry-picked demos, Bindora v2.0 enforces 
 | **Thermodynamic Kd** | Statistical Mechanics | $\Delta G = RT \ln K_d \implies K_d = \exp(\Delta G / RT)$. Ligand Efficiency $\text{LE} = -\Delta G / N_{\text{heavy}}$. |
 | **Bioactivity Validation** | ChEMBL REST Services | Curated wet-lab Ki / IC50 / EC50 matching against target organism assays. |
 | **Pathway Annotations** | UniProtKB REST API | SIFTS cross-referencing (`query=xref:pdb-{pdb_id}`) for biological function & catalytic activity. |
-| **AI Explanation Layer** | DeepSeek / Rules Engine | Grounded educational narrative explaining active site contacts with zero-hallucination rules. |
+| **AI Explanation Layer** | AI Narrative / Rules Engine | Grounded educational narrative explaining active site contacts using strictly data-bound rules. |
 
 ---
 
@@ -301,7 +301,7 @@ Bindora/
 |   |   |-- adme.py            # Published BOILED-Egg, SAScore, PAINS, Brenk, NIH, ZINC
 |   |   |-- boiled_egg_coords.json # Exact 101-pt polygon coordinates (Daina & Zoete 2016)
 |   |   |-- bioactivity.py     # Thermodynamic Kd converter & ChEMBL crosscheck
-|   |   |-- narrative.py       # DeepSeek AI explainer with intelligent disk caching
+|   |   |-- narrative.py       # AI Narrative Engine with deterministic rules fallback and disk caching
 |   |   `-- batch.py           # Multi-ligand virtual screening with consensus matrix
 |   `-- utils/
 |       |-- sascorer.py        # Synthetic accessibility scorer (Ertl & Schuffenhauer)

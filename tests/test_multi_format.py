@@ -13,7 +13,7 @@ TORSDOF 0
 
 def test_cif_receptor_preparation():
     # Convert real 1IEP PDB to genuine mmCIF
-    cache_file = Path("H:/AnuDock/data/cache/1IEP.pdb")
+    cache_file = Path(__file__).resolve().parent.parent / "data" / "cache" / "1IEP.pdb"
     if cache_file.exists():
         st = gemmi.read_structure(str(cache_file))
         cif_content = st.make_mmcif_document().as_string()

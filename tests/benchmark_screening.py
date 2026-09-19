@@ -226,19 +226,21 @@ def _fetch_from_chembl(
     try:
         is_active = "actives" in kind
         if is_active:
-            # Potent: IC50 <= 1000 nM, sorted ascending (most potent first)
+            # Potent: IC50 <= 1000 nM, units explicitly nM to prevent µM/µg/mL contamination
             filt = (
                 "standard_type=IC50"
                 "&standard_relation=%3D"
                 "&standard_value__lte=1000"
+                "&standard_units=nM"
                 "&order_by=standard_value"
             )
         else:
-            # Inactives: IC50 >= 50000 nM (weak binders / non-binders)
+            # Inactives: IC50 >= 50000 nM (weak binders / non-binders), units explicitly nM
             filt = (
                 "standard_type=IC50"
                 "&standard_relation=%3D"
                 "&standard_value__gte=50000"
+                "&standard_units=nM"
             )
         url = (
             "https://www.ebi.ac.uk/chembl/api/data/activity?"

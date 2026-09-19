@@ -14,7 +14,7 @@ This document establishes the mandatory protocol for data persistence, benchmark
 
 ## 1. Architectural Architecture: `backend.utils.report_emitter`
 
-All pipelines—current and future—must route result persistence through [backend/utils/report_emitter.py](file:///H:/AnuDock/backend/utils/report_emitter.py).
+All pipelines—current and future—must route result persistence through [`backend/utils/report_emitter.py`](backend/utils/report_emitter.py).
 
 ### Usage in Redocking & Benchmarks
 ```python

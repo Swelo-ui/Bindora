@@ -53,9 +53,9 @@ OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "deepseek/deepseek-v4-flas
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 # Server configuration
-HOST = os.environ.get("BINDORA_HOST", os.environ.get("ANUDOCK_HOST", "127.0.0.1"))
-PORT = int(os.environ.get("BINDORA_PORT", os.environ.get("ANUDOCK_PORT", "5000")))
-DEBUG = os.environ.get("BINDORA_DEBUG", os.environ.get("ANUDOCK_DEBUG", "False")).lower() in ("true", "1", "yes")
+HOST = os.environ.get("BINDORA_HOST", "127.0.0.1")
+PORT = int(os.environ.get("BINDORA_PORT", "5000"))
+DEBUG = os.environ.get("BINDORA_DEBUG", "False").lower() in ("true", "1", "yes")
 
 # Security configuration
 MAX_CONTENT_LENGTH = int(os.environ.get("BINDORA_MAX_CONTENT_LENGTH", str(32 * 1024 * 1024)))  # 32 MB default

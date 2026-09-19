@@ -10,8 +10,18 @@ from rdkit.Chem import AllChem
 
 class ComplexRefinementService:
     """
-    Post-docking pose energy minimization and binding free energy estimation (MM-GBSA / MMFF94).
-    Relaxes sidechains and ligand in the binding pocket to refine binding affinity.
+    Post-docking pose energy minimization for binding-site relaxation.
+
+    NOTE: This service performs structural energy minimization (force-field relaxation)
+    to refine docked pose geometry. It does NOT compute MM-GBSA binding free energy.
+    True MM-GBSA requires three separate simulations: complex, receptor-alone, and
+    ligand-alone — each with full implicit solvation — which is outside the scope of
+    this lightweight refinement step.
+
+    Output fields are named to reflect what is actually computed:
+      - complex_relaxation_delta_kcal : potential energy change after OpenMM minimization
+      - ligand_strain_relaxation_kcal : MMFF94 intramolecular strain released in ligand
+    Neither of these is a binding free energy estimate.
     """
 
     @classmethod
@@ -22,8 +32,9 @@ class ComplexRefinementService:
         smiles: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Energy minimize docked pose in the receptor pocket and estimate MM-GBSA binding free energy.
-        Uses OpenMM implicit solvent (GBn2) if available, otherwise high-precision RDKit MMFF94 complex relaxation.
+        Energy minimize docked pose in the receptor pocket.
+        Uses OpenMM implicit solvent (GBn2) if available, otherwise RDKit MMFF94
+        ligand-only relaxation. Returns geometry/strain metrics — NOT binding free energy.
         """
         # Try OpenMM GBn2 implicit solvent first
         openmm_res = cls._refine_openmm(receptor_pdb, docked_pdb_or_pdbqt)
@@ -35,7 +46,10 @@ class ComplexRefinementService:
 
     @classmethod
     def _refine_openmm(cls, receptor_pdb: str, docked_pdb: str) -> Optional[Dict[str, Any]]:
-        """Run short OpenMM GBn2 implicit solvent minimization and calculate binding free energy."""
+        """
+        Run short OpenMM GBn2 implicit solvent minimization on the complex.
+        Reports potential energy change (relaxation delta), NOT binding free energy.
+        """
         try:
             import openmm as mm
             from openmm import app
@@ -75,15 +89,16 @@ class ComplexRefinementService:
             e_min = state_min.getPotentialEnergy().value_in_unit(unit.kilocalories_per_mole)
             delta_e = e_min - e_init
 
-            # Approximate MM-GBSA delta G bind = delta_e * 0.45 (empirical scaling)
-            dG_mmgbsa = round(min(-2.0, delta_e * 0.35 - 8.5), 2)
-
             return {
-                "method": "OpenMM 8.x Generalized Born (GBn2) Implicit Solvent",
+                "method": "OpenMM 8.x GBn2 Implicit Solvent — Complex Geometry Relaxation",
+                "method_note": (
+                    "Reports complex potential energy change after short minimization. "
+                    "This is NOT a binding free energy (ΔG_bind). "
+                    "True MM-GBSA requires separate receptor-alone and ligand-alone simulations."
+                ),
                 "initial_energy_kcal": round(e_init, 2),
                 "minimized_energy_kcal": round(e_min, 2),
-                "energy_delta_kcal": round(delta_e, 2),
-                "mmgbsa_dG_kcal": dG_mmgbsa,
+                "complex_relaxation_delta_kcal": round(delta_e, 2),
                 "status": "Minimized & Solvated",
                 "relaxation_steps": 150
             }
@@ -97,7 +112,11 @@ class ComplexRefinementService:
         docked_pdb_or_pdbqt: str,
         smiles: Optional[str] = None
     ) -> Dict[str, Any]:
-        """High-precision RDKit MMFF94 energy minimization & strain relaxation."""
+        """
+        RDKit MMFF94 ligand-only intramolecular strain relaxation.
+        Receptor is NOT included. This measures how much intramolecular strain
+        the ligand carries in its docked conformation — NOT binding free energy.
+        """
         try:
             # Parse ligand pose into RDKit Mol
             mol = None
@@ -108,9 +127,13 @@ class ComplexRefinementService:
 
             if not mol:
                 return {
-                    "method": "RDKit MMFF94",
+                    "method": "RDKit MMFF94 Ligand Strain Relaxation",
                     "status": "Could not parse docked pose for minimization",
-                    "mmgbsa_dG_kcal": None
+                    "ligand_strain_relaxation_kcal": None,
+                    "method_note": (
+                        "Ligand-only MMFF94 strain relaxation. Receptor NOT included. "
+                        "This is NOT a binding free energy estimate."
+                    )
                 }
 
             mol_h = Chem.AddHs(mol)
@@ -123,7 +146,11 @@ class ComplexRefinementService:
                 return {
                     "method": "RDKit UFF Fallback",
                     "status": "MMFF94 parameterization unavailable for structure",
-                    "mmgbsa_dG_kcal": None
+                    "ligand_strain_relaxation_kcal": None,
+                    "method_note": (
+                        "Ligand-only strain relaxation. Receptor NOT included. "
+                        "This is NOT a binding free energy estimate."
+                    )
                 }
 
             ff = AllChem.MMFFGetMoleculeForceField(mol_h, props)
@@ -135,14 +162,17 @@ class ComplexRefinementService:
             else:
                 e_min = e_init
 
-            strain_energy = round(abs(e_init - e_min), 2)
-            # Estimate binding refinement score
+            strain_delta = round(abs(e_init - e_min), 2)
             return {
-                "method": "RDKit MMFF94 Force Field Relaxation",
+                "method": "RDKit MMFF94 Ligand Strain Relaxation",
+                "method_note": (
+                    "Ligand-only MMFF94 intramolecular strain relaxation. "
+                    "Receptor NOT included. This is NOT a binding free energy estimate. "
+                    "Lower strain delta = docked conformation closer to low-energy geometry."
+                ),
                 "initial_strain_kcal": round(e_init, 2),
                 "minimized_strain_kcal": round(e_min, 2),
-                "strain_delta_kcal": strain_energy,
-                "mmgbsa_dG_kcal": round(- (strain_energy * 0.4 + 6.0), 2),
+                "ligand_strain_relaxation_kcal": strain_delta,
                 "status": "Pose Relaxed & Minimized",
                 "relaxation_steps": 200
             }

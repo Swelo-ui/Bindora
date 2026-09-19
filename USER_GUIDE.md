@@ -10,7 +10,7 @@ If you haven't already started the server:
 
 ```powershell
 # Open PowerShell in the project directory
-cd h:\AnuDock
+cd path\to\Bindora
 
 # Start the Bindora server
 python backend/app.py
@@ -106,7 +106,7 @@ This test proves your docking engine's crystallographic accuracy, pocket detecti
 1. Click on **Tab 5: AI Research Pharmacologist**.
 2. **Expected Output:**
    - **ChEMBL Bioactivity Cross-Check:** The system queries ChEMBL curated assays for Aspirin vs COX-2, returning `Experimentally Corroborated` with curated wet-lab $IC_{50} = 10.8\text{ nM}$.
-   - **Educational Narrative:** DeepSeek synthesizes a multi-section pharmacological report discussing active pocket fit, Ser530 steric hindrance, and experimental validation limitations.
+   - **Educational Narrative:** Bindora AI Pharmacologist synthesizes a multi-section pharmacological report discussing active pocket fit, Ser530 steric hindrance, and experimental validation limitations.
 
 #### Step 6: Multi-Ligand Batch Screening (Tab 6)
 1. Click on **Tab 6: Batch Screening**.
@@ -174,10 +174,10 @@ This test proves your docking engine's crystallographic accuracy, pocket detecti
       "service": "Bindora 3D Drug-Receptor & PK/PD Analyzer",
       "status": "healthy",
       "vina_available": true,
-      "vina_path": "H:\\AnuDock\\bin\\vina.exe"
+      "vina_path": "bin/vina.exe"
     }
     ```
 - **Q: Does Bindora work offline?**
   - Yes! All core dependencies (AutoDock Vina 1.2.7, Vinardo scoring, RDKit ADME calculations, 3Dmol.js, and Chart.js) execute 100% locally on your machine.
-- **Q: What if I don't have an OpenRouter API key?**
-  - Bindora automatically falls back to deterministic offline pharmacological synthesis rules if no API key is set.
+- **Q: Does the AI Pharmacologist narrative require internet access?**
+  - The AI narrative feature is a server-side capability built into Bindora. The deterministic rules-based engine always runs offline as a baseline.
