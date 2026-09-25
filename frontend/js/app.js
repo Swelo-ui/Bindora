@@ -35,23 +35,26 @@ class BindoraApp {
     }
 
     // 2. Setup DOM event listeners
-    this.setupEventListeners();
-
-    // 3. Check backend health
     try {
-      const health = await BindoraAPI.checkHealth();
-      const statusBadge = document.getElementById("backend-status-badge");
-      if (statusBadge) {
-        if (health.vina_available) {
-          statusBadge.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1.5 animate-pulse flex-shrink-0"></span><span class="hidden 2xl:inline">AutoDock Vina Ready</span><span class="2xl:hidden">Vina Ready</span>`;
-          statusBadge.className = "hidden lg:flex px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800 items-center whitespace-nowrap flex-shrink-0";
-        } else {
-          statusBadge.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1.5 flex-shrink-0"></span><span class="hidden 2xl:inline">Vina Standby</span><span class="2xl:hidden">Standby</span>`;
-          statusBadge.className = "hidden lg:flex px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-950/80 text-amber-300 border border-amber-800 items-center whitespace-nowrap flex-shrink-0";
-        }
-      }
+      this.setupEventListeners();
     } catch (e) {
-      console.warn("Backend health check failed:", e);
+      console.error("Error setting up event listeners:", e);
+    }
+
+    // 3. Check backend health with automatic polling
+    await this.checkBackendHealth();
+    if (!this._healthInterval) {
+      this._healthInterval = setInterval(async () => {
+        const ok = await this.checkBackendHealth();
+        if (ok && (!this.state.benchmarks || this.state.benchmarks.length === 0)) {
+          try {
+            const bmData = await BindoraAPI.getBenchmarks();
+            this.state.benchmarks = bmData.benchmarks || [];
+            this.renderBenchmarksUI();
+            this.loadValidationReportUI();
+          } catch (_) {}
+        }
+      }, 3500);
     }
 
     // 4. Fetch benchmarks
@@ -81,6 +84,29 @@ class BindoraApp {
     // Auto-open user guide if requested
     if (urlParams.get("guide") === "true") {
       document.getElementById("modal-about")?.classList.remove("hidden");
+    }
+  }
+
+  async checkBackendHealth() {
+    const statusBadge = document.getElementById("backend-status-badge");
+    try {
+      const health = await BindoraAPI.checkHealth();
+      if (statusBadge) {
+        if (health && health.vina_available) {
+          statusBadge.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1.5 animate-pulse flex-shrink-0"></span><span class="hidden 2xl:inline">AutoDock Vina Ready</span><span class="2xl:hidden">Vina Ready</span>`;
+          statusBadge.className = "hidden lg:flex px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800 items-center whitespace-nowrap flex-shrink-0";
+        } else {
+          statusBadge.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1.5 flex-shrink-0"></span><span class="hidden 2xl:inline">Engine Standby</span><span class="2xl:hidden">Standby</span>`;
+          statusBadge.className = "hidden lg:flex px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-950/80 text-amber-300 border border-amber-800 items-center whitespace-nowrap flex-shrink-0";
+        }
+      }
+      return true;
+    } catch (e) {
+      if (statusBadge) {
+        statusBadge.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1.5 flex-shrink-0"></span><span class="hidden 2xl:inline">Connecting...</span><span class="2xl:hidden">Connecting...</span>`;
+        statusBadge.className = "hidden lg:flex px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-900/80 text-slate-400 border border-slate-700 items-center whitespace-nowrap flex-shrink-0";
+      }
+      return false;
     }
   }
 
@@ -3492,19 +3518,6 @@ class BindoraApp {
         <td class="font-mono text-amber-700 dark:text-amber-400 font-bold text-center p-2 border border-slate-200 dark:border-slate-800">${pc.distance != null ? Number(pc.distance).toFixed(2) + ' Å' : '—'}</td>
       </tr>
     `).join("") : `<tr><td colspan="4" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No π-cation contacts detected within 4.5 Å cutoff.</td></tr>`;
-
-    // Halogen bonds (sigma-hole)
-    const halogenBonds = contacts.halogen_bonds || [];
-    const halogenRows = halogenBonds.length > 0 ? halogenBonds.map(hb => `
-      <tr>
-        <td class="font-mono font-bold text-slate-900 dark:text-white p-2 border border-slate-200 dark:border-slate-800">${hb.residue || `${hb.res_name} ${hb.res_num}:${hb.chain}`}</td>
-        <td class="font-mono text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800">${hb.receptor_atom || '—'}</td>
-        <td class="font-mono text-purple-700 dark:text-purple-400 font-bold p-2 border border-slate-200 dark:border-slate-800">${hb.ligand_atom || 'Halogen (F/Cl/Br/I)'}</td>
-        <td class="font-mono text-purple-700 dark:text-purple-400 font-bold text-center p-2 border border-slate-200 dark:border-slate-800">${hb.distance != null ? Number(hb.distance).toFixed(2) + ' Å' : '—'}</td>
-        <td class="font-mono text-slate-600 dark:text-slate-400 text-center p-2 border border-slate-200 dark:border-slate-800 text-[11px]">${hb.angle_deg != null ? Number(hb.angle_deg).toFixed(1) + '° (θ &ge; 130°)' : '—'}</td>
-      </tr>
-    `).join("") : `<tr><td colspan="5" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No halogen bonds detected within 3.8 Å cutoff and 130° angle criterion.</td></tr>`;
-
     const expClass = d.experiment_classification || null;
     const isNativeRedock = expClass?.is_native_redocking ?? (r.native_ligand?.has_native && (l.name && r.native_ligand?.name && l.name.toLowerCase() === r.native_ligand.name.toLowerCase()));
     const dockingModeName = expClass?.docking_mode || (r.native_ligand?.has_native ? (isNativeRedock ? "Native Redocking (Self-Validation)" : "Cross-Docking / Benchmark Docking") : "Targeted Pocket Docking");

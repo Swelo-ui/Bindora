@@ -32,7 +32,7 @@ app = Flask(__name__, static_folder=str(FRONTEND_DIR), static_url_path="")
 
 # Security configuration
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
-CORS(app, origins=CORS_ORIGINS.split(","))
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 # Error handler for payload too large
 @app.errorhandler(413)
