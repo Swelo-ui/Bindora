@@ -3520,7 +3520,9 @@ class BindoraApp {
     `).join("") : `<tr><td colspan="4" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No π-cation contacts detected within 4.5 Å cutoff.</td></tr>`;
     const expClass = d.experiment_classification || null;
     const isNativeRedock = expClass?.is_native_redocking ?? (r.native_ligand?.has_native && (l.name && r.native_ligand?.name && l.name.toLowerCase() === r.native_ligand.name.toLowerCase()));
-    const dockingModeName = expClass?.docking_mode || (r.native_ligand?.has_native ? (isNativeRedock ? "Native Redocking (Self-Validation)" : "Cross-Docking / Benchmark Docking") : "Targeted Pocket Docking");
+    const dockingModeName = isNativeRedock 
+      ? "NATIVE REDOCKING / SELF-VALIDATION" 
+      : (expClass?.docking_mode ? expClass.docking_mode.toUpperCase() : (r.native_ligand?.has_native ? "CROSS-DOCKING / BENCHMARK DOCKING" : "TARGETED POCKET DOCKING"));
     const dockingModeDesc = expClass?.description || "";
 
     // Halogen bonds & Fluorine contacts
@@ -3607,13 +3609,13 @@ class BindoraApp {
                 ${dockingModeName}
               </span>
             </span>
-            <span class="text-[10px] text-slate-500 font-normal">${expClass?.validation_applicability || (isNativeRedock ? 'Self-Validation Benchmark' : 'Comparative Docking')}</span>
+            <span class="text-[10px] text-slate-500 font-normal">${expClass?.validation_applicability || (isNativeRedock ? 'Applicable (Crystallographic Self-Validation)' : 'Comparative Docking')}</span>
           </div>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-[11px]">
             <div><span class="text-slate-500 block">Target Receptor:</span> <span class="font-bold text-slate-900 dark:text-white">${r.pdb_id || 'Custom'} (${r.title ? r.title.slice(0, 20) + '...' : 'Receptor'})</span></div>
             <div><span class="text-slate-500 block">Crystal Reference:</span> <span class="font-bold">${expClass?.crystal_ligand_name || (r.native_ligand?.name ? r.native_ligand.name : 'None')}</span></div>
             <div><span class="text-slate-500 block">Docked Compound:</span> <span class="font-bold text-cyan-700 dark:text-cyan-400">${l.name || 'Investigational Ligand'}</span></div>
-            <div><span class="text-slate-500 block">Self-Validation:</span> <span class="font-bold ${isNativeRedock ? (redock?.is_validated ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600') : 'text-slate-500'}">${isNativeRedock ? (redock ? `${redock.benchmark_status} (${redock.rmsd_angstroms} Å)` : 'Applicable (Native)') : 'Non-Native (Cross-Docking)'}</span></div>
+            <div><span class="text-slate-500 block">Self-Validation:</span> <span class="font-bold ${isNativeRedock ? (redock?.is_validated ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600') : 'text-slate-500'}">${isNativeRedock ? (redock ? `${redock.benchmark_status} (${redock.rmsd_angstroms} Å)` : 'Native Ligand Redocking') : 'Non-Native (Cross-Docking)'}</span></div>
           </div>
           ${dockingModeDesc ? `<p class="mt-1.5 pt-1.5 border-t border-slate-200 dark:border-slate-800 text-[10px] text-slate-600 dark:text-slate-400 font-sans italic">${dockingModeDesc}</p>` : ''}
         </div>

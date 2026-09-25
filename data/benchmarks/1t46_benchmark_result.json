@@ -1,0 +1,27 @@
+{
+  "pdb_id": "1T46",
+  "target": "Human c-KIT Tyrosine Kinase (KIT)",
+  "ligand": "Imatinib (STI-571)",
+  "timestamp": "2026-09-25 23:45:21",
+  "timestamp_iso": "2026-09-25T18:15:21.949100+00:00",
+  "vina_affinity_kcal": -12.39,
+  "vinardo_affinity_kcal": -7.219,
+  "mode1_rmsd_angstroms": 0.75,
+  "best_mode_rmsd_angstroms": 0.75,
+  "best_mode": 1,
+  "is_validated": true,
+  "badge": "Protocol Validated (RMSD: 0.75 Å ≤ 2.0 Å)",
+  "status": "Pass (Research Grade)",
+  "energy_in_lit_range": true,
+  "rmsd_pass_threshold": true,
+  "rmsd_ideal_threshold": true,
+  "docking_time_seconds": 215.47,
+  "exhaustiveness": 32,
+  "overall_grade": "RESEARCH_GRADE",
+  "provenance": {
+    "is_programmatic": true,
+    "python_version": "3.13.1",
+    "os_platform": "Windows",
+    "sha256_sig": "beaa3e8566fcbc8e"
+  }
+}

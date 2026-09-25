@@ -132,6 +132,15 @@ def get_validation_report():
         except Exception:
             pass
 
+    t46_file = BENCHMARKS_DIR / "1t46_benchmark_result.json"
+    t46_data = {}
+    if t46_file.exists():
+        try:
+            with open(t46_file, "r", encoding="utf-8") as f:
+                t46_data = json.load(f)
+        except Exception:
+            pass
+
     return jsonify({
         "status": "success",
         "parent_company": "NexPharmaTech",
@@ -140,7 +149,8 @@ def get_validation_report():
         "flagship_targets": {
             "1HSG": hsg_data,
             "1AQ1": aq1_data,
-            "1M17": m17_data
+            "1M17": m17_data,
+            "1T46": t46_data
         }
     })
 

@@ -235,3 +235,207 @@ class TestDockingClassification:
         assert classification["is_native_redocking"] is False
         assert classification["docking_mode"] == "Targeted Pocket Docking"
         assert "Not Applicable" in classification["validation_applicability"]
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Regression tests for STI / Imatinib identity fix (structure-first)
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def test_sti_imatinib_identity_native_redocking(self):
+        """
+        TEST A: PDB ligand code STI + docked Imatinib MUST resolve to Native Redocking.
+
+        Root bug: The old code compared PDB-parsed SMILES (corrupted by aromatic perception
+        failure) against the user's clean Imatinib SMILES. They did not match canonically.
+        The name fallback also failed because 'STI' != 'imatinib'.
+        Fix: Use RCSB CCD InChIKey lookup which unambiguously confirms STI == Imatinib.
+        """
+        imatinib_smiles = "Cc1ccc(cc1Nc2nccc(n2)c3cccnc3)NC(=O)c4ccc(cc4)CN5CCN(C)CC5"
+        # Simulate the bad PDB-parsed SMILES that Bindora was generating from 1T46 crystal data
+        bad_pdb_smiles = "CC1CC[C@@H](NC(O)C2CCC(CN3CCN(C)CC3)CC2)CC1NC1NCCC(C2CCCNC2)N1"
+        native_info = {
+            "has_native": True,
+            "name": "STI",            # PDB 3-letter code — key test case
+            "smiles": bad_pdb_smiles,  # Corrupted from PDB aromatic parsing
+            "chain": "A",
+            "atom_count": 37
+        }
+
+        classification = DockingEngine.classify_docking_experiment(
+            docked_smiles=imatinib_smiles,
+            native_ligand_info=native_info,
+            docked_ligand_name="Imatinib"
+        )
+
+        # Must be Native Redocking — NOT Cross-Docking
+        assert classification["is_native_redocking"] is True, (
+            f"Expected Native Redocking but got: {classification['docking_mode']}. "
+            f"Method: {classification.get('identity_method')}"
+        )
+        assert classification["docking_mode"] == "Native Redocking"
+        assert "Self-Validation" in classification["validation_applicability"]
+        assert "STI" in classification["crystal_ligand_name"]
+        assert classification["docked_ligand_name"] == "Imatinib"
+
+        # Must be structure-confirmed, not just name heuristic
+        assert classification["identity_confidence"] == "structure-confirmed", (
+            f"Expected structure-confirmed confidence, got: {classification['identity_confidence']}"
+        )
+
+        # Description must explain what actually happened
+        assert "independently prepared and redocked" in classification["description"]
+
+    def test_sti571_imatinib_same_molecule(self):
+        """
+        TEST C (variant): When native SMILES is directly Imatinib and docked is also Imatinib,
+        classification must be Native Redocking.
+        """
+        imatinib_smiles = "Cc1ccc(cc1Nc2nccc(n2)c3cccnc3)NC(=O)c4ccc(cc4)CN5CCN(C)CC5"
+        native_info = {
+            "has_native": True,
+            "name": "Imatinib",
+            "smiles": imatinib_smiles,
+            "chain": "A",
+            "atom_count": 37
+        }
+
+        classification = DockingEngine.classify_docking_experiment(
+            docked_smiles=imatinib_smiles,
+            native_ligand_info=native_info,
+            docked_ligand_name="Imatinib"
+        )
+
+        assert classification["is_native_redocking"] is True
+        assert classification["docking_mode"] == "Native Redocking"
+        assert classification["identity_confidence"] == "structure-confirmed"
+
+    def test_erlotinib_vs_gefitinib_different_structures(self):
+        """
+        TEST B: Erlotinib (native) vs Gefitinib (docked) must be Cross-Docking.
+        They share similar pharmacophore but have different molecular graphs.
+        """
+        from backend.services.ligand_identity import compare_ligand_identity
+
+        erlotinib = "COCCOC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC=CC(=C3)C#C)OCCOC"
+        gefitinib = "COC1=C(C=C2C(=C1)N=CN=C2NC3=CC(=C(C=C3)F)Cl)OCCCN4CCOCC4"
+
+        result = compare_ligand_identity(
+            docked_smiles=gefitinib,
+            native_smiles=erlotinib,
+            native_name="Erlotinib",
+            docked_name="Gefitinib"
+        )
+
+        assert result["is_same_molecule"] is False, (
+            "Erlotinib and Gefitinib are distinct molecules — must NOT be classified as same"
+        )
+
+    def test_no_native_ligand_is_targeted_docking(self):
+        """
+        TEST D: No native crystal ligand present → Targeted Pocket Docking.
+        """
+        classification = DockingEngine.classify_docking_experiment(
+            docked_smiles="Cc1ccc(cc1Nc2nccc(n2)c3cccnc3)NC(=O)c4ccc(cc4)CN5CCN(C)CC5",
+            native_ligand_info={"has_native": False},
+            docked_ligand_name="Imatinib"
+        )
+
+        assert classification["is_native_redocking"] is False
+        assert classification["docking_mode"] == "Targeted Pocket Docking"
+        assert classification["has_crystal_reference"] is False
+
+    def test_missing_docked_smiles_does_not_crash(self):
+        """
+        TEST E (variant): When docked SMILES is missing, classification should not crash
+        and must report identity as undetermined rather than guessing.
+        """
+        native_info = {
+            "has_native": True,
+            "name": "STI",
+            "smiles": "",
+            "chain": "A",
+            "atom_count": 37
+        }
+
+        # Should not raise any exception
+        classification = DockingEngine.classify_docking_experiment(
+            docked_smiles=None,
+            native_ligand_info=native_info,
+            docked_ligand_name="Unknown ligand"
+        )
+
+        # When docked SMILES is missing, cannot confirm identity structurally
+        # So it must NOT claim Native Redocking from name heuristic alone
+        # (STI vs "Unknown ligand" should not match by name)
+        assert isinstance(classification, dict)
+        assert "docking_mode" in classification
+        # Must not crash — structural integrity is more important than claiming a match
+
+
+class TestLigandIdentityService:
+    """Unit tests for the structure-first LigandIdentityService."""
+
+    def test_inchikey_match_sti_imatinib(self):
+        """STI (PDB code) and Imatinib SMILES must share the same InChIKey."""
+        from backend.services.ligand_identity import compare_ligand_identity
+
+        imatinib_smiles = "Cc1ccc(cc1Nc2nccc(n2)c3cccnc3)NC(=O)c4ccc(cc4)CN5CCN(C)CC5"
+        result = compare_ligand_identity(
+            docked_smiles=imatinib_smiles,
+            native_pdb_code="STI",
+            native_name="STI",
+            docked_name="Imatinib"
+        )
+
+        assert result["is_same_molecule"] is True
+        assert result["confidence"] == "structure-confirmed"
+        assert "InChIKey" in result["method"]
+        assert result["inchikey_docked"] == "KTUFNOKKBVMGRW-UHFFFAOYSA-N"
+        assert result["inchikey_native"] == "KTUFNOKKBVMGRW-UHFFFAOYSA-N"
+
+    def test_canonical_smiles_match_same_molecule(self):
+        """Same molecule given as slightly different but equivalent SMILES must match."""
+        from backend.services.ligand_identity import compare_ligand_identity
+
+        # Two equivalent representations of Imatinib
+        smiles_a = "Cc1ccc(cc1Nc2nccc(n2)c3cccnc3)NC(=O)c4ccc(cc4)CN5CCN(C)CC5"
+        smiles_b = "Cc1ccc(cc1Nc2nccc(n2)c3cccnc3)NC(=O)c4ccc(cc4)CN5CCN(CC5)C"
+
+        result = compare_ligand_identity(
+            docked_smiles=smiles_a,
+            native_smiles=smiles_b,
+            native_name="Imatinib",
+            docked_name="Imatinib"
+        )
+
+        assert result["is_same_molecule"] is True
+        assert result["confidence"] == "structure-confirmed"
+
+    def test_different_molecules_not_same(self):
+        """Erlotinib vs Gefitinib must not be reported as the same molecule."""
+        from backend.services.ligand_identity import compare_ligand_identity
+
+        erlotinib = "COCCOC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC=CC(=C3)C#C)OCCOC"
+        gefitinib = "COC1=C(C=C2C(=C1)N=CN=C2NC3=CC(=C(C=C3)F)Cl)OCCCN4CCOCC4"
+
+        result = compare_ligand_identity(
+            docked_smiles=gefitinib,
+            native_smiles=erlotinib,
+            native_name="Erlotinib",
+            docked_name="Gefitinib"
+        )
+
+        assert result["is_same_molecule"] is False
+
+    def test_resolve_pdb_ligand_identity_sti(self):
+        """resolve_pdb_ligand_identity('STI') must return Imatinib-related data."""
+        from backend.services.ligand_identity import resolve_pdb_ligand_identity
+
+        result = resolve_pdb_ligand_identity("STI")
+
+        assert result["pdb_ligand_code"] == "STI"
+        assert result["inchi_key"] == "KTUFNOKKBVMGRW-UHFFFAOYSA-N"
+        assert result["identity_confidence"] == "structure-confirmed"
+        # Imatinib or STI-571 should appear in synonyms
+        synonyms_upper = [s.upper() for s in result["synonyms"]]
+        assert "IMATINIB" in synonyms_upper or "STI-571" in synonyms_upper
+

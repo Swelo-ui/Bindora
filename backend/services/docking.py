@@ -1203,12 +1203,25 @@ class DockingEngine:
         docked_ligand_name: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Scientifically classify the docking experiment:
-        1. Native Redocking (Self-Validation): Docked ligand is chemically identical to native co-crystallized ligand.
-        2. Cross-Docking / Benchmark Docking: Ligand is docked into a pocket with a different crystallographic reference ligand.
-        3. Targeted Pocket Docking: Receptor has no co-crystallized ligand; docking centered on predicted/selected cavity.
-        4. Blind Docking: Docking box encompasses full macromolecular surface.
+        Scientifically classify the docking experiment using structure-first identity comparison.
+
+        Classification modes:
+        1. Native Redocking (Self-Validation): Docked ligand is chemically identical to native
+           co-crystallized ligand (confirmed by molecular graph / InChIKey, NOT just name matching).
+        2. Cross-Docking / Benchmark Docking: Ligand has a different chemical structure from
+           the crystallographic reference ligand.
+        3. Targeted Pocket Docking: Receptor has no co-crystallized ligand.
+        4. Identity Undetermined: Chemical comparison was impossible (missing data).
+
+        Identity priority order (see ligand_identity.py for full implementation):
+            Tier 1: InChIKey connectivity comparison (structure-confirmed)
+            Tier 2: Canonical SMILES equality (structure-confirmed)
+            Tier 3: Molecular formula + heavy-atom count (formula-only)
+            Tier 4: RCSB CCD synonym lookup (synonym-matched)
+            Tier 5: Name substring heuristic ONLY as last resort (name-heuristic, low confidence)
         """
+        from backend.services.ligand_identity import compare_ligand_identity
+
         has_native = bool(native_ligand_info and native_ligand_info.get("has_native"))
         native_name = (native_ligand_info.get("name") if has_native else None) or "Unknown Crystal Ligand"
         native_smiles = (native_ligand_info.get("smiles") if has_native else None) or ""
@@ -1221,46 +1234,87 @@ class DockingEngine:
                 "crystal_ligand_name": None,
                 "docked_ligand_name": docked_ligand_name or "Investigational Ligand",
                 "validation_applicability": "Not Applicable (No crystallographic reference ligand)",
-                "description": "Docking performed against user-defined or algorithmically detected pocket without a crystallographic reference ligand."
+                "description": "Docking performed against user-defined or algorithmically detected pocket without a crystallographic reference ligand.",
+                "identity_method": "N/A",
+                "identity_confidence": "N/A",
             }
 
-        # Check if chemical structures match (canonical SMILES or identical formula & heavy atom count)
-        is_same_molecule = False
-        if docked_smiles and native_smiles:
-            try:
-                m1 = Chem.MolFromSmiles(docked_smiles)
-                m2 = Chem.MolFromSmiles(native_smiles)
-                if m1 and m2:
-                    can1 = Chem.MolToSmiles(m1, isomericSmiles=False)
-                    can2 = Chem.MolToSmiles(m2, isomericSmiles=False)
-                    is_same_molecule = (can1 == can2)
-            except Exception:
-                pass
+        # ── Structure-first identity comparison ──────────────────────────────
+        # native_name is often a PDB 3-letter code (e.g. "STI") — pass it as pdb_code
+        # so the RCSB CCD API can resolve the true canonical SMILES and InChIKey.
+        native_pdb_code = native_name.strip() if len(native_name.strip()) <= 4 else None
 
-        if not is_same_molecule and docked_ligand_name and native_name:
-            # Check name match
-            d_norm = docked_ligand_name.strip().lower()
-            n_norm = native_name.strip().lower()
-            if d_norm == n_norm or (d_norm in n_norm) or (n_norm in d_norm):
-                is_same_molecule = True
+        identity = compare_ligand_identity(
+            docked_smiles=docked_smiles or "",
+            native_smiles=native_smiles or None,
+            native_pdb_code=native_pdb_code,
+            native_name=native_name,
+            docked_name=docked_ligand_name,
+        )
+
+        is_same_molecule = identity["is_same_molecule"]
+        id_confidence = identity["confidence"]
+        id_method = identity["method"]
+
+        # Resolve canonical display name for the crystal ligand
+        canonical_native_name = identity.get("canonical_name") or native_name
+        # Prefer short trade names (<=20 chars) from synonym list for display
+        synonyms = identity.get("synonyms", [])
+        # Filter: short, capitalized names that aren't the PDB code itself
+        short_synonyms = [
+            s for s in synonyms
+            if s and 4 <= len(s) <= 20 and s.upper() != native_name.upper()
+            and not s.startswith("4-[(") and not s.startswith("4-[4-")
+        ]
+        display_synonyms = short_synonyms[:2]
 
         if is_same_molecule:
+            # Build informative crystal ligand display string
+            if display_synonyms:
+                crystal_ligand_display = f"{native_name} / {display_synonyms[0]}"
+            else:
+                crystal_ligand_display = canonical_native_name or native_name
+
+            docked_display = docked_ligand_name or canonical_native_name
+
             return {
                 "docking_mode": "Native Redocking",
                 "is_native_redocking": True,
                 "has_crystal_reference": True,
-                "crystal_ligand_name": native_name,
-                "docked_ligand_name": docked_ligand_name or native_name,
+                "crystal_ligand_name": crystal_ligand_display,
+                "crystal_ligand_canonical": canonical_native_name,
+                "crystal_ligand_pdb_code": native_pdb_code,
+                "docked_ligand_name": docked_display,
                 "validation_applicability": "Applicable (Crystallographic Self-Validation)",
-                "description": f"Native crystallographic ligand ({native_name}) redocked into its cognate receptor pocket to evaluate whether the docking engine reproduces the experimental binding mode within <= 2.0 Å RMSD."
+                "description": (
+                    f"{docked_display} was independently prepared and redocked into the receptor crystal structure "
+                    f"after removal of the native co-crystallized ligand ({crystal_ligand_display}). "
+                    f"Chemical identity confirmed by: {id_method}. "
+                    f"This is a native crystallographic self-validation experiment."
+                ),
+                "identity_method": id_method,
+                "identity_confidence": id_confidence,
+                "inchikey_native": identity.get("inchikey_native", ""),
+                "inchikey_docked": identity.get("inchikey_docked", ""),
             }
         else:
             return {
                 "docking_mode": "Cross-Docking / Benchmark Docking",
                 "is_native_redocking": False,
                 "has_crystal_reference": True,
-                "crystal_ligand_name": native_name,
+                "crystal_ligand_name": canonical_native_name or native_name,
                 "docked_ligand_name": docked_ligand_name or "Investigational Ligand",
                 "validation_applicability": "Non-Native Benchmark (Protocol-dependent comparison)",
-                "description": f"Investigational ligand ({docked_ligand_name or 'Ligand'}) docked into a receptor crystal structure possessing a distinct native ligand ({native_name}). Note: AutoDock Vina scores reflect empirical scoring functions and must not be conflated with AutoDock 4.2 or literature numbers."
+                "description": (
+                    f"Investigational ligand ({docked_ligand_name or 'Ligand'}) docked into a receptor "
+                    f"crystal structure possessing a distinct native ligand ({canonical_native_name or native_name}). "
+                    f"Chemical identity: {id_method}. "
+                    f"Note: AutoDock Vina scores reflect empirical scoring functions and must not be "
+                    f"conflated with AutoDock 4.2 or literature numbers."
+                ),
+                "identity_method": id_method,
+                "identity_confidence": id_confidence,
+                "inchikey_native": identity.get("inchikey_native", ""),
+                "inchikey_docked": identity.get("inchikey_docked", ""),
             }
+
