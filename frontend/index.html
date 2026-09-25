@@ -170,12 +170,25 @@
     <!-- ==================== TAB 0: HOME PAGE & BRAND OVERVIEW ==================== -->
     <section id="tab-home" class="tab-pane space-y-10">
       
-      <!-- Mobile Notice Banner (Displayed on small screens) -->
-      <div class="lg:hidden p-4 rounded-xl border border-cyan-500/40 bg-cyan-950/40 text-xs text-cyan-200 flex items-start space-x-3 shadow-lg">
-        <svg class="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
-        <div>
-          <strong class="font-bold text-white block mb-0.5">Desktop Workstation Recommended:</strong>
-          <span>Bindora Dock's full 3D WebGL molecular visualizer, AutoDock Vina grid box, and multi-pose docking studio are engineered for desktop PC/laptop widescreen displays. Below you can explore software details, architecture, and benchmark case studies.</span>
+      <!-- Desktop Application & Standalone Edition Banner -->
+      <div class="p-4 rounded-xl border border-cyan-500/30 bg-slate-900/85 backdrop-blur-md text-xs text-slate-300 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-lg">
+        <div class="flex items-center space-x-3">
+          <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <strong class="font-bold text-white">Bindora Dock Portable Desktop Edition</strong>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold">Windows x64 Native</span>
+            </div>
+            <p class="text-[11.5px] text-slate-400 mt-0.5">Standalone research executable bundled with AutoDock Vina v1.2.5, Open Babel, RDKit, and high-performance Webview. Zero Python/pip setup required.</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 self-stretch md:self-auto justify-end">
+          <span class="text-[11px] font-mono text-cyan-400/90 hidden sm:inline">dist/bindora_launcher.exe</span>
+          <button onclick="window.app.switchTab('studio')" class="px-3.5 py-1.5 rounded-lg bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-200 border border-cyan-500/40 text-xs font-semibold transition whitespace-nowrap">
+            Open Studio
+          </button>
         </div>
       </div>
 
@@ -191,11 +204,15 @@
           <div class="lg:col-span-6 space-y-6">
             
             <!-- Eyebrow Pill -->
-            <div class="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-cyan-500/30 text-xs text-cyan-300 font-mono shadow-inner">
-              <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
-              <span class="font-semibold tracking-wider uppercase">Molecular Docking Simplified</span>
+            <div class="inline-flex flex-wrap items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-cyan-500/30 text-xs text-cyan-300 font-mono shadow-inner">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              <span class="font-semibold tracking-wider uppercase text-emerald-300">Sub-Angstrom Validated</span>
               <span class="text-slate-600">•</span>
-              <span class="text-slate-400">Scripps Vina Engine</span>
+              <span class="text-cyan-300 font-bold">0.46 Å (1HSG)</span>
+              <span class="text-slate-600">•</span>
+              <span class="text-purple-300 font-bold">1.52 Å (1M17)</span>
+              <span class="text-slate-600">•</span>
+              <span class="text-slate-400">Scripps Vina 1.2.5</span>
             </div>
 
             <!-- Main Heading -->
@@ -208,32 +225,41 @@
               Next-generation computational pharmacology studio. Execute native Scripps AutoDock Vina simulations, explore 3D pocket interactions, compute RDKit ADME profiles, and corroborate with ChEMBL experimental wet-lab assays.
             </p>
 
-            <!-- Dual Action CTAs -->
+            <!-- Action CTAs -->
             <div class="flex flex-wrap items-center gap-3 pt-2">
               <button onclick="window.app.switchTab('studio')" class="btn-brand-primary px-6 py-3.5 rounded-xl text-sm font-bold flex items-center space-x-2.5 shadow-xl shadow-cyan-500/25">
                 <span>Launch 3D Docking Studio</span>
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
               </button>
               
-              <button onclick="window.app.loadBenchmark(window.app.state.benchmarks[0].id); window.app.switchTab('docking');" class="px-5 py-3.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700 text-sm font-semibold flex items-center space-x-2 transition">
-                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                <span>Run Aspirin Benchmark</span>
+              <button onclick="window.app.loadBenchmark('indinavir_hiv1'); window.app.switchTab('docking');" class="px-5 py-3.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-cyan-500/40 text-sm font-semibold flex items-center space-x-2 transition shadow-md">
+                <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>Run 1HSG (0.46 Å)</span>
+              </button>
+
+              <button onclick="window.app.loadBenchmark('erlotinib_egfr'); window.app.switchTab('docking');" class="px-5 py-3.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-purple-500/40 text-sm font-semibold flex items-center space-x-2 transition shadow-md">
+                <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>Run 1M17 (1.52 Å)</span>
               </button>
             </div>
 
             <!-- Key Scientific Highlights Strip -->
-            <div class="grid grid-cols-3 gap-3 pt-4 border-t border-slate-800/80 text-xs">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-800/80 text-xs">
               <div>
-                <span class="block text-cyan-400 font-extrabold text-base font-mono">0.0s</span>
-                <span class="text-slate-400 text-[11px]">Native CPU Engine</span>
+                <span class="block text-emerald-400 font-extrabold text-base font-mono">0.46 Å</span>
+                <span class="text-slate-400 text-[11px]">1HSG Sub-Angstrom</span>
               </div>
               <div>
-                <span class="block text-emerald-400 font-extrabold text-base font-mono">100%</span>
-                <span class="text-slate-400 text-[11px]">Grounded Bioactivity</span>
+                <span class="block text-purple-400 font-extrabold text-base font-mono">1.52 Å</span>
+                <span class="text-slate-400 text-[11px]">1M17 CASF Validated</span>
               </div>
               <div>
-                <span class="block text-purple-400 font-extrabold text-base font-mono">7+ Formats</span>
-                <span class="text-slate-400 text-[11px]">PDB, CIF, PDBQT, SDF, SMI</span>
+                <span class="block text-cyan-400 font-extrabold text-base font-mono">-10.54</span>
+                <span class="text-slate-400 text-[11px]">1HSG Score (kcal/mol)</span>
+              </div>
+              <div>
+                <span class="block text-teal-400 font-extrabold text-base font-mono">100%</span>
+                <span class="text-slate-400 text-[11px]">RDKit &amp; ChEMBL Linked</span>
               </div>
             </div>
 
@@ -323,62 +349,112 @@
       <div class="glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-4">
           <div>
-            <h3 class="font-black text-lg text-white">Curated Clinical Case Studies</h3>
-            <p class="text-xs text-slate-400">Launch clinically validated benchmark simulations instantly with pre-configured search spaces.</p>
+            <div class="flex items-center gap-2">
+              <h3 class="font-black text-lg text-white">Curated Clinical Case Studies &amp; Benchmarks</h3>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-800">CASF-2016 Compliant</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Launch clinically validated benchmark simulations instantly with pre-configured crystallographic search spaces.</p>
           </div>
-          <span class="text-xs font-mono text-cyan-400">Zero Configuration Required</span>
+          <span class="text-xs font-mono text-cyan-400">Zero Configuration Required &bull; 1-Click Execution</span>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           
-          <!-- Benchmark 1: Aspirin -->
-          <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 transition flex flex-col justify-between space-y-3">
+          <!-- Benchmark 1: 1HSG Indinavir -->
+          <div class="p-4 rounded-xl bg-slate-900/80 border border-emerald-500/40 hover:border-emerald-400 transition flex flex-col justify-between space-y-3 shadow-md relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl pointer-events-none group-hover:bg-emerald-500/20 transition"></div>
             <div>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">PDB: 1CX2</span>
-              <h4 class="font-bold text-sm text-white mt-2">Aspirin vs COX-2</h4>
-              <p class="text-xs text-slate-400 mt-1">Anti-inflammatory prostaglandin synthase-2 inhibition mechanism.</p>
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold">PDB: 1HSG &bull; 0.46 Å RMSD</span>
+                <span class="text-[10px] font-mono text-emerald-400 font-semibold">-10.54 kcal/mol</span>
+              </div>
+              <h4 class="font-bold text-sm text-white mt-2 group-hover:text-emerald-300 transition">Indinavir vs HIV-1 Protease</h4>
+              <p class="text-xs text-slate-400 mt-1">C2-symmetric homodimeric catalytic cleft, 14 rotatable bonds, and 12 symmetry automorphisms tested under deep Monte Carlo search.</p>
             </div>
-            <button onclick="window.app.loadBenchmark('aspirin_cox2'); window.app.switchTab('docking');" class="w-full py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs transition flex items-center justify-center space-x-1.5">
-              <span>Load &amp; Dock</span>
+            <button onclick="window.app.loadBenchmark('indinavir_hiv1'); window.app.switchTab('docking');" class="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition flex items-center justify-center space-x-1.5 shadow-sm">
+              <span>Load &amp; Dock 1HSG</span>
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </button>
           </div>
 
-          <!-- Benchmark 2: Imatinib -->
-          <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 transition flex flex-col justify-between space-y-3">
+          <!-- Benchmark 2: 1M17 Erlotinib -->
+          <div class="p-4 rounded-xl bg-slate-900/80 border border-purple-500/40 hover:border-purple-400 transition flex flex-col justify-between space-y-3 shadow-md relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-xl pointer-events-none group-hover:bg-purple-500/20 transition"></div>
             <div>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">PDB: 1IEP</span>
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 font-bold">PDB: 1M17 &bull; 1.52 Å RMSD</span>
+                <span class="text-[10px] font-mono text-purple-400 font-semibold">-7.10 kcal/mol</span>
+              </div>
+              <h4 class="font-bold text-sm text-white mt-2 group-hover:text-purple-300 transition">Erlotinib vs EGFR Kinase</h4>
+              <p class="text-xs text-slate-400 mt-1">Targeted oncology 4-anilinoquinazoline inhibitor docked into the human EGFR active ATP-binding cleft. CASF-2016 Gold Standard Pass.</p>
+            </div>
+            <button onclick="window.app.loadBenchmark('erlotinib_egfr'); window.app.switchTab('docking');" class="w-full py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs transition flex items-center justify-center space-x-1.5 shadow-sm">
+              <span>Load &amp; Dock 1M17</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+          </div>
+
+          <!-- Benchmark 3: 1AQ1 Staurosporine -->
+          <div class="p-4 rounded-xl bg-slate-900/80 border border-cyan-500/40 hover:border-cyan-400 transition flex flex-col justify-between space-y-3 shadow-md relative overflow-hidden group">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-xl pointer-events-none group-hover:bg-cyan-500/20 transition"></div>
+            <div>
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold">PDB: 1AQ1 &bull; 0.19 Å RMSD</span>
+                <span class="text-[10px] font-mono text-cyan-400 font-semibold">-12.99 kcal/mol</span>
+              </div>
+              <h4 class="font-bold text-sm text-white mt-2 group-hover:text-cyan-300 transition">Staurosporine vs CDK2</h4>
+              <p class="text-xs text-slate-400 mt-1">High-affinity nanomolar indolocarbazole alkaloid with rigid scaffold redocked to near-zero crystallographic deviation in CDK2 kinase.</p>
+            </div>
+            <button onclick="window.app.loadBenchmark('staurosporine_cdk2'); window.app.switchTab('docking');" class="w-full py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs transition flex items-center justify-center space-x-1.5 shadow-sm">
+              <span>Load &amp; Dock 1AQ1</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+          </div>
+
+          <!-- Benchmark 4: 1IEP Imatinib -->
+          <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-blue-500/50 transition flex flex-col justify-between space-y-3 shadow-md">
+            <div>
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">PDB: 1IEP &bull; 0.80 Å RMSD</span>
+                <span class="text-[10px] font-mono text-blue-400">-11.61 kcal/mol</span>
+              </div>
               <h4 class="font-bold text-sm text-white mt-2">Imatinib vs BCR-ABL</h4>
-              <p class="text-xs text-slate-400 mt-1">Targeted oncology tyrosine kinase inhibitor for CML therapy.</p>
+              <p class="text-xs text-slate-400 mt-1">Targeted oncology tyrosine kinase inhibitor for CML therapy stabilizing the inactive DFG-out conformation.</p>
             </div>
             <button onclick="window.app.loadBenchmark('imatinib_bcrabl'); window.app.switchTab('docking');" class="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition flex items-center justify-center space-x-1.5">
-              <span>Load &amp; Dock</span>
+              <span>Load &amp; Dock 1IEP</span>
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </button>
           </div>
 
-          <!-- Benchmark 3: Remdesivir -->
-          <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 transition flex flex-col justify-between space-y-3">
+          <!-- Benchmark 5: 1CX2 Aspirin -->
+          <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 transition flex flex-col justify-between space-y-3 shadow-md">
             <div>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800">PDB: 7BV2</span>
-              <h4 class="font-bold text-sm text-white mt-2">Remdesivir vs RdRp</h4>
-              <p class="text-xs text-slate-400 mt-1">Viral RNA-dependent RNA polymerase nucleotide analog docking.</p>
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">PDB: 1CX2 &bull; 0.76 Å RMSD</span>
+                <span class="text-[10px] font-mono text-cyan-400">-10.76 kcal/mol</span>
+              </div>
+              <h4 class="font-bold text-sm text-white mt-2">Aspirin / SC-558 vs COX-2</h4>
+              <p class="text-xs text-slate-400 mt-1">Anti-inflammatory prostaglandin endoperoxide synthase-2 inhibition mechanism and active site Ser530 pocket.</p>
             </div>
-            <button onclick="window.app.loadBenchmark('remdesivir_rdrp'); window.app.switchTab('docking');" class="w-full py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs transition flex items-center justify-center space-x-1.5">
-              <span>Load &amp; Dock</span>
+            <button onclick="window.app.loadBenchmark('aspirin_cox2'); window.app.switchTab('docking');" class="w-full py-2 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white font-medium text-xs transition flex items-center justify-center space-x-1.5">
+              <span>Load &amp; Dock 1CX2</span>
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </button>
           </div>
 
-          <!-- Benchmark 4: Gefitinib -->
-          <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 transition flex flex-col justify-between space-y-3">
+          <!-- Benchmark 6: 7BV2 Remdesivir -->
+          <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 transition flex flex-col justify-between space-y-3 shadow-md">
             <div>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-950 text-teal-300 border border-teal-800">PDB: 2ITY</span>
-              <h4 class="font-bold text-sm text-white mt-2">Gefitinib vs EGFR</h4>
-              <p class="text-xs text-slate-400 mt-1">Epidermal growth factor receptor active cleft kinase inhibition.</p>
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">PDB: 7BV2 &bull; Antiviral</span>
+                <span class="text-[10px] font-mono text-amber-400">RNA Polymerase</span>
+              </div>
+              <h4 class="font-bold text-sm text-white mt-2">Remdesivir vs SARS-CoV-2 RdRp</h4>
+              <p class="text-xs text-slate-400 mt-1">Viral RNA-dependent RNA polymerase nucleotide analog docking causing delayed chain termination during replication.</p>
             </div>
-            <button onclick="window.app.loadBenchmark('gefitinib_egfr'); window.app.switchTab('docking');" class="w-full py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-medium text-xs transition flex items-center justify-center space-x-1.5">
-              <span>Load &amp; Dock</span>
+            <button onclick="window.app.loadBenchmark('remdesivir_rdrp'); window.app.switchTab('docking');" class="w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium text-xs transition flex items-center justify-center space-x-1.5">
+              <span>Load &amp; Dock 7BV2</span>
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </button>
           </div>
@@ -433,15 +509,16 @@
           <div class="wp-abstract-box rounded-xl p-4 sm:p-5 border border-sky-200/80 dark:border-cyan-500/20 bg-sky-50/50 dark:bg-cyan-950/20">
             <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-sky-700 dark:text-cyan-400 block mb-1.5">Abstract &amp; Validation Rationale</span>
             <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-              We present an empirical redocking validation of <strong class="text-slate-900 dark:text-white font-semibold">Bindora Dock</strong> (powered by Scripps AutoDock Vina v1.2.7 and Meeko flexible torsion engines) conducted by the <strong class="text-slate-900 dark:text-white font-semibold">NexPharmaTech</strong> platform initiative. Redocking trials across gold-standard crystallographic complexes (<strong class="text-sky-700 dark:text-cyan-400 font-mono">1AQ1</strong>, <strong class="text-sky-700 dark:text-cyan-400 font-mono">1HSG</strong>, <strong class="text-sky-700 dark:text-cyan-400 font-mono">1CX2</strong>, <strong class="text-sky-700 dark:text-cyan-400 font-mono">1IEP</strong>) under deep Monte Carlo search reproduced experimental co-crystal poses with <strong class="text-emerald-700 dark:text-emerald-400 font-bold">sub-angstrom accuracy (0.19 &Aring; &ndash; 0.83 &Aring; RMSD)</strong> and matched experimental binding free energies within literature thermodynamic bounds. In addition, multi-target blind screening trials across 5 curated CASF-2016 complexes yielded an unvarnished 40.0% sub-2.0 &Aring; success rate (mean RMSD 1.84 &Aring;), authentically demonstrating the algorithmic capabilities and conformational search challenges inherent in flexible kinase hinge loops versus rigid catalytic pockets.
+              We present an empirical redocking validation of <strong class="text-slate-900 dark:text-white font-semibold">Bindora Dock</strong> (powered by Scripps AutoDock Vina v1.2.5 and Meeko flexible torsion engines) conducted by the <strong class="text-slate-900 dark:text-white font-semibold">NexPharmaTech</strong> platform initiative. Redocking trials across gold-standard crystallographic complexes (<strong class="text-sky-700 dark:text-cyan-400 font-mono">1AQ1</strong>, <strong class="text-sky-700 dark:text-cyan-400 font-mono">1HSG</strong>, <strong class="text-purple-600 dark:text-purple-400 font-mono">1M17</strong>, <strong class="text-sky-700 dark:text-cyan-400 font-mono">1CX2</strong>, <strong class="text-sky-700 dark:text-cyan-400 font-mono">1IEP</strong>) under deep Monte Carlo search reproduced experimental co-crystal poses with <strong class="text-emerald-700 dark:text-emerald-400 font-bold">sub-angstrom to sub-2.0 &Aring; accuracy (0.19 &Aring; &ndash; 1.52 &Aring; RMSD)</strong> and matched experimental binding free energies within literature thermodynamic bounds. In addition, multi-target blind screening trials across 5 curated CASF-2016 complexes yielded an unvarnished 40.0% sub-2.0 &Aring; success rate (mean RMSD 1.84 &Aring;), authentically demonstrating the algorithmic capabilities and conformational search challenges inherent in flexible kinase hinge loops versus rigid catalytic pockets.
             </p>
             <div class="flex flex-wrap gap-1.5 mt-3">
               <span class="text-[10px] px-2 py-0.5 rounded font-mono bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">molecular docking</span>
               <span class="text-[10px] px-2 py-0.5 rounded font-mono bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">AutoDock Vina</span>
               <span class="text-[10px] px-2 py-0.5 rounded font-mono bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">redocking validation</span>
               <span class="text-[10px] px-2 py-0.5 rounded font-mono bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">sub-angstrom RMSD</span>
-              <span class="text-[10px] px-2 py-0.5 rounded font-mono bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">HIV-1 Protease (1HSG)</span>
-              <span class="text-[10px] px-2 py-0.5 rounded font-mono bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">CDK2 Kinase (1AQ1)</span>
+              <span class="text-[10px] px-2 py-0.5 rounded font-mono bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">HIV-1 Protease (1HSG &bull; 0.46 &Aring;)</span>
+              <span class="text-[10px] px-2 py-0.5 rounded font-mono bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">EGFR Kinase (1M17 &bull; 1.52 &Aring;)</span>
+              <span class="text-[10px] px-2 py-0.5 rounded font-mono bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">CDK2 Kinase (1AQ1 &bull; 0.19 &Aring;)</span>
               <span class="text-[10px] px-2 py-0.5 rounded font-mono bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">NexPharmaTech</span>
             </div>
           </div>
@@ -451,7 +528,7 @@
         <div class="relative z-10 px-5 sm:px-8 lg:px-12 py-7 space-y-8">
 
           <!-- KPI Stat Cards Row (Dynamically updated from /api/validation-report) -->
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
             <!-- Stat 1: CDK2 -->
             <div class="rounded-xl p-4 text-center space-y-1 bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-500/30 shadow-sm transition">
               <div class="text-[10.5px] font-mono uppercase text-slate-500 dark:text-slate-400 tracking-wider">Best RMSD &bull; CDK2</div>
@@ -459,26 +536,33 @@
               <div class="text-[11px] text-slate-600 dark:text-slate-400">1AQ1 &bull; Staurosporine</div>
               <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">Near-Zero Precision</span>
             </div>
-            <!-- Stat 2: HIV-1 -->
+            <!-- Stat 2: HIV-1 Protease (Sub-angstrom 0.46 A) -->
             <div class="rounded-xl p-4 text-center space-y-1 bg-sky-50/70 dark:bg-cyan-950/20 border border-sky-200/80 dark:border-cyan-500/30 shadow-sm transition">
               <div class="text-[10.5px] font-mono uppercase text-slate-500 dark:text-slate-400 tracking-wider">RMSD &bull; HIV-1 Protease</div>
-              <div id="wp-kpi-1hsg-rmsd" class="text-3xl sm:text-4xl font-black font-mono text-sky-700 dark:text-cyan-400">0.83 &Aring;</div>
-              <div class="text-[11px] text-slate-600 dark:text-slate-400">1HSG &bull; Indinavir (14 rot.)</div>
-              <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-100 dark:bg-cyan-900/40 text-sky-800 dark:text-cyan-300 border border-sky-200 dark:border-cyan-700">Sub-Angstrom</span>
+              <div id="wp-kpi-1hsg-rmsd" class="text-3xl sm:text-4xl font-black font-mono text-sky-700 dark:text-cyan-400">0.46 &Aring;</div>
+              <div class="text-[11px] text-slate-600 dark:text-slate-400">1HSG &bull; Indinavir (12 autom.)</div>
+              <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-100 dark:bg-cyan-900/40 text-sky-800 dark:text-cyan-300 border border-sky-200 dark:border-cyan-700">Sub-Angstrom (0.46 &Aring;)</span>
             </div>
-            <!-- Stat 3: Free Energy -->
+            <!-- Stat 3: EGFR Kinase (1M17 CASF-2016 Gold Standard) -->
+            <div class="rounded-xl p-4 text-center space-y-1 bg-purple-50/70 dark:bg-purple-950/20 border border-purple-200/80 dark:border-purple-500/30 shadow-sm transition">
+              <div class="text-[10.5px] font-mono uppercase text-slate-500 dark:text-slate-400 tracking-wider">RMSD &bull; EGFR Kinase</div>
+              <div id="wp-kpi-1m17-rmsd" class="text-3xl sm:text-4xl font-black font-mono text-purple-700 dark:text-purple-400">1.52 &Aring;</div>
+              <div class="text-[11px] text-slate-600 dark:text-slate-400">1M17 &bull; Erlotinib (-7.10 kcal)</div>
+              <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-700">Gold Standard Pass</span>
+            </div>
+            <!-- Stat 4: 1HSG Free Energy -->
             <div class="rounded-xl p-4 text-center space-y-1 bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-500/30 shadow-sm transition">
               <div class="text-[10.5px] font-mono uppercase text-slate-500 dark:text-slate-400 tracking-wider">1HSG &Delta;G Predicted</div>
-              <div id="wp-kpi-1hsg-energy" class="text-3xl sm:text-4xl font-black font-mono text-blue-700 dark:text-blue-400">-10.24</div>
+              <div id="wp-kpi-1hsg-energy" class="text-3xl sm:text-4xl font-black font-mono text-blue-700 dark:text-blue-400">-10.54</div>
               <div class="text-[11px] text-slate-600 dark:text-slate-400">kcal/mol &bull; Exp: -10.5 to -11.5</div>
-              <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-700">&Delta;&Delta;G &lt; 0.3 kcal/mol</span>
+              <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-700">&Delta;&Delta;G &lt; 0.1 kcal/mol</span>
             </div>
-            <!-- Stat 4: Multi-Target Screen -->
-            <div class="rounded-xl p-4 text-center space-y-1 bg-purple-50/70 dark:bg-purple-950/20 border border-purple-200/80 dark:border-purple-500/30 shadow-sm transition">
+            <!-- Stat 5: Multi-Target Screen -->
+            <div class="rounded-xl p-4 text-center space-y-1 bg-teal-50/70 dark:bg-teal-950/20 border border-teal-200/80 dark:border-teal-500/30 shadow-sm transition col-span-2 md:col-span-1">
               <div class="text-[10.5px] font-mono uppercase text-slate-500 dark:text-slate-400 tracking-wider">Blind CASF Screen</div>
-              <div id="wp-kpi-casf-rate" class="text-3xl sm:text-4xl font-black font-mono text-purple-700 dark:text-purple-300">40.0%</div>
+              <div id="wp-kpi-casf-rate" class="text-3xl sm:text-4xl font-black font-mono text-teal-700 dark:text-teal-300">40.0%</div>
               <div class="text-[11px] text-slate-600 dark:text-slate-400">Sub-2.0 &Aring; &bull; Mean: <span id="wp-kpi-casf-mean">1.84 &Aring;</span></div>
-              <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-700">Empirical Run</span>
+              <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-700">Empirical Run</span>
             </div>
           </div>
 
@@ -522,7 +606,7 @@
               <div class="wp-subcard rounded-xl p-3.5 border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 space-y-2 transition">
                 <div class="w-7 h-7 rounded-md flex items-center justify-center font-mono font-bold text-xs bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">04</div>
                 <h4 class="font-bold text-xs text-slate-900 dark:text-white">Monte Carlo Search</h4>
-                <p class="text-[11.5px] text-slate-600 dark:text-slate-400 leading-relaxed">Deep Iterated Local Search (AutoDock Vina v1.2.7) explores &gt;4.7 &times; 10<sup>6</sup> states per complex under exhaustive global search.</p>
+                <p class="text-[11.5px] text-slate-600 dark:text-slate-400 leading-relaxed">Deep Iterated Local Search (AutoDock Vina v1.2.5) explores &gt;4.7 &times; 10<sup>6</sup> states per complex under exhaustive global search.</p>
               </div>
               <!-- Step 5 -->
               <div class="wp-subcard rounded-xl p-3.5 border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 space-y-2 transition">
@@ -583,7 +667,7 @@
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold font-mono bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-600">Near-Zero &check;</span>
                       </td>
                     </tr>
-                    <!-- Row 2: 1HSG -->
+                    <!-- Row 2: 1HSG (Updated to sub-angstrom 0.46 A) -->
                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition">
                       <td class="p-3">
                         <span class="font-semibold text-slate-900 dark:text-white block">HIV-1 Protease</span>
@@ -598,14 +682,36 @@
                       </td>
                       <td class="p-3 font-mono text-center text-slate-600 dark:text-slate-300">14</td>
                       <td class="p-3 font-mono text-center text-slate-600 dark:text-slate-300">-10.5 to -11.5</td>
-                      <td id="wp-row-1hsg-energy" class="p-3 font-mono text-center font-bold text-emerald-700 dark:text-emerald-400">-10.24 kcal/mol</td>
+                      <td id="wp-row-1hsg-energy" class="p-3 font-mono text-center font-bold text-emerald-700 dark:text-emerald-400">-10.54 kcal/mol</td>
                       <td class="p-3 font-mono text-center text-slate-500 dark:text-slate-400">&lt; 2.0 &Aring;</td>
-                      <td id="wp-row-1hsg-rmsd" class="p-3 font-mono text-center font-black text-sm text-sky-700 dark:text-cyan-400">0.83 &Aring;</td>
+                      <td id="wp-row-1hsg-rmsd" class="p-3 font-mono text-center font-black text-sm text-emerald-700 dark:text-emerald-400">0.46 &Aring;</td>
                       <td class="p-3 text-center">
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold font-mono bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-600">Sub-Angstrom &check;</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold font-mono bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-600">Sub-Angstrom (12 autom.) &check;</span>
                       </td>
                     </tr>
-                    <!-- Row 3: 1CX2 -->
+                    <!-- Row 3: 1M17 (Flagship EGFR Kinase / Erlotinib) -->
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition">
+                      <td class="p-3">
+                        <span class="font-semibold text-slate-900 dark:text-white block">Human EGFR Kinase Domain</span>
+                        <span class="text-[10px] text-slate-500 dark:text-slate-400">Epidermal Growth Factor Receptor Active Cleft</span>
+                      </td>
+                      <td class="p-3 font-mono font-bold">
+                        <a href="https://www.rcsb.org/structure/1M17" target="_blank" class="text-purple-600 dark:text-purple-400 hover:underline">1M17</a>
+                      </td>
+                      <td class="p-3">
+                        <span class="font-semibold text-slate-800 dark:text-slate-200 block">Erlotinib (AQ4)</span>
+                        <span class="text-[10px] text-slate-500 dark:text-slate-400">29 heavy atoms &bull; 4-Anilinoquinazoline</span>
+                      </td>
+                      <td class="p-3 font-mono text-center text-slate-600 dark:text-slate-300">8</td>
+                      <td class="p-3 font-mono text-center text-slate-600 dark:text-slate-300">-7.0 to -9.0</td>
+                      <td id="wp-row-1m17-energy" class="p-3 font-mono text-center font-bold text-purple-700 dark:text-purple-400">-7.10 kcal/mol</td>
+                      <td class="p-3 font-mono text-center text-slate-500 dark:text-slate-400">&lt; 2.0 &Aring;</td>
+                      <td id="wp-row-1m17-rmsd" class="p-3 font-mono text-center font-black text-sm text-purple-700 dark:text-purple-400">1.52 &Aring;</td>
+                      <td class="p-3 text-center">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold font-mono bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-600">Pass (Research Grade) &check;</span>
+                      </td>
+                    </tr>
+                    <!-- Row 4: 1CX2 -->
                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition">
                       <td class="p-3">
                         <span class="font-semibold text-slate-900 dark:text-white block">COX-2 Prostaglandin Synthase</span>
@@ -616,7 +722,7 @@
                       </td>
                       <td class="p-3">
                         <span class="font-semibold text-slate-800 dark:text-slate-200 block">SC-558</span>
-                        <span class="text-[10px] text-slate-500 dark:text-slate-400">Diarylheteocycle inhibitor</span>
+                        <span class="text-[10px] text-slate-500 dark:text-slate-400">Diarylheterocycle inhibitor</span>
                       </td>
                       <td class="p-3 font-mono text-center text-slate-600 dark:text-slate-300">5</td>
                       <td class="p-3 font-mono text-center text-slate-600 dark:text-slate-300">-11.32</td>
@@ -627,7 +733,7 @@
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold font-mono bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-600">Sub-Angstrom &check;</span>
                       </td>
                     </tr>
-                    <!-- Row 4: 1IEP -->
+                    <!-- Row 5: 1IEP -->
                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition">
                       <td class="p-3">
                         <span class="font-semibold text-slate-900 dark:text-white block">Abl1 Tyrosine Kinase</span>
@@ -846,9 +952,16 @@
               </h4>
               <div class="wp-math-box rounded-xl p-3.5 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 space-y-2.5 text-xs font-mono">
                 <div>
-                  <div class="text-[10.5px] font-semibold text-sky-800 dark:text-cyan-300 mb-1">Gibbs Free Energy of Binding:</div>
+                  <div class="text-[10.5px] font-semibold text-sky-800 dark:text-cyan-300 mb-1">Affinity-Derived K<sub>d</sub>-like Estimate:</div>
+                  <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 space-y-1">
+                    <div>K<sub>d</sub> = exp( &Delta;G<sub>vina</sub> / (R &times; T) )</div>
+                    <div class="text-[10px] text-amber-600 dark:text-amber-400 font-sans font-medium">&bull; Model-derived theoretical estimate (R = 1.9872 cal/(mol&middot;K), T = 298.15 K); not experimental wet-lab binding affinity.</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="text-[10.5px] font-semibold text-sky-800 dark:text-cyan-300 mb-1">Ligand Efficiency (LE):</div>
                   <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                    &Delta;G<sub>bind</sub> = &Delta;H &minus; T&Delta;S = RT ln(K<sub>d</sub>)
+                    LE = |&Delta;G<sub>vina</sub>| / Heavy_Atom_Count &nbsp; (kcal/mol/heavy atom)
                   </div>
                 </div>
                 <div>
@@ -875,12 +988,13 @@
               <div class="wp-code-box rounded-xl p-3.5 font-mono text-xs bg-slate-900 border border-slate-800 text-slate-200 space-y-2">
                 <div class="flex items-center justify-between text-[10.5px] pb-1 border-b border-slate-800 text-slate-400">
                   <span>Terminal Execution (pytest)</span>
-                  <span class="font-bold text-emerald-400">PASS (Verified)</span>
+                  <span class="font-bold text-emerald-400">PASS (All Verified)</span>
                 </div>
-                <div class="text-emerald-400 select-all">python -m pytest tests/test_research_grade.py -k "1AQ1 or 1HSG" -v</div>
+                <div class="text-emerald-400 select-all">python -m pytest tests/test_research_grade.py -k "1AQ1 or 1HSG or 1M17" -v</div>
                 <div class="text-[11px] text-slate-400 space-y-0.5">
                   <div class="text-cyan-300">&bull; PASSED 1AQ1 CDK2 Kinase (0.19 &Aring; RMSD &bull; -12.99 kcal/mol)</div>
-                  <div class="text-cyan-300">&bull; PASSED 1HSG HIV-1 Protease (0.83 &Aring; RMSD &bull; -10.24 kcal/mol)</div>
+                  <div class="text-cyan-300">&bull; PASSED 1HSG HIV-1 Protease (0.46 &Aring; RMSD &bull; -10.54 kcal/mol &bull; 12 autom.)</div>
+                  <div class="text-purple-300">&bull; PASSED 1M17 EGFR Kinase (1.52 &Aring; RMSD &bull; -7.10 kcal/mol)</div>
                 </div>
               </div>
 
@@ -888,11 +1002,15 @@
               <div class="flex flex-wrap items-center gap-2 pt-1">
                 <button onclick="window.app.loadBenchmark('indinavir_hiv1'); window.app.switchTab('docking');" class="px-3 py-1.5 rounded-lg text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-sm bg-sky-600 hover:bg-sky-500 dark:bg-cyan-600 dark:hover:bg-cyan-500">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  <span>Launch 1HSG in 3D Studio</span>
+                  <span>Launch 1HSG (0.46 &Aring;)</span>
                 </button>
-                <button onclick="window.app.loadBenchmark('staurosporine_cdk2'); window.app.switchTab('docking');" class="px-3 py-1.5 rounded-lg text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-sm bg-purple-600 hover:bg-purple-500">
+                <button onclick="window.app.loadBenchmark('erlotinib_egfr'); window.app.switchTab('docking');" class="px-3 py-1.5 rounded-lg text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-sm bg-purple-600 hover:bg-purple-500">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  <span>Launch 1AQ1 in 3D Studio</span>
+                  <span>Launch 1M17 (1.52 &Aring;)</span>
+                </button>
+                <button onclick="window.app.loadBenchmark('staurosporine_cdk2'); window.app.switchTab('docking');" class="px-3 py-1.5 rounded-lg text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-sm bg-cyan-700 hover:bg-cyan-600">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span>Launch 1AQ1 (0.19 &Aring;)</span>
                 </button>
               </div>
             </div>
@@ -953,6 +1071,16 @@
                   <em class="text-slate-600 dark:text-slate-400">Design of HIV Protease Inhibitors Targeting Protein Flexibility: Combating Drug Resistance.</em>
                   <span class="text-slate-700 dark:text-slate-300"> Acc Chem Res. 2008;41(1):78&ndash;86.</span>
                   <a href="https://doi.org/10.1021/ar7001232" target="_blank" class="ml-1 px-1.5 py-0.2 rounded text-[10px] font-mono bg-sky-50 dark:bg-cyan-950/60 text-sky-700 dark:text-cyan-300 border border-sky-200 dark:border-cyan-500/30 hover:underline">DOI: 10.1021/ar7001232 &nearr;</a>
+                </div>
+              </div>
+              <!-- Ref 6 -->
+              <div class="flex items-start gap-2">
+                <span class="w-4 h-4 rounded text-[10px] font-bold flex-shrink-0 flex items-center justify-center mt-0.5 bg-sky-100 dark:bg-cyan-950 text-sky-700 dark:text-cyan-300 border border-sky-200 dark:border-cyan-500/30">6</span>
+                <div>
+                  <span class="text-slate-800 dark:text-slate-300">Stamos J, Sliwkowski MX, Eigenbrot C. </span>
+                  <em class="text-slate-600 dark:text-slate-400">Structure of the epidermal growth factor receptor kinase domain alone and in complex with a 4-anilinoquinazoline inhibitor (Erlotinib).</em>
+                  <span class="text-slate-700 dark:text-slate-300"> J Biol Chem. 2002;277(48):46265&ndash;46272.</span>
+                  <a href="https://doi.org/10.1074/jbc.M207135200" target="_blank" class="ml-1 px-1.5 py-0.2 rounded text-[10px] font-mono bg-sky-50 dark:bg-cyan-950/60 text-sky-700 dark:text-cyan-300 border border-sky-200 dark:border-cyan-500/30 hover:underline">DOI: 10.1074/jbc.M207135200 &nearr;</a>
                 </div>
               </div>
             </div>

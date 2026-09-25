@@ -1184,6 +1184,7 @@ class BindoraApp {
       const { validation_report, flagship_targets } = data;
       const hsg = flagship_targets?.["1HSG"];
       const aq1 = flagship_targets?.["1AQ1"];
+      const m17 = flagship_targets?.["1M17"];
       const sumStats = validation_report?.summary_statistics;
 
       // Update KPI Stat Cards
@@ -1200,6 +1201,16 @@ class BindoraApp {
       const kpiHsgE = document.getElementById("wp-kpi-1hsg-energy");
       if (kpiHsgE && hsg?.vina_affinity_kcal !== undefined) {
         kpiHsgE.textContent = `${hsg.vina_affinity_kcal.toFixed(2)}`;
+      }
+
+      const kpiM17 = document.getElementById("wp-kpi-1m17-rmsd");
+      if (kpiM17 && m17?.mode1_rmsd_angstroms !== undefined) {
+        kpiM17.textContent = `${m17.mode1_rmsd_angstroms} Å`;
+      }
+
+      const kpiM17E = document.getElementById("wp-kpi-1m17-energy");
+      if (kpiM17E && m17?.vina_affinity_kcal !== undefined) {
+        kpiM17E.textContent = `${m17.vina_affinity_kcal.toFixed(2)}`;
       }
 
       const kpiCasfRate = document.getElementById("wp-kpi-casf-rate");
@@ -1225,6 +1236,13 @@ class BindoraApp {
         if (elRmsd) elRmsd.textContent = `${hsg.mode1_rmsd_angstroms} Å`;
         const elEnergy = document.getElementById("wp-row-1hsg-energy");
         if (elEnergy) elEnergy.textContent = `${hsg.vina_affinity_kcal.toFixed(2)} kcal/mol`;
+      }
+
+      if (m17) {
+        const elRmsd = document.getElementById("wp-row-1m17-rmsd");
+        if (elRmsd) elRmsd.textContent = `${m17.mode1_rmsd_angstroms} Å`;
+        const elEnergy = document.getElementById("wp-row-1m17-energy");
+        if (elEnergy) elEnergy.textContent = `${m17.vina_affinity_kcal.toFixed(2)} kcal/mol`;
       }
 
       // Populate Multi-Target CASF Benchmark Rows

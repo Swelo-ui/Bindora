@@ -1,0 +1,29 @@
+{
+  "pdb_id": "1M17",
+  "target": "Human EGFR Kinase Domain",
+  "ligand": "Erlotinib (AQ4)",
+  "timestamp": "2026-09-25 19:29:01",
+  "timestamp_iso": "2026-09-25T13:59:01.000000+00:00",
+  "vina_affinity_kcal": -7.10,
+  "mode1_rmsd_angstroms": 1.52,
+  "best_mode_rmsd_angstroms": 1.52,
+  "best_mode": 1,
+  "is_validated": true,
+  "badge": "Protocol Validated (RMSD: 1.52 Å ≤ 2.0 Å)",
+  "status": "Pass (Research Grade)",
+  "energy_in_lit_range": true,
+  "rmsd_pass_threshold": true,
+  "atom_mapping_method": "topological_symmetry_graph_isomorphism",
+  "automorphisms_tested": 1,
+  "derived_kd_nm": 6289.2,
+  "ligand_efficiency": 0.245,
+  "docking_time_seconds": 51.61,
+  "exhaustiveness": 8,
+  "overall_grade": "RESEARCH_GRADE",
+  "provenance": {
+    "is_programmatic": true,
+    "python_version": "3.13.1",
+    "os_platform": "Windows",
+    "sha256_sig": "2f43c1c971cd"
+  }
+}

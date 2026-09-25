@@ -123,6 +123,15 @@ def get_validation_report():
         except Exception:
             pass
 
+    m17_file = BENCHMARKS_DIR / "1m17_benchmark_result.json"
+    m17_data = {}
+    if m17_file.exists():
+        try:
+            with open(m17_file, "r", encoding="utf-8") as f:
+                m17_data = json.load(f)
+        except Exception:
+            pass
+
     return jsonify({
         "status": "success",
         "parent_company": "NexPharmaTech",
@@ -130,7 +139,8 @@ def get_validation_report():
         "validation_report": val_data,
         "flagship_targets": {
             "1HSG": hsg_data,
-            "1AQ1": aq1_data
+            "1AQ1": aq1_data,
+            "1M17": m17_data
         }
     })
 

@@ -52,5 +52,14 @@
     "indication": "Oncology / Cell Cycle Checkpoint Arrest",
     "mechanism": "High-affinity ATP-competitive indolocarbazole alkaloid inhibiting cyclin-dependent kinase 2.",
     "smiles": "CC12C(C(CC(O1)n3c4ccccc4c5c3c6n2c7ccccc7c6c8c5C(=O)NC8)NC)OC"
+  },
+  {
+    "id": "erlotinib_egfr",
+    "drug_name": "Erlotinib (Tarceva)",
+    "target_name": "Epidermal Growth Factor Receptor (EGFR)",
+    "pdb_id": "1M17",
+    "indication": "Non-Small Cell Lung Cancer & Pancreatic Cancer",
+    "mechanism": "First-generation quinazoline-based reversible competitive inhibitor of the EGFR kinase domain.",
+    "smiles": "COCCOC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC=CC(=C3)C#C)OCCOC"
   }
 ]
