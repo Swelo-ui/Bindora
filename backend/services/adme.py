@@ -1,5 +1,6 @@
 import math
 from typing import Dict, Any, List, Optional
+import rdkit
 from rdkit import Chem
 from rdkit.Chem import Descriptors, Lipinski, Crippen, FilterCatalog
 
@@ -197,22 +198,33 @@ class ADMEProfiler:
 
         return {
             "physicochemical": {
-                "molecular_weight": {"value": mw, "unit": "g/mol", "description": "Molecular Weight"},
-                "logp": {"value": logp, "unit": "unitless", "description": "Wildman-Crippen calculated lipophilicity (MolLogP)"},
-                "hbd": {"value": hbd, "unit": "count", "description": "Hydrogen Bond Donors"},
-                "hba": {"value": hba, "unit": "count", "description": "Hydrogen Bond Acceptors"},
-                "tpsa": {"value": tpsa, "unit": "Å²", "description": "Topological Polar Surface Area"},
-                "rotatable_bonds": {"value": rotb, "unit": "count", "description": "Rotatable single bonds"},
-                "molar_refractivity": {"value": mr, "unit": "cm³/mol", "description": "Molar Refractivity"},
-                "heavy_atoms": {"value": heavy_atoms, "unit": "count", "description": "Non-hydrogen heavy atoms"},
-                "aromatic_rings": {"value": aromatic_rings, "unit": "count", "description": "Aromatic ring systems"},
-                "fsp3": {"value": fsp3, "unit": "ratio", "description": "Carbon saturation index (sp3 carbons / total carbons)"},
+                "molecular_weight": {"value": mw, "unit": "g/mol", "description": "Molecular Weight", "source": f"RDKit v{rdkit.__version__}"},
+                "logp": {"value": logp, "unit": "unitless", "description": "Wildman-Crippen MolLogP", "source": f"RDKit v{rdkit.__version__}"},
+                "hbd": {"value": hbd, "unit": "count", "description": "Hydrogen Bond Donors (Lipinski)", "source": f"RDKit v{rdkit.__version__}"},
+                "hba": {"value": hba, "unit": "count", "description": "Hydrogen Bond Acceptors (Lipinski)", "source": f"RDKit v{rdkit.__version__}"},
+                "h_bond_donors": {"value": hbd, "unit": "count", "description": "Hydrogen Bond Donors (Lipinski)", "source": f"RDKit v{rdkit.__version__}"},
+                "h_bond_acceptors": {"value": hba, "unit": "count", "description": "Hydrogen Bond Acceptors (Lipinski)", "source": f"RDKit v{rdkit.__version__}"},
+                "tpsa": {"value": tpsa, "unit": "Å²", "description": "Topological Polar Surface Area", "source": f"RDKit v{rdkit.__version__}"},
+                "rotatable_bonds": {"value": rotb, "unit": "count", "description": "Rotatable single bonds", "source": f"RDKit v{rdkit.__version__}"},
+                "molar_refractivity": {"value": mr, "unit": "cm³/mol", "description": "Molar Refractivity", "source": f"RDKit v{rdkit.__version__}"},
+                "heavy_atoms": {"value": heavy_atoms, "unit": "count", "description": "Non-hydrogen heavy atoms", "source": f"RDKit v{rdkit.__version__}"},
+                "aromatic_rings": {"value": aromatic_rings, "unit": "count", "description": "Aromatic ring systems", "source": f"RDKit v{rdkit.__version__}"},
+                "fsp3": {"value": fsp3, "unit": "ratio", "description": "Carbon saturation index (sp3 carbons / total carbons)", "source": f"RDKit v{rdkit.__version__}"},
+                "formal_charge": {"value": Chem.GetFormalCharge(mol), "unit": "elementary charge", "description": "Net formal charge", "source": f"RDKit v{rdkit.__version__}"},
                 "sascore": {
                     "value": sa_score,
                     "unit": "scale 1-10",
                     "interpretation": sa_desc,
-                    "description": "Synthetic Accessibility Score (1=easy, 10=very difficult)",
-                    "citation": "Ertl & Schuffenhauer, J. Cheminform. 2009"
+                    "description": "Calculated Synthetic Accessibility Score (1=easy, 10=very difficult)",
+                    "method": "Ertl & Schuffenhauer fragment-based penalty",
+                    "citation": "Ertl & Schuffenhauer, J. Cheminform. 2009",
+                    "source": f"RDKit Contrib sascorer"
+                },
+                "metadata": {
+                    "cheminformatics_engine": f"RDKit v{rdkit.__version__}",
+                    "logp_algorithm": "Wildman-Crippen (J. Chem. Inf. Comput. Sci. 1999, 39, 868-873)",
+                    "tpsa_algorithm": "Prasanna & Doerksen / Ertl et al. (J. Med. Chem. 2000, 43, 3714-3717)",
+                    "hbd_hba_definition": "Lipinski standard (O/N atoms with attached H for HBD; O/N atoms for HBA)"
                 }
             },
             "drug_likeness": {
@@ -221,6 +233,10 @@ class ADMEProfiler:
                     "status": lipinski_status,
                     "violations_count": len(lipinski_violations),
                     "violations": lipinski_violations,
+                    "mw_value": mw,
+                    "logp_value": logp,
+                    "hbd_value": hbd,
+                    "hba_value": hba,
                     "citation": "Lipinski et al., Adv. Drug Deliv. Rev. 1997"
                 },
                 "veber": {

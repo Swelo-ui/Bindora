@@ -2228,7 +2228,10 @@ class BindoraApp {
         replicates: replicates,
         heavy_atoms: p.heavy_atoms?.value || this.state.ligand.heavy_atom_count || 20,
         molecular_weight: p.molecular_weight?.value || this.state.ligand.weight || 300.0,
-        smiles: this.state.ligand.canonical_smiles || this.state.ligand.smiles || ""
+        smiles: this.state.ligand.canonical_smiles || this.state.ligand.smiles || "",
+        pdb_id: this.state.receptor.pdb_id || "",
+        ligand_name: this.state.ligand.name || "",
+        native_ligand_info: this.state.receptor.native_ligand || null
       };
       if (flexResidues.length > 0) {
         dockPayload.flexible_residues = flexResidues;
@@ -3484,6 +3487,29 @@ class BindoraApp {
       </tr>
     `).join("") : `<tr><td colspan="5" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No halogen bonds detected within 3.8 Å cutoff and 130° angle criterion.</td></tr>`;
 
+    const expClass = d.experiment_classification || null;
+    const isNativeRedock = expClass?.is_native_redocking ?? (r.native_ligand?.has_native && (l.name && r.native_ligand?.name && l.name.toLowerCase() === r.native_ligand.name.toLowerCase()));
+    const dockingModeName = expClass?.docking_mode || (r.native_ligand?.has_native ? (isNativeRedock ? "Native Redocking (Self-Validation)" : "Cross-Docking / Benchmark Docking") : "Targeted Pocket Docking");
+    const dockingModeDesc = expClass?.description || "";
+
+    // Halogen bonds & Fluorine contacts
+    const halogenBonds = contacts.halogen_bonds || [];
+    const halogenRows = halogenBonds.length > 0 ? halogenBonds.map(hb => {
+      const isClassical = hb.interaction_subtype ? hb.interaction_subtype.includes("Classical") : (!hb.ligand_atom || !hb.ligand_atom.startsWith("F"));
+      const badge = isClassical 
+        ? `<span class="px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 text-[10px]">σ-Hole Halogen Bond</span>`
+        : `<span class="px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 text-[10px]" title="Fluorine lacks a classical σ-hole; contact is polar/multipolar">Fluorine Polar Contact</span>`;
+      return `
+      <tr>
+        <td class="font-mono font-bold text-slate-900 dark:text-white p-2 border border-slate-200 dark:border-slate-800">${hb.residue || `${hb.res_name} ${hb.res_num}:${hb.chain}`}</td>
+        <td class="font-mono text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800">${hb.receptor_atom || '—'}</td>
+        <td class="font-mono text-purple-700 dark:text-purple-400 font-bold p-2 border border-slate-200 dark:border-slate-800">${hb.ligand_atom || 'Halogen'} ${badge}</td>
+        <td class="font-mono text-purple-700 dark:text-purple-400 font-bold text-center p-2 border border-slate-200 dark:border-slate-800">${hb.distance != null ? Number(hb.distance).toFixed(2) + ' Å' : '—'}</td>
+        <td class="font-mono text-slate-600 dark:text-slate-400 text-center p-2 border border-slate-200 dark:border-slate-800 text-[11px]">${hb.angle_deg != null ? Number(hb.angle_deg).toFixed(1) + '° ' + (isClassical ? '(θ &ge; 130°)' : '(polar contact)') : '—'}</td>
+      </tr>
+      `;
+    }).join("") : `<tr><td colspan="5" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No halogen bonds or polar fluorine contacts detected within distance (≤ 3.8 Å) and geometric criteria.</td></tr>`;
+
     // Hydrophobic contacts
     const hydrophobics = contacts.hydrophobic_contacts || [];
     const hydrophobicList = hydrophobics.length > 0 ? hydrophobics.map(hp => `
@@ -3493,11 +3519,11 @@ class BindoraApp {
       </span>
     `).join(" ") : `<span class="text-slate-500 italic text-xs">No hydrophobic contacts detected within 4.0 Å cutoff.</span>`;
 
-    // Lipinski Rule of 5 Matrix
+    // Lipinski Rule of 5 Matrix - Robust descriptor resolution
     const mw = phys.molecular_weight?.value != null ? Number(phys.molecular_weight.value).toFixed(2) : (l.weight != null ? Number(l.weight).toFixed(2) : "—");
     const logp = phys.logp?.value != null ? Number(phys.logp.value).toFixed(2) : "—";
-    const hbd = phys.h_bond_donors?.value != null ? phys.h_bond_donors.value : "—";
-    const hba = phys.h_bond_acceptors?.value != null ? phys.h_bond_acceptors.value : "—";
+    const hbd = (phys.h_bond_donors?.value ?? phys.hbd?.value ?? (typeof phys.hbd === 'number' ? phys.hbd : null) ?? lip.hbd_value ?? "—");
+    const hba = (phys.h_bond_acceptors?.value ?? phys.hba?.value ?? (typeof phys.hba === 'number' ? phys.hba : null) ?? lip.hba_value ?? "—");
     const tpsa = phys.tpsa?.value != null ? Number(phys.tpsa.value).toFixed(2) : "—";
     const rotb = phys.rotatable_bonds?.value != null ? phys.rotatable_bonds.value : "—";
 
@@ -3541,19 +3567,42 @@ class BindoraApp {
           <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800 font-semibold">Primary Simulation</span>
         </div>
 
+        <!-- Docking Experiment Mode Banner -->
+        <div class="p-3 rounded-lg border ${isNativeRedock ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200' : 'bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200'} text-xs font-mono">
+          <div class="flex items-center justify-between font-sans font-bold text-xs pb-1.5 border-b ${isNativeRedock ? 'border-emerald-200 dark:border-emerald-800/60' : 'border-slate-200 dark:border-slate-800'}">
+            <span class="flex items-center space-x-2">
+              <span>Docking Mode:</span>
+              <span class="px-2 py-0.5 rounded ${isNativeRedock ? 'bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100' : 'bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300'} uppercase font-black tracking-wider text-[10px]">
+                ${dockingModeName}
+              </span>
+            </span>
+            <span class="text-[10px] text-slate-500 font-normal">${expClass?.validation_applicability || (isNativeRedock ? 'Self-Validation Benchmark' : 'Comparative Docking')}</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-[11px]">
+            <div><span class="text-slate-500 block">Target Receptor:</span> <span class="font-bold text-slate-900 dark:text-white">${r.pdb_id || 'Custom'} (${r.title ? r.title.slice(0, 20) + '...' : 'Receptor'})</span></div>
+            <div><span class="text-slate-500 block">Crystal Reference:</span> <span class="font-bold">${expClass?.crystal_ligand_name || (r.native_ligand?.name ? r.native_ligand.name : 'None')}</span></div>
+            <div><span class="text-slate-500 block">Docked Compound:</span> <span class="font-bold text-cyan-700 dark:text-cyan-400">${l.name || 'Investigational Ligand'}</span></div>
+            <div><span class="text-slate-500 block">Self-Validation:</span> <span class="font-bold ${isNativeRedock ? (redock?.is_validated ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600') : 'text-slate-500'}">${isNativeRedock ? (redock ? `${redock.benchmark_status} (${redock.rmsd_angstroms} Å)` : 'Applicable (Native)') : 'Non-Native (Cross-Docking)'}</span></div>
+          </div>
+          ${dockingModeDesc ? `<p class="mt-1.5 pt-1.5 border-t border-slate-200 dark:border-slate-800 text-[10px] text-slate-600 dark:text-slate-400 font-sans italic">${dockingModeDesc}</p>` : ''}
+        </div>
+
+        <!-- 4 Core Metrics Cards -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
           <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
-            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Binding Free Energy (ΔG)</span>
+            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium" title="Empirical scoring function output from AutoDock Vina, approximating binding affinity">Vina Docking Score</span>
             <span class="text-cyan-700 dark:text-cyan-400 font-black text-base">${topPose.affinity_kcal != null ? topPose.affinity_kcal.toFixed(2) : "—"} <span class="text-xs font-normal font-sans">kcal/mol</span></span>
+            <span class="text-[10px] text-slate-500 block font-sans">Empirical Score (ΔG estimate)</span>
           </div>
           <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
-            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Theoretical Dissociation (Kd)</span>
+            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium" title="Derived via isothermal thermodynamic model Kd = exp(score / RT) at 298.15 K">Theoretical Kd (Derived)</span>
             <span class="text-emerald-700 dark:text-emerald-400 font-black text-base">${thermo.theoretical_kd_nm != null ? thermo.theoretical_kd_nm + ' nM' : formatKd(topPose.affinity_kcal)}</span>
+            <span class="text-[10px] text-slate-500 block font-sans">Derived via Kd = exp(ΔG/RT)</span>
           </div>
           <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
-            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Ligand Efficiency (LE)</span>
+            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium" title="Normalized heavy atom binding affinity: |Vina Score| / Heavy Atom Count">Ligand Efficiency (LE)</span>
             <span class="text-amber-700 dark:text-amber-400 font-black text-base">${thermo.ligand_efficiency?.value || calcLE(topPose.affinity_kcal, heavyCount)}</span>
-            <span class="text-[10px] text-slate-500 block font-sans">SILE: ${thermo.size_independent_le?.value || "—"}</span>
+            <span class="text-[10px] text-slate-500 block font-sans">|Score| / ${heavyCount} heavy atoms</span>
           </div>
           <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
             <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Intermolecular Contacts</span>
@@ -3562,10 +3611,62 @@ class BindoraApp {
           </div>
         </div>
 
+        <!-- Standard Biophysical Parameter Matrix (Table 1) -->
+        <div class="space-y-1.5 pt-1">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800 dark:text-slate-200 text-xs font-sans">Table 1: Standardized Biophysical &amp; Docking Parameter Matrix</span>
+            <span class="text-[10px] text-slate-500 font-mono">Explicit Scientific Grounding</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
+              <thead>
+                <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-bold font-sans">
+                  <th class="p-2 border border-slate-200 dark:border-slate-800">Parameter</th>
+                  <th class="p-2 border border-slate-200 dark:border-slate-800">Value</th>
+                  <th class="p-2 border border-slate-200 dark:border-slate-800">Metric Type</th>
+                  <th class="p-2 border border-slate-200 dark:border-slate-800">Source / Methodology</th>
+                </tr>
+              </thead>
+              <tbody class="font-mono text-[11px]">
+                <tr>
+                  <td class="p-2 font-sans font-semibold border border-slate-200 dark:border-slate-800">Vina Docking Score</td>
+                  <td class="p-2 font-bold text-cyan-700 dark:text-cyan-400 border border-slate-200 dark:border-slate-800">${topPose.affinity_kcal != null ? topPose.affinity_kcal.toFixed(2) + ' kcal/mol' : '—'}</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800"><span class="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 font-sans text-[10px]">Predicted</span></td>
+                  <td class="p-2 font-sans text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">AutoDock Vina 1.2.5 Empirical Scoring Function</td>
+                </tr>
+                <tr>
+                  <td class="p-2 font-sans font-semibold border border-slate-200 dark:border-slate-800">Theoretical Dissociation Constant (Kd)</td>
+                  <td class="p-2 font-bold text-emerald-700 dark:text-emerald-400 border border-slate-200 dark:border-slate-800">${thermo.theoretical_kd_nm != null ? thermo.theoretical_kd_nm + ' nM' : formatKd(topPose.affinity_kcal)}</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800"><span class="px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 font-sans text-[10px]">Derived</span></td>
+                  <td class="p-2 font-sans text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">Standard Isothermal Model: Kd = exp(ΔG/RT) at 298.15 K (RT ≈ 0.592 kcal/mol)</td>
+                </tr>
+                <tr>
+                  <td class="p-2 font-sans font-semibold border border-slate-200 dark:border-slate-800">Ligand Efficiency (LE)</td>
+                  <td class="p-2 font-bold text-amber-700 dark:text-amber-400 border border-slate-200 dark:border-slate-800">${thermo.ligand_efficiency?.value || calcLE(topPose.affinity_kcal, heavyCount)} kcal/mol/HA</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800"><span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-sans text-[10px]">Calculated</span></td>
+                  <td class="p-2 font-sans text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">Normalized Heavy Atom Affinity: |Vina Score| / ${heavyCount} Heavy Atoms</td>
+                </tr>
+                <tr>
+                  <td class="p-2 font-sans font-semibold border border-slate-200 dark:border-slate-800">True Redocking RMSD</td>
+                  <td class="p-2 font-bold ${redock ? (redock.is_validated ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400') : 'text-slate-500'} border border-slate-200 dark:border-slate-800">${redock ? redock.rmsd_angstroms + ' Å (' + redock.benchmark_status + ')' : (isNativeRedock ? 'Pending / Available in Tab 2' : 'N/A (Cross-Docking Experiment)')}</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800"><span class="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-sans text-[10px]">Validation</span></td>
+                  <td class="p-2 font-sans text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">Symmetry-Aware Coordinate RMSD vs Co-Crystallized Ligand (≤ 2.0 Å Pass)</td>
+                </tr>
+                <tr>
+                  <td class="p-2 font-sans font-semibold border border-slate-200 dark:border-slate-800">ChEMBL Wet-Lab Bioactivity</td>
+                  <td class="p-2 font-bold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800">${this.state.chemblCrosscheck?.records?.length ? `${this.state.chemblCrosscheck.records[0].type} = ${this.state.chemblCrosscheck.records[0].value} ${this.state.chemblCrosscheck.records[0].units}` : 'No deposited records'}</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800"><span class="px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-sans text-[10px]">Experimental</span></td>
+                  <td class="p-2 font-sans text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">Curated in vitro bioactivity records from the ChEMBL Database</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         ${repStats ? `
           <div class="p-2.5 rounded-lg bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800/40 text-xs font-mono flex items-center justify-between">
             <span class="text-slate-800 dark:text-slate-200 font-sans font-medium">Multi-Seed Stochastic Replicates (N=${repStats.replicates_count}):</span>
-            <span class="text-cyan-800 dark:text-cyan-300 font-bold">Mean ΔG = ${repStats.mean_affinity_kcal} ± ${repStats.sd_affinity_kcal} kcal/mol (95% CI: ±${repStats.confidence_interval_95} kcal/mol)</span>
+            <span class="text-cyan-800 dark:text-cyan-300 font-bold">Mean Vina Score = ${repStats.mean_affinity_kcal} ± ${repStats.sd_affinity_kcal} kcal/mol (95% CI: ±${repStats.confidence_interval_95} kcal/mol)</span>
           </div>
         ` : ''}
 
@@ -3583,7 +3684,7 @@ class BindoraApp {
               <span>Scientific Qualification: Sub-threshold Binding Detected</span>
             </strong>
             <p class="text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/90">
-              Calculated ΔG (${topPose.affinity_kcal} kcal/mol) corresponds to micromolar or millimolar affinity (Kd ≈ ${thermo.theoretical_kd_um || '—'} µM). At this range, experimental assays typically observe non-specific surface adhesion or weak kinetics. Interpret cautiously.
+              Calculated Vina Score (${topPose.affinity_kcal} kcal/mol) corresponds to micromolar or millimolar affinity (Kd ≈ ${thermo.theoretical_kd_um || '—'} µM). At this range, experimental assays typically observe non-specific surface adhesion or weak kinetics. Interpret cautiously.
             </p>
           </div>
         ` : ''}
@@ -3654,19 +3755,22 @@ class BindoraApp {
             <thead>
               <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-bold font-sans">
                 <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Mode</th>
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Vina ΔG</th>
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Vinardo ΔG</th>
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Theoretical Kd</th>
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Ligand Eff.</th>
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">RMSD l.b.</th>
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">RMSD u.b.</th>
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Classification</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="AutoDock Vina Empirical Docking Score">Vina Score</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Vinardo Empirical Scoring Function">Vinardo Score</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Theoretical Kd = exp(score/RT)">Theoretical Kd</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Ligand Efficiency = |Vina Score| / Heavy Atoms">Ligand Eff.</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Conformational Clustering: Pose vs Rank 1 RMSD Lower Bound">Pose vs Rank 1 RMSD (l.b.)</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Conformational Clustering: Pose vs Rank 1 RMSD Upper Bound">Pose vs Rank 1 RMSD (u.b.)</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Conformational Role</th>
               </tr>
             </thead>
             <tbody>
               ${posesRows}
             </tbody>
           </table>
+          <p class="text-[10px] text-slate-500 font-sans mt-2">
+            <em>*Methodology Distinction:</em> "Pose vs Rank 1 RMSD" quantifies internal conformational clustering of generated poses relative to the lowest-energy mode (#1). It is fundamentally distinct from crystallographic redocking RMSD, which measures coordinate deviation from a true wet-lab crystallographic reference structure.
+          </p>
         </div>
       </div>
 

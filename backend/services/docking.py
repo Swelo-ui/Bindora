@@ -801,9 +801,10 @@ class DockingEngine:
                     "--size_z", str(size["z"]),
                     "--exhaustiveness", str(exhaustiveness),
                     "--num_modes", str(num_modes),
-                    "--cpu", str(cpu),
                     "--out", str(out_file)
                 ]
+                if cpu is not None and int(cpu) > 0:
+                    cmd.extend(["--cpu", str(cpu)])
                 if flex_pdbqt_str:
                     flex_file = tmp_path / "flex.pdbqt"
                     flex_file.write_text(flex_pdbqt_str, encoding="utf-8")
@@ -1109,69 +1110,23 @@ class DockingEngine:
         top_pose = poses[0]
         affinity = top_pose["affinity_kcal"]
 
-        # 4. Helper to calculate heavy-atom RMSD for a given docked pose PDBQT
-        def calc_pose_rmsd(pose_pdbqt: str) -> float:
-            # 1. Gold-standard RDKit in-place symmetry-corrected RMSD via Meeko
-            # Must use CalcRMS (in-place) to avoid rigid superposition destroying pocket coordinates.
-            try:
-                from meeko import PDBQTMolecule, RDKitMolCreate
-                from rdkit.Chem import AllChem
-                pdbqt_mol = PDBQTMolecule(pose_pdbqt)
-                rdkit_mols = RDKitMolCreate.from_pdbqt_mol(pdbqt_mol)
-                if rdkit_mols and len(rdkit_mols) > 0:
-                    ref_mol = Chem.RemoveHs(Chem.MolFromPDBBlock(lig_prep.get("pdb_block", native_ligand_pdb)))
-                    docked_mol = Chem.RemoveHs(rdkit_mols[0])
-                    if ref_mol and docked_mol and ref_mol.GetNumHeavyAtoms() == docked_mol.GetNumHeavyAtoms():
-                        return float(AllChem.CalcRMS(docked_mol, ref_mol))
-            except Exception:
-                pass
+        # 4. Compute heavy-atom symmetry-aware RMSD against native crystallographic reference
+        from backend.utils.rmsd_calculator import calculate_rmsd
+        
+        cryst_ref_block = lig_prep.get("pdb_block", native_ligand_pdb)
+        validation_threshold = 2.0  # Standard practical 2.0 Å threshold for crystallographic redocking
 
-            # 2. Fallback: Coordinate distance matching
-            docked_atoms = []
-            for line in pose_pdbqt.splitlines():
-                if line.startswith(("ATOM  ", "HETATM")):
-                    try:
-                        tokens = line.split()
-                        ad4 = tokens[-1] if tokens else ""
-                        elem = "Cl" if ad4.upper() == "CL" else "Br" if ad4.upper() == "BR" else "F" if ad4.upper() == "F" else ad4[0].upper() if ad4 else line[12:14].strip().upper()
-                        if elem == "H":
-                            continue
-                        aname = line[12:16].strip()
-                        x = float(line[30:38])
-                        y = float(line[38:46])
-                        z = float(line[46:54])
-                        docked_atoms.append({
-                            "name": aname,
-                            "elem": elem,
-                            "coord": (x, y, z)
-                        })
-                    except Exception:
-                        continue
+        mode1_rmsd_info = calculate_rmsd(top_pose["pdbqt_content"], cryst_ref_block, return_details=True)
+        mode1_rmsd = mode1_rmsd_info["rmsd"] if isinstance(mode1_rmsd_info, dict) else mode1_rmsd_info
+        rmsd_method = mode1_rmsd_info.get("method", "symmetry_aware") if isinstance(mode1_rmsd_info, dict) else "symmetry_aware"
 
-            if not docked_atoms:
-                return 999.0
-
-            sum_sq = 0.0
-            for ca in cryst_atoms:
-                cx, cy, cz = ca["coord"]
-                celem = ca["elem"]
-                candidates = [da["coord"] for da in docked_atoms if da["name"] == ca["name"]]
-                if not candidates:
-                    candidates = [da["coord"] for da in docked_atoms if da["elem"] == celem]
-                if not candidates:
-                    candidates = [da["coord"] for da in docked_atoms]
-                min_sq = min((cx - dx)**2 + (cy - dy)**2 + (cz - dz)**2 for dx, dy, dz in candidates)
-                sum_sq += min_sq
-
-            return math.sqrt(sum_sq / len(cryst_atoms))
-
-        mode1_rmsd = calc_pose_rmsd(top_pose["pdbqt_content"])
         min_rmsd = mode1_rmsd
         best_mode = 1
         best_pose = top_pose
 
         for p in poses[1:]:
-            p_rmsd = calc_pose_rmsd(p["pdbqt_content"])
+            p_rmsd_info = calculate_rmsd(p["pdbqt_content"], cryst_ref_block, return_details=True)
+            p_rmsd = p_rmsd_info["rmsd"] if isinstance(p_rmsd_info, dict) else p_rmsd_info
             p["rmsd_to_cryst"] = round(p_rmsd, 2)
             if p_rmsd < min_rmsd:
                 min_rmsd = p_rmsd
@@ -1179,17 +1134,17 @@ class DockingEngine:
                 best_pose = p
 
         top_pose["rmsd_to_cryst"] = round(mode1_rmsd, 2)
-        is_validated = (mode1_rmsd <= 2.0) or (min_rmsd <= 2.0)
+        is_validated = (mode1_rmsd <= validation_threshold) or (min_rmsd <= validation_threshold)
 
-        if mode1_rmsd <= 2.0:
-            badge = f"Protocol Validated (RMSD: {mode1_rmsd:.2f} Å < 2.0 Å)"
-            status = "Pass (Publication Grade)"
-        elif min_rmsd <= 2.0:
-            badge = f"Valid Pose in Mode {best_mode} (RMSD: {min_rmsd:.2f} Å < 2.0 Å)"
-            status = f"Near-Native Pose Found in Top Modes (Mode {best_mode} RMSD: {min_rmsd:.2f} Å)"
+        if mode1_rmsd <= validation_threshold:
+            badge = f"Redocking validation: PASS (RMSD: {mode1_rmsd:.2f} Å ≤ {validation_threshold:.2f} Å)"
+            status = "PASS"
+        elif min_rmsd <= validation_threshold:
+            badge = f"Near-Native Pose Found in Mode {best_mode} (RMSD: {min_rmsd:.2f} Å ≤ {validation_threshold:.2f} Å)"
+            status = f"PASS (Mode {best_mode} ≤ {validation_threshold:.2f} Å; Rank 1: {mode1_rmsd:.2f} Å)"
         else:
-            badge = f"Divergent Pose (RMSD: {mode1_rmsd:.2f} Å > 2.0 Å)"
-            status = "Borderline (Consider Higher Exhaustiveness or Expanded Grid)"
+            badge = f"Redocking validation: FAIL (RMSD: {mode1_rmsd:.2f} Å > {validation_threshold:.2f} Å)"
+            status = "FAIL"
 
         vinardo_score = None
         try:
@@ -1208,13 +1163,17 @@ class DockingEngine:
             "rmsd_angstroms": round(mode1_rmsd, 2),
             "best_rmsd_angstroms": round(min_rmsd, 2),
             "best_rmsd_mode": best_mode,
+            "validation_threshold_angstroms": validation_threshold,
+            "validation_criterion": f"Heavy-atom symmetry-corrected RMSD ≤ {validation_threshold:.2f} Å",
+            "rmsd_calculation_method": rmsd_method,
             "is_validated": is_validated,
             "validation_badge": badge,
             "benchmark_status": status,
+            "validation_type": "Native Ligand Redocking (Self-Validation)",
             "docked_pdb": best_pose["pdb_block"],
             "top_pose_docked_pdb": top_pose["pdb_block"],
             "top_pose_pdbqt": top_pose["pdbqt_content"],
-            "cryst_pdb": lig_prep.get("pdb_block", native_ligand_pdb),
+            "cryst_pdb": cryst_ref_block,
             "heavy_atom_count": len(cryst_atoms),
             "preparation_log": lig_prep.get("prep_log", {}),
             "poses": poses
@@ -1236,3 +1195,72 @@ class DockingEngine:
             hydrophobic_cutoff=hydrophobic_cutoff,
             ligand_mol=ligand_mol
         )
+
+    @staticmethod
+    def classify_docking_experiment(
+        docked_smiles: Optional[str],
+        native_ligand_info: Optional[Dict[str, Any]],
+        docked_ligand_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Scientifically classify the docking experiment:
+        1. Native Redocking (Self-Validation): Docked ligand is chemically identical to native co-crystallized ligand.
+        2. Cross-Docking / Benchmark Docking: Ligand is docked into a pocket with a different crystallographic reference ligand.
+        3. Targeted Pocket Docking: Receptor has no co-crystallized ligand; docking centered on predicted/selected cavity.
+        4. Blind Docking: Docking box encompasses full macromolecular surface.
+        """
+        has_native = bool(native_ligand_info and native_ligand_info.get("has_native"))
+        native_name = (native_ligand_info.get("name") if has_native else None) or "Unknown Crystal Ligand"
+        native_smiles = (native_ligand_info.get("smiles") if has_native else None) or ""
+
+        if not has_native:
+            return {
+                "docking_mode": "Targeted Pocket Docking",
+                "is_native_redocking": False,
+                "has_crystal_reference": False,
+                "crystal_ligand_name": None,
+                "docked_ligand_name": docked_ligand_name or "Investigational Ligand",
+                "validation_applicability": "Not Applicable (No crystallographic reference ligand)",
+                "description": "Docking performed against user-defined or algorithmically detected pocket without a crystallographic reference ligand."
+            }
+
+        # Check if chemical structures match (canonical SMILES or identical formula & heavy atom count)
+        is_same_molecule = False
+        if docked_smiles and native_smiles:
+            try:
+                m1 = Chem.MolFromSmiles(docked_smiles)
+                m2 = Chem.MolFromSmiles(native_smiles)
+                if m1 and m2:
+                    can1 = Chem.MolToSmiles(m1, isomericSmiles=False)
+                    can2 = Chem.MolToSmiles(m2, isomericSmiles=False)
+                    is_same_molecule = (can1 == can2)
+            except Exception:
+                pass
+
+        if not is_same_molecule and docked_ligand_name and native_name:
+            # Check name match
+            d_norm = docked_ligand_name.strip().lower()
+            n_norm = native_name.strip().lower()
+            if d_norm == n_norm or (d_norm in n_norm) or (n_norm in d_norm):
+                is_same_molecule = True
+
+        if is_same_molecule:
+            return {
+                "docking_mode": "Native Redocking",
+                "is_native_redocking": True,
+                "has_crystal_reference": True,
+                "crystal_ligand_name": native_name,
+                "docked_ligand_name": docked_ligand_name or native_name,
+                "validation_applicability": "Applicable (Crystallographic Self-Validation)",
+                "description": f"Native crystallographic ligand ({native_name}) redocked into its cognate receptor pocket to evaluate whether the docking engine reproduces the experimental binding mode within <= 2.0 Å RMSD."
+            }
+        else:
+            return {
+                "docking_mode": "Cross-Docking / Benchmark Docking",
+                "is_native_redocking": False,
+                "has_crystal_reference": True,
+                "crystal_ligand_name": native_name,
+                "docked_ligand_name": docked_ligand_name or "Investigational Ligand",
+                "validation_applicability": "Non-Native Benchmark (Protocol-dependent comparison)",
+                "description": f"Investigational ligand ({docked_ligand_name or 'Ligand'}) docked into a receptor crystal structure possessing a distinct native ligand ({native_name}). Note: AutoDock Vina scores reflect empirical scoring functions and must not be conflated with AutoDock 4.2 or literature numbers."
+            }

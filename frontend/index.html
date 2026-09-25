@@ -1101,19 +1101,19 @@
       <!-- Top Metrics Strip -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div class="glass-panel p-4 rounded-xl border border-slate-800">
-          <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">Binding Free Energy (ΔG)</span>
+          <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold" title="Empirical scoring function output from AutoDock Vina, approximating binding affinity">Vina Docking Score</span>
           <span id="dock-affinity-score" class="text-2xl font-extrabold text-cyan-400 font-mono mt-1 block">— kcal/mol</span>
-          <span class="text-[10px] text-slate-500">AutoDock Vina score</span>
+          <span class="text-[10px] text-slate-500">AutoDock Vina empirical score</span>
         </div>
         <div class="glass-panel p-4 rounded-xl border border-slate-800">
-          <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">Theoretical Kd</span>
+          <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold" title="Derived via isothermal thermodynamic model Kd = exp(score/RT) at 298.15 K">Theoretical Kd (Derived)</span>
           <span id="dock-kd-score" class="text-2xl font-extrabold text-emerald-400 font-mono mt-1 block">— nM</span>
-          <span class="text-[10px] text-slate-500">Thermodynamic exp(ΔG/RT)</span>
+          <span class="text-[10px] text-slate-500">Isothermal exp(ΔG/RT) at 298.15 K</span>
         </div>
         <div class="glass-panel p-4 rounded-xl border border-slate-800">
-          <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">Ligand Efficiency (LE)</span>
+          <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold" title="Normalized heavy atom binding affinity: |Score| / Heavy Atom Count">Ligand Efficiency (LE)</span>
           <span id="dock-le-score" class="text-2xl font-extrabold text-purple-400 font-mono mt-1 block">—</span>
-          <span class="text-[10px] text-slate-500">kcal/mol / heavy atom (≥0.3 ideal)</span>
+          <span class="text-[10px] text-slate-500">|Score| / heavy atoms (≥0.3 ideal)</span>
         </div>
         <div class="glass-panel p-4 rounded-xl border border-slate-800">
           <span class="text-[11px] uppercase tracking-wider text-slate-400 block font-semibold">Hydrogen Bonds</span>

@@ -115,18 +115,28 @@ class NarrativeExplainer:
     def _call_llm(data: Dict[str, Any], key: str, provider: str, model: str) -> Optional[tuple]:
         """Call OpenRouter API with anti-hallucination prompt, disabled reasoning overhead, and multi-model fallback."""
         system_prompt = (
-            "You are a Senior Computational Pharmacologist providing an academic research dossier briefing.\n"
-            "CRITICAL CONSTRAINTS:\n"
-            "1. Output ONLY the final Markdown formatted briefing. Do NOT output any internal chain-of-thought, planning notes, or restatements of instructions.\n"
+            "You are a Senior Computational Chemist and Molecular Docking Scientist providing an academic research dossier briefing.\n"
+            "CRITICAL SCIENTIFIC & TERMINOLOGY CONSTRAINTS:\n"
+            "1. Output ONLY the final Markdown formatted briefing. Do NOT output any internal chain-of-thought, planning notes, or meta-comments.\n"
             "2. NEVER invent, hallucinate, or alter any numbers, scores, or constants. Use the exact values provided in the JSON data.\n"
-            "3. Writing Style: Write natural, publication-grade academic prose as seen in the Journal of Medicinal Chemistry or Nature. NEVER include raw programming keys, code variables, or parenthetical JSON paths like '(payload: ...)', 'is_cross_checked: false' in the user-facing text. Integrate all numbers smoothly into scientific prose.\n"
-            "4. Markdown Tables: When summarizing ADME properties or molecular descriptors, use clean GitHub-flavored markdown tables with standard pipes and headers.\n"
-            "5. If experimental cross-check status is 'Computational Prediction Only', state clearly that this is an in silico estimation without deposited wet-lab binding assays in ChEMBL.\n"
-            "6. Structure your output into four clean sections with markdown headers:\n"
-            "### 1. Binding Mechanism & Active Site Interactions\n"
-            "### 2. ADME & Oral Bioavailability Profile\n"
-            "### 3. Experimental Validation & Confidence Tier\n"
-            "### 4. Physiological Implications & Clinical Context"
+            "3. TERMINOLOGY HONESTY:\n"
+            "   - Refer to AutoDock Vina output strictly as 'AutoDock Vina Docking Score (kcal/mol)' or 'predicted binding score'. Do NOT describe it as an experimentally measured binding free energy (ΔG°).\n"
+            "   - Refer to Kd as 'theoretical dissociation constant (Kd) estimate', derived via standard isothermal thermodynamic approximation (T = 298.15 K, RT ≈ 0.592 kcal/mol).\n"
+            "   - Clearly separate: (A) Docking-derived predictions, (B) Calculated RDKit cheminformatics descriptors, (C) Derived thermodynamic estimates, and (D) Experimental wet-lab assay data from ChEMBL (if available).\n"
+            "4. CAUTIOUS SCIENTIFIC TONE:\n"
+            "   - Use cautious, publication-grade academic prose ('in silico docking predicts', 'computationally modeled interaction', 'theoretical estimate').\n"
+            "   - NEVER claim that a docking score proves nanomolar in vivo efficacy, clinical potency, or therapeutic safety.\n"
+            "   - Never claim an interaction is 'experimentally validated' solely based on a computational docking score.\n"
+            "5. DOCKING CLASSIFICATION:\n"
+            "   - If 'experiment_classification' is present in the data, explicitly state whether the run is 'Native Redocking (Self-Validation)' or 'Cross-Docking / Benchmark Docking'.\n"
+            "   - If Cross-Docking, note that scoring differences relative to literature may arise from receptor conformational adaptation (induced fit) or scoring function differences (e.g., Vina 1.2.5 vs AutoDock 4.2).\n"
+            "6. Markdown Tables: When summarizing ADME properties or molecular descriptors, use clean GitHub-flavored markdown tables with standard pipes and headers.\n"
+            "7. If experimental cross-check status is 'Computational Prediction Only', state clearly that this is an in silico estimation without deposited wet-lab binding assays in ChEMBL.\n"
+            "8. Structure your output into four clean sections with markdown headers:\n"
+            "### 1. 3D Binding Mechanism & Active Site Interactions\n"
+            "### 2. Pharmacokinetics (ADME) & Drug-Likeness Profile\n"
+            "### 3. Bioactivity & Experimental Cross-Validation\n"
+            "### 4. Physiological Implications & Target Context"
         )
 
         user_content = (
@@ -262,11 +272,18 @@ class NarrativeExplainer:
         else:
             cyp_str = "No major CYP450 structural inhibition alerts identified *(Exploratory SMARTS Heuristic)*."
 
+        exp_class = data.get("experiment_classification", {})
+        docking_mode = exp_class.get("docking_mode") or data.get("docking_mode", "")
+        exp_desc = exp_class.get("description", "")
+        mode_line = f"- **Docking Classification:** **{docking_mode}**{f' — {exp_desc}' if exp_desc else ''}\n" if docking_mode else ""
+
         # Section 1: Binding mechanism
         sec1 = (
             f"### 1. 3D Binding Mechanism & Active Site Interactions\n\n"
-            f"AutoDock Vina molecular docking of **{drug}** against receptor **{target}** (PDB ID: `{pdb_id}`) yielded a predicted binding free energy (ΔG) of **{affinity} kcal/mol**, corresponding to a theoretical dissociation constant ($K_d$) of approximately **{kd_nm} nM** ({kd_um} µM). This places the predicted binding potency in the **{potency}** tier.\n\n"
-            f"- **Ligand Efficiency (LE):** Calculated at **{le} kcal/mol/heavy atom** (benchmark target ≥ 0.30 kcal/mol/heavy atom).\n"
+            f"AutoDock Vina molecular docking of **{drug}** against receptor **{target}** (PDB ID: `{pdb_id}`) yielded a docking score of **{affinity} kcal/mol**. "
+            f"Based on standard isothermal thermodynamic approximation ($T = 298.15\\text{{ K}}$, $RT \\approx 0.592\\text{{ kcal/mol}}$), this corresponds to a theoretical dissociation constant ($K_d$) estimate of approximately **{kd_nm} nM** ({kd_um} µM), placing the predicted score in the **{potency}** tier.\n\n"
+            f"{mode_line}"
+            f"- **Ligand Efficiency (LE):** Calculated at **{le} kcal/mol/heavy atom** (benchmark target ≥ 0.30 kcal/mol/heavy atom; $|\\text{{score}}| / \\text{{heavy atoms}}$).\n"
             f"- **Hydrogen Bonding Network:** {len(hbonds)} hydrogen bond(s) identified within 3.5 Å: {hb_details}.\n"
             f"- **Non-Polar Contacts:** {len(hydrophobics)} hydrophobic contact(s) anchoring the lipophilic scaffold inside the pocket.\n"
             f"- **Key Interacting Residues:** {res_list_str}."
@@ -289,17 +306,17 @@ class NarrativeExplainer:
         if is_corroborated:
             rec_str = "\n".join([f"  - **{r['type']}**: {r['relation']} {r['value']} {r['units']} (Assay: {r['assay_description'][:70]}...)" for r in records[:3]])
             sec3 = (
-                f"### 3. Experimental Bioactivity Cross-Validation\n\n"
-                f"**Validation Status:** `[{badge}]` (Green Badge)\n\n"
-                f"Bindora cross-referenced this drug-target pair against curated experimental bioactivity records in the **ChEMBL Database** ({crosscheck.get('target_organism', 'Homo sapiens')}).\n\n"
+                f"### 3. Bioactivity & Experimental Cross-Validation\n\n"
+                f"**Validation Status:** `[{badge}]` (Green Badge — Literature Assay Records Available)\n\n"
+                f"Curated experimental bioactivity records from the **ChEMBL Database** ({crosscheck.get('target_organism', 'Homo sapiens')}) for this drug-target pair include:\n\n"
                 f"Found **{len(records)}** experimental assay record(s):\n"
                 f"{rec_str}\n\n"
-                f"The computational binding prediction aligns with wet-lab experimental affinity benchmarks, demonstrating that the docking pose captures realistic pharmacophore orientation."
+                f"**Methodological Note:** AutoDock Vina scores reflect empirical scoring function approximations, whereas ChEMBL records document physical in vitro biological assays. Literature benchmarks provide comparative biological context rather than direct free energy equivalences."
             )
         else:
             sec3 = (
-                f"### 3. Experimental Bioactivity Cross-Validation\n\n"
-                f"**Validation Status:** `[{badge}]` (Amber Badge - Computational Estimate)\n\n"
+                f"### 3. Bioactivity & Experimental Cross-Validation\n\n"
+                f"**Validation Status:** `[{badge}]` (Amber Badge — In Silico Prediction Only)\n\n"
                 f"No direct curated experimental assay record was identified in public databases (ChEMBL) matching this specific drug and target combination. "
                 f"**Important Research Note:** All presented binding energies and downstream affinity metrics are strictly computational estimates. They serve as valuable hypothesis-generating models for virtual screening, but must not be cited as confirmed wet-lab experimental constants."
             )
@@ -308,8 +325,8 @@ class NarrativeExplainer:
         sec4 = (
             f"### 4. Downstream Physiological & Target Pathway Interpretation\n\n"
             f"{f'Target Biological Role: {target_fn[:300]}...' if target_fn else f'Target Receptor: {target}'}\n\n"
-            f"By occupying the receptor binding cleft with a docking score of {affinity} kcal/mol, **{drug}** is modeled to modulate target signaling cascades computationally without animal testing. "
-            f"In an educational context, this profile illustrates how structural complementarities (hydrogen bonds + hydrophobic fit) translate directly into pharmacological affinity and systemic pharmacokinetic behavior."
+            f"The predicted docking pose and energetic score of {affinity} kcal/mol reflect structural shape complementarity and key residue interactions within the pocket. "
+            f"In an educational and drug discovery context, these findings provide structural hypotheses for lead optimization and understanding receptor-ligand pharmacophoric determinants."
         )
 
         return f"{sec1}\n\n---\n\n{sec2}\n\n---\n\n{sec3}\n\n---\n\n{sec4}"

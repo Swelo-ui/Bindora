@@ -332,12 +332,20 @@ def run_docking():
         thermo = BioactivityService.calculate_thermodynamics(affinity, heavy_atoms, mw)
         contacts = best_pose.get("interactions", {})
         
+        # Classify docking experiment (Native Redocking vs Cross-Docking vs Targeted Docking)
+        native_ligand_info = data.get("native_ligand_info")
+        ligand_name = data.get("ligand_name", "Investigational Ligand")
+        experiment_classification = DockingEngine.classify_docking_experiment(
+            docked_smiles=smiles,
+            native_ligand_info=native_ligand_info,
+            docked_ligand_name=ligand_name
+        )
+
         # Record session to database
         session_id = None
         try:
             with get_db() as db:
                 pdb_id = data.get("pdb_id", "")
-                ligand_name = data.get("ligand_name", "Unknown")
                 
                 session = DockingSession(
                     pdb_id=pdb_id if pdb_id else None,
@@ -365,11 +373,28 @@ def run_docking():
             "replicate_stats": replicate_stats,
             "execution_duration_s": best_pose.get("execution_duration_s", 0.0),
             "cpu_count": best_pose.get("cpu_count_used", os.cpu_count() or 1),
-            "session_id": session_id
+            "session_id": session_id,
+            "experiment_classification": experiment_classification
         })
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": f"Docking execution failed: {str(e)}"}), 500
+
+@app.route("/api/docking/classify-experiment", methods=["POST"])
+def classify_experiment_endpoint():
+    data = request.get_json() or {}
+    smiles = data.get("smiles", "")
+    native_ligand_info = data.get("native_ligand_info")
+    ligand_name = data.get("ligand_name", "")
+    try:
+        classification = DockingEngine.classify_docking_experiment(
+            docked_smiles=smiles,
+            native_ligand_info=native_ligand_info,
+            docked_ligand_name=ligand_name
+        )
+        return jsonify(classification)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/docking/analyze-interactions", methods=["POST"])
 def analyze_interactions_endpoint():

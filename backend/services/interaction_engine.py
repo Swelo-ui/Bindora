@@ -116,7 +116,61 @@ class InteractionEngine:
             "total_pi_stacking_count": len(pi_stacks),
             "total_pi_cation_count": len(pi_cations),
             "total_halogen_count": len(halogens),
-            "total_hydrophobic_count": len(hydrophobics)
+            "total_hydrophobic_count": len(hydrophobics),
+            "detection_criteria": cls.get_criteria(hbond_cutoff, hydrophobic_cutoff)
+        }
+
+    @classmethod
+    def get_criteria(cls, hbond_cutoff: float = 3.5, hydrophobic_cutoff: float = 4.0) -> Dict[str, Any]:
+        """Return transparent structural interaction criteria and cutoffs."""
+        return {
+            "hydrogen_bond": {
+                "max_distance_angstroms": hbond_cutoff,
+                "distance_max_angstroms": hbond_cutoff,
+                "min_angle_degrees": 115.0,
+                "geometry": "Directional donor-H...acceptor angle >= 115°, distance <= 3.5 Å",
+                "donor_acceptor_elements": ["O", "N", "S"]
+            },
+            "salt_bridges": {
+                "max_distance_angstroms": 4.2,
+                "distance_max_angstroms": 4.2,
+                "geometry": "Centroid distance between cationic center (Lys NZ, Arg guanidinium) and anionic center (Asp/Glu carboxylate) <= 4.2 Å"
+            },
+            "pi_stacking": {
+                "max_distance_angstroms": 5.5,
+                "distance_max_angstroms": 5.5,
+                "max_angle_parallel_deg": 35.0,
+                "geometry": "Centroid-centroid distance <= 5.5 Å; parallel (θ < 35°) vs T-shaped (θ >= 35°)"
+            },
+            "pi_cation": {
+                "max_distance_angstroms": 4.5,
+                "distance_max_angstroms": 4.5,
+                "geometry": "Cationic group to aromatic centroid distance <= 4.5 Å"
+            },
+            "halogen_bond_sigma_hole": {
+                "max_distance_angstroms": 3.8,
+                "distance_max_angstroms": 3.8,
+                "min_c_x_acceptor_angle_deg": 130.0,
+                "classical_halogens": ["Cl", "Br", "I"],
+                "mechanism": "Directional electrophilic sigma-hole along C-X bond axis (theta >= 130 deg)"
+            },
+            "fluorine_polar_contact": {
+                "max_distance_angstroms": 3.5,
+                "distance_max_angstroms": 3.5,
+                "note": "Fluorine lacks a classical electrophilic sigma-hole; interactions are non-directional polar/multipolar contacts."
+            },
+            "halogen_bonds": {
+                "max_distance_angstroms": 3.8,
+                "min_angle_degrees": 130.0,
+                "classical_halogens": ["Cl", "Br", "I"],
+                "f_contacts": ["F"],
+                "geometry": "C-X...[O/N/S] distance <= 3.8 Å with angle >= 130° for Cl/Br/I; F evaluated as polar/multipolar contact"
+            },
+            "hydrophobic_contacts": {
+                "max_distance_angstroms": hydrophobic_cutoff,
+                "distance_max_angstroms": hydrophobic_cutoff,
+                "geometry": "Carbon-carbon non-polar contact distance <= 4.0 Å"
+            }
         }
 
     @classmethod
@@ -700,14 +754,22 @@ class InteractionEngine:
         lig_atoms: List[Dict[str, Any]],
         max_dist: float = 3.8
     ) -> List[Dict[str, Any]]:
-        """PLIP criteria for Halogen bonds: C-X...O/N with angle >= 130° and dist <= 3.8 A."""
+        """
+        Detect Halogen interactions adhering to physical chemistry and PLIP guidelines:
+        - Classical Halogen Bonds: Cl, Br, I with electron-deficient σ-hole.
+          Criteria: C-X...[O/N/S] angle >= 130° and distance <= 3.8 Å.
+        - Fluorine Contacts: F is minimally polarizable and rarely forms classical σ-hole bonds.
+          Classified transparently as 'Fluorine Contact / Multipolar Interaction' rather than
+          classical halogen bond, with distance <= 3.8 Å and angle criteria recorded.
+        """
         halogens = []
         hal_elems = {"F", "CL", "BR", "I"}
         acceptor_elems = {"O", "N", "S"}
 
         # Find ligand halogens and their bonded carbons
         for latom in lig_atoms:
-            if latom["elem"] not in hal_elems:
+            lelem = latom["elem"].upper()
+            if lelem not in hal_elems:
                 continue
             x_coord = latom["coord"]
 
@@ -725,25 +787,56 @@ class InteractionEngine:
                 dist = float(np.linalg.norm(r_coord - x_coord))
                 if dist <= max_dist:
                     angle = 180.0
+                    has_angle = False
                     if c_coord is not None:
                         angle = cls._calc_angle(c_coord, x_coord, r_coord)  # C - X ... Acceptor
+                        has_angle = True
 
-                    if angle >= 130.0:
-                        res_id = f"{ratom['res_name']} {ratom['res_num']}:{ratom['chain']}"
-                        halogens.append({
-                            "type": "Halogen Bond",
-                            "distance": round(dist, 2),
-                            "angle_deg": round(angle, 1),
-                            "residue": res_id,
-                            "res_name": ratom["res_name"],
-                            "res_num": ratom["res_num"],
-                            "chain": ratom["chain"],
-                            "receptor_atom": ratom["atom_name"],
-                            "ligand_atom": latom["atom_name"],
-                            "ligand_atom_idx": latom.get("atom_idx", 0),
-                            "start_coord": [float(c) for c in x_coord],
-                            "end_coord": [float(c) for c in r_coord]
-                        })
+                    is_fluorine = (lelem == "F")
+                    if is_fluorine:
+                        # Fluorine multipolar contact
+                        if angle >= 120.0 or not has_angle:
+                            res_id = f"{ratom['res_name']} {ratom['res_num']}:{ratom['chain']}"
+                            halogens.append({
+                                "type": "Fluorine Contact",
+                                "subtype": "Multipolar / Polar F-Contact",
+                                "distance": round(dist, 2),
+                                "angle_deg": round(angle, 1) if has_angle else None,
+                                "residue": res_id,
+                                "res_name": ratom["res_name"],
+                                "res_num": ratom["res_num"],
+                                "chain": ratom["chain"],
+                                "receptor_atom": ratom["atom_name"],
+                                "ligand_atom": latom["atom_name"],
+                                "ligand_atom_idx": latom.get("atom_idx", 0),
+                                "halogen_element": "F",
+                                "criterion": "C-F...Acceptor distance <= 3.8 Å (multipolar contact; F lacks classical σ-hole)",
+                                "scientific_classification": "Non-classical fluorine polar contact (not a σ-hole halogen bond)",
+                                "start_coord": [float(c) for c in x_coord],
+                                "end_coord": [float(c) for c in r_coord]
+                            })
+                    else:
+                        # Classical σ-hole halogen bond (Cl, Br, I)
+                        if angle >= 130.0:
+                            res_id = f"{ratom['res_name']} {ratom['res_num']}:{ratom['chain']}"
+                            halogens.append({
+                                "type": "Halogen Bond",
+                                "subtype": f"Classical {lelem} σ-Hole Bond",
+                                "distance": round(dist, 2),
+                                "angle_deg": round(angle, 1),
+                                "residue": res_id,
+                                "res_name": ratom["res_name"],
+                                "res_num": ratom["res_num"],
+                                "chain": ratom["chain"],
+                                "receptor_atom": ratom["atom_name"],
+                                "ligand_atom": latom["atom_name"],
+                                "ligand_atom_idx": latom.get("atom_idx", 0),
+                                "halogen_element": lelem,
+                                "criterion": f"C-{lelem}...Acceptor angle >= 130°, distance <= 3.8 Å (PLIP σ-hole criterion)",
+                                "scientific_classification": f"Classical {lelem} halogen bond",
+                                "start_coord": [float(c) for c in x_coord],
+                                "end_coord": [float(c) for c in r_coord]
+                            })
 
         # Deduplicate to closest halogen bond per residue
         unique_hb = {}
