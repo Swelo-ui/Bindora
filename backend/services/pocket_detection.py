@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 import numpy as np
 from scipy.spatial import Voronoi, cKDTree
+from backend.config import get_subprocess_kwargs
 
 HYDROPHOBIC_RESIDUES = {
     "ALA", "VAL", "LEU", "ILE", "MET", "PHE", "TRP", "PRO", "TYR"
@@ -38,7 +39,7 @@ class PocketDetectionService:
         # 2. Check for fpocket in WSL if on Windows
         if os.name == "nt" and shutil.which("wsl"):
             try:
-                wsl_check = subprocess.run(["wsl", "which", "fpocket"], capture_output=True, text=True, timeout=5)
+                wsl_check = subprocess.run(["wsl", "which", "fpocket"], capture_output=True, text=True, timeout=5, **get_subprocess_kwargs())
                 if wsl_check.returncode == 0 and wsl_check.stdout.strip():
                     pockets = PocketDetectionService._run_fpocket_wsl(pdb_content, max_pockets)
                     if pockets:
@@ -57,7 +58,7 @@ class PocketDetectionService:
             pdb_file.write_text(pdb_content, encoding="utf-8")
 
             cmd = [fpocket_bin, "-f", str(pdb_file)]
-            res = subprocess.run(cmd, cwd=str(tmp_path), capture_output=True, text=True, timeout=60)
+            res = subprocess.run(cmd, cwd=str(tmp_path), capture_output=True, text=True, timeout=60, **get_subprocess_kwargs())
             if res.returncode != 0:
                 return []
 
@@ -76,10 +77,10 @@ class PocketDetectionService:
             pdb_file.write_text(pdb_content, encoding="utf-8")
 
             # Convert Windows path to WSL path
-            wsl_path = subprocess.run(["wsl", "wslpath", "-a", str(pdb_file).replace("\\", "/")], capture_output=True, text=True).stdout.strip()
+            wsl_path = subprocess.run(["wsl", "wslpath", "-a", str(pdb_file).replace("\\", "/")], capture_output=True, text=True, **get_subprocess_kwargs()).stdout.strip()
 
             cmd = ["wsl", "fpocket", "-f", wsl_path]
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=60, **get_subprocess_kwargs())
             if res.returncode != 0:
                 return []
 

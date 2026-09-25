@@ -7,10 +7,15 @@ from pathlib import Path
 import shutil
 
 try:
-    from backend.config import BIN_DIR
+    from backend.config import BIN_DIR, get_subprocess_kwargs
 except Exception:
     BASE_DIR = Path(__file__).resolve().parent.parent.parent
     BIN_DIR = BASE_DIR / "bin"
+    def get_subprocess_kwargs():
+        kwargs = {}
+        if sys.platform == "win32":
+            kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        return kwargs
 
 _VINA_NOTIFIED = False
 
@@ -61,7 +66,7 @@ def ensure_vina(verbose: bool = False):
 
     # Verify execution
     try:
-        res = subprocess.run([str(vina_exe), "--help"], capture_output=True, text=True, timeout=10)
+        res = subprocess.run([str(vina_exe), "--help"], capture_output=True, text=True, timeout=10, **get_subprocess_kwargs())
         if "AutoDock Vina" in res.stdout or "AutoDock Vina" in res.stderr:
             print("[VINA] Binary verified successfully!")
             return str(vina_exe)

@@ -9,7 +9,7 @@ import gemmi
 from rdkit import Chem
 from rdkit.Chem import AllChem, Lipinski
 from meeko import MoleculePreparation, PDBQTWriterLegacy
-from backend.config import VINA_EXE
+from backend.config import VINA_EXE, get_subprocess_kwargs
 from backend.utils.vina_setup import ensure_vina
 from backend.services.biophysical_prep import BiophysicalReceptorPreparer
 from backend.services.interaction_engine import InteractionEngine
@@ -814,7 +814,13 @@ class DockingEngine:
 
                 # Dynamically scale timeout based on exhaustiveness to support deep research searches
                 calc_timeout = max(600, int(exhaustiveness * 90))
-                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    **get_subprocess_kwargs()
+                )
                 _ACTIVE_SUBPROCESSES.add(process)
                 try:
                     stdout, stderr = process.communicate(timeout=calc_timeout)
@@ -962,7 +968,7 @@ class DockingEngine:
             else:
                 cmd.append("--autobox")
             try:
-                res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=30, **get_subprocess_kwargs())
                 if res.returncode == 0:
                     m = re.search(r"Estimated Free Energy of Binding\s*:\s*([-+]?\d*\.\d+|\d+)", res.stdout)
                     if m:
@@ -1013,7 +1019,7 @@ class DockingEngine:
                 "--autobox_ligand", str(lf)
             ]
             try:
-                res = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=45, **get_subprocess_kwargs())
                 if res.returncode == 0:
                     cnn_score = None
                     cnn_aff = None

@@ -3,6 +3,21 @@ from pathlib import Path
 
 import sys
 import shutil
+import subprocess
+
+def get_subprocess_kwargs():
+    """
+    Return kwargs to suppress console/terminal windows when spawning
+    subprocesses (e.g. Vina, fpocket, WSL) on Windows desktop GUI apps.
+    """
+    kwargs = {}
+    if sys.platform == "win32":
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        si = subprocess.STARTUPINFO()
+        si.dwFlags |= getattr(subprocess, "STARTF_USESHOWWINDOW", 1)
+        si.wShowWindow = getattr(subprocess, "SW_HIDE", 0)
+        kwargs["startupinfo"] = si
+    return kwargs
 
 IS_FROZEN = getattr(sys, "frozen", False)
 if IS_FROZEN:
