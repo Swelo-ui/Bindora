@@ -5,6 +5,20 @@ import sys
 import shutil
 import subprocess
 
+# Ensure stdout and stderr are non-null in windowed (noconsole) mode
+if sys.stdout is None or sys.stderr is None:
+    appdata = os.environ.get("APPDATA")
+    log_dir = Path(appdata) / "Bindora" if appdata else Path.home() / ".bindora"
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        backend_log = open(log_dir / "backend.log", "a", encoding="utf-8", buffering=1)
+        if sys.stdout is None:
+            sys.stdout = backend_log
+        if sys.stderr is None:
+            sys.stderr = backend_log
+    except Exception:
+        pass
+
 def get_subprocess_kwargs():
     """
     Return kwargs to suppress console/terminal windows when spawning
@@ -21,11 +35,20 @@ def get_subprocess_kwargs():
 
 IS_FROZEN = getattr(sys, "frozen", False)
 if IS_FROZEN:
-    # PyInstaller unpacks data or runs from onedir folder
-    BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+    # PyInstaller unpacks data or runs from onedir folder (_internal)
+    bundle_candidate = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+    if not (bundle_candidate / "frontend").exists() and (bundle_candidate / "_internal" / "frontend").exists():
+        BASE_DIR = bundle_candidate / "_internal"
+    elif not (bundle_candidate / "frontend").exists() and (bundle_candidate.parent / "_internal" / "frontend").exists():
+        BASE_DIR = bundle_candidate.parent / "_internal"
+    else:
+        BASE_DIR = bundle_candidate
+
     BACKEND_DIR = BASE_DIR / "backend"
     FRONTEND_DIR = BASE_DIR / "frontend"
     BIN_DIR = BASE_DIR / "bin"
+    if not BIN_DIR.exists() and (BASE_DIR.parent / "_internal" / "bin").exists():
+        BIN_DIR = BASE_DIR.parent / "_internal" / "bin"
     
     # Store persistent writable user data in %APPDATA%/Bindora (avoiding read-only Program Files)
     appdata = os.environ.get("APPDATA")
@@ -45,9 +68,15 @@ def _resolve_vina_path():
     if env_vina and os.path.exists(env_vina):
         return Path(env_vina)
     if sys.platform == "win32":
-        win_bin = BIN_DIR / "vina.exe"
-        if win_bin.exists():
-            return win_bin
+        candidates = [
+            BIN_DIR / "vina.exe",
+            BASE_DIR / "bin" / "vina.exe",
+            BASE_DIR / "_internal" / "bin" / "vina.exe",
+            DATA_DIR / "bin" / "vina.exe",
+        ]
+        for c in candidates:
+            if c.exists():
+                return c
     sys_vina = shutil.which("vina")
     if sys_vina:
         return Path(sys_vina)
@@ -77,6 +106,8 @@ if not IS_FROZEN:
 # When frozen, seed and synchronize bundled benchmarks into persistent directory
 if IS_FROZEN:
     bundled_benchmarks = BASE_DIR / "data" / "benchmarks"
+    if not bundled_benchmarks.exists() and (BASE_DIR.parent / "_internal" / "data" / "benchmarks").exists():
+        bundled_benchmarks = BASE_DIR.parent / "_internal" / "data" / "benchmarks"
     if bundled_benchmarks.exists():
         for b_file in bundled_benchmarks.glob("*.json"):
             dest_file = BENCHMARKS_DIR / b_file.name
@@ -109,7 +140,8 @@ MAX_CONTENT_LENGTH = int(os.environ.get("BINDORA_MAX_CONTENT_LENGTH", str(32 * 1
 CORS_ORIGINS = os.environ.get("BINDORA_CORS_ORIGINS", "http://localhost:5000,http://127.0.0.1:5000")
 
 # Database configuration
-DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{DATA_DIR / 'bindora.db'}")
+_sqlite_path = (DATA_DIR / "bindora.db").resolve().as_posix()
+DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{_sqlite_path}")
 
 # Public APIs
 PUBCHEM_BASE_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
