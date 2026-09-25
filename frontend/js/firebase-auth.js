@@ -23,6 +23,21 @@ class BindoraFirebase {
     this.init();
   }
 
+  /**
+   * Detect if running inside the pywebview desktop application.
+   * Neither signInWithPopup nor signInWithRedirect works in WebView2
+   * embedded browsers due to storage partitioning and popup blocking.
+   * In desktop mode: Email/Password + Guest work; Google OAuth is disabled.
+   */
+  static isDesktopApp() {
+    // pywebview injects window.pywebview (or window.__pywebview in some versions)
+    if (window.pywebview !== undefined || window.__pywebview !== undefined) return true;
+    // Running on loopback (127.0.0.1) with no real hostname = almost certainly desktop
+    const host = window.location.hostname;
+    if (host === "127.0.0.1" || host === "localhost" || host === "") return true;
+    return false;
+  }
+
   init(customConfig = null) {
     if (!window.firebase) {
       console.warn("[Firebase] Firebase SDK not loaded.");
