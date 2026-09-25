@@ -46,6 +46,19 @@ class BindoraFirebase {
       this.db = firebase.database();
       this.isInitialized = true;
 
+      // Handle redirect result (Google sign-in via redirect in WebView2/embedded browser)
+      this.auth.getRedirectResult().then(result => {
+        if (result && result.user) {
+          console.log("[Firebase Auth] Redirect sign-in success:", result.user.email);
+          this.currentUser = result.user;
+          this.onUserChanged(result.user);
+        }
+      }).catch(err => {
+        if (err.code !== "auth/no-auth-event") {
+          console.warn("[Firebase Redirect Result]:", err.message);
+        }
+      });
+
       // Listen for auth state changes
       this.auth.onAuthStateChanged(user => {
         this.currentUser = user;
@@ -77,6 +90,18 @@ class BindoraFirebase {
     provider.addScope("profile");
     provider.addScope("email");
     try {
+      // Detect WebView2 / embedded browser (pywebview desktop app)
+      // signInWithPopup is blocked in embedded WebViews — use redirect instead
+      const isEmbeddedWebView = !window.chrome || navigator.userAgent.includes("WebView")
+        || window.navigator.userAgent.includes("Electron")
+        || (window.__pywebview !== undefined);
+
+      if (isEmbeddedWebView) {
+        // signInWithRedirect navigates in-place (works in WebView2)
+        await this.auth.signInWithRedirect(provider);
+        // getRedirectResult is called on next page load in init()
+        return;
+      }
       const result = await this.auth.signInWithPopup(provider);
       return result.user;
     } catch (error) {
