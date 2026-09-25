@@ -121,7 +121,7 @@ class NarrativeExplainer:
             "2. NEVER invent, hallucinate, or alter any numbers, scores, or constants. Use the exact values provided in the JSON data.\n"
             "3. TERMINOLOGY HONESTY:\n"
             "   - Refer to AutoDock Vina output strictly as 'AutoDock Vina Docking Score (kcal/mol)' or 'predicted binding score'. Do NOT describe it as an experimentally measured binding free energy (ΔG°).\n"
-            "   - Refer to Kd as 'theoretical dissociation constant (Kd) estimate', derived via standard isothermal thermodynamic approximation (T = 298.15 K, RT ≈ 0.592 kcal/mol).\n"
+            "   - Refer to Kd strictly as 'affinity-derived Kd-like estimate (model-derived)', derived via standard isothermal thermodynamic approximation (T = 298.15 K, RT ≈ 0.592 kcal/mol). Explicitly clarify that this value is mathematically derived from the docking score and is not an experimentally measured or rigorously calculated thermodynamic Kd.\n"
             "   - Clearly separate: (A) Docking-derived predictions, (B) Calculated RDKit cheminformatics descriptors, (C) Derived thermodynamic estimates, and (D) Experimental wet-lab assay data from ChEMBL (if available).\n"
             "4. CAUTIOUS SCIENTIFIC TONE:\n"
             "   - Use cautious, publication-grade academic prose ('in silico docking predicts', 'computationally modeled interaction', 'theoretical estimate').\n"
@@ -281,7 +281,7 @@ class NarrativeExplainer:
         sec1 = (
             f"### 1. 3D Binding Mechanism & Active Site Interactions\n\n"
             f"AutoDock Vina molecular docking of **{drug}** against receptor **{target}** (PDB ID: `{pdb_id}`) yielded a docking score of **{affinity} kcal/mol**. "
-            f"Based on standard isothermal thermodynamic approximation ($T = 298.15\\text{{ K}}$, $RT \\approx 0.592\\text{{ kcal/mol}}$), this corresponds to a theoretical dissociation constant ($K_d$) estimate of approximately **{kd_nm} nM** ({kd_um} µM), placing the predicted score in the **{potency}** tier.\n\n"
+            f"Based on standard isothermal thermodynamic approximation ($T = 298.15\\text{{ K}}$, $RT \\approx 0.592\\text{{ kcal/mol}}$), this corresponds to an affinity-derived Kd-like estimate of approximately **{kd_nm} nM** ({kd_um} µM) *(Model-derived estimate: $K_d = \\exp(\\text{{score}}/RT)$; not an experimental thermodynamic $K_d$)*, placing the predicted score in the **{potency}** tier.\n\n"
             f"{mode_line}"
             f"- **Ligand Efficiency (LE):** Calculated at **{le} kcal/mol/heavy atom** (benchmark target ≥ 0.30 kcal/mol/heavy atom; $|\\text{{score}}| / \\text{{heavy atoms}}$).\n"
             f"- **Hydrogen Bonding Network:** {len(hbonds)} hydrogen bond(s) identified within 3.5 Å: {hb_details}.\n"

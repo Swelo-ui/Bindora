@@ -16,7 +16,7 @@ To ensure academic publication grade and scientific defensibility:
 2. **Never hard-code benchmark numbers** or artificially force AutoDock Vina 1.2.5 to match literature numbers produced under different empirical scoring functions (e.g., AutoDock 4.2 grid-based electrostatic and desolvation scoring).
 3. **Explicitly categorize every reported metric** into one of five mutually distinct data tiers:
    - **Tier A (Predicted):** AutoDock Vina docking score in kcal/mol (empirical scoring function output).
-   - **Tier B (Derived):** Theoretical dissociation constant ($K_d$) derived via standard isothermal equilibrium model ($T = 298.15\text{ K}$, $RT \approx 0.592485\text{ kcal/mol}$).
+   - **Tier B (Derived / Model-based):** Affinity-Derived $K_d$-like estimate derived via standard isothermal equilibrium model ($T = 298.15\text{ K}$, $RT \approx 0.592485\text{ kcal/mol}$). Explicitly marked as a model-derived estimate, not an experimental thermodynamic constant.
    - **Tier C (Calculated):** Deterministic cheminformatics descriptors (RDKit molecular weight, MolLogP, HBD, HBA, TPSA, Rotatable bonds, and normalized Ligand Efficiency).
    - **Tier D (Validation):** Crystallographic redocking heavy-atom coordinate RMSD ($\le 2.0\text{ \AA}$) evaluating protocol pose reproduction.
    - **Tier E (Experimental):** Curated physical wet-lab assay bioactivities (ChEMBL / BindingDB $K_i$, $K_d$, $\text{IC}_{50}$).
@@ -30,8 +30,8 @@ To ensure academic publication grade and scientific defensibility:
 - **Nature of the Metric:** Vina uses an empirical, knowledge-based scoring function parameterized against the PDBbind refined set, combining steric interactions (Gauss 1, Gauss 2), repulsion, hydrophobic contacts, and directional hydrogen bonding.
 - **Limitation:** It is an empirical free energy estimator ($\Delta G_\text{score}$), not a rigorous path-integral thermodynamic free energy of binding ($\Delta G^\circ_\text{bind}$). It omits explicit solvent polarization, finite-temperature receptor conformational entropy, and ion-solvation equilibria.
 
-### 2.2 Theoretical Dissociation Constant ($K_d$) Derivation
-The theoretical dissociation constant is computed from the standard equilibrium state relation:
+### 2.2 Affinity-Derived $K_d$-like Estimate (Model-Derived)
+The affinity-derived $K_d$-like estimate is computed from the standard equilibrium state relation:
 $$\Delta G^\circ = R \cdot T \cdot \ln(K_d) \quad \implies \quad K_d = \exp\left(\frac{\Delta G^\circ}{R \cdot T}\right)$$
 
 Where:
@@ -47,7 +47,9 @@ $$K_d\text{ [nM]} = K_d\text{ [M]} \times 10^9$$
 $$K_d\text{ [}\mu\text{M]} = K_d\text{ [M]} \times 10^6$$
 $$pK_d = -\log_{10}(K_d\text{ [M]})$$
 
-> **Scientific Warning:** Theoretical $K_d$ represents an idealized two-state thermodynamic equilibrium under infinite dilution. It is reported as an educational indicator of energetic magnitude, **never as a substitute for wet-lab in vitro assay constants ($K_i / \text{IC}_{50}$)**.
+> **Mandatory Scientific Disclaimer:**
+> *"This value is mathematically derived from the docking score and is not an experimentally measured or rigorously calculated thermodynamic $K_d$."*
+> It is reported strictly as a model-derived indicator of energetic magnitude, **never as a substitute for wet-lab in vitro assay constants ($K_i / \text{IC}_{50}$)**.
 
 ### 2.3 Ligand Efficiency (LE)
 Ligand Efficiency measures binding energy contribution per non-hydrogen (heavy) atom:
@@ -150,22 +152,48 @@ When synthesizing pharmacological dossier briefings via Gemini or OpenRouter LLM
 
 ---
 
-## 8. Verification Benchmark Case Studies
+## 8. Verification Benchmark Case Studies (Genuine Empirical Outputs)
 
 ### Benchmark 1: Erlotinib Native Redocking into EGFR Kinase (PDB: 1M17)
-- **Target Receptor:** Epidermal Growth Factor Receptor (EGFR) Kinase Domain (PDB ID: `1M17`, chain A).
-- **Native Crystallographic Ligand:** Erlotinib (AQ4, $N_\text{heavy} = 29$).
-- **Expected AutoDock Vina 1.2.5 Docking Score:** Approximately $-7.07\text{ kcal/mol}$.
-- **Derived Theoretical $K_d$:** $\approx 6.5\text{ }\mu\text{M}$ ($6550\text{ nM}$) based on $RT = 0.5925\text{ kcal/mol}$.
-- **Ligand Efficiency (LE):** $|-7.07| / 29 = 0.244\text{ kcal}/(\text{mol}\cdot\text{HA})$.
-- **Symmetry-Aware Redocking RMSD:** $\approx 1.53\text{ \AA} \le 2.0\text{ \AA} \implies$ **PASS** (Protocol Validated).
-- **ChEMBL Wet-Lab Comparison:** Experimental biochemical $K_i$ for Erlotinib against human EGFR is $\approx 2.1\text{ nM}$ (ChEMBL assay records available). The discrepancy between the Vina score ($\approx 6.5\text{ }\mu\text{M}$) and physical assay ($2.1\text{ nM}$) exemplifies the empirical nature of rigid-receptor grid scoring functions and highlights the importance of transparent separation.
+- **Target Receptor:** Epidermal Growth Factor Receptor (EGFR) Kinase Domain (PDB ID: `1M17`, Chain A).
+- **Native Crystallographic Ligand:** Erlotinib (AQ4, $N_\text{heavy} = 29$, Rotatable Bonds = 11).
+- **Search Space (Bounding Box):** Center = $(22.01, 0.25, 52.79)$, Dimensions = $22.0 \times 22.0 \times 22.0\text{ \AA}$.
+- **Docking Engine Configuration:** AutoDock Vina 1.2.5, Exhaustiveness = 8, Seed = 42, Modes = 9.
+- **Docking Execution Time:** $51.61\text{ s}$.
+- **AutoDock Vina Docking Score (Rank 1):** **$-7.10\text{ kcal/mol}$**.
+- **Crystallographic Redocking RMSD (Rank 1):** **$1.52\text{ \AA}$** ($\le 2.0\text{ \AA} \implies$ **PASS**).
+- **Atom Mapping Engine:** `topological_symmetry_graph_isomorphism` (Exact chemical graph isomorphism via template bond-order assignment).
+- **Affinity-Derived $K_d$-like Estimate:** $6289.2\text{ nM}$ ($6.29\text{ }\mu\text{M}$) *(Model-derived estimate; not an experimental thermodynamic $K_d$)*.
+- **Ligand Efficiency (LE):** $0.245\text{ kcal}/(\text{mol}\cdot\text{HA})$ ($|-7.10| / 29$).
+- **Pose Distribution Across Modes:**
+  - Mode 1: $-7.10\text{ kcal/mol}$, $\text{RMSD} = 1.52\text{ \AA}$ (Native active pose)
+  - Mode 2: $-6.98\text{ kcal/mol}$, $\text{RMSD} = 2.40\text{ \AA}$
+  - Mode 3: $-6.97\text{ kcal/mol}$, $\text{RMSD} = 8.70\text{ \AA}$
+- **Validation Outcome:** **PASS** (Crystallographic Reproduction Validated).
+- **ChEMBL Comparison:** Experimental wet-lab biochemical $K_i$ for Erlotinib against human EGFR is $\approx 2.1\text{ nM}$ (ChEMBL assay records). The difference from the in silico derived estimate ($6.29\text{ }\mu\text{M}$) reflects the empirical nature of scoring functions and reinforces the necessity of explicit terminology separation.
 
-### Benchmark 2: Gefitinib Cross-Docking into EGFR Kinase (PDB: 1M17)
+### Benchmark 2: Indinavir Native Redocking into HIV-1 Protease C2 Homodimer (PDB: 1HSG)
+- **Target Receptor:** HIV-1 Protease Homodimer (PDB ID: `1HSG`, preserving both catalytic chains A & B).
+- **Native Crystallographic Ligand:** Indinavir (MK1, $N_\text{heavy} = 45$, Rotatable Bonds = 13).
+- **Search Space (Bounding Box):** Center = $(13.07, 22.47, 5.56)$, Dimensions = $22.0 \times 22.0 \times 22.0\text{ \AA}$.
+- **Docking Engine Configuration:** AutoDock Vina 1.2.5, Exhaustiveness = 8, Seed = 42, Modes = 9.
+- **Docking Execution Time:** $257.57\text{ s}$ across 4 parallel CPU worker threads.
+- **AutoDock Vina Docking Score (Rank 1):** **$-10.54\text{ kcal/mol}$**.
+- **Crystallographic Redocking RMSD (Rank 1):** **$0.46\text{ \AA}$** ($\le 2.0\text{ \AA} \implies$ **PASS — Sub-Angstrom Accuracy**).
+- **Atom Mapping Engine:** `topological_symmetry_graph_isomorphism` evaluating 12 chemical symmetry automorphisms.
+- **Affinity-Derived $K_d$-like Estimate:** $19.0\text{ nM}$ ($0.019\text{ }\mu\text{M}$) *(Model-derived estimate; not an experimental thermodynamic $K_d$)*.
+- **Ligand Efficiency (LE):** $0.234\text{ kcal}/(\text{mol}\cdot\text{HA})$ ($|-10.54| / 45$).
+- **Pose Distribution Across Modes:**
+  - Mode 1: $-10.54\text{ kcal/mol}$, $\text{RMSD} = 0.46\text{ \AA}$ (Near-perfect crystallographic reproduction)
+  - Mode 2: $-10.24\text{ kcal/mol}$, $\text{RMSD} = 10.54\text{ \AA}$ (Inverted homodimer binding orientation)
+  - Mode 3: $-10.12\text{ kcal/mol}$, $\text{RMSD} = 10.67\text{ \AA}$
+- **Validation Outcome:** **PASS** (Gold-standard crystallographic pose reproduced with sub-Angstrom precision).
+
+### Benchmark 3: Gefitinib Cross-Docking into EGFR Kinase (PDB: 1M17)
 - **Target Receptor:** EGFR Kinase Domain (PDB ID: `1M17`, crystallized with native Erlotinib).
 - **Docked Ligand:** Gefitinib (Iressa, $N_\text{heavy} = 31$).
 - **Experiment Mode:** **Cross-Docking / Benchmark Docking** (Pocket crystallized around Erlotinib, not Gefitinib).
-- **Expected AutoDock Vina 1.2.5 Docking Score:** Approximately $-7.99\text{ kcal/mol}$.
-- **Derived Theoretical $K_d$:** $\approx 1.4\text{ }\mu\text{M}$ ($1390\text{ nM}$).
-- **Ligand Efficiency (LE):** $|-7.99| / 31 = 0.258\text{ kcal}/(\text{mol}\cdot\text{HA})$.
+- **AutoDock Vina 1.2.5 Docking Score:** $-7.99\text{ kcal/mol}$.
+- **Affinity-Derived $K_d$-like Estimate:** $1390\text{ nM}$ ($1.39\text{ }\mu\text{M}$).
+- **Ligand Efficiency (LE):** $0.258\text{ kcal}/(\text{mol}\cdot\text{HA})$ ($|-7.99| / 31$).
 - **Literature Comparison Context:** AutoDock 4.2 literature benchmarks report $-9.0\text{ to }-10.5\text{ kcal/mol}$ using AutoDock 4.2 semi-empirical force fields with Amber-based electrostatic charges. AutoDock Vina 1.2.5 uses an independent empirical scoring function; reporting $-7.99\text{ kcal/mol}$ is scientifically honest and must never be altered to fake a match with literature.

@@ -1,0 +1,114 @@
+{
+  "system": "1M17 (Human EGFR Kinase / Erlotinib AQ4)",
+  "chain": "A",
+  "ligand": "Erlotinib (AQ4)",
+  "heavy_atoms": 29,
+  "rotatable_bonds": 11,
+  "grid_center": {
+    "x": 22.01,
+    "y": 0.25,
+    "z": 52.79
+  },
+  "grid_size": {
+    "x": 22.0,
+    "y": 22.0,
+    "z": 22.0
+  },
+  "seed": 42,
+  "exhaustiveness": 8,
+  "num_modes": 9,
+  "rank_1_score_kcal": -7.096,
+  "rank_1_rmsd_angstroms": 1.52,
+  "rank_1_kd_like_nm": 6289.2,
+  "rank_1_le": 0.245,
+  "best_mode": 1,
+  "best_mode_rmsd_angstroms": 1.52,
+  "atom_mapping_method": "topological_symmetry_graph_isomorphism",
+  "automorphisms_tested": 1,
+  "status": "PASS",
+  "docking_time_s": 51.61,
+  "total_time_s": 51.76,
+  "all_modes": [
+    {
+      "mode": 1,
+      "affinity_kcal": -7.096,
+      "derived_kd_nm": 6289.2,
+      "ligand_efficiency": 0.245,
+      "rmsd_to_cryst": 1.52,
+      "mapping_method": "topological_symmetry_graph_isomorphism",
+      "automorphisms_tested": 1
+    },
+    {
+      "mode": 2,
+      "affinity_kcal": -6.976,
+      "derived_kd_nm": 7701.16,
+      "ligand_efficiency": 0.241,
+      "rmsd_to_cryst": 2.4,
+      "mapping_method": "topological_symmetry_graph_isomorphism",
+      "automorphisms_tested": 1
+    },
+    {
+      "mode": 3,
+      "affinity_kcal": -6.974,
+      "derived_kd_nm": 7727.2,
+      "ligand_efficiency": 0.24,
+      "rmsd_to_cryst": 8.7,
+      "mapping_method": "topological_symmetry_graph_isomorphism",
+      "automorphisms_tested": 1
+    },
+    {
+      "mode": 4,
+      "affinity_kcal": -6.961,
+      "derived_kd_nm": 7898.62,
+      "ligand_efficiency": 0.24,
+      "rmsd_to_cryst": 6.46,
+      "mapping_method": "topological_symmetry_graph_isomorphism",
+      "automorphisms_tested": 1
+    },
+    {
+      "mode": 5,
+      "affinity_kcal": -6.829,
+      "derived_kd_nm": 9869.79,
+      "ligand_efficiency": 0.235,
+      "rmsd_to_cryst": 7.87,
+      "mapping_method": "topological_symmetry_graph_isomorphism",
+      "automorphisms_tested": 1
+    },
+    {
+      "mode": 6,
+      "affinity_kcal": -6.682,
+      "derived_kd_nm": 12649.1,
+      "ligand_efficiency": 0.23,
+      "rmsd_to_cryst": 7.23,
+      "mapping_method": "topological_symmetry_graph_isomorphism",
+      "automorphisms_tested": 1
+    },
+    {
+      "mode": 7,
+      "affinity_kcal": -6.575,
+      "derived_kd_nm": 15152.74,
+      "ligand_efficiency": 0.227,
+      "rmsd_to_cryst": 2.86,
+      "mapping_method": "topological_symmetry_graph_isomorphism",
+      "automorphisms_tested": 1
+    },
+    {
+      "mode": 8,
+      "affinity_kcal": -6.494,
+      "derived_kd_nm": 17372.59,
+      "ligand_efficiency": 0.224,
+      "rmsd_to_cryst": 6.46,
+      "mapping_method": "topological_symmetry_graph_isomorphism",
+      "automorphisms_tested": 1
+    },
+    {
+      "mode": 9,
+      "affinity_kcal": -6.413,
+      "derived_kd_nm": 19917.65,
+      "ligand_efficiency": 0.221,
+      "rmsd_to_cryst": 8.05,
+      "mapping_method": "topological_symmetry_graph_isomorphism",
+      "automorphisms_tested": 1
+    }
+  ]
+}

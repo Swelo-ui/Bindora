@@ -34,6 +34,13 @@ class TestThermodynamicCalculations:
         kd_um = thermo["theoretical_kd_um"]
         assert 6.0 <= kd_um <= 7.0, f"Expected Kd ~6.5 uM, got {kd_um}"
 
+        # Assert scientific terminology requirements
+        assert thermo["affinity_derived_kd_nm"] == thermo["theoretical_kd_nm"]
+        assert thermo["metric_type"] == "Derived / Model-based"
+        assert "Affinity-derived Kd-like estimate" in thermo["kd_type"]
+        assert "mathematically derived from the docking score" in thermo["scientific_disclaimer"]
+        assert "not an experimentally measured or rigorously calculated thermodynamic Kd" in thermo["scientific_disclaimer"]
+
     def test_kd_conversion_gefitinib(self):
         """Verify -7.99 kcal/mol converts correctly at 298.15 K."""
         affinity = -7.99
@@ -45,6 +52,7 @@ class TestThermodynamicCalculations:
         # Kd = exp(-7.99 / 0.5924849) = exp(-13.48557) = 1.39e-6 M = 1390 nM = 1.39 uM
         kd_nm = thermo["theoretical_kd_nm"]
         assert 1300 <= kd_nm <= 1500, f"Expected Kd ~1390 nM, got {kd_nm}"
+        assert thermo["affinity_derived_kd_nm"] == thermo["theoretical_kd_nm"]
 
     def test_ligand_efficiency_calculation(self):
         """Verify LE = |score| / heavy_atoms with explicit scientific documentation."""
@@ -144,6 +152,11 @@ class TestRMSDMethodology:
         rmsd = calculate_rmsd(ref_pdb, flipped_pdb)
         assert isinstance(rmsd, float)
         assert rmsd >= 0.0
+
+        details = calculate_rmsd(ref_pdb, flipped_pdb, return_details=True)
+        assert details["rmsd"] >= 0.0
+        assert details["method"] == "topological_symmetry_graph_isomorphism"
+        assert details["automorphisms_tested"] == 4
 
 
 class TestInteractionDetectionAndFluorinePhysics:

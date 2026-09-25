@@ -72,7 +72,7 @@ class BioactivityService:
         else:
             potency_class = "Sub-threshold / Marginal Binding (High Micromolar/Millimolar Kd)"
             weak_warning = (
-                f"Sub-threshold / Weak Binding Alert (Docking Score = {round(affinity_kcal, 2)} kcal/mol, Theoretical Kd ≈ {round(kd_um, 1)} µM): "
+                f"Sub-threshold / Weak Binding Alert (Docking Score = {round(affinity_kcal, 2)} kcal/mol, Affinity-Derived Kd-like Estimate ≈ {round(kd_um, 1)} µM): "
                 "Predicted docking score falls above the -6.0 kcal/mol threshold. Such weak interactions typically reflect "
                 "superficial surface adhesion or numerical artifacts rather than biologically meaningful active-site inhibition. "
                 "Treat docking pose strictly as hypothesis-generating and interpret with extreme caution."
@@ -85,18 +85,22 @@ class BioactivityService:
             "score_source": "AutoDock Vina",
             "score_unit": "kcal/mol",
             
-            # Thermodynamic derivation
+            # Thermodynamic derivation: Affinity-derived Kd-like estimate
+            "affinity_derived_kd_nm": round(kd_nm, 2) if kd_nm < 1e6 else round(kd_nm, 0),
+            "affinity_derived_kd_um": round(kd_um, 3),
+            "affinity_derived_kd_molar": kd_molar,
             "theoretical_kd_nm": round(kd_nm, 2) if kd_nm < 1e6 else round(kd_nm, 0),
             "theoretical_kd_um": round(kd_um, 3),
             "theoretical_kd_molar": kd_molar,
-            "kd_type": "Theoretical Kd (derived from docking score)",
-            "kd_equation": "Kd = exp(ΔG / RT)",
+            "kd_type": "Affinity-derived Kd-like estimate (model-derived)",
+            "metric_type": "Derived / Model-based",
+            "kd_equation": "Kd = exp(score / RT)",
             "temperature_k": temperature_k,
             "temperature_kelvin": temperature_k,
             "gas_constant_kcal_mol_k": gas_constant_r,
             "gas_constant_kcal_per_mol_k": gas_constant_r,
             "standard_state": "1 M",
-            "scientific_disclaimer": "Theoretical Kd is a derived mathematical estimation (Kd = exp(ΔG/RT)) from the empirical scoring function, not an experimentally determined wet-lab Kd or Ki.",
+            "scientific_disclaimer": "This value is mathematically derived from the docking score and is not an experimentally measured or rigorously calculated thermodynamic Kd.",
             
             # Backward-compatible keys
             "binding_affinity_kcal": round(affinity_kcal, 2),

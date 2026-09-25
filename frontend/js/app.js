@@ -3594,10 +3594,10 @@ class BindoraApp {
             <span class="text-cyan-700 dark:text-cyan-400 font-black text-base">${topPose.affinity_kcal != null ? topPose.affinity_kcal.toFixed(2) : "—"} <span class="text-xs font-normal font-sans">kcal/mol</span></span>
             <span class="text-[10px] text-slate-500 block font-sans">Empirical Score (ΔG estimate)</span>
           </div>
-          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
-            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium" title="Derived via isothermal thermodynamic model Kd = exp(score / RT) at 298.15 K">Theoretical Kd (Derived)</span>
-            <span class="text-emerald-700 dark:text-emerald-400 font-black text-base">${thermo.theoretical_kd_nm != null ? thermo.theoretical_kd_nm + ' nM' : formatKd(topPose.affinity_kcal)}</span>
-            <span class="text-[10px] text-slate-500 block font-sans">Derived via Kd = exp(ΔG/RT)</span>
+          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm" title="This value is mathematically derived from the docking score and is not an experimentally measured or rigorously calculated thermodynamic Kd.">
+            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Affinity-Derived Kd-like Estimate</span>
+            <span class="text-emerald-700 dark:text-emerald-400 font-black text-base">${(thermo.affinity_derived_kd_nm ?? thermo.theoretical_kd_nm) != null ? (thermo.affinity_derived_kd_nm ?? thermo.theoretical_kd_nm) + ' nM' : formatKd(topPose.affinity_kcal)}</span>
+            <span class="text-[10px] text-amber-600 dark:text-amber-400 block font-sans font-medium">Derived / Model-based • exp(score/RT)</span>
           </div>
           <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
             <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium" title="Normalized heavy atom binding affinity: |Vina Score| / Heavy Atom Count">Ligand Efficiency (LE)</span>
@@ -3635,10 +3635,10 @@ class BindoraApp {
                   <td class="p-2 font-sans text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">AutoDock Vina 1.2.5 Empirical Scoring Function</td>
                 </tr>
                 <tr>
-                  <td class="p-2 font-sans font-semibold border border-slate-200 dark:border-slate-800">Theoretical Dissociation Constant (Kd)</td>
-                  <td class="p-2 font-bold text-emerald-700 dark:text-emerald-400 border border-slate-200 dark:border-slate-800">${thermo.theoretical_kd_nm != null ? thermo.theoretical_kd_nm + ' nM' : formatKd(topPose.affinity_kcal)}</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800"><span class="px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 font-sans text-[10px]">Derived</span></td>
-                  <td class="p-2 font-sans text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">Standard Isothermal Model: Kd = exp(ΔG/RT) at 298.15 K (RT ≈ 0.592 kcal/mol)</td>
+                  <td class="p-2 font-sans font-semibold border border-slate-200 dark:border-slate-800">Affinity-Derived Kd-like Estimate</td>
+                  <td class="p-2 font-bold text-emerald-700 dark:text-emerald-400 border border-slate-200 dark:border-slate-800">${(thermo.affinity_derived_kd_nm ?? thermo.theoretical_kd_nm) != null ? (thermo.affinity_derived_kd_nm ?? thermo.theoretical_kd_nm) + ' nM' : formatKd(topPose.affinity_kcal)}</td>
+                  <td class="p-2 border border-slate-200 dark:border-slate-800"><span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-sans text-[10px]" title="This value is mathematically derived from the docking score and is not an experimentally measured or rigorously calculated thermodynamic Kd.">Derived / Model-based</span></td>
+                  <td class="p-2 font-sans text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">Model conversion: Kd = exp(score/RT) at 298.15 K (RT ≈ 0.592 kcal/mol). Not an experimental or rigorous thermodynamic Kd.</td>
                 </tr>
                 <tr>
                   <td class="p-2 font-sans font-semibold border border-slate-200 dark:border-slate-800">Ligand Efficiency (LE)</td>
@@ -3660,6 +3660,9 @@ class BindoraApp {
                 </tr>
               </tbody>
             </table>
+            <p class="text-[10px] text-slate-500 italic mt-1 leading-normal">
+              * Note: The Affinity-Derived Kd-like estimate is mathematically derived from the AutoDock Vina score (Kd = exp(score/RT) at 298.15 K) and is not an experimentally measured or rigorously calculated thermodynamic Kd.
+            </p>
           </div>
         </div>
 
@@ -3757,7 +3760,7 @@ class BindoraApp {
                 <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Mode</th>
                 <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="AutoDock Vina Empirical Docking Score">Vina Score</th>
                 <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Vinardo Empirical Scoring Function">Vinardo Score</th>
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Theoretical Kd = exp(score/RT)">Theoretical Kd</th>
+                <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Affinity-derived Kd-like estimate: Kd = exp(score/RT) at 298.15 K. Derived/model-based estimate, not an experimental thermodynamic constant.">Kd-like Estimate (Derived)</th>
                 <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Ligand Efficiency = |Vina Score| / Heavy Atoms">Ligand Eff.</th>
                 <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Conformational Clustering: Pose vs Rank 1 RMSD Lower Bound">Pose vs Rank 1 RMSD (l.b.)</th>
                 <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Conformational Clustering: Pose vs Rank 1 RMSD Upper Bound">Pose vs Rank 1 RMSD (u.b.)</th>
