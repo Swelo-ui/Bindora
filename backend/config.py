@@ -4,10 +4,26 @@ from pathlib import Path
 import sys
 import shutil
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-BACKEND_DIR = BASE_DIR / "backend"
-FRONTEND_DIR = BASE_DIR / "frontend"
-BIN_DIR = BASE_DIR / "bin"
+IS_FROZEN = getattr(sys, "frozen", False)
+if IS_FROZEN:
+    # PyInstaller unpacks data or runs from onedir folder
+    BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+    BACKEND_DIR = BASE_DIR / "backend"
+    FRONTEND_DIR = BASE_DIR / "frontend"
+    BIN_DIR = BASE_DIR / "bin"
+    
+    # Store persistent writable user data in %APPDATA%/Bindora (avoiding read-only Program Files)
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        DATA_DIR = Path(appdata) / "Bindora"
+    else:
+        DATA_DIR = Path.home() / ".bindora"
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    BACKEND_DIR = BASE_DIR / "backend"
+    FRONTEND_DIR = BASE_DIR / "frontend"
+    BIN_DIR = BASE_DIR / "bin"
+    DATA_DIR = BASE_DIR / "data"
 
 def _resolve_vina_path():
     env_vina = os.environ.get("VINA_EXE")
@@ -30,14 +46,30 @@ def _resolve_vina_path():
 VINA_EXE = _resolve_vina_path()
 GNINA_EXE = os.environ.get("GNINA_EXE", str(BIN_DIR / "gnina.exe"))
 
-DATA_DIR = BASE_DIR / "data"
 CACHE_DIR = DATA_DIR / "cache"
 BENCHMARKS_DIR = DATA_DIR / "benchmarks"
 
 # Ensure runtime directories exist
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 BENCHMARKS_DIR.mkdir(parents=True, exist_ok=True)
-BIN_DIR.mkdir(parents=True, exist_ok=True)
+if not IS_FROZEN:
+    try:
+        BIN_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+
+# When frozen, seed initial benchmarks from bundle if not present
+if IS_FROZEN:
+    bundled_benchmarks = BASE_DIR / "data" / "benchmarks"
+    if bundled_benchmarks.exists():
+        for b_file in bundled_benchmarks.glob("*.json"):
+            dest_file = BENCHMARKS_DIR / b_file.name
+            if not dest_file.exists():
+                try:
+                    shutil.copy2(b_file, dest_file)
+                except Exception:
+                    pass
 
 try:
     from dotenv import load_dotenv

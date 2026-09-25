@@ -46,6 +46,21 @@ COFACTORS_AND_SUGARS = {
     "NAG", "MAN", "BMA", "FUC", "GAL", "HEM", "FAD", "NAD", "NAP", "NDP", "FMN"
 }
 
+_ACTIVE_SUBPROCESSES = set()
+
+def terminate_active_docking_processes() -> int:
+    """Gracefully terminate any running Vina/GNINA subprocesses to prevent orphans on app shutdown."""
+    count = 0
+    for proc in list(_ACTIVE_SUBPROCESSES):
+        try:
+            proc.terminate()
+            proc.kill()
+            count += 1
+        except Exception:
+            pass
+    _ACTIVE_SUBPROCESSES.clear()
+    return count
+
 class DockingEngine:
     """Service to handle receptor & ligand preparation, Vina docking execution, redocking validation, and contact analysis."""
 
@@ -799,9 +814,20 @@ class DockingEngine:
 
                 # Dynamically scale timeout based on exhaustiveness to support deep research searches
                 calc_timeout = max(600, int(exhaustiveness * 90))
-                process = subprocess.run(cmd, capture_output=True, text=True, timeout=calc_timeout)
-                if process.returncode != 0:
-                    err_msg = process.stderr or process.stdout
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                _ACTIVE_SUBPROCESSES.add(process)
+                try:
+                    stdout, stderr = process.communicate(timeout=calc_timeout)
+                    returncode = process.returncode
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.communicate()
+                    raise RuntimeError(f"AutoDock Vina calculation timed out after {calc_timeout}s.")
+                finally:
+                    _ACTIVE_SUBPROCESSES.discard(process)
+
+                if returncode != 0:
+                    err_msg = stderr or stdout
                     raise RuntimeError(f"AutoDock Vina execution error: {err_msg}")
 
                 if not out_file.exists():

@@ -39,3 +39,9 @@ tests/dossier_print_preview.png
 *.swo
 .DS_Store
 Thumbs.db
+
+# Desktop build artifacts
+build/
+dist/
+installer/Output/
+*.spec.bak

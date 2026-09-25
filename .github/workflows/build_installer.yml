@@ -1,0 +1,63 @@
+name: Build Desktop Installer (Windows)
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+jobs:
+  build-windows-installer:
+    name: Build Bindora Dock Setup (.exe)
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller waitress pywebview pillow
+
+      - name: Ensure AutoDock Vina Windows binary is present
+        run: |
+          python -c "from backend.utils.vina_setup import ensure_vina; print(ensure_vina(verbose=True))"
+
+      - name: Generate Inno Setup Wizard BMP images
+        run: |
+          python scripts/generate_installer_assets.py
+
+      - name: Package with PyInstaller (--onedir)
+        run: |
+          python -m PyInstaller bindora.spec
+
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup --no-progress
+
+      - name: Compile Inno Setup Installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+
+      - name: Upload Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BindoraDock-Setup
+          path: installer/Output/BindoraDock-Setup.exe
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: installer/Output/BindoraDock-Setup.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

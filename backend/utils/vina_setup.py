@@ -6,8 +6,11 @@ from pathlib import Path
 
 import shutil
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-BIN_DIR = BASE_DIR / "bin"
+try:
+    from backend.config import BIN_DIR
+except Exception:
+    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+    BIN_DIR = BASE_DIR / "bin"
 
 _VINA_NOTIFIED = False
 
@@ -22,7 +25,10 @@ def get_platform_vina_info():
 def ensure_vina(verbose: bool = False):
     """Ensure the AutoDock Vina binary exists and is functional across Windows, Linux, and macOS."""
     global _VINA_NOTIFIED
-    BIN_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        BIN_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
     
     # Check system PATH (common on Linux/Colab/Docker)
     sys_vina = shutil.which("vina")
