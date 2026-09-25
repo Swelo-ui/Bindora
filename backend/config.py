@@ -74,17 +74,17 @@ if not IS_FROZEN:
     except Exception:
         pass
 
-# When frozen, seed initial benchmarks from bundle if not present
+# When frozen, seed and synchronize bundled benchmarks into persistent directory
 if IS_FROZEN:
     bundled_benchmarks = BASE_DIR / "data" / "benchmarks"
     if bundled_benchmarks.exists():
         for b_file in bundled_benchmarks.glob("*.json"):
             dest_file = BENCHMARKS_DIR / b_file.name
-            if not dest_file.exists():
-                try:
+            try:
+                if not dest_file.exists() or dest_file.stat().st_size != b_file.stat().st_size or b_file.stat().st_mtime > dest_file.stat().st_mtime:
                     shutil.copy2(b_file, dest_file)
-                except Exception:
-                    pass
+            except Exception:
+                pass
 
 try:
     from dotenv import load_dotenv
