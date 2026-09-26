@@ -356,10 +356,22 @@ Bindora/
 |   `-- lib/
 |       |-- 3Dmol-min.js       # Bundled 3Dmol.js (works offline)
 |       `-- chart.min.js       # Bundled Chart.js (works offline)
+|-- docs/                      # Comprehensive technical & scientific documentation
+|   |-- USER_GUIDE.md          # Detailed step-by-step user & testing manual
+|   |-- DEPLOYMENT.md          # Production deployment & hardening guide
+|   |-- SCIENTIFIC_INTEGRITY.md# Strict protocol for reproducible benchmarks
+|   |-- VALIDATION_PROTOCOL.md # Crystallographic redocking validation protocol
+|   |-- FIREBASE_SETUP.md      # Cloud authentication & session sync setup
+|   `-- CHANGELOG.md           # Production hardening changelog
+|-- notebooks/
+|   `-- colab_run.ipynb        # Cloud compute execution on Google Colab
 |-- tests/
 |   |-- benchmark_casf2016.py  # CASF-2016 285-complex core set benchmark suite
 |   |-- benchmark_screening.py # DUD-E & ChEMBL virtual screening enrichment suite
 |   |-- benchmark_accuracy.py  # PDBbind 25-complex validation suite
+|   |-- benchmark_1hsg.py      # HIV-1 Protease / Indinavir benchmark runner
+|   |-- benchmark_1m17.py      # EGFR Kinase / Erlotinib benchmark runner
+|   |-- benchmark_1t46.py      # Abl1 Kinase / Imatinib benchmark runner
 |   |-- test_capabilities_expansion.py # 8-capability expansion test suite
 |   |-- test_research_grade.py # Astex Diverse Set gold-standard redocking (1HSG, 1AQ1, 1MZC)
 |   |-- test_docking.py        # Docking, Vinardo scoring, 2D diagram unit tests
@@ -367,7 +379,7 @@ Bindora/
 |-- bindora_cli.py             # Interactive Terminal CLI with arrow-key keyboard navigation
 |-- run_cli.bat                # Windows 1-click terminal launcher
 |-- CONTRIBUTING.md            # Scientific contribution standards & integrity policy
-|-- USER_GUIDE.md              # Detailed step-by-step user & testing manual
+|-- LICENSE                    # Open-source license
 `-- requirements.txt           # Python dependencies
 ```
 

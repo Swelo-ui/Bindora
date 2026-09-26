@@ -12,28 +12,28 @@ from backend.services.docking import DockingEngine
 from backend.services.bioactivity import BioactivityService
 from backend.utils.rmsd_calculator import calculate_rmsd
 
-def run_1m17_benchmark():
+def run_1hsg_benchmark():
     print("=" * 60)
-    print("STARTING 1M17 (EGFR / Erlotinib AQ4) BENCHMARK")
+    print("STARTING 1HSG (HIV-1 Protease / Indinavir MK1) BENCHMARK")
     print("=" * 60)
     t0 = time.time()
     
     # 1. Fetch
-    rec_meta = StructureFetcher.fetch_rcsb_pdb("1M17")
+    rec_meta = StructureFetcher.fetch_rcsb_pdb("1HSG")
     pdb_content = rec_meta["pdb_content"]
     
-    # 2. Receptor Preparation
-    rec = DockingEngine.prepare_receptor(pdb_content, target_chain="A")
+    # 2. Receptor Preparation (preserve C2 homodimer: Chains A & B)
+    rec = DockingEngine.prepare_receptor(pdb_content)
     native = rec["native_ligand"]
     pocket_center = rec["detected_pocket"]["center"]
     pocket_size = rec["detected_pocket"]["size"]
     
-    print(f"Receptor: Human EGFR Kinase Domain (Chain A)")
+    print(f"Receptor: HIV-1 Protease C2 Homodimer (Chains: {rec.get('chains', ['A', 'B'])})")
     print(f"Native Ligand: {native['name']} ({native['atom_count']} atoms)")
     print(f"Grid Center: x={pocket_center['x']:.2f}, y={pocket_center['y']:.2f}, z={pocket_center['z']:.2f}")
     print(f"Grid Box Size: x={pocket_size['x']:.2f}, y={pocket_size['y']:.2f}, z={pocket_size['z']:.2f}")
     
-    # 3. Native Ligand Preparation
+    # 3. Native Ligand Preparation (MK1)
     nat_prep = DockingEngine.prepare_native_ligand(native["pdb_block"])
     print(f"Prepared Heavy Atoms: {nat_prep['heavy_atom_count']}")
     print(f"Prepared Rotatable Bonds: {nat_prep['rotatable_bonds']}")
@@ -68,7 +68,7 @@ def run_1m17_benchmark():
         method = rmsd_info.get("method", "unknown") if isinstance(rmsd_info, dict) else "direct"
         autos = rmsd_info.get("automorphisms_tested", 1) if isinstance(rmsd_info, dict) else 1
         
-        thermo = BioactivityService.calculate_thermodynamics(p["affinity_kcal"], nat_prep["heavy_atom_count"], 393.44)
+        thermo = BioactivityService.calculate_thermodynamics(p["affinity_kcal"], nat_prep["heavy_atom_count"], 613.79)
         
         mode_data = {
             "mode": p["mode"],
@@ -93,10 +93,10 @@ def run_1m17_benchmark():
     is_pass = rank1["rmsd_to_cryst"] <= 2.0 or min_rmsd <= 2.0
     status = "PASS" if is_pass else "FAIL"
     
-    result_1m17 = {
-        "system": "1M17 (Human EGFR Kinase / Erlotinib AQ4)",
-        "chain": "A",
-        "ligand": "Erlotinib (AQ4)",
+    result_1hsg = {
+        "system": "1HSG (HIV-1 Protease C2 Homodimer / Indinavir MK1)",
+        "chains": rec.get("chains", ["A", "B"]),
+        "ligand": "Indinavir (MK1)",
         "heavy_atoms": nat_prep["heavy_atom_count"],
         "rotatable_bonds": nat_prep["rotatable_bonds"],
         "grid_center": pocket_center,
@@ -118,10 +118,13 @@ def run_1m17_benchmark():
         "all_modes": pose_results
     }
     
-    return result_1m17
+    return result_1hsg
 
 if __name__ == "__main__":
-    res = run_1m17_benchmark()
-    with open("benchmark_1m17_output.json", "w") as f:
+    res = run_1hsg_benchmark()
+    out_dir = Path(__file__).resolve().parent.parent / "data" / "benchmarks"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_file = out_dir / "1hsg_benchmark_result.json"
+    with open(out_file, "w", encoding="utf-8") as f:
         json.dump(res, f, indent=2)
-    print("\n1M17 Benchmark Summary JSON saved to benchmark_1m17_output.json")
+    print(f"\n1HSG Benchmark Summary JSON saved to {out_file}")

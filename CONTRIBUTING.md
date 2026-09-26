@@ -7,7 +7,7 @@ This document explains how to reproduce benchmarks, add new targets, and run CI 
 
 ## 1. Scientific Integrity Policy
 
-All benchmark output is governed by [`SCIENTIFIC_INTEGRITY.md`](SCIENTIFIC_INTEGRITY.md):
+All benchmark output is governed by [`docs/SCIENTIFIC_INTEGRITY.md`](docs/SCIENTIFIC_INTEGRITY.md):
 
 - **Never write benchmark JSON by hand.** All output must go through
   `backend/utils/report_emitter.py` (SHA-256 provenance, atomic writes).

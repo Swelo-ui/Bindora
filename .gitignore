@@ -29,6 +29,10 @@ data/benchmarks/*.log
 data/benchmarks/*_progress.json
 data/dude/
 docking_*/
+benchmark_*_output.json
+scratch/
+*.log
+notebooks/.ipynb_checkpoints/
 tests/dossier_export.pdf
 tests/dossier_print_preview.png
 
