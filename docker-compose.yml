@@ -15,6 +15,7 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5000,http://127.0.0.1:5000}
       - DATABASE_URL=sqlite:////app/data/bindora.db
       - VINA_EXE=/usr/local/bin/vina
+      - GUNICORN_WORKERS=1
     volumes:
       - bindora-data:/app/data
       - bindora-cache:/app/data/cache

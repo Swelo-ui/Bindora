@@ -834,8 +834,14 @@ class DockingEngine:
                     _ACTIVE_SUBPROCESSES.discard(process)
 
                 if returncode != 0:
-                    err_msg = stderr or stdout
-                    raise RuntimeError(f"AutoDock Vina execution error: {err_msg}")
+                    err_lines = [l.strip() for l in (stderr or stdout or "").splitlines() if l.strip()]
+                    error_summary = [l for l in err_lines if "error" in l.lower() or "exception" in l.lower()]
+                    base_msg = " | ".join(error_summary) if error_summary else (err_lines[-1] if err_lines else "")
+                    if returncode in (-9, 137):
+                        base_msg = "Process terminated by Out-Of-Memory (OOM) killer. (Host machine ran out of RAM)."
+                    elif not base_msg:
+                        base_msg = f"Process exited with code {returncode}."
+                    raise RuntimeError(f"AutoDock Vina execution error: {base_msg}")
 
                 if not out_file.exists():
                     raise RuntimeError("AutoDock Vina finished without generating an output PDBQT file.")
