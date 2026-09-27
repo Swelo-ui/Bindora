@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import datetime
 import traceback
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -25,10 +26,13 @@ from backend.services.batch import BatchScreeningService
 from backend.services.batch_manager import BatchScreeningManager
 from backend.services.ensemble import EnsembleDockingService
 from backend.services.pharmacophore import PharmacophoreService
+from backend.services.hardware_profiler import HardwareTelemetrySampler
 from backend.utils.vina_setup import ensure_vina
 from rdkit import Chem
 
 app = Flask(__name__, static_folder=str(FRONTEND_DIR), static_url_path="")
+_is_docking_active = False
+hw_sampler = HardwareTelemetrySampler.get_instance()
 
 # Security configuration
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
@@ -310,6 +314,8 @@ def run_docking():
     if not grid_validation.valid:
         return jsonify({"error": grid_validation.error, "field": "grid_box"}), 400
 
+    global _is_docking_active
+    _is_docking_active = True
     try:
         # Run AutoDock Vina with multi-core parallel optimization
         poses = DockingEngine.run_docking(
@@ -394,11 +400,14 @@ def run_docking():
             "execution_duration_s": best_pose.get("execution_duration_s", 0.0),
             "cpu_count": best_pose.get("cpu_count_used", os.cpu_count() or 1),
             "session_id": session_id,
-            "experiment_classification": experiment_classification
+            "experiment_classification": experiment_classification,
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
         })
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": f"Docking execution failed: {str(e)}"}), 500
+    finally:
+        _is_docking_active = False
 
 @app.route("/api/docking/classify-experiment", methods=["POST"])
 def classify_experiment_endpoint():
@@ -491,6 +500,8 @@ def redock_validate():
 
     seed = int(data.get("seed", 42))
 
+    global _is_docking_active
+    _is_docking_active = True
     try:
         validation_result = DockingEngine.run_redocking_validation(
             receptor_pdbqt,
@@ -504,6 +515,8 @@ def redock_validate():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": f"Redocking validation failed: {str(e)}"}), 500
+    finally:
+        _is_docking_active = False
 
 @app.route("/api/reproducibility/versions", methods=["GET"])
 def get_reproducibility_versions():
@@ -522,6 +535,13 @@ def get_reproducibility_versions():
         "rcsb_pdb_rest": "RCSB PDB REST API v1",
         "scoring_function": "AutoDock Vina Iterated Local Search & Monte Carlo"
     })
+
+@app.route("/api/system/hardware", methods=["GET"])
+def get_hardware_info():
+    from backend.services.docking import _ACTIVE_SUBPROCESSES
+    is_docking = bool(_is_docking_active or len(_ACTIVE_SUBPROCESSES) > 0)
+    info = hw_sampler.get_telemetry(is_docking_active=is_docking)
+    return jsonify(info)
 
 @app.route("/api/docking/interactions", methods=["POST"])
 def analyze_interactions():
@@ -636,6 +656,8 @@ def batch_docking():
     if not receptor_pdbqt or not receptor_pdb or not center or not size or not ligands:
         return jsonify({"error": "Missing required batch parameters"}), 400
 
+    global _is_docking_active
+    _is_docking_active = True
     try:
         leaderboard = BatchScreeningService.run_batch(
             receptor_pdbqt,
@@ -648,6 +670,8 @@ def batch_docking():
         return jsonify({"leaderboard": leaderboard, "total_screened": len(leaderboard)})
     except Exception as e:
         return jsonify({"error": f"Batch docking failed: {str(e)}"}), 500
+    finally:
+        _is_docking_active = False
 
 @app.route("/api/ensemble/structures", methods=["GET"])
 def get_ensemble_structures():
@@ -667,8 +691,13 @@ def run_ensemble():
     if not pdb_ids or not ligand_smiles:
         return jsonify({"error": "Missing 'pdb_ids' or 'ligand_smiles' in request body"}), 400
 
-    results = EnsembleDockingService.run_ensemble_docking(pdb_ids, ligand_smiles, exhaustiveness=exhaustiveness)
-    return jsonify(results)
+    global _is_docking_active
+    _is_docking_active = True
+    try:
+        results = EnsembleDockingService.run_ensemble_docking(pdb_ids, ligand_smiles, exhaustiveness=exhaustiveness)
+        return jsonify(results)
+    finally:
+        _is_docking_active = False
 
 @app.route("/api/pharmacophore/actives", methods=["GET"])
 def get_pharmacophore_actives():

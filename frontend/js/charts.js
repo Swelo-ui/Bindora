@@ -99,9 +99,12 @@ class ADMECharts {
         },
         plugins: {
           legend: {
+            position: "bottom",
             labels: {
+              boxWidth: 12,
+              padding: 10,
               color: legendColor,
-              font: { size: 11, weight: isLight ? "600" : "400" }
+              font: { size: 10.5, weight: isLight ? "600" : "400" }
             }
           },
           tooltip: {

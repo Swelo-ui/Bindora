@@ -75,6 +75,9 @@ class BindoraApp {
 
     // 5. Clean live state on startup (benchmarks are available above for 1-click exploration if user chooses)
     this.updateStudioCards();
+    try {
+      this.fetchHardwareDiagnostics(true);
+    } catch (_) {}
 
     // 6. Set active tab (supports ?tab=studio or #studio, default to home)
     const urlParams = new URLSearchParams(window.location.search);
@@ -241,9 +244,18 @@ class BindoraApp {
     if (surfaceToggle) {
       surfaceToggle.addEventListener("change", (e) => {
         if (this.viewer) {
-          this.viewer.toggleSurface(e.target.checked);
-          if (e.target.checked) {
+          const isChecked = e.target.checked;
+          if (!isChecked && this.viewer.settings.proteinStyle === 'pocket_surface') {
+            this.viewer.settings.proteinStyle = 'cartoon';
+            const protSelect = document.getElementById("select-protein-style");
+            if (protSelect) protSelect.value = 'cartoon';
+            this.viewer.applyProteinStyle();
+          }
+          this.viewer.toggleSurface(isChecked);
+          if (isChecked) {
             this.showToast(this.state.receptor && this.state.ligand ? "Binding pocket surface displayed" : "Molecular surface displayed", "info");
+          } else {
+            this.showToast("Molecular surface hidden", "info");
           }
         }
       });
@@ -359,8 +371,14 @@ class BindoraApp {
     if (proteinStyleSelect) {
       proteinStyleSelect.addEventListener("change", (e) => {
         if (this.viewer) {
-          this.viewer.settings.proteinStyle = e.target.value;
+          const val = e.target.value;
+          this.viewer.settings.proteinStyle = val;
           this.viewer.applyProteinStyle();
+          if (val === 'pocket_surface') {
+            this.showToast("Binding pocket cavity surface rendered", "info");
+          } else if (val === 'cartoon') {
+            this.showToast("Protein style: Cartoon Ribbon", "info");
+          }
           if (!this.state.receptor) {
             this.showToast("No protein loaded yet. Style will apply when a protein is loaded.", "warning");
           }
@@ -795,6 +813,25 @@ class BindoraApp {
       closeCliBtn.addEventListener("click", () => cliModal.classList.add("hidden"));
     }
 
+    // System Compute & Hardware Diagnostics Modal
+    const triggerHwBtn = document.getElementById("btn-trigger-hardware-modal");
+    const bannerHwBtn = document.getElementById("btn-banner-hardware-modal");
+    const closeHwBtn = document.getElementById("btn-close-hardware-modal");
+    const closeHwFooterBtn = document.getElementById("btn-close-hardware-modal-footer");
+    const refreshHwBtn = document.getElementById("btn-refresh-hardware");
+    const hwModal = document.getElementById("modal-hardware-diagnostics");
+
+    if (triggerHwBtn) triggerHwBtn.addEventListener("click", () => this.openHardwareModal());
+    if (bannerHwBtn) bannerHwBtn.addEventListener("click", () => this.openHardwareModal());
+    if (closeHwBtn) closeHwBtn.addEventListener("click", () => this.closeHardwareModal());
+    if (closeHwFooterBtn) closeHwFooterBtn.addEventListener("click", () => this.closeHardwareModal());
+    if (refreshHwBtn) refreshHwBtn.addEventListener("click", () => this.fetchHardwareDiagnostics(false));
+    if (hwModal) {
+      hwModal.addEventListener("click", (e) => {
+        if (e.target === hwModal) this.closeHardwareModal();
+      });
+    }
+
     // Blind Docking & Pocket Centroid Reset
     const blindBtn = document.getElementById("btn-blind-docking");
     if (blindBtn) {
@@ -897,14 +934,14 @@ class BindoraApp {
       }
 
       container.innerHTML = runs.map(r => `
-        <div class="p-2 flex items-center justify-between text-xs hover:bg-slate-900/60 rounded">
+        <div class="saved-run-item p-2.5 flex items-center justify-between text-xs rounded-lg transition-colors">
           <div>
-            <div class="font-bold text-white">${r.drugName} <span class="text-slate-400 font-normal">vs</span> ${r.targetName} (${r.pdbId})</div>
-            <div class="font-mono text-[11px] text-cyan-300">
-              ΔG: ${r.affinityKcal} kcal/mol &bull; Kd: ${r.theoreticalKdNm} nM &bull; ${new Date(r.savedAt).toLocaleDateString()}
+            <div class="font-bold saved-run-title">${r.drugName} <span class="text-slate-400 font-normal opacity-80">vs</span> ${r.targetName} (${r.pdbId})</div>
+            <div class="font-mono text-[11px] saved-run-meta">
+              ΔG: ${r.affinityKcal} kcal/mol &bull; Kd: ${r.theoreticalKdNm} nM &bull; ${new Date(r.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} ${new Date(r.savedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
             </div>
           </div>
-          <span class="px-2 py-0.5 rounded text-[10px] ${r.isCrossChecked ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-slate-800 text-slate-400'}">
+          <span class="px-2 py-0.5 rounded text-[10px] font-mono ${r.isCrossChecked ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-slate-800 text-slate-400 saved-run-badge'}">
             ${r.crosscheckBadge}
           </span>
         </div>
@@ -914,7 +951,205 @@ class BindoraApp {
     }
   }
 
+  // =========================================================================
+  // HARDWARE TELEMETRY & MULTI-CORE SYSTEM INSPECTOR
+  // =========================================================================
+
+  async openHardwareModal() {
+    const modal = document.getElementById("modal-hardware-diagnostics");
+    if (!modal) return;
+    modal.classList.remove("hidden");
+    await this.fetchHardwareDiagnostics(false);
+
+    // Live telemetry probe interval (auto-refresh every 1.2 seconds for fluid live monitoring)
+    if (this._hwPollInterval) clearInterval(this._hwPollInterval);
+    this._hwPollInterval = setInterval(() => {
+      const m = document.getElementById("modal-hardware-diagnostics");
+      if (m && !m.classList.contains("hidden")) {
+        this.fetchHardwareDiagnostics(true);
+      } else {
+        clearInterval(this._hwPollInterval);
+        this._hwPollInterval = null;
+      }
+    }, 1200);
+  }
+
+  closeHardwareModal() {
+    const modal = document.getElementById("modal-hardware-diagnostics");
+    if (modal) modal.classList.add("hidden");
+    if (this._hwPollInterval) {
+      clearInterval(this._hwPollInterval);
+      this._hwPollInterval = null;
+    }
+  }
+
+  async fetchHardwareDiagnostics(silent = false) {
+    try {
+      const data = await BindoraAPI.getSystemHardwareInfo();
+      this._hardwareInfo = data;
+      this.renderHardwareDiagnosticsUI(data);
+      if (!silent) {
+        this.showToast("Hardware telemetry synchronized", "info");
+      }
+    } catch (err) {
+      console.warn("Hardware diagnostics probe notice:", err);
+      if (!silent) {
+        this.showToast("Could not query hardware info: " + err.message, "error");
+      }
+    }
+  }
+
+  renderHardwareDiagnosticsUI(data) {
+    if (!data) return;
+
+    const setTxt = (id, txt) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = txt;
+    };
+
+    const overallPct = typeof data.overall_cpu_percent === 'number' ? data.overall_cpu_percent.toFixed(1) : (data.overall_cpu_percent || "0");
+
+    // Update CPU banner
+    setTxt("hw-cpu-name", data.cpu_name || "Multi-Core System Processor");
+    setTxt("hw-arch-badge", `${data.architecture || 'x86_64'} • ${data.platform || 'System'}`);
+    setTxt("hw-threads-badge", `${data.logical_cores || 1} Threads`);
+    setTxt("hw-physical-cores", data.physical_cores || data.logical_cores || 1);
+    setTxt("hw-logical-cores", data.logical_cores || 1);
+    setTxt("hw-vina-cores", `${data.vina_allocated_threads || data.logical_cores || 1} Cores (100% Parallel)`);
+    setTxt("hw-overall-load", `${overallPct}%`);
+
+    // Update badge on Docking Card header
+    setTxt("badge-native-cpu-text", `Native CPU (${data.logical_cores || 4} Cores)`);
+
+    // Docking Status Pill
+    const statusPill = document.getElementById("hw-docking-status-pill");
+    const engineBadge = document.getElementById("hardware-engine-status-badge");
+    const isDocking = data.is_docking_active || this.state.isDockingRunning;
+
+    if (statusPill) {
+      if (isDocking) {
+        statusPill.className = "text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700 font-bold flex items-center space-x-1.5 shadow-sm shadow-emerald-950/60";
+        statusPill.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span>AutoDock Vina Docking Active (All Cores Dispatched)</span>';
+      } else {
+        statusPill.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-900 text-neutral-400 border border-neutral-800";
+        statusPill.textContent = "Standby (Ready for Simulation)";
+      }
+    }
+
+    if (engineBadge) {
+      if (isDocking) {
+        engineBadge.className = "text-[10px] px-2 py-0.5 rounded bg-emerald-900 text-emerald-200 border border-emerald-600 font-mono flex items-center space-x-1";
+        engineBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-ping"></span><span>Computing Simulation</span>';
+      } else {
+        engineBadge.className = "text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono flex items-center space-x-1";
+        engineBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span>Active Engine</span>';
+      }
+    }
+
+    // Cores Grid - Smooth in-place updates to avoid layout shifts & preserve CSS animations
+    const coresGrid = document.getElementById("hw-cores-grid");
+    if (coresGrid && Array.isArray(data.per_core_percent)) {
+      const existingCards = coresGrid.querySelectorAll(".hw-core-card");
+      if (existingCards.length === data.per_core_percent.length) {
+        // Fast in-place DOM attribute update so CSS smooth animations transition seamlessly
+        data.per_core_percent.forEach((pct, idx) => {
+          const card = existingCards[idx];
+          const pctVal = Number(pct || 0);
+          const pctEl = card.querySelector(".hw-core-pct");
+          const barEl = card.querySelector(".hw-core-bar");
+          const taskEl = card.querySelector(".hw-core-task");
+          const stateEl = card.querySelector(".hw-core-state");
+          const dotEl = card.querySelector(".hw-core-dot");
+
+          if (pctEl) {
+            pctEl.textContent = `${pctVal.toFixed(1)}%`;
+            pctEl.className = `text-xs font-bold font-mono hw-core-pct ${isDocking ? 'text-emerald-300' : (pctVal > 60 ? 'text-amber-400' : 'text-neutral-200')}`;
+          }
+
+          if (barEl) {
+            barEl.style.width = `${Math.min(100, Math.max(3, pctVal))}%`;
+            barEl.className = `h-full hw-core-bar transition-all duration-500 ease-out ${
+              isDocking
+                ? 'bg-gradient-to-r from-emerald-500 to-cyan-400'
+                : (pctVal > 60 ? 'bg-gradient-to-r from-amber-500 to-rose-500' : 'bg-gradient-to-r from-cyan-500 to-blue-500')
+            }`;
+          }
+
+          if (taskEl) {
+            taskEl.textContent = isDocking ? 'AutoDock Vina ILS' : (pctVal > 5 ? 'System Process' : 'Idle');
+            taskEl.className = `hw-core-task ${isDocking ? 'text-emerald-400 font-semibold' : 'text-neutral-400'}`;
+          }
+
+          if (stateEl) {
+            stateEl.textContent = isDocking ? '100% Dispatched' : (pctVal > 5 ? 'Active Thread' : 'Assigned to Vina');
+          }
+
+          if (dotEl) {
+            dotEl.className = `w-2 h-2 rounded-full hw-core-dot ${isDocking ? 'bg-emerald-400 animate-pulse' : (pctVal > 2 ? 'bg-cyan-400' : 'bg-neutral-600')}`;
+          }
+
+          if (isDocking) {
+            card.classList.add("bg-emerald-950/20", "border-emerald-500/50", "shadow-sm", "shadow-emerald-950/30");
+            card.classList.remove("bg-black", "border-neutral-800");
+          } else {
+            card.classList.remove("bg-emerald-950/20", "border-emerald-500/50", "shadow-sm", "shadow-emerald-950/30");
+            card.classList.add("bg-black", "border-neutral-800");
+          }
+        });
+      } else {
+        // Initial grid markup creation
+        coresGrid.innerHTML = data.per_core_percent.map((pct, idx) => {
+          const pctVal = Number(pct || 0);
+          const barColor = isDocking
+            ? 'bg-gradient-to-r from-emerald-500 to-cyan-400'
+            : (pctVal > 60 ? 'bg-gradient-to-r from-amber-500 to-rose-500' : 'bg-gradient-to-r from-cyan-500 to-blue-500');
+
+          return `
+            <div class="hw-core-card p-3 rounded-xl ${isDocking ? 'bg-emerald-950/20 border-emerald-500/50 shadow-sm shadow-emerald-950/30' : 'bg-black border-neutral-800'} border font-mono space-y-2 transition-colors duration-300">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2 h-2 rounded-full hw-core-dot ${isDocking ? 'bg-emerald-400 animate-pulse' : (pctVal > 2 ? 'bg-cyan-400' : 'bg-neutral-600')}"></span>
+                  <span class="font-bold text-xs text-white">CPU Core #${idx}</span>
+                  <span class="text-[9.5px] px-1.5 py-0.2 rounded bg-neutral-900 text-neutral-400 border border-neutral-800">Thread ${idx + 1}</span>
+                </div>
+                <span class="text-xs font-bold font-mono hw-core-pct ${isDocking ? 'text-emerald-300' : (pctVal > 60 ? 'text-amber-400' : 'text-neutral-200')}">${pctVal.toFixed(1)}%</span>
+              </div>
+              <div class="w-full h-1.5 rounded-full bg-neutral-900 border border-neutral-800/80 overflow-hidden">
+                <div class="h-full hw-core-bar ${barColor} transition-all duration-500 ease-out" style="width: ${Math.min(100, Math.max(3, pctVal))}%"></div>
+              </div>
+              <div class="flex items-center justify-between text-[10px] text-neutral-500">
+                <span>Task: <strong class="hw-core-task ${isDocking ? 'text-emerald-400 font-semibold' : 'text-neutral-400'}">${isDocking ? 'AutoDock Vina ILS' : (pctVal > 5 ? 'System Process' : 'Idle')}</strong></span>
+                <span class="hw-core-state">${isDocking ? '100% Dispatched' : 'Assigned to Vina'}</span>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+    }
+
+    // RAM Telemetry
+    setTxt("hw-ram-percent-text", `${data.ram_percent || 0}% Used`);
+    setTxt("hw-ram-used", `${data.used_ram_gb || 0} GB`);
+    setTxt("hw-ram-free", `${data.available_ram_gb || 0} GB`);
+    setTxt("hw-ram-total", `${data.total_ram_gb || 0} GB`);
+
+    const ramBar = document.getElementById("hw-ram-bar");
+    if (ramBar) {
+      ramBar.style.width = `${Math.min(100, data.ram_percent || 0)}%`;
+      if (data.ram_percent > 85) {
+        ramBar.className = "h-full bg-gradient-to-r from-amber-500 to-rose-500 transition-all duration-300";
+      } else {
+        ramBar.className = "h-full bg-gradient-to-r from-emerald-500 to-cyan-500 transition-all duration-300";
+      }
+    }
+
+    // Last updated
+    const nowTime = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setTxt("hw-last-updated", `Last Telemetry: ${nowTime}`);
+  }
+
   switchTab(tabId) {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     this.state.activeTab = tabId;
     document.querySelectorAll(".nav-tab").forEach(b => {
       if (b.dataset.tab === tabId) {
@@ -1191,13 +1426,13 @@ class BindoraApp {
     if (!container) return;
 
     container.innerHTML = this.state.benchmarks.map(bm => `
-      <div class="benchmark-case-card cursor-pointer p-3 rounded-xl border border-slate-700/60 bg-slate-800/40 hover:bg-slate-700/50 transition-all hover:border-cyan-500/50" onclick="window.app.loadBenchmark('${bm.id}')">
-        <div class="flex items-center justify-between mb-1">
-          <span class="benchmark-case-name font-bold text-sm text-cyan-300">${bm.drug_name}</span>
-          <span class="benchmark-case-badge text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300 font-mono">${bm.pdb_id}</span>
+      <div class="benchmark-case-card cursor-pointer p-3.5 rounded-xl border transition-all" onclick="window.app.loadBenchmark('${bm.id}')">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="benchmark-case-name font-bold text-xs tracking-tight">${bm.drug_name}</span>
+          <span class="benchmark-case-badge text-[10px] font-mono px-2 py-0.5 rounded font-semibold tracking-wider">${bm.pdb_id}</span>
         </div>
-        <p class="benchmark-case-target text-xs text-slate-300 font-medium">${bm.target_name}</p>
-        <p class="benchmark-case-desc text-[11px] text-slate-400 mt-1 line-clamp-2">${bm.mechanism}</p>
+        <p class="benchmark-case-target text-xs font-medium truncate">${bm.target_name}</p>
+        <p class="benchmark-case-desc text-[11px] mt-1 line-clamp-2 leading-relaxed">${bm.mechanism}</p>
       </div>
     `).join("");
   }
@@ -1635,6 +1870,9 @@ class BindoraApp {
 
     const redockNative = document.getElementById("redock-native-name");
     if (redockNative) redockNative.textContent = "No co-ligand loaded";
+
+    const poseStepper = document.getElementById("dock-current-mode-label")?.parentElement;
+    if (poseStepper) poseStepper.classList.add("hidden");
 
     const poseTable = document.getElementById("pose-table-rows");
     if (poseTable) poseTable.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-xs text-slate-500 italic">No docking run loaded yet.</td></tr>`;
@@ -2074,7 +2312,7 @@ class BindoraApp {
 
     banner.classList.remove("hidden");
     banner.classList.remove("opacity-0");
-    banner.className = "glass-panel p-4 rounded-xl border border-[#22242f] bg-[#121319]/95 shadow-xl transition-all duration-300 mb-3";
+    banner.className = "glass-panel p-4 rounded-xl border border-neutral-800 bg-[#0a0c10]/95 shadow-xl transition-all duration-300 mb-3";
 
     const titleEl = document.getElementById("docking-status-title");
     const subEl = document.getElementById("docking-status-subtitle");
@@ -2087,16 +2325,16 @@ class BindoraApp {
     if (titleEl) titleEl.textContent = "AutoDock Vina Simulation Engine";
     if (subEl) subEl.textContent = `Iterated Local Search & Monte Carlo Conformational Sampling (Exhaustiveness = ${exhaustiveness}, Replicates = ${replicates})`;
     if (iconEl) {
-      iconEl.innerHTML = `<svg class="animate-spin w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+      iconEl.innerHTML = `<svg class="animate-spin w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
     }
 
     // Reset stages
     for (let i = 1; i <= 5; i++) {
       const stageEl = document.getElementById(`dock-stage-${i}`);
       if (stageEl) {
-        stageEl.className = "dock-stage-pill flex flex-col items-center p-1.5 rounded-lg bg-[#181923] border border-[#252736] text-slate-400 transition-all";
+        stageEl.className = "dock-stage-pill flex flex-col items-center p-1.5 rounded-lg bg-black/40 border border-neutral-800 text-neutral-400 transition-all";
         const dot = stageEl.querySelector(".stage-dot");
-        if (dot) dot.className = "stage-dot w-2 h-2 rounded-full bg-slate-600";
+        if (dot) dot.className = "stage-dot w-2 h-2 rounded-full bg-neutral-600";
       }
     }
 
@@ -2107,17 +2345,34 @@ class BindoraApp {
     }
     if (timerEl) timerEl.textContent = "00:00.0s";
 
-    // Expected duration in seconds based on exhaustiveness & replicates
-    const expectedDuration = Math.max(2.5, (exhaustiveness * 0.45) * Math.max(1, replicates * 0.85));
+    // Detect ligand flexibility for realistic progress estimation
+    const rotb = Number(this.state.ligand?.adme?.physicochemical?.rotatable_bonds?.value ??
+                        this.state.ligand?.rotatable_bonds ??
+                        (this.state.ligand?.heavy_atom_count ? Math.round(this.state.ligand.heavy_atom_count / 3) : 5));
+
+    // Realistic duration based on rotatable bonds (search degrees of freedom) & CPU
+    let flexFactor = 1.5;
+    if (rotb <= 3) flexFactor = 1.5;
+    else if (rotb <= 6) flexFactor = 4.0;
+    else if (rotb <= 10) flexFactor = 14.0;
+    else flexFactor = 14.0 + Math.pow(rotb - 10, 1.6) * 6.8;
+
+    const expectedDuration = Math.max(10.0, (exhaustiveness * flexFactor) * Math.max(1, replicates * 0.9));
     const startTime = performance.now();
 
     const stagesInfo = [
-      { maxPct: 15, name: "Validation", log: "Stage 1/5: Validating receptor PDBQT & ligand rotatable torsions..." },
-      { maxPct: 35, name: "Grid Maps", log: "Stage 2/5: Allocating steric potential energy grids and affinity maps..." },
-      { maxPct: 75, name: "Monte Carlo", log: "Stage 3/5: Iterated Local Search & Monte Carlo energy sampling on CPU cores..." },
-      { maxPct: 90, name: "Clustering", log: "Stage 4/5: Clustering binding poses by heavy-atom RMSD & ranking ΔG scores..." },
-      { maxPct: 98, name: "PLIP Analysis", log: "Stage 5/5: Detecting 3D non-covalent contacts (H-bonds, salt bridges, π-stacking)..." }
+      { maxPct: 4, name: "Validation", log: "Stage 1/5: Validating receptor PDBQT & ligand rotatable torsions..." },
+      { maxPct: 8, name: "Grid Maps", log: "Stage 2/5: Allocating steric potential energy grids and affinity maps..." },
+      { maxPct: 92, name: "Monte Carlo", log: `Stage 3/5: Monte Carlo Energy Sampling on CPU (${rotb} rotatable torsions, Exh: ${exhaustiveness})...` },
+      { maxPct: 96, name: "Clustering", log: "Stage 4/5: Clustering binding poses by heavy-atom RMSD & ranking ΔG scores..." },
+      { maxPct: 99, name: "PLIP Analysis", log: "Stage 5/5: Detecting 3D non-covalent contacts (H-bonds, salt bridges, π-stacking)..." }
     ];
+
+    const hwLiveText = document.getElementById("docking-live-hardware-text");
+    if (hwLiveText) {
+      const cores = this._hardwareInfo?.logical_cores || 4;
+      hwLiveText.textContent = `Multi-Threaded: Dispatched across all ${cores} CPU Cores (Parallel Search)`;
+    }
 
     clearInterval(this._dockingProgressTimer);
 
@@ -2129,23 +2384,31 @@ class BindoraApp {
 
       const ratio = elapsed / expectedDuration;
       let pct = 0;
-      if (ratio < 1.0) {
+      if (ratio < 0.95) {
         pct = Math.min(95, Math.round(ratio * 95));
       } else {
-        pct = Math.min(98, Math.round(95 + (1 - Math.exp(-(ratio - 1))) * 3));
+        // Asymptotically approach 98% smoothly without freezing on PLIP
+        pct = Math.min(98, Math.round(95 + (1 - Math.exp(-(ratio - 0.95) * 1.5)) * 3.5));
       }
 
       if (barFill) barFill.style.width = `${pct}%`;
       if (percentEl) percentEl.textContent = `${pct}%`;
 
       let activeStageIdx = 0;
-      if (pct < 15) activeStageIdx = 0;
-      else if (pct < 35) activeStageIdx = 1;
-      else if (pct < 75) activeStageIdx = 2;
-      else if (pct < 90) activeStageIdx = 3;
+      if (pct < 4) activeStageIdx = 0;
+      else if (pct < 8) activeStageIdx = 1;
+      else if (pct < 92) activeStageIdx = 2; // Monte Carlo covers the vast majority of time!
+      else if (pct < 96) activeStageIdx = 3;
       else activeStageIdx = 4;
 
-      if (logText) logText.textContent = stagesInfo[activeStageIdx].log;
+      if (logText) {
+        if (activeStageIdx === 2 && rotb >= 8) {
+          const estMins = Math.round(expectedDuration / 60);
+          logText.textContent = `Stage 3/5: Monte Carlo Conformational Sampling on CPU (High flexibility: ${rotb} torsions, ~${estMins > 0 ? estMins + ' min' : '<1 min'})...`;
+        } else {
+          logText.textContent = stagesInfo[activeStageIdx].log;
+        }
+      }
 
       for (let i = 1; i <= 5; i++) {
         const stageEl = document.getElementById(`dock-stage-${i}`);
@@ -2158,11 +2421,11 @@ class BindoraApp {
           stageEl.className = "dock-stage-pill flex flex-col items-center p-1.5 rounded-lg bg-cyan-950/60 border border-cyan-500/80 text-cyan-200 shadow-sm transition-all";
           if (dot) dot.className = "stage-dot w-2 h-2 rounded-full bg-cyan-400 animate-pulse";
         } else {
-          stageEl.className = "dock-stage-pill flex flex-col items-center p-1.5 rounded-lg bg-[#181923] border border-[#252736] text-slate-400 transition-all";
-          if (dot) dot.className = "stage-dot w-2 h-2 rounded-full bg-slate-600";
+          stageEl.className = "dock-stage-pill flex flex-col items-center p-1.5 rounded-lg bg-black/40 border border-neutral-800 text-neutral-400 transition-all";
+          if (dot) dot.className = "stage-dot w-2 h-2 rounded-full bg-neutral-600";
         }
       }
-    }, 60);
+    }, 80);
   }
 
   finishDockingProgress(result) {
@@ -2179,7 +2442,10 @@ class BindoraApp {
     if (barFill) barFill.style.width = "100%";
     if (percentEl) percentEl.textContent = "100%";
     if (timerEl && result?.execution_duration_s) {
-      timerEl.textContent = `${result.execution_duration_s.toFixed(2)}s (Backend)`;
+      const dur = result.execution_duration_s;
+      const mins = Math.floor(dur / 60);
+      const secs = (dur % 60).toFixed(1);
+      timerEl.textContent = mins > 0 ? `${mins}m ${secs}s (Vina Engine)` : `${secs}s (Vina Engine)`;
     }
 
     for (let i = 1; i <= 5; i++) {
@@ -2200,6 +2466,13 @@ class BindoraApp {
       logText.textContent = `All ${result?.poses?.length || 9} binding modes generated and clustered. 3D interactions mapped.`;
     }
 
+    const hwLiveText = document.getElementById("docking-live-hardware-text");
+    if (hwLiveText) {
+      const cores = result?.cpu_count || this._hardwareInfo?.logical_cores || 4;
+      const dur = result?.execution_duration_s ? result.execution_duration_s.toFixed(1) + 's' : '';
+      hwLiveText.textContent = `Completed ${dur ? 'in ' + dur + ' ' : ''}across all ${cores} CPU Cores (Multi-Threaded)`;
+    }
+
     setTimeout(() => {
       const banner = document.getElementById("docking-status-banner");
       if (banner) {
@@ -2209,7 +2482,7 @@ class BindoraApp {
           banner.classList.remove("opacity-0");
         }, 400);
       }
-    }, 2000);
+    }, 4000);
   }
 
   errorDockingProgress(errMsg) {
@@ -2241,7 +2514,8 @@ class BindoraApp {
     const originalText = dockBtn ? dockBtn.innerHTML : "";
     if (dockBtn) {
       dockBtn.disabled = true;
-      dockBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Running AutoDock Vina...`;
+      dockBtn.classList.add("opacity-80", "cursor-wait");
+      dockBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-current inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Running AutoDock Vina...`;
     }
 
     const exhaustiveness = parseInt(document.getElementById("docking-exhaustiveness")?.value) || 8;
@@ -2250,6 +2524,7 @@ class BindoraApp {
     this.startDockingProgress(exhaustiveness, replicates);
     this.showToast(`Launching AutoDock Vina (${replicates > 1 ? '3-seed replicate' : 'single run'})...`, "info");
 
+    this.state.isDockingRunning = true;
     try {
       // Read grid parameters
       const getVal = (id, def) => parseFloat(document.getElementById(id)?.value) || def;
@@ -2283,6 +2558,7 @@ class BindoraApp {
 
       const dockResult = await BindoraAPI.runDocking(dockPayload);
 
+      dockResult.timestamp = dockResult.timestamp || new Date().toISOString();
       this.state.docking = dockResult;
       this.state.currentPoseIdx = 0;
 
@@ -2342,8 +2618,10 @@ class BindoraApp {
       this.errorDockingProgress(e.message);
       this.showToast(`Docking execution failed: ${e.message}`, "error");
     } finally {
+      this.state.isDockingRunning = false;
       if (dockBtn) {
         dockBtn.disabled = false;
+        dockBtn.classList.remove("opacity-80", "cursor-wait");
         dockBtn.innerHTML = originalText;
       }
     }
@@ -2384,7 +2662,12 @@ class BindoraApp {
 
     // Pose Stepper Label
     const elMode = document.getElementById("dock-current-mode-label");
-    if (elMode) elMode.textContent = `Mode ${currentPose.mode || (this.state.currentPoseIdx + 1)} / ${poses.length}`;
+    if (elMode) {
+      elMode.textContent = `Mode ${currentPose.mode || (this.state.currentPoseIdx + 1)} / ${poses.length}`;
+      if (poses.length > 0 && elMode.parentElement) {
+        elMode.parentElement.classList.remove("hidden");
+      }
+    }
 
     // Pose Modes Count Header
     const elModeCount = document.getElementById("dock-poses-mode-count");
@@ -2404,10 +2687,9 @@ class BindoraApp {
         const typeCount = [hb, sb, ps, pc, hal, hp].filter(c => c > 0).length;
 
         let badgeHtml = '';
-        if (typeCount >= 5) {
-          badgeHtml = `<span class="ml-1 px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/80 text-[9px] font-mono font-bold" title="Contains ${typeCount}/6 interaction classes">${typeCount}/6</span>`;
-        } else if (typeCount > 0) {
-          badgeHtml = `<span class="ml-1 px-1.5 py-0.2 rounded bg-slate-800 text-cyan-300 border border-slate-700/80 text-[9px] font-mono font-medium" title="Contains ${typeCount}/6 interaction classes">${typeCount}/6</span>`;
+        if (typeCount > 0) {
+          const typeNames = [hb ? 'H-Bond' : '', sb ? 'Salt-Bridge' : '', ps ? 'π-π' : '', pc ? 'π-Cat' : '', hal ? 'Halogen' : '', hp ? 'Hydrophobic' : ''].filter(Boolean).join(', ');
+          badgeHtml = `<span class="ml-1 px-1.5 py-0.5 rounded ${typeCount >= 4 ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/80' : 'bg-slate-800 text-slate-300 border border-slate-700/80'} text-[9px] font-mono font-medium" title="${typeCount} interaction classes detected (${typeNames})">${typeCount} contact${typeCount !== 1 ? 's' : ''}</span>`;
         }
 
         const isSelected = idx === this.state.currentPoseIdx;
@@ -3132,10 +3414,19 @@ class BindoraApp {
     const cypEl = document.getElementById("adme-cyp-val");
     if (cypEl) {
       const cypAlerts = cyp.alerts || (Array.isArray(cyp) ? cyp : []);
+      const cypCard = cypEl.closest('.rounded-xl') || cypEl.parentElement;
       if (cypAlerts.length > 0) {
+        if (cypCard) {
+          cypCard.classList.remove("border-neutral-800", "border-slate-200");
+          cypCard.classList.add("border-amber-500/50");
+        }
         cypEl.innerHTML = `<span class="text-amber-600 dark:text-amber-400 font-bold">${cypAlerts.length} SMARTS Alert(s):</span> ` +
           cypAlerts.map(a => `<span class="inline-block font-mono text-[11px] bg-amber-200/60 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 px-1.5 py-0.5 rounded mr-1">${a.cyp} (${a.description})</span>`).join("");
       } else {
+        if (cypCard) {
+          cypCard.classList.remove("border-amber-500/50");
+          cypCard.classList.add("border-neutral-800");
+        }
         cypEl.innerHTML = `<span class="text-emerald-600 dark:text-emerald-400 font-semibold">Clear &bull; No planar/basic/azole SMARTS alerts detected.</span>`;
       }
     }
@@ -3148,19 +3439,19 @@ class BindoraApp {
     // If neither receptor nor ligand is loaded yet, display friendly guidance instead of error
     if (!this.state.receptor && !this.state.ligand) {
       container.innerHTML = `
-        <div class="p-6 rounded-xl bg-slate-900/40 border border-slate-700/60 text-center space-y-3">
-          <div class="w-12 h-12 mx-auto rounded-full bg-purple-950/60 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-inner">
+        <div class="p-6 rounded-xl bg-slate-50 dark:bg-[#08090d] border border-slate-200 dark:border-neutral-800 text-center space-y-3">
+          <div class="w-12 h-12 mx-auto rounded-xl bg-white dark:bg-[#0e1017] border border-slate-200 dark:border-neutral-800 flex items-center justify-center text-slate-700 dark:text-neutral-300 shadow-sm">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
           </div>
-          <h4 class="text-sm font-semibold text-slate-200">No Active Simulation Loaded</h4>
-          <p class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-            To generate a publication-grade pharmacological briefing, select a target receptor and drug in <span class="text-cyan-400 font-semibold">1. Target &amp; Ligand</span> and run docking in <span class="text-cyan-400 font-semibold">2. 3D Docking</span>, or load a preset benchmark from the Home tab.
+          <h4 class="text-sm font-semibold text-slate-900 dark:text-white">No Active Simulation Loaded</h4>
+          <p class="text-xs text-slate-600 dark:text-neutral-400 max-w-md mx-auto leading-relaxed">
+            To generate a publication-grade pharmacological briefing, select a target receptor and drug in <span class="text-slate-900 dark:text-white font-semibold">1. Target &amp; Ligand</span> and run docking in <span class="text-slate-900 dark:text-white font-semibold">2. 3D Docking</span>, or load a preset benchmark from the Home tab.
           </p>
           <div class="pt-2 flex items-center justify-center space-x-2">
-            <button onclick="window.bindoraApp.switchTab('home')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white transition shadow cursor-pointer">
+            <button onclick="window.bindoraApp.switchTab('home')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-black transition shadow-sm cursor-pointer">
               Go to Benchmarks / Home
             </button>
-            <button onclick="window.bindoraApp.switchTab('studio')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer">
+            <button onclick="window.bindoraApp.switchTab('studio')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 dark:bg-[#0e1017] dark:hover:bg-[#141620] dark:text-neutral-200 border border-slate-200 dark:border-neutral-800 transition cursor-pointer">
               Open Target &amp; Ligand Studio
             </button>
           </div>
@@ -3169,7 +3460,7 @@ class BindoraApp {
       return;
     }
 
-    container.innerHTML = `<div class="text-xs text-slate-400 animate-pulse flex items-center space-x-2 py-3"><svg class="w-4 h-4 animate-spin text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg><span>Synthesizing pharmacological briefing with anti-hallucination verification...</span></div>`;
+    container.innerHTML = `<div class="text-xs text-neutral-400 animate-pulse flex items-center space-x-2 py-3"><svg class="w-4 h-4 animate-spin text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg><span>Synthesizing pharmacological briefing with anti-hallucination verification...</span></div>`;
 
     const payload = {
       ligand_name: this.state.ligand?.name || "Drug Candidate",
@@ -3189,11 +3480,11 @@ class BindoraApp {
       const renderedMarkdown = this.renderMarkdown(res.narrative || '');
       container.innerHTML = `
         <div class="space-y-4">
-          <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700/60 text-xs text-slate-500 dark:text-slate-400">
-            <span>Engine: <span class="text-cyan-600 dark:text-cyan-400 font-semibold">${res.source}</span></span>
+          <div class="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-neutral-800 text-xs text-slate-500 dark:text-neutral-400 font-mono">
+            <span>Engine: <span class="text-slate-900 dark:text-white font-semibold">${res.source}</span></span>
             <span class="text-emerald-600 dark:text-emerald-400 font-semibold">&#10003; Zero-Hallucination Verified</span>
           </div>
-          <div class="text-slate-800 dark:text-slate-300 text-xs sm:text-sm leading-relaxed narrative-md space-y-3">
+          <div class="text-slate-800 dark:text-neutral-200 text-xs sm:text-sm leading-relaxed narrative-md space-y-3">
             ${renderedMarkdown}
           </div>
         </div>
@@ -3201,16 +3492,16 @@ class BindoraApp {
     } catch (e) {
       console.warn("Narrative generation error:", e);
       container.innerHTML = `
-        <div class="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 space-y-2.5">
-          <div class="flex items-center space-x-2 text-rose-600 dark:text-rose-400 font-semibold text-xs">
+        <div class="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-2.5">
+          <div class="flex items-center space-x-2 text-rose-600 dark:text-rose-400 font-semibold text-xs font-mono">
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-            <span>Narrative Briefing Generation Notice: ${e.message}</span>
+            <span>Narrative Briefing Notice: ${e.message}</span>
           </div>
-          <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-            The server request did not complete. Ensure the local server is running on <code class="font-mono text-cyan-600 dark:text-cyan-400">http://localhost:5000</code>, then click retry below to synthesize using the rule-based reasoning engine.
+          <p class="text-[11px] text-slate-600 dark:text-neutral-400 leading-relaxed font-mono">
+            The server request did not complete. Ensure the local server is running on <code class="font-mono text-slate-900 dark:text-white">http://localhost:5000</code>, then click retry below to synthesize using the rule-based reasoning engine.
           </p>
           <div>
-            <button onclick="window.bindoraApp.generateNarrativeReport()" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white shadow-sm transition cursor-pointer">
+            <button onclick="window.bindoraApp.generateNarrativeReport()" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-black shadow-sm transition cursor-pointer">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
               <span>Retry Generation</span>
             </button>
@@ -3356,6 +3647,64 @@ class BindoraApp {
     }
   }
 
+  formatCalculationTimestamp(isoOrDate) {
+    if (!isoOrDate) return "Ready for Simulation";
+    const d = new Date(isoOrDate);
+    if (isNaN(d.getTime())) return "Ready for Simulation";
+
+    const localDate = d.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+
+    const localTime = d.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+
+    let tzStr = "";
+    try {
+      const parts = d.toLocaleTimeString('en-US', { timeZoneName: 'short' }).split(' ');
+      if (parts.length > 2) tzStr = parts.slice(2).join(' ');
+    } catch (e) {
+      tzStr = "";
+    }
+
+    const utcHours = String(d.getUTCHours()).padStart(2, '0');
+    const utcMins = String(d.getUTCMinutes()).padStart(2, '0');
+    const utcSecs = String(d.getUTCSeconds()).padStart(2, '0');
+    const utcTime = `${utcHours}:${utcMins}:${utcSecs} UTC`;
+
+    return `${localDate}, ${localTime}${tzStr ? ' ' + tzStr : ''} (${utcTime})`;
+  }
+
+  updateDossierTimestamp(serverFallbackIso) {
+    const el = document.getElementById("dossier-timestamp");
+    if (!el) return;
+
+    if (this.state.docking && this.state.docking.timestamp) {
+      const formatted = this.formatCalculationTimestamp(this.state.docking.timestamp);
+      el.textContent = `Calculation Timestamp: ${formatted}`;
+      el.className = "text-emerald-400 font-mono text-[10px]";
+      el.title = `Molecular docking completed at ${formatted}`;
+    } else if (this.state.docking) {
+      const nowIso = new Date().toISOString();
+      this.state.docking.timestamp = nowIso;
+      const formatted = this.formatCalculationTimestamp(nowIso);
+      el.textContent = `Calculation Timestamp: ${formatted}`;
+      el.className = "text-emerald-400 font-mono text-[10px]";
+    } else {
+      const ts = serverFallbackIso || this._lastReproducibilityUtc || new Date().toISOString();
+      const formatted = this.formatCalculationTimestamp(ts);
+      el.textContent = `System Synchronized: ${formatted}`;
+      el.className = "text-neutral-500 font-mono text-[10px]";
+      el.title = "Docking simulation has not yet been executed in this session.";
+    }
+  }
+
   async loadReproducibilityMetadata() {
     try {
       const data = await BindoraAPI.getReproducibilityVersions();
@@ -3364,8 +3713,8 @@ class BindoraApp {
       setTxt("dossier-rdkit-ver", `RDKit v${data.rdkit || "2024+"}`);
       setTxt("dossier-gemmi-ver", `Gemmi v${data.gemmi || "0.7+"}`);
       setTxt("dossier-meeko-ver", data.meeko || "Meeko Flexible");
-      const ts = data.utc_timestamp ? new Date(data.utc_timestamp).toUTCString() : new Date().toUTCString();
-      setTxt("dossier-timestamp", `Calculation Timestamp: ${ts}`);
+      this._lastReproducibilityUtc = data.utc_timestamp;
+      this.updateDossierTimestamp(data.utc_timestamp);
     } catch (e) {
       console.warn("Reproducibility version query notice:", e);
     }
@@ -3378,6 +3727,7 @@ class BindoraApp {
 
     // Fetch reproducibility metadata in background if not already loaded
     this.loadReproducibilityMetadata();
+    this.updateDossierTimestamp(this._lastReproducibilityUtc);
 
     if (ligName && this.state.ligand) {
       const l = this.state.ligand;
@@ -3458,16 +3808,16 @@ class BindoraApp {
       const isTop = idx === 0;
 
       return `
-        <tr class="${isTop ? 'bg-cyan-50/70 dark:bg-cyan-950/40 font-semibold' : ''}">
-          <td class="text-center font-mono font-bold ${isTop ? 'text-cyan-700 dark:text-cyan-400' : 'text-slate-700 dark:text-slate-300'} p-2 border border-slate-200 dark:border-slate-800">#${mode}</td>
-          <td class="text-center font-mono font-bold ${isTop ? 'text-cyan-700 dark:text-cyan-400' : 'text-slate-900 dark:text-white'} p-2 border border-slate-200 dark:border-slate-800">${aff} kcal/mol</td>
-          <td class="text-center font-mono text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800">${vinAff !== "—" ? vinAff + ' kcal/mol' : '—'}</td>
-          <td class="text-center font-mono text-emerald-700 dark:text-emerald-400 font-bold p-2 border border-slate-200 dark:border-slate-800">${kdStr}</td>
-          <td class="text-center font-mono text-amber-700 dark:text-amber-400 p-2 border border-slate-200 dark:border-slate-800">${leStr}</td>
-          <td class="text-center font-mono text-slate-500 dark:text-slate-400 p-2 border border-slate-200 dark:border-slate-800">${rmsdLb} Å</td>
-          <td class="text-center font-mono text-slate-500 dark:text-slate-400 p-2 border border-slate-200 dark:border-slate-800">${rmsdUb} Å</td>
-          <td class="text-center text-[10px] p-2 border border-slate-200 dark:border-slate-800">
-            ${isTop ? '<span class="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold">Rank 1 (Global Min)</span>' : '<span class="text-slate-500">Conformational Mode</span>'}
+        <tr class="${isTop ? 'bg-cyan-500/[0.08] dark:bg-cyan-500/[0.07] font-semibold' : 'hover:bg-slate-50/60 dark:hover:bg-neutral-900/40 transition-colors duration-150'}">
+          <td class="text-center font-mono font-bold ${isTop ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-700 dark:text-neutral-300'} py-2.5 px-3">#${mode}</td>
+          <td class="text-center font-mono font-bold ${isTop ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-900 dark:text-white'} py-2.5 px-3">${aff} kcal/mol</td>
+          <td class="text-center font-mono text-slate-700 dark:text-neutral-300 py-2.5 px-3">${vinAff !== "—" ? vinAff + ' kcal/mol' : '—'}</td>
+          <td class="text-center font-mono text-emerald-600 dark:text-emerald-400 font-bold py-2.5 px-3">${kdStr}</td>
+          <td class="text-center font-mono text-amber-600 dark:text-amber-400 py-2.5 px-3">${leStr}</td>
+          <td class="text-center font-mono text-slate-600 dark:text-neutral-400 py-2.5 px-3">${rmsdLb} Å</td>
+          <td class="text-center font-mono text-slate-600 dark:text-neutral-400 py-2.5 px-3">${rmsdUb} Å</td>
+          <td class="text-center text-[10.5px] py-2.5 px-3">
+            ${isTop ? '<span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-sans font-semibold">Rank 1 (Global Min)</span>' : `<span class="px-2 py-0.5 rounded-full font-mono text-[10px] bg-slate-100 dark:bg-neutral-800/60 text-slate-600 dark:text-neutral-400 border border-slate-200/60 dark:border-neutral-700/40 font-medium">Mode #${mode}</span>`}
           </td>
         </tr>
       `;
@@ -3476,48 +3826,48 @@ class BindoraApp {
     // Hydrogen bonds
     const hbonds = contacts.hydrogen_bonds || [];
     const hbondRows = hbonds.length > 0 ? hbonds.map(hb => `
-      <tr>
-        <td class="font-mono font-bold text-slate-900 dark:text-white p-2 border border-slate-200 dark:border-slate-800">${hb.residue || `${hb.res_name} ${hb.res_num}:${hb.chain}`}</td>
-        <td class="font-mono text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800">${hb.receptor_atom || '—'}</td>
-        <td class="font-mono text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800">${hb.ligand_atom || '—'}</td>
-        <td class="font-mono text-cyan-700 dark:text-cyan-400 font-bold text-center p-2 border border-slate-200 dark:border-slate-800">${hb.distance != null ? Number(hb.distance).toFixed(2) + ' Å' : '—'}</td>
-        <td class="text-slate-600 dark:text-slate-400 text-[10px] p-2 border border-slate-200 dark:border-slate-800">${hb.type || 'Hydrogen Bond'}</td>
+      <tr class="hover:bg-slate-50/60 dark:hover:bg-neutral-900/40 transition-colors duration-150">
+        <td class="font-mono font-bold text-slate-900 dark:text-white py-2.5 px-3.5">${hb.residue || `${hb.res_name} ${hb.res_num}:${hb.chain}`}</td>
+        <td class="font-mono text-slate-600 dark:text-neutral-400 py-2.5 px-3.5">${hb.receptor_atom || '—'}</td>
+        <td class="font-mono text-slate-600 dark:text-neutral-400 py-2.5 px-3.5">${hb.ligand_atom || '—'}</td>
+        <td class="font-mono text-cyan-600 dark:text-cyan-400 font-bold text-center py-2.5 px-3.5">${hb.distance != null ? Number(hb.distance).toFixed(2) + ' Å' : '—'}</td>
+        <td class="text-[11px] py-2.5 px-3.5"><span class="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 font-sans font-medium">${hb.type || 'Hydrogen Bond'}</span></td>
       </tr>
-    `).join("") : `<tr><td colspan="5" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No directional hydrogen bonds detected within 3.5 Å cutoff.</td></tr>`;
+    `).join("") : `<tr><td colspan="5" class="text-center py-4 px-3 text-slate-400 dark:text-neutral-500 italic text-[11px]">No directional hydrogen bonds detected within 3.5 Å cutoff.</td></tr>`;
 
     // Salt bridges & Electrostatic networks
     const saltBridges = contacts.salt_bridges || [];
     const saltBridgeRows = saltBridges.length > 0 ? saltBridges.map(sb => `
-      <tr>
-        <td class="font-mono font-bold text-slate-900 dark:text-white p-2 border border-slate-200 dark:border-slate-800">${sb.residue || `${sb.res_name} ${sb.res_num}:${sb.chain}`}</td>
-        <td class="text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800 font-sans text-[11px]">${sb.subtype || 'Ionic Salt Bridge'}</td>
-        <td class="font-mono text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800">${sb.ligand_atom || '—'}</td>
-        <td class="font-mono text-fuchsia-700 dark:text-fuchsia-400 font-bold text-center p-2 border border-slate-200 dark:border-slate-800">${sb.distance != null ? Number(sb.distance).toFixed(2) + ' Å' : '—'}</td>
-        <td class="text-slate-600 dark:text-slate-400 text-[10px] p-2 border border-slate-200 dark:border-slate-800 font-mono">Cutoff &le; 4.2 Å</td>
+      <tr class="hover:bg-slate-50/60 dark:hover:bg-neutral-900/40 transition-colors duration-150">
+        <td class="font-mono font-bold text-slate-900 dark:text-white py-2.5 px-3.5">${sb.residue || `${sb.res_name} ${sb.res_num}:${sb.chain}`}</td>
+        <td class="text-slate-600 dark:text-neutral-300 py-2.5 px-3.5 font-sans text-[11px]">${sb.subtype || 'Ionic Salt Bridge'}</td>
+        <td class="font-mono text-slate-600 dark:text-neutral-400 py-2.5 px-3.5">${sb.ligand_atom || '—'}</td>
+        <td class="font-mono text-fuchsia-600 dark:text-fuchsia-400 font-bold text-center py-2.5 px-3.5">${sb.distance != null ? Number(sb.distance).toFixed(2) + ' Å' : '—'}</td>
+        <td class="text-slate-400 dark:text-neutral-500 text-[10.5px] py-2.5 px-3.5 font-mono">Cutoff &le; 4.2 Å</td>
       </tr>
-    `).join("") : `<tr><td colspan="5" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No electrostatic salt bridges detected within 4.2 Å cutoff.</td></tr>`;
+    `).join("") : `<tr><td colspan="5" class="text-center py-4 px-3 text-slate-400 dark:text-neutral-500 italic text-[11px]">No electrostatic salt bridges detected within 4.2 Å cutoff.</td></tr>`;
 
     // Pi-Pi aromatic stacking
     const piStacks = contacts.pi_stacking || [];
     const piStackRows = piStacks.length > 0 ? piStacks.map(ps => `
-      <tr>
-        <td class="font-mono font-bold text-slate-900 dark:text-white p-2 border border-slate-200 dark:border-slate-800">${ps.residue || `${ps.res_name} ${ps.res_num}:${ps.chain}`}</td>
-        <td class="text-emerald-700 dark:text-emerald-400 p-2 border border-slate-200 dark:border-slate-800 font-sans font-semibold text-[11px]">${ps.subtype || 'π-π Stacking'}</td>
-        <td class="font-mono text-emerald-700 dark:text-emerald-400 font-bold text-center p-2 border border-slate-200 dark:border-slate-800">${ps.distance != null ? Number(ps.distance).toFixed(2) + ' Å' : '—'}</td>
-        <td class="font-mono text-slate-600 dark:text-slate-400 text-center p-2 border border-slate-200 dark:border-slate-800 text-[11px]">${ps.angle_deg != null ? Number(ps.angle_deg).toFixed(1) + '°' : '—'}</td>
+      <tr class="hover:bg-slate-50/60 dark:hover:bg-neutral-900/40 transition-colors duration-150">
+        <td class="font-mono font-bold text-slate-900 dark:text-white py-2.5 px-3.5">${ps.residue || `${ps.res_name} ${ps.res_num}:${ps.chain}`}</td>
+        <td class="text-emerald-600 dark:text-emerald-400 py-2.5 px-3.5 font-sans font-semibold text-[11px]">${ps.subtype || 'π-π Stacking'}</td>
+        <td class="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-center py-2.5 px-3.5">${ps.distance != null ? Number(ps.distance).toFixed(2) + ' Å' : '—'}</td>
+        <td class="font-mono text-slate-500 dark:text-neutral-400 text-center py-2.5 px-3.5 text-[11px]">${ps.angle_deg != null ? Number(ps.angle_deg).toFixed(1) + '°' : '—'}</td>
       </tr>
-    `).join("") : `<tr><td colspan="4" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No π-π aromatic stacking detected within 5.5 Å centroid cutoff.</td></tr>`;
+    `).join("") : `<tr><td colspan="4" class="text-center py-4 px-3 text-slate-400 dark:text-neutral-500 italic text-[11px]">No π-π aromatic stacking detected within 5.5 Å centroid cutoff.</td></tr>`;
 
     // Pi-Cation interactions
     const piCations = contacts.pi_cation || [];
     const piCationRows = piCations.length > 0 ? piCations.map(pc => `
-      <tr>
-        <td class="font-mono font-bold text-slate-900 dark:text-white p-2 border border-slate-200 dark:border-slate-800">${pc.residue || `${pc.res_name} ${pc.res_num}:${pc.chain}`}</td>
-        <td class="text-amber-700 dark:text-amber-400 p-2 border border-slate-200 dark:border-slate-800 font-sans font-semibold text-[11px]">${pc.subtype || 'π-Cation Contact'}</td>
-        <td class="font-mono text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800">${pc.ligand_atom || '—'}</td>
-        <td class="font-mono text-amber-700 dark:text-amber-400 font-bold text-center p-2 border border-slate-200 dark:border-slate-800">${pc.distance != null ? Number(pc.distance).toFixed(2) + ' Å' : '—'}</td>
+      <tr class="hover:bg-slate-50/60 dark:hover:bg-neutral-900/40 transition-colors duration-150">
+        <td class="font-mono font-bold text-slate-900 dark:text-white py-2.5 px-3.5">${pc.residue || `${pc.res_name} ${pc.res_num}:${pc.chain}`}</td>
+        <td class="text-amber-600 dark:text-amber-400 py-2.5 px-3.5 font-sans font-semibold text-[11px]">${pc.subtype || 'π-Cation Contact'}</td>
+        <td class="font-mono text-slate-600 dark:text-neutral-400 py-2.5 px-3.5">${pc.ligand_atom || '—'}</td>
+        <td class="font-mono text-amber-600 dark:text-amber-400 font-bold text-center py-2.5 px-3.5">${pc.distance != null ? Number(pc.distance).toFixed(2) + ' Å' : '—'}</td>
       </tr>
-    `).join("") : `<tr><td colspan="4" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No π-cation contacts detected within 4.5 Å cutoff.</td></tr>`;
+    `).join("") : `<tr><td colspan="4" class="text-center py-4 px-3 text-slate-400 dark:text-neutral-500 italic text-[11px]">No π-cation contacts detected within 4.5 Å cutoff.</td></tr>`;
     const expClass = d.experiment_classification || null;
     const isNativeRedock = expClass?.is_native_redocking ?? (r.native_ligand?.has_native && (l.name && r.native_ligand?.name && l.name.toLowerCase() === r.native_ligand.name.toLowerCase()));
     const dockingModeName = isNativeRedock 
@@ -3530,27 +3880,27 @@ class BindoraApp {
     const halogenRows = halogenBonds.length > 0 ? halogenBonds.map(hb => {
       const isClassical = hb.interaction_subtype ? hb.interaction_subtype.includes("Classical") : (!hb.ligand_atom || !hb.ligand_atom.startsWith("F"));
       const badge = isClassical 
-        ? `<span class="px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 text-[10px]">σ-Hole Halogen Bond</span>`
-        : `<span class="px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 text-[10px]" title="Fluorine lacks a classical σ-hole; contact is polar/multipolar">Fluorine Polar Contact</span>`;
+        ? `<span class="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/20 text-[10px] font-sans font-medium">σ-Hole Halogen Bond</span>`
+        : `<span class="px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-300 border border-sky-500/20 text-[10px] font-sans font-medium" title="Fluorine lacks a classical σ-hole; contact is polar/multipolar">Fluorine Polar Contact</span>`;
       return `
-      <tr>
-        <td class="font-mono font-bold text-slate-900 dark:text-white p-2 border border-slate-200 dark:border-slate-800">${hb.residue || `${hb.res_name} ${hb.res_num}:${hb.chain}`}</td>
-        <td class="font-mono text-slate-700 dark:text-slate-300 p-2 border border-slate-200 dark:border-slate-800">${hb.receptor_atom || '—'}</td>
-        <td class="font-mono text-purple-700 dark:text-purple-400 font-bold p-2 border border-slate-200 dark:border-slate-800">${hb.ligand_atom || 'Halogen'} ${badge}</td>
-        <td class="font-mono text-purple-700 dark:text-purple-400 font-bold text-center p-2 border border-slate-200 dark:border-slate-800">${hb.distance != null ? Number(hb.distance).toFixed(2) + ' Å' : '—'}</td>
-        <td class="font-mono text-slate-600 dark:text-slate-400 text-center p-2 border border-slate-200 dark:border-slate-800 text-[11px]">${hb.angle_deg != null ? Number(hb.angle_deg).toFixed(1) + '° ' + (isClassical ? '(θ &ge; 130°)' : '(polar contact)') : '—'}</td>
+      <tr class="hover:bg-slate-50/60 dark:hover:bg-neutral-900/40 transition-colors duration-150">
+        <td class="font-mono font-bold text-slate-900 dark:text-white py-2.5 px-3.5">${hb.residue || `${hb.res_name} ${hb.res_num}:${hb.chain}`}</td>
+        <td class="font-mono text-slate-600 dark:text-neutral-400 py-2.5 px-3.5">${hb.receptor_atom || '—'}</td>
+        <td class="font-mono text-purple-600 dark:text-purple-300 font-bold py-2.5 px-3.5 flex items-center space-x-2"><span>${hb.ligand_atom || 'Halogen'}</span> ${badge}</td>
+        <td class="font-mono text-purple-600 dark:text-purple-400 font-bold text-center py-2.5 px-3.5">${hb.distance != null ? Number(hb.distance).toFixed(2) + ' Å' : '—'}</td>
+        <td class="font-mono text-slate-500 dark:text-neutral-400 text-center py-2.5 px-3.5 text-[11px]">${hb.angle_deg != null ? Number(hb.angle_deg).toFixed(1) + '° ' + (isClassical ? '(θ &ge; 130°)' : '(polar contact)') : '—'}</td>
       </tr>
       `;
-    }).join("") : `<tr><td colspan="5" class="text-center py-2 text-slate-500 italic p-2 border border-slate-200 dark:border-slate-800">No halogen bonds or polar fluorine contacts detected within distance (≤ 3.8 Å) and geometric criteria.</td></tr>`;
+    }).join("") : `<tr><td colspan="5" class="text-center py-4 px-3 text-slate-400 dark:text-neutral-500 italic text-[11px]">No halogen bonds or polar fluorine contacts detected within distance (≤ 3.8 Å) and geometric criteria.</td></tr>`;
 
     // Hydrophobic contacts
     const hydrophobics = contacts.hydrophobic_contacts || [];
     const hydrophobicList = hydrophobics.length > 0 ? hydrophobics.map(hp => `
-      <span class="inline-flex items-center space-x-1 px-2 py-1 rounded bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/60 text-sky-900 dark:text-sky-200 font-mono text-[11px]">
+      <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-800 dark:text-sky-300 font-mono text-[11px]">
         <span class="font-bold">${hp.residue || `${hp.res_name} ${hp.res_num}:${hp.chain}`}</span>
-        <span class="text-[10px] text-sky-700 dark:text-sky-400">(${Number(hp.distance).toFixed(2)} Å)</span>
+        <span class="text-[10.5px] text-sky-600/80 dark:text-sky-400/80">(${Number(hp.distance).toFixed(2)} Å)</span>
       </span>
-    `).join(" ") : `<span class="text-slate-500 italic text-xs">No hydrophobic contacts detected within 4.0 Å cutoff.</span>`;
+    `).join(" ") : `<span class="text-slate-400 dark:text-neutral-500 italic text-xs">No hydrophobic contacts detected within 4.0 Å cutoff.</span>`;
 
     // Lipinski Rule of 5 Matrix - Robust descriptor resolution
     const mw = phys.molecular_weight?.value != null ? Number(phys.molecular_weight.value).toFixed(2) : (l.weight != null ? Number(l.weight).toFixed(2) : "—");
@@ -3569,18 +3919,18 @@ class BindoraApp {
     let currentSec = 5;
     const svgSectionHtml = contacts.diagram_svg ? `
       <!-- SECTION: 2D PROTEIN-LIGAND INTERACTION SCHEMATIC -->
-      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-2 page-break-inside-avoid">
-        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
-            <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+      <div class="dossier-card p-5 rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white/70 dark:bg-[#0a0c10] space-y-3 page-break-inside-avoid shadow-sm backdrop-blur-sm">
+        <div class="flex items-center justify-between border-b border-slate-100 dark:border-neutral-800/70 pb-3">
+          <span class="font-bold text-slate-800 dark:text-neutral-200 uppercase tracking-wider text-xs flex items-center space-x-2 font-sans">
+            <svg class="w-4 h-4 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
             <span>Section ${currentSec++}: 2D Protein–Ligand Interaction Schematic</span>
           </span>
-          <span class="text-[10px] text-cyan-700 dark:text-cyan-400 font-mono">LigPlot-Style Radial Vector Map</span>
+          <span class="text-[10px] text-cyan-600 dark:text-cyan-400 font-mono">LigPlot-Style Radial Vector Map</span>
         </div>
-        <div class="dossier-subbox flex items-center justify-center p-3 bg-white dark:bg-slate-950/90 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden" id="dossier-svg-container">
+        <div class="dossier-subbox flex items-center justify-center p-4 bg-white dark:bg-[#060709] rounded-xl border border-slate-200/60 dark:border-neutral-800/70 overflow-hidden shadow-inner" id="dossier-svg-container">
           ${contacts.diagram_svg}
         </div>
-        <p class="text-[10px] text-slate-500 font-sans text-center mt-1">
+        <p class="text-[10.5px] text-slate-400 dark:text-neutral-400 font-sans text-center mt-1">
           <em>Figure 1:</em> 2D radial representation of binding cleft contacts (dashed cyan lines = hydrogen bonds with distances; amber rays = hydrophobic interactions).
         </p>
       </div>
@@ -3591,132 +3941,132 @@ class BindoraApp {
 
     resultsSummary.innerHTML = `
       <!-- SECTION 1: EXECUTIVE THERMODYNAMIC & KINETIC METRICS -->
-      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-3">
-        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
-            <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2v7.31L4.16 20.25A1 1 0 0 0 5 21.6h14a1 1 0 0 0 .84-1.35L14 9.31V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
+      <div class="dossier-card p-5 rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white/70 dark:bg-[#0a0c10] space-y-4 shadow-sm backdrop-blur-sm">
+        <div class="flex items-center justify-between border-b border-slate-100 dark:border-neutral-800/70 pb-3">
+          <span class="font-bold text-slate-800 dark:text-neutral-200 uppercase tracking-wider text-xs flex items-center space-x-2 font-sans">
+            <svg class="w-4 h-4 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2v7.31L4.16 20.25A1 1 0 0 0 5 21.6h14a1 1 0 0 0 .84-1.35L14 9.31V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
             <span>Section 1: Executive Quantitative Binding Metrics</span>
           </span>
-          <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800 font-semibold">Primary Simulation</span>
+          <span class="text-[10.5px] px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 font-semibold font-sans">Primary Simulation</span>
         </div>
 
         <!-- Docking Experiment Mode Banner -->
-        <div class="p-3 rounded-lg border ${isNativeRedock ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200' : 'bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200'} text-xs font-mono">
-          <div class="flex items-center justify-between font-sans font-bold text-xs pb-1.5 border-b ${isNativeRedock ? 'border-emerald-200 dark:border-emerald-800/60' : 'border-slate-200 dark:border-slate-800'}">
+        <div class="p-4 rounded-xl border ${isNativeRedock ? 'bg-emerald-500/[0.06] border-emerald-500/20 text-emerald-900 dark:text-emerald-200' : 'bg-slate-50/70 dark:bg-[#0e1017] border-slate-200/70 dark:border-neutral-800/70 text-slate-800 dark:text-neutral-200'} text-xs font-mono shadow-sm">
+          <div class="flex items-center justify-between font-sans font-bold text-xs pb-2 border-b ${isNativeRedock ? 'border-emerald-500/20' : 'border-slate-200/60 dark:border-neutral-800/60'}">
             <span class="flex items-center space-x-2">
-              <span>Docking Mode:</span>
-              <span class="px-2 py-0.5 rounded ${isNativeRedock ? 'bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100' : 'bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300'} uppercase font-black tracking-wider text-[10px]">
+              <span class="text-slate-500 dark:text-neutral-400 font-medium">Docking Mode:</span>
+              <span class="px-2.5 py-0.5 rounded-full ${isNativeRedock ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-300'} uppercase font-bold tracking-wider text-[10px]">
                 ${dockingModeName}
               </span>
             </span>
-            <span class="text-[10px] text-slate-500 font-normal">${expClass?.validation_applicability || (isNativeRedock ? 'Applicable (Crystallographic Self-Validation)' : 'Comparative Docking')}</span>
+            <span class="text-[10.5px] text-slate-400 dark:text-neutral-400 font-normal">${expClass?.validation_applicability || (isNativeRedock ? 'Applicable (Crystallographic Self-Validation)' : 'Comparative Docking')}</span>
           </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-[11px]">
-            <div><span class="text-slate-500 block">Target Receptor:</span> <span class="font-bold text-slate-900 dark:text-white">${r.pdb_id || 'Custom'} (${r.title ? r.title.slice(0, 20) + '...' : 'Receptor'})</span></div>
-            <div><span class="text-slate-500 block">Crystal Reference:</span> <span class="font-bold">${expClass?.crystal_ligand_name || (r.native_ligand?.name ? r.native_ligand.name : 'None')}</span></div>
-            <div><span class="text-slate-500 block">Docked Compound:</span> <span class="font-bold text-cyan-700 dark:text-cyan-400">${l.name || 'Investigational Ligand'}</span></div>
-            <div><span class="text-slate-500 block">Self-Validation:</span> <span class="font-bold ${isNativeRedock ? (redock?.is_validated ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600') : 'text-slate-500'}">${isNativeRedock ? (redock ? `${redock.benchmark_status} (${redock.rmsd_angstroms} Å)` : 'Native Ligand Redocking') : 'Non-Native (Cross-Docking)'}</span></div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2.5 text-[11px]">
+            <div><span class="text-slate-400 dark:text-neutral-400 block text-[10.5px]">Target Receptor:</span> <span class="font-bold text-slate-900 dark:text-white">${r.pdb_id || 'Custom'} (${r.title ? r.title.slice(0, 20) + '...' : 'Receptor'})</span></div>
+            <div><span class="text-slate-400 dark:text-neutral-400 block text-[10.5px]">Crystal Reference:</span> <span class="font-bold text-slate-900 dark:text-white">${expClass?.crystal_ligand_name || (r.native_ligand?.name ? r.native_ligand.name : 'None')}</span></div>
+            <div><span class="text-slate-400 dark:text-neutral-400 block text-[10.5px]">Docked Compound:</span> <span class="font-bold text-cyan-600 dark:text-cyan-400">${l.name || 'Investigational Ligand'}</span></div>
+            <div><span class="text-slate-400 dark:text-neutral-400 block text-[10.5px]">Self-Validation:</span> <span class="font-bold ${isNativeRedock ? (redock?.is_validated ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500') : 'text-slate-400 dark:text-neutral-400'}">${isNativeRedock ? (redock ? `${redock.benchmark_status} (${redock.rmsd_angstroms} Å)` : 'Native Ligand Redocking') : 'Non-Native (Cross-Docking)'}</span></div>
           </div>
-          ${dockingModeDesc ? `<p class="mt-1.5 pt-1.5 border-t border-slate-200 dark:border-slate-800 text-[10px] text-slate-600 dark:text-slate-400 font-sans italic">${dockingModeDesc}</p>` : ''}
+          ${dockingModeDesc ? `<p class="mt-2 pt-2 border-t border-slate-200/60 dark:border-neutral-800/60 text-[10.5px] text-slate-500 dark:text-neutral-400 font-sans italic leading-relaxed">${dockingModeDesc}</p>` : ''}
         </div>
 
         <!-- 4 Core Metrics Cards -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
-            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium" title="Empirical scoring function output from AutoDock Vina, approximating binding affinity">Vina Docking Score</span>
-            <span class="text-cyan-700 dark:text-cyan-400 font-black text-base">${topPose.affinity_kcal != null ? topPose.affinity_kcal.toFixed(2) : "—"} <span class="text-xs font-normal font-sans">kcal/mol</span></span>
-            <span class="text-[10px] text-slate-500 block font-sans">Empirical Score (ΔG estimate)</span>
+          <div class="dossier-subbox p-4 bg-slate-50/70 dark:bg-[#0e1017] rounded-xl border border-slate-200/60 dark:border-neutral-800/70 shadow-sm flex flex-col justify-between">
+            <span class="text-slate-500 dark:text-neutral-400 block font-sans text-[11px] font-medium" title="Empirical scoring function output from AutoDock Vina, approximating binding affinity">Vina Docking Score</span>
+            <span class="text-cyan-600 dark:text-cyan-400 font-bold font-mono text-lg my-1">${topPose.affinity_kcal != null ? topPose.affinity_kcal.toFixed(2) : "—"} <span class="text-xs font-normal font-sans text-slate-400 dark:text-neutral-400">kcal/mol</span></span>
+            <span class="text-[10px] text-slate-400 dark:text-neutral-400 block font-sans">Empirical Score (ΔG estimate)</span>
           </div>
-          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm" title="This value is mathematically derived from the docking score and is not an experimentally measured or rigorously calculated thermodynamic Kd.">
-            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Affinity-Derived Kd-like Estimate</span>
-            <span class="text-emerald-700 dark:text-emerald-400 font-black text-base">${(thermo.affinity_derived_kd_nm ?? thermo.theoretical_kd_nm) != null ? (thermo.affinity_derived_kd_nm ?? thermo.theoretical_kd_nm) + ' nM' : formatKd(topPose.affinity_kcal)}</span>
-            <span class="text-[10px] text-amber-600 dark:text-amber-400 block font-sans font-medium">Derived / Model-based • exp(score/RT)</span>
+          <div class="dossier-subbox p-4 bg-slate-50/70 dark:bg-[#0e1017] rounded-xl border border-slate-200/60 dark:border-neutral-800/70 shadow-sm flex flex-col justify-between" title="This value is mathematically derived from the docking score and is not an experimentally measured or rigorously calculated thermodynamic Kd.">
+            <span class="text-slate-500 dark:text-neutral-400 block font-sans text-[11px] font-medium">Affinity-Derived Kd-like Estimate</span>
+            <span class="text-emerald-600 dark:text-emerald-400 font-bold font-mono text-lg my-1">${(thermo.affinity_derived_kd_nm ?? thermo.theoretical_kd_nm) != null ? (thermo.affinity_derived_kd_nm ?? thermo.theoretical_kd_nm) + ' nM' : formatKd(topPose.affinity_kcal)}</span>
+            <span class="text-[10px] text-amber-600/90 dark:text-amber-400/90 block font-sans font-medium">Derived • exp(score/RT)</span>
           </div>
-          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
-            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium" title="Normalized heavy atom binding affinity: |Vina Score| / Heavy Atom Count">Ligand Efficiency (LE)</span>
-            <span class="text-amber-700 dark:text-amber-400 font-black text-base">${thermo.ligand_efficiency?.value || calcLE(topPose.affinity_kcal, heavyCount)}</span>
-            <span class="text-[10px] text-slate-500 block font-sans">|Score| / ${heavyCount} heavy atoms</span>
+          <div class="dossier-subbox p-4 bg-slate-50/70 dark:bg-[#0e1017] rounded-xl border border-slate-200/60 dark:border-neutral-800/70 shadow-sm flex flex-col justify-between">
+            <span class="text-slate-500 dark:text-neutral-400 block font-sans text-[11px] font-medium" title="Normalized heavy atom binding affinity: |Vina Score| / Heavy Atom Count">Ligand Efficiency (LE)</span>
+            <span class="text-amber-600 dark:text-amber-400 font-bold font-mono text-lg my-1">${thermo.ligand_efficiency?.value || calcLE(topPose.affinity_kcal, heavyCount)}</span>
+            <span class="text-[10px] text-slate-400 dark:text-neutral-400 block font-sans">|Score| / ${heavyCount} heavy atoms</span>
           </div>
-          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
-            <span class="text-slate-500 dark:text-slate-400 block font-sans text-[11px] font-medium">Intermolecular Contacts</span>
-            <span class="text-purple-700 dark:text-purple-400 font-black text-base">${contacts.total_hbond_count || hbonds.length} <span class="text-xs font-normal font-sans">H-Bonds</span></span>
-            <span class="text-[10px] text-slate-500 block font-sans">${saltBridges.length} Salt &bull; ${piStacks.length} π-π &bull; ${piCations.length} π-Cat &bull; ${halogenBonds.length} Hal</span>
+          <div class="dossier-subbox p-4 bg-slate-50/70 dark:bg-[#0e1017] rounded-xl border border-slate-200/60 dark:border-neutral-800/70 shadow-sm flex flex-col justify-between">
+            <span class="text-slate-500 dark:text-neutral-400 block font-sans text-[11px] font-medium">Intermolecular Contacts</span>
+            <span class="text-purple-600 dark:text-purple-400 font-bold font-mono text-lg my-1">${contacts.total_hbond_count || hbonds.length} <span class="text-xs font-normal font-sans text-slate-400 dark:text-neutral-400">H-Bonds</span></span>
+            <span class="text-[10px] text-slate-400 dark:text-neutral-400 block font-sans">${saltBridges.length} Salt &bull; ${piStacks.length} π-π &bull; ${piCations.length} π-Cat &bull; ${halogenBonds.length} Hal</span>
           </div>
         </div>
 
         <!-- Standard Biophysical Parameter Matrix (Table 1) -->
-        <div class="space-y-1.5 pt-1">
+        <div class="space-y-2 pt-1">
           <div class="flex items-center justify-between">
-            <span class="font-bold text-slate-800 dark:text-slate-200 text-xs font-sans">Table 1: Standardized Biophysical &amp; Docking Parameter Matrix</span>
-            <span class="text-[10px] text-slate-500 font-mono">Explicit Scientific Grounding</span>
+            <span class="font-bold text-slate-800 dark:text-neutral-200 text-xs font-sans">Table 1: Standardized Biophysical &amp; Docking Parameter Matrix</span>
+            <span class="text-[10px] text-slate-400 dark:text-neutral-400 font-mono">Explicit Scientific Grounding</span>
           </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
-              <thead>
-                <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-bold font-sans">
-                  <th class="p-2 border border-slate-200 dark:border-slate-800">Parameter</th>
-                  <th class="p-2 border border-slate-200 dark:border-slate-800">Value</th>
-                  <th class="p-2 border border-slate-200 dark:border-slate-800">Metric Type</th>
-                  <th class="p-2 border border-slate-200 dark:border-slate-800">Source / Methodology</th>
+          <div class="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white dark:bg-[#0c0d12]">
+            <table class="w-full text-xs text-left border-collapse">
+              <thead class="bg-slate-50/80 dark:bg-neutral-900/60 text-slate-600 dark:text-neutral-400 font-semibold font-sans text-[11px] border-b border-slate-200/80 dark:border-neutral-800/80">
+                <tr>
+                  <th class="py-2.5 px-3.5">Parameter</th>
+                  <th class="py-2.5 px-3.5">Value</th>
+                  <th class="py-2.5 px-3.5">Metric Type</th>
+                  <th class="py-2.5 px-3.5">Source / Methodology</th>
                 </tr>
               </thead>
-              <tbody class="font-mono text-[11px]">
-                <tr>
-                  <td class="p-2 font-sans font-semibold border border-slate-200 dark:border-slate-800">Vina Docking Score</td>
-                  <td class="p-2 font-bold text-cyan-700 dark:text-cyan-400 border border-slate-200 dark:border-slate-800">${topPose.affinity_kcal != null ? topPose.affinity_kcal.toFixed(2) + ' kcal/mol' : '—'}</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800"><span class="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 font-sans text-[10px]">Predicted</span></td>
-                  <td class="p-2 font-sans text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">AutoDock Vina 1.2.5 Empirical Scoring Function</td>
+              <tbody class="divide-y divide-slate-100 dark:divide-neutral-800/60 font-mono text-[11px]">
+                <tr class="hover:bg-slate-50/60 dark:hover:bg-neutral-900/40 transition-colors duration-150">
+                  <td class="py-2.5 px-3.5 font-sans font-semibold text-slate-900 dark:text-white">Vina Docking Score</td>
+                  <td class="py-2.5 px-3.5 font-bold text-cyan-600 dark:text-cyan-400">${topPose.affinity_kcal != null ? topPose.affinity_kcal.toFixed(2) + ' kcal/mol' : '—'}</td>
+                  <td class="py-2.5 px-3.5"><span class="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-sans text-[10px]">Predicted</span></td>
+                  <td class="py-2.5 px-3.5 font-sans text-slate-500 dark:text-neutral-400">AutoDock Vina 1.2.5 Empirical Scoring Function</td>
                 </tr>
-                <tr>
-                  <td class="p-2 font-sans font-semibold border border-slate-200 dark:border-slate-800">Affinity-Derived Kd-like Estimate</td>
-                  <td class="p-2 font-bold text-emerald-700 dark:text-emerald-400 border border-slate-200 dark:border-slate-800">${(thermo.affinity_derived_kd_nm ?? thermo.theoretical_kd_nm) != null ? (thermo.affinity_derived_kd_nm ?? thermo.theoretical_kd_nm) + ' nM' : formatKd(topPose.affinity_kcal)}</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800"><span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-sans text-[10px]" title="This value is mathematically derived from the docking score and is not an experimentally measured or rigorously calculated thermodynamic Kd.">Derived / Model-based</span></td>
-                  <td class="p-2 font-sans text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">Model conversion: Kd = exp(score/RT) at 298.15 K (RT ≈ 0.592 kcal/mol). Not an experimental or rigorous thermodynamic Kd.</td>
+                <tr class="hover:bg-slate-50/60 dark:hover:bg-neutral-900/40 transition-colors duration-150">
+                  <td class="py-2.5 px-3.5 font-sans font-semibold text-slate-900 dark:text-white">Affinity-Derived Kd-like Estimate</td>
+                  <td class="py-2.5 px-3.5 font-bold text-emerald-600 dark:text-emerald-400">${(thermo.affinity_derived_kd_nm ?? thermo.theoretical_kd_nm) != null ? (thermo.affinity_derived_kd_nm ?? thermo.theoretical_kd_nm) + ' nM' : formatKd(topPose.affinity_kcal)}</td>
+                  <td class="py-2.5 px-3.5"><span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-sans text-[10px]" title="This value is mathematically derived from the docking score and is not an experimentally measured or rigorously calculated thermodynamic Kd.">Derived / Model-based</span></td>
+                  <td class="py-2.5 px-3.5 font-sans text-slate-500 dark:text-neutral-400">Model conversion: Kd = exp(score/RT) at 298.15 K (RT ≈ 0.592 kcal/mol). Not an experimental Kd.</td>
                 </tr>
-                <tr>
-                  <td class="p-2 font-sans font-semibold border border-slate-200 dark:border-slate-800">Ligand Efficiency (LE)</td>
-                  <td class="p-2 font-bold text-amber-700 dark:text-amber-400 border border-slate-200 dark:border-slate-800">${thermo.ligand_efficiency?.value || calcLE(topPose.affinity_kcal, heavyCount)} kcal/mol/HA</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800"><span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-sans text-[10px]">Calculated</span></td>
-                  <td class="p-2 font-sans text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">Normalized Heavy Atom Affinity: |Vina Score| / ${heavyCount} Heavy Atoms</td>
+                <tr class="hover:bg-slate-50/60 dark:hover:bg-neutral-900/40 transition-colors duration-150">
+                  <td class="py-2.5 px-3.5 font-sans font-semibold text-slate-900 dark:text-white">Ligand Efficiency (LE)</td>
+                  <td class="py-2.5 px-3.5 font-bold text-amber-600 dark:text-amber-400">${thermo.ligand_efficiency?.value || calcLE(topPose.affinity_kcal, heavyCount)} kcal/mol/HA</td>
+                  <td class="py-2.5 px-3.5"><span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-sans text-[10px]">Calculated</span></td>
+                  <td class="py-2.5 px-3.5 font-sans text-slate-500 dark:text-neutral-400">Normalized Heavy Atom Affinity: |Vina Score| / ${heavyCount} Heavy Atoms</td>
                 </tr>
-                <tr>
-                  <td class="p-2 font-sans font-semibold border border-slate-200 dark:border-slate-800">True Redocking RMSD</td>
-                  <td class="p-2 font-bold ${redock ? (redock.is_validated ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400') : 'text-slate-500'} border border-slate-200 dark:border-slate-800">${redock ? redock.rmsd_angstroms + ' Å (' + redock.benchmark_status + ')' : (isNativeRedock ? 'Pending / Available in Tab 2' : 'N/A (Cross-Docking Experiment)')}</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800"><span class="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-sans text-[10px]">Validation</span></td>
-                  <td class="p-2 font-sans text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">Symmetry-Aware Coordinate RMSD vs Co-Crystallized Ligand (≤ 2.0 Å Pass)</td>
+                <tr class="hover:bg-slate-50/60 dark:hover:bg-neutral-900/40 transition-colors duration-150">
+                  <td class="py-2.5 px-3.5 font-sans font-semibold text-slate-900 dark:text-white">True Redocking RMSD</td>
+                  <td class="py-2.5 px-3.5 font-bold ${redock ? (redock.is_validated ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500') : 'text-slate-400 dark:text-neutral-400'}">${redock ? redock.rmsd_angstroms + ' Å (' + redock.benchmark_status + ')' : (isNativeRedock ? 'Pending / Available in Tab 2' : 'N/A (Cross-Docking Experiment)')}</td>
+                  <td class="py-2.5 px-3.5"><span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-sans text-[10px]">Validation</span></td>
+                  <td class="py-2.5 px-3.5 font-sans text-slate-500 dark:text-neutral-400">Symmetry-Aware Coordinate RMSD vs Co-Crystallized Ligand (≤ 2.0 Å Pass)</td>
                 </tr>
-                <tr>
-                  <td class="p-2 font-sans font-semibold border border-slate-200 dark:border-slate-800">ChEMBL Wet-Lab Bioactivity</td>
-                  <td class="p-2 font-bold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800">${this.state.chemblCrosscheck?.records?.length ? `${this.state.chemblCrosscheck.records[0].type} = ${this.state.chemblCrosscheck.records[0].value} ${this.state.chemblCrosscheck.records[0].units}` : 'No deposited records'}</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800"><span class="px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-sans text-[10px]">Experimental</span></td>
-                  <td class="p-2 font-sans text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">Curated in vitro bioactivity records from the ChEMBL Database</td>
+                <tr class="hover:bg-slate-50/60 dark:hover:bg-neutral-900/40 transition-colors duration-150">
+                  <td class="py-2.5 px-3.5 font-sans font-semibold text-slate-900 dark:text-white">ChEMBL Wet-Lab Bioactivity</td>
+                  <td class="py-2.5 px-3.5 font-bold text-slate-800 dark:text-neutral-200">${this.state.chemblCrosscheck?.records?.length ? `${this.state.chemblCrosscheck.records[0].type} = ${this.state.chemblCrosscheck.records[0].value} ${this.state.chemblCrosscheck.records[0].units}` : 'No deposited records'}</td>
+                  <td class="py-2.5 px-3.5"><span class="px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 font-sans text-[10px]">Experimental</span></td>
+                  <td class="py-2.5 px-3.5 font-sans text-slate-500 dark:text-neutral-400">Curated in vitro bioactivity records from the ChEMBL Database</td>
                 </tr>
               </tbody>
             </table>
-            <p class="text-[10px] text-slate-500 italic mt-1 leading-normal">
-              * Note: The Affinity-Derived Kd-like estimate is mathematically derived from the AutoDock Vina score (Kd = exp(score/RT) at 298.15 K) and is not an experimentally measured or rigorously calculated thermodynamic Kd.
-            </p>
           </div>
+          <p class="text-[10px] text-slate-400 dark:text-neutral-400 italic mt-1 leading-normal">
+            * Note: The Affinity-Derived Kd-like estimate is mathematically derived from the AutoDock Vina score (Kd = exp(score/RT) at 298.15 K) and is not an experimentally measured or rigorously calculated thermodynamic Kd.
+          </p>
         </div>
 
         ${repStats ? `
-          <div class="p-2.5 rounded-lg bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800/40 text-xs font-mono flex items-center justify-between">
-            <span class="text-slate-800 dark:text-slate-200 font-sans font-medium">Multi-Seed Stochastic Replicates (N=${repStats.replicates_count}):</span>
-            <span class="text-cyan-800 dark:text-cyan-300 font-bold">Mean Vina Score = ${repStats.mean_affinity_kcal} ± ${repStats.sd_affinity_kcal} kcal/mol (95% CI: ±${repStats.confidence_interval_95} kcal/mol)</span>
+          <div class="p-3 rounded-xl bg-cyan-500/[0.06] border border-cyan-500/20 text-xs font-mono flex items-center justify-between shadow-sm">
+            <span class="text-slate-800 dark:text-neutral-200 font-sans font-medium">Multi-Seed Stochastic Replicates (N=${repStats.replicates_count}):</span>
+            <span class="text-cyan-700 dark:text-cyan-300 font-bold">Mean Vina Score = ${repStats.mean_affinity_kcal} ± ${repStats.sd_affinity_kcal} kcal/mol (95% CI: ±${repStats.confidence_interval_95} kcal/mol)</span>
           </div>
         ` : ''}
 
         ${redock ? `
-          <div class="p-2.5 rounded-lg ${redock.is_validated ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40' : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/40'} border text-xs font-mono flex items-center justify-between">
-            <span class="text-slate-800 dark:text-slate-200 font-sans font-medium">Protocol Self-Validation (Native Ligand Redocking):</span>
-            <span class="${redock.is_validated ? 'text-emerald-800 dark:text-emerald-300' : 'text-amber-800 dark:text-amber-300'} font-bold">RMSD = ${redock.rmsd_angstroms} Å &bull; ${redock.benchmark_status}</span>
+          <div class="p-3 rounded-xl ${redock.is_validated ? 'bg-emerald-500/[0.06] border-emerald-500/20' : 'bg-amber-500/[0.06] border-amber-500/20'} border text-xs font-mono flex items-center justify-between shadow-sm">
+            <span class="text-slate-800 dark:text-neutral-200 font-sans font-medium">Protocol Self-Validation (Native Ligand Redocking):</span>
+            <span class="${redock.is_validated ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'} font-bold">RMSD = ${redock.rmsd_angstroms} Å &bull; ${redock.benchmark_status}</span>
           </div>
         ` : ''}
 
         ${isWeak ? `
-          <div class="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-600/50 text-xs text-amber-900 dark:text-amber-200 font-sans space-y-1">
+          <div class="p-3.5 rounded-xl bg-amber-500/[0.07] border border-amber-500/30 text-xs text-amber-900 dark:text-amber-200 font-sans space-y-1 shadow-sm">
             <strong class="font-bold flex items-center space-x-1.5 text-amber-900 dark:text-amber-300">
-              <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <svg class="w-4 h-4 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               <span>Scientific Qualification: Sub-threshold Binding Detected</span>
             </strong>
             <p class="text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/90">
@@ -3727,121 +4077,121 @@ class BindoraApp {
       </div>
 
       <!-- SECTION 2: BIOPHYSICAL ENTITIES & DOCKING SEARCH SPACE SPECIFICATIONS -->
-      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-3">
-        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
-            <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+      <div class="dossier-card p-5 rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white/70 dark:bg-[#0a0c10] space-y-4 shadow-sm backdrop-blur-sm">
+        <div class="flex items-center justify-between border-b border-slate-100 dark:border-neutral-800/70 pb-3">
+          <span class="font-bold text-slate-800 dark:text-neutral-200 uppercase tracking-wider text-xs flex items-center space-x-2 font-sans">
+            <svg class="w-4 h-4 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
             <span>Section 2: Biophysical &amp; Search Space Parameters</span>
           </span>
-          <span class="text-[10px] text-slate-500 font-mono">Algorithm: Vina Iterated Local Search</span>
+          <span class="text-[10px] text-slate-400 dark:text-neutral-400 font-mono">Algorithm: Vina Iterated Local Search</span>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs">
           <!-- Target Specifications -->
-          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1.5 font-mono">
-            <div class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1 font-sans text-xs">Target Receptor</div>
-            <div class="flex justify-between"><span class="text-slate-500">PDB Identifier:</span> <span class="font-bold text-slate-900 dark:text-white">${r.pdb_id || 'Custom PDB'}</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Chains / Heavy Atoms:</span> <span class="text-slate-800 dark:text-slate-200">${(r.chains || ['A']).join(', ')} &bull; ${r.atom_count || '—'} atoms</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Grid Center [X, Y, Z]:</span> <span class="text-cyan-700 dark:text-cyan-400 font-bold">${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${center.z.toFixed(1)}</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Search Box Dimensions:</span> <span class="text-slate-800 dark:text-slate-200">${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)} Å</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Search Exhaustiveness:</span> <span class="font-bold text-slate-900 dark:text-white">${exhaustiveness} (Deep Sampling)</span></div>
+          <div class="dossier-subbox p-4 bg-slate-50/70 dark:bg-[#0e1017] rounded-xl border border-slate-200/60 dark:border-neutral-800/70 space-y-2 font-mono shadow-sm">
+            <div class="font-bold text-slate-800 dark:text-neutral-200 border-b border-slate-100 dark:border-neutral-800/60 pb-1.5 font-sans text-xs">Target Receptor</div>
+            <div class="flex justify-between py-0.5"><span class="text-slate-400 dark:text-neutral-400">PDB Identifier:</span> <span class="font-bold text-slate-900 dark:text-white">${r.pdb_id || 'Custom PDB'}</span></div>
+            <div class="flex justify-between py-0.5"><span class="text-slate-400 dark:text-neutral-400">Chains / Heavy Atoms:</span> <span class="text-slate-800 dark:text-neutral-200">${(r.chains || ['A']).join(', ')} &bull; ${r.atom_count || '—'} atoms</span></div>
+            <div class="flex justify-between py-0.5"><span class="text-slate-400 dark:text-neutral-400">Grid Center [X, Y, Z]:</span> <span class="text-cyan-600 dark:text-cyan-400 font-bold">${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${center.z.toFixed(1)}</span></div>
+            <div class="flex justify-between py-0.5"><span class="text-slate-400 dark:text-neutral-400">Search Box Dimensions:</span> <span class="text-slate-800 dark:text-neutral-200">${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)} Å</span></div>
+            <div class="flex justify-between py-0.5"><span class="text-slate-400 dark:text-neutral-400">Search Exhaustiveness:</span> <span class="font-bold text-slate-900 dark:text-white">${exhaustiveness} (Deep Sampling)</span></div>
           </div>
 
           <!-- Ligand Specifications -->
-          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1.5 font-mono">
-            <div class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1 font-sans text-xs">Investigational Ligand</div>
-            <div class="flex justify-between"><span class="text-slate-500">Ligand Name:</span> <span class="font-bold text-slate-900 dark:text-white truncate max-w-[200px]" title="${l.name || ''}">${l.name || 'Custom Ligand'}</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Molecular Formula:</span> <span class="text-slate-800 dark:text-slate-200">${l.formula || 'Derived from SMILES'}</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Molecular Weight:</span> <span class="text-slate-800 dark:text-slate-200">${mw} g/mol</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Heavy Atoms / Rot. Bonds:</span> <span class="text-slate-800 dark:text-slate-200">${heavyCount} heavy &bull; ${rotb} rotatable</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Wildman-Crippen LogP:</span> <span class="font-bold text-slate-900 dark:text-white">${logp}</span></div>
+          <div class="dossier-subbox p-4 bg-slate-50/70 dark:bg-[#0e1017] rounded-xl border border-slate-200/60 dark:border-neutral-800/70 space-y-2 font-mono shadow-sm">
+            <div class="font-bold text-slate-800 dark:text-neutral-200 border-b border-slate-100 dark:border-neutral-800/60 pb-1.5 font-sans text-xs">Investigational Ligand</div>
+            <div class="flex justify-between py-0.5"><span class="text-slate-400 dark:text-neutral-400">Ligand Name:</span> <span class="font-bold text-slate-900 dark:text-white truncate max-w-[200px]" title="${l.name || ''}">${l.name || 'Custom Ligand'}</span></div>
+            <div class="flex justify-between py-0.5"><span class="text-slate-400 dark:text-neutral-400">Molecular Formula:</span> <span class="text-slate-800 dark:text-neutral-200">${l.formula || 'Derived from SMILES'}</span></div>
+            <div class="flex justify-between py-0.5"><span class="text-slate-400 dark:text-neutral-400">Molecular Weight:</span> <span class="text-slate-800 dark:text-neutral-200">${mw} g/mol</span></div>
+            <div class="flex justify-between py-0.5"><span class="text-slate-400 dark:text-neutral-400">Heavy Atoms / Rot. Bonds:</span> <span class="text-slate-800 dark:text-neutral-200">${heavyCount} heavy &bull; ${rotb} rotatable</span></div>
+            <div class="flex justify-between py-0.5"><span class="text-slate-400 dark:text-neutral-400">Wildman-Crippen LogP:</span> <span class="font-bold text-slate-900 dark:text-white">${logp}</span></div>
           </div>
         </div>
 
         <!-- Biophysical Receptor Preparation & Catalytic Metalloenzyme Context -->
-        <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2 text-xs font-mono">
-          <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1">
-            <span class="font-bold text-slate-800 dark:text-slate-200 font-sans text-xs flex items-center space-x-1.5">
+        <div class="dossier-subbox p-4 bg-slate-50/70 dark:bg-[#0e1017] rounded-xl border border-slate-200/60 dark:border-neutral-800/70 space-y-2 text-xs font-mono shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-100 dark:border-neutral-800/60 pb-2">
+            <span class="font-bold text-slate-800 dark:text-neutral-200 font-sans text-xs flex items-center space-x-2">
               <svg class="w-3.5 h-3.5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6z"/></svg>
               <span>Biophysical Preparation &amp; Catalytic Metalloenzyme Parameters</span>
             </span>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold">${prepLog.preparation_engine || 'Biophysical Polar Hydrogen Engine (pH 7.4)'}</span>
+            <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-neutral-800/80 text-slate-600 dark:text-neutral-300 border border-slate-200/60 dark:border-neutral-700/60 font-semibold font-sans">${prepLog.preparation_engine || 'Biophysical Polar Hydrogen Engine (pH 7.4)'}</span>
           </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-            <div><span class="text-slate-500 block">Catalytic Metals:</span> <span class="font-bold ${prepLog.catalytic_metals_retained > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-800 dark:text-slate-200'}">${prepLog.catalytic_metals_retained != null ? prepLog.catalytic_metals_retained + ' Retained (Zn/Mg/Mn/Fe/Ca)' : '0 Retained'}</span></div>
-            <div><span class="text-slate-500 block">Polar Hydrogens:</span> <span class="font-bold text-cyan-700 dark:text-cyan-400">${prepLog.polar_hydrogens_added != null ? prepLog.polar_hydrogens_added + ' Added (AMBER FF14SB)' : 'Physiological (pH 7.4)'}</span></div>
-            <div><span class="text-slate-500 block">Solvent / Buffer:</span> <span class="text-slate-800 dark:text-slate-200 font-semibold">${prepLog.waters_removed ?? 0} stripped / ${prepLog.ions_and_buffer_removed ?? 0} buffer ions</span></div>
-            <div><span class="text-slate-500 block">Forcefield / Charges:</span> <span class="text-slate-800 dark:text-slate-200 truncate block" title="${prepLog.charge_model || 'AMBER FF14SB / Kollman AD4'}">${prepLog.charge_model ? 'AMBER FF14SB / Kollman' : 'AMBER FF14SB'}</span></div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1 text-[11px]">
+            <div><span class="text-slate-400 dark:text-neutral-400 block text-[10.5px]">Catalytic Metals:</span> <span class="font-bold ${prepLog.catalytic_metals_retained > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-800 dark:text-neutral-200'}">${prepLog.catalytic_metals_retained != null ? prepLog.catalytic_metals_retained + ' Retained (Zn/Mg/Mn/Fe/Ca)' : '0 Retained'}</span></div>
+            <div><span class="text-slate-400 dark:text-neutral-400 block text-[10.5px]">Polar Hydrogens:</span> <span class="font-bold text-cyan-600 dark:text-cyan-400">${prepLog.polar_hydrogens_added != null ? prepLog.polar_hydrogens_added + ' Added (AMBER FF14SB)' : 'Physiological (pH 7.4)'}</span></div>
+            <div><span class="text-slate-400 dark:text-neutral-400 block text-[10.5px]">Solvent / Buffer:</span> <span class="text-slate-800 dark:text-neutral-200 font-semibold">${prepLog.waters_removed ?? 0} stripped / ${prepLog.ions_and_buffer_removed ?? 0} buffer ions</span></div>
+            <div><span class="text-slate-400 dark:text-neutral-400 block text-[10.5px]">Forcefield / Charges:</span> <span class="text-slate-800 dark:text-neutral-200 truncate block" title="${prepLog.charge_model || 'AMBER FF14SB / Kollman AD4'}">${prepLog.charge_model ? 'AMBER FF14SB / Kollman' : 'AMBER FF14SB'}</span></div>
           </div>
         </div>
       </div>
 
       <!-- SECTION 3: COMPREHENSIVE CONFORMATIONAL SAMPLING TABLE (MODES 1 TO 9) -->
-      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-3">
-        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
-            <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+      <div class="dossier-card p-5 rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white/70 dark:bg-[#0a0c10] space-y-4 shadow-sm backdrop-blur-sm">
+        <div class="flex items-center justify-between border-b border-slate-100 dark:border-neutral-800/70 pb-3">
+          <span class="font-bold text-slate-800 dark:text-neutral-200 uppercase tracking-wider text-xs flex items-center space-x-2 font-sans">
+            <svg class="w-4 h-4 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
             <span>Section 3: Ranked Binding Modes Table (AutoDock Vina &amp; Vinardo)</span>
           </span>
-          <span class="text-[10px] text-slate-500 font-mono">Cluster Cutoff: 2.0 Å</span>
+          <span class="text-[10px] text-slate-400 dark:text-neutral-400 font-mono">Cluster Cutoff: 2.0 Å</span>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
-            <thead>
-              <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-bold font-sans">
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Mode</th>
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="AutoDock Vina Empirical Docking Score">Vina Score</th>
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Vinardo Empirical Scoring Function">Vinardo Score</th>
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Affinity-derived Kd-like estimate: Kd = exp(score/RT) at 298.15 K. Derived/model-based estimate, not an experimental thermodynamic constant.">Kd-like Estimate (Derived)</th>
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Ligand Efficiency = |Vina Score| / Heavy Atoms">Ligand Eff.</th>
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Conformational Clustering: Pose vs Rank 1 RMSD Lower Bound">Pose vs Rank 1 RMSD (l.b.)</th>
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800" title="Conformational Clustering: Pose vs Rank 1 RMSD Upper Bound">Pose vs Rank 1 RMSD (u.b.)</th>
-                <th class="p-2 text-center border border-slate-200 dark:border-slate-800">Conformational Role</th>
+        <div class="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white dark:bg-[#0c0d12]">
+          <table class="w-full text-xs text-left border-collapse">
+            <thead class="bg-slate-50/80 dark:bg-neutral-900/60 text-slate-600 dark:text-neutral-400 font-semibold font-sans text-[11px] border-b border-slate-200/80 dark:border-neutral-800/80">
+              <tr>
+                <th class="py-2.5 px-3 text-center">Mode</th>
+                <th class="py-2.5 px-3 text-center" title="AutoDock Vina Empirical Docking Score">Vina Score</th>
+                <th class="py-2.5 px-3 text-center" title="Vinardo Empirical Scoring Function">Vinardo Score</th>
+                <th class="py-2.5 px-3 text-center" title="Affinity-derived Kd-like estimate: Kd = exp(score/RT) at 298.15 K. Derived/model-based estimate, not an experimental thermodynamic constant.">Kd-like Estimate (Derived)</th>
+                <th class="py-2.5 px-3 text-center" title="Ligand Efficiency = |Vina Score| / Heavy Atoms">Ligand Eff.</th>
+                <th class="py-2.5 px-3 text-center" title="Conformational Clustering: Pose vs Rank 1 RMSD Lower Bound">Pose vs Rank 1 RMSD (l.b.)</th>
+                <th class="py-2.5 px-3 text-center" title="Conformational Clustering: Pose vs Rank 1 RMSD Upper Bound">Pose vs Rank 1 RMSD (u.b.)</th>
+                <th class="py-2.5 px-3 text-center">Conformational Role</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody class="divide-y divide-slate-100 dark:divide-neutral-800/60 font-mono text-[11.5px]">
               ${posesRows}
             </tbody>
           </table>
-          <p class="text-[10px] text-slate-500 font-sans mt-2">
-            <em>*Methodology Distinction:</em> "Pose vs Rank 1 RMSD" quantifies internal conformational clustering of generated poses relative to the lowest-energy mode (#1). It is fundamentally distinct from crystallographic redocking RMSD, which measures coordinate deviation from a true wet-lab crystallographic reference structure.
-          </p>
         </div>
+        <p class="text-[10px] text-slate-400 dark:text-neutral-400 font-sans mt-2">
+          <em>*Methodology Distinction:</em> "Pose vs Rank 1 RMSD" quantifies internal conformational clustering of generated poses relative to the lowest-energy mode (#1). It is fundamentally distinct from crystallographic redocking RMSD, which measures coordinate deviation from a true wet-lab crystallographic reference structure.
+        </p>
       </div>
 
       <!-- SECTION 4: INTERMOLECULAR INTERACTION RESIDUE PROFILING -->
-      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-4 page-break-inside-avoid">
-        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
-            <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
+      <div class="dossier-card p-5 rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white/70 dark:bg-[#0a0c10] space-y-4 page-break-inside-avoid shadow-sm backdrop-blur-sm">
+        <div class="flex items-center justify-between border-b border-slate-100 dark:border-neutral-800/70 pb-3">
+          <span class="font-bold text-slate-800 dark:text-neutral-200 uppercase tracking-wider text-xs flex items-center space-x-2 font-sans">
+            <svg class="w-4 h-4 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
             <span>Section 4: Intermolecular Interaction Fingerprint</span>
           </span>
-          <span class="text-[10px] text-slate-500 font-mono">PLIP-Standard Non-Covalent Binding Contacts</span>
+          <span class="text-[10px] text-slate-400 dark:text-neutral-400 font-mono">PLIP-Standard Non-Covalent Binding Contacts</span>
         </div>
 
         <div class="space-y-4">
           <!-- 1. Directional Hydrogen Bonds -->
           <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <span class="font-bold text-slate-800 dark:text-slate-200 text-xs font-sans flex items-center space-x-1.5">
-                <span class="w-2.5 h-2.5 rounded-full bg-cyan-500 inline-block"></span>
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-bold text-slate-800 dark:text-neutral-200 text-xs font-sans flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-cyan-500 inline-block"></span>
                 <span>Directional Hydrogen Bonds (Cutoff &le; 3.5 Å):</span>
               </span>
-              <span class="text-[10px] font-mono text-cyan-700 dark:text-cyan-400 font-semibold">${hbonds.length} Detected</span>
+              <span class="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 font-semibold">${hbonds.length} Detected</span>
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
-                <thead>
-                  <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-sans font-bold">
-                    <th class="p-2 border border-slate-200 dark:border-slate-800">Receptor Residue</th>
-                    <th class="p-2 border border-slate-200 dark:border-slate-800">Receptor Atom</th>
-                    <th class="p-2 border border-slate-200 dark:border-slate-800">Ligand Atom</th>
-                    <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Distance (Å)</th>
-                    <th class="p-2 border border-slate-200 dark:border-slate-800">Bond Type</th>
+            <div class="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white dark:bg-[#0c0d12]">
+              <table class="w-full text-xs text-left border-collapse">
+                <thead class="bg-slate-50/80 dark:bg-neutral-900/60 text-slate-600 dark:text-neutral-400 font-sans font-semibold text-[11px] border-b border-slate-200/80 dark:border-neutral-800/80">
+                  <tr>
+                    <th class="py-2.5 px-3.5">Receptor Residue</th>
+                    <th class="py-2.5 px-3.5">Receptor Atom</th>
+                    <th class="py-2.5 px-3.5">Ligand Atom</th>
+                    <th class="py-2.5 px-3.5 text-center">Distance (Å)</th>
+                    <th class="py-2.5 px-3.5">Bond Type</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-slate-100 dark:divide-neutral-800/60 font-mono text-[11.5px]">
                   ${hbondRows}
                 </tbody>
               </table>
@@ -3850,25 +4200,25 @@ class BindoraApp {
 
           <!-- 2. Electrostatic Salt Bridges -->
           <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <span class="font-bold text-slate-800 dark:text-slate-200 text-xs font-sans flex items-center space-x-1.5">
-                <span class="w-2.5 h-2.5 rounded-full bg-fuchsia-500 inline-block"></span>
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-bold text-slate-800 dark:text-neutral-200 text-xs font-sans flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-fuchsia-500 inline-block"></span>
                 <span>Electrostatic Networks &amp; Salt Bridges (Cutoff &le; 4.2 Å):</span>
               </span>
-              <span class="text-[10px] font-mono text-fuchsia-700 dark:text-fuchsia-400 font-semibold">${saltBridges.length} Detected</span>
+              <span class="text-[10px] font-mono text-fuchsia-600 dark:text-fuchsia-400 font-semibold">${saltBridges.length} Detected</span>
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
-                <thead>
-                  <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-sans font-bold">
-                    <th class="p-2 border border-slate-200 dark:border-slate-800">Ionized Residue</th>
-                    <th class="p-2 border border-slate-200 dark:border-slate-800">Pairing Classification</th>
-                    <th class="p-2 border border-slate-200 dark:border-slate-800">Ligand Atom</th>
-                    <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Distance (Å)</th>
-                    <th class="p-2 border border-slate-200 dark:border-slate-800">Criterion</th>
+            <div class="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white dark:bg-[#0c0d12]">
+              <table class="w-full text-xs text-left border-collapse">
+                <thead class="bg-slate-50/80 dark:bg-neutral-900/60 text-slate-600 dark:text-neutral-400 font-sans font-semibold text-[11px] border-b border-slate-200/80 dark:border-neutral-800/80">
+                  <tr>
+                    <th class="py-2.5 px-3.5">Ionized Residue</th>
+                    <th class="py-2.5 px-3.5">Pairing Classification</th>
+                    <th class="py-2.5 px-3.5">Ligand Atom</th>
+                    <th class="py-2.5 px-3.5 text-center">Distance (Å)</th>
+                    <th class="py-2.5 px-3.5">Criterion</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-slate-100 dark:divide-neutral-800/60 font-mono text-[11.5px]">
                   ${saltBridgeRows}
                 </tbody>
               </table>
@@ -3876,27 +4226,27 @@ class BindoraApp {
           </div>
 
           <!-- 3. Pi-Pi Aromatic Stacking & Pi-Cation Interactions (2 Columns) -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
             <!-- Pi-Pi Stacking -->
             <div>
-              <div class="flex items-center justify-between mb-1.5">
-                <span class="font-bold text-slate-800 dark:text-slate-200 text-xs font-sans flex items-center space-x-1.5">
-                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-bold text-slate-800 dark:text-neutral-200 text-xs font-sans flex items-center space-x-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
                   <span>π-π Aromatic Stacking (Cutoff &le; 5.5 Å):</span>
                 </span>
-                <span class="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 font-semibold">${piStacks.length} Detected</span>
+                <span class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">${piStacks.length} Detected</span>
               </div>
-              <div class="overflow-x-auto">
-                <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
-                  <thead>
-                    <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-sans font-bold">
-                      <th class="p-2 border border-slate-200 dark:border-slate-800">Residue</th>
-                      <th class="p-2 border border-slate-200 dark:border-slate-800">Geometry</th>
-                      <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Distance</th>
-                      <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Angle (θ)</th>
+              <div class="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white dark:bg-[#0c0d12]">
+                <table class="w-full text-xs text-left border-collapse">
+                  <thead class="bg-slate-50/80 dark:bg-neutral-900/60 text-slate-600 dark:text-neutral-400 font-sans font-semibold text-[11px] border-b border-slate-200/80 dark:border-neutral-800/80">
+                    <tr>
+                      <th class="py-2.5 px-3">Residue</th>
+                      <th class="py-2.5 px-3">Geometry</th>
+                      <th class="py-2.5 px-3 text-center">Distance</th>
+                      <th class="py-2.5 px-3 text-center">Angle (θ)</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody class="divide-y divide-slate-100 dark:divide-neutral-800/60 font-mono text-[11.5px]">
                     ${piStackRows}
                   </tbody>
                 </table>
@@ -3905,24 +4255,24 @@ class BindoraApp {
 
             <!-- Pi-Cation Interactions -->
             <div>
-              <div class="flex items-center justify-between mb-1.5">
-                <span class="font-bold text-slate-800 dark:text-slate-200 text-xs font-sans flex items-center space-x-1.5">
-                  <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-bold text-slate-800 dark:text-neutral-200 text-xs font-sans flex items-center space-x-2">
+                  <span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
                   <span>π-Cation Contacts (Cutoff &le; 4.5 Å):</span>
                 </span>
-                <span class="text-[10px] font-mono text-amber-700 dark:text-amber-400 font-semibold">${piCations.length} Detected</span>
+                <span class="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-semibold">${piCations.length} Detected</span>
               </div>
-              <div class="overflow-x-auto">
-                <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
-                  <thead>
-                    <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-sans font-bold">
-                      <th class="p-2 border border-slate-200 dark:border-slate-800">Residue</th>
-                      <th class="p-2 border border-slate-200 dark:border-slate-800">Classification</th>
-                      <th class="p-2 border border-slate-200 dark:border-slate-800">Ligand Atom</th>
-                      <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Distance</th>
+              <div class="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white dark:bg-[#0c0d12]">
+                <table class="w-full text-xs text-left border-collapse">
+                  <thead class="bg-slate-50/80 dark:bg-neutral-900/60 text-slate-600 dark:text-neutral-400 font-sans font-semibold text-[11px] border-b border-slate-200/80 dark:border-neutral-800/80">
+                    <tr>
+                      <th class="py-2.5 px-3">Residue</th>
+                      <th class="py-2.5 px-3">Classification</th>
+                      <th class="py-2.5 px-3">Ligand Atom</th>
+                      <th class="py-2.5 px-3 text-center">Distance</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody class="divide-y divide-slate-100 dark:divide-neutral-800/60 font-mono text-[11.5px]">
                     ${piCationRows}
                   </tbody>
                 </table>
@@ -3932,25 +4282,25 @@ class BindoraApp {
 
           <!-- 4. Halogen Bonds (Sigma-Hole Contacts) -->
           <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <span class="font-bold text-slate-800 dark:text-slate-200 text-xs font-sans flex items-center space-x-1.5">
-                <span class="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block"></span>
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-bold text-slate-800 dark:text-neutral-200 text-xs font-sans flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-purple-500 inline-block"></span>
                 <span>Halogen Bonds (σ-Hole Cutoff &le; 3.8 Å, θ &ge; 130°):</span>
               </span>
-              <span class="text-[10px] font-mono text-purple-700 dark:text-purple-400 font-semibold">${halogenBonds.length} Detected</span>
+              <span class="text-[10px] font-mono text-purple-600 dark:text-purple-400 font-semibold">${halogenBonds.length} Detected</span>
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
-                <thead>
-                  <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-sans font-bold">
-                    <th class="p-2 border border-slate-200 dark:border-slate-800">Receptor Residue</th>
-                    <th class="p-2 border border-slate-200 dark:border-slate-800">Receptor Atom</th>
-                    <th class="p-2 border border-slate-200 dark:border-slate-800">Ligand Atom</th>
-                    <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Distance (Å)</th>
-                    <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Angle (C-X...O/N)</th>
+            <div class="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white dark:bg-[#0c0d12]">
+              <table class="w-full text-xs text-left border-collapse">
+                <thead class="bg-slate-50/80 dark:bg-neutral-900/60 text-slate-600 dark:text-neutral-400 font-sans font-semibold text-[11px] border-b border-slate-200/80 dark:border-neutral-800/80">
+                  <tr>
+                    <th class="py-2.5 px-3.5">Receptor Residue</th>
+                    <th class="py-2.5 px-3.5">Receptor Atom</th>
+                    <th class="py-2.5 px-3.5">Ligand Atom</th>
+                    <th class="py-2.5 px-3.5 text-center">Distance (Å)</th>
+                    <th class="py-2.5 px-3.5 text-center">Angle (C-X...O/N)</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-slate-100 dark:divide-neutral-800/60 font-mono text-[11.5px]">
                   ${halogenRows}
                 </tbody>
               </table>
@@ -3959,14 +4309,14 @@ class BindoraApp {
 
           <!-- 5. Hydrophobic Contact Residues -->
           <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <span class="font-bold text-slate-800 dark:text-slate-200 text-xs font-sans flex items-center space-x-1.5">
-                <span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span>
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-bold text-slate-800 dark:text-neutral-200 text-xs font-sans flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-sky-500 inline-block"></span>
                 <span>Hydrophobic Contact Residues (Cutoff &le; 4.0 Å):</span>
               </span>
-              <span class="text-[10px] font-mono text-sky-700 dark:text-sky-400 font-semibold">${hydrophobics.length} Contacts</span>
+              <span class="text-[10px] font-mono text-sky-600 dark:text-sky-400 font-semibold">${hydrophobics.length} Contacts</span>
             </div>
-            <div class="p-2.5 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-wrap gap-1.5">
+            <div class="p-3.5 bg-slate-50/70 dark:bg-[#0e1017] rounded-xl border border-slate-200/60 dark:border-neutral-800/70 flex flex-wrap gap-2 shadow-sm">
               ${hydrophobicList}
             </div>
           </div>
@@ -3977,68 +4327,84 @@ class BindoraApp {
       ${svgSectionHtml}
 
       <!-- SECTION: CHEMINFORMATICS & PRECLINICAL ADMET ASSESSMENT -->
-      <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-3">
-        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-          <span class="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
-            <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <div class="dossier-card p-5 rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white/70 dark:bg-[#0a0c10] space-y-4 shadow-sm backdrop-blur-sm">
+        <div class="flex items-center justify-between border-b border-slate-100 dark:border-neutral-800/70 pb-3">
+          <span class="font-bold text-slate-800 dark:text-neutral-200 uppercase tracking-wider text-xs flex items-center space-x-2 font-sans">
+            <svg class="w-4 h-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             <span>Section ${admetSecNumber}: Cheminformatics &amp; Preclinical Drug-Likeness (Lipinski Rule of 5)</span>
           </span>
-          <span class="text-[10px] px-2 py-0.5 rounded ${lipViolations === 0 ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800' : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'} font-bold font-mono">
+          <span class="text-[10.5px] px-2.5 py-0.5 rounded-full ${lipViolations === 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'} font-bold font-sans">
             ${lipViolations === 0 ? 'Lipinski Compliant (0 Violations)' : `Borderline (${lipViolations} Violations)`}
           </span>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs">
           <!-- Lipinski Matrix -->
-          <div class="overflow-x-auto">
-            <table class="w-full text-xs text-left border-collapse border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80">
-              <thead>
-                <tr class="bg-slate-100 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 font-sans font-bold">
-                  <th class="p-2 border border-slate-200 dark:border-slate-800">Lipinski Parameter</th>
-                  <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Value</th>
-                  <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Criterion</th>
-                  <th class="p-2 border border-slate-200 dark:border-slate-800 text-center">Status</th>
+          <div class="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white dark:bg-[#0c0d12]">
+            <table class="w-full text-xs text-left border-collapse">
+              <thead class="bg-slate-50/80 dark:bg-neutral-900/60 text-slate-600 dark:text-neutral-400 font-sans font-semibold text-[11px] border-b border-slate-200/80 dark:border-neutral-800/80">
+                <tr>
+                  <th class="py-2.5 px-3">Lipinski Parameter</th>
+                  <th class="py-2.5 px-3 text-center">Value</th>
+                  <th class="py-2.5 px-3 text-center">Criterion</th>
+                  <th class="py-2.5 px-3 text-center">Status</th>
                 </tr>
               </thead>
-              <tbody class="font-mono">
-                <tr>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 font-sans">Molecular Weight (MW)</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold">${mw} Da</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center text-slate-500">&le; 500 Da</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold ${mwPass ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}">${mwPass ? 'Pass' : 'Violated'}</td>
+              <tbody class="divide-y divide-slate-100 dark:divide-neutral-800/60 font-mono text-[11.5px]">
+                <tr class="hover:bg-slate-50/60 dark:hover:bg-neutral-900/40 transition-colors duration-150">
+                  <td class="py-2.5 px-3 font-sans text-slate-900 dark:text-white">Molecular Weight (MW)</td>
+                  <td class="py-2.5 px-3 text-center font-bold text-slate-800 dark:text-neutral-200">${mw} Da</td>
+                  <td class="py-2.5 px-3 text-center text-slate-400 dark:text-neutral-400">&le; 500 Da</td>
+                  <td class="py-2.5 px-3 text-center font-bold">
+                    ${mwPass 
+                      ? '<span class="px-2 py-0.5 rounded-full text-[10.5px] font-sans font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">Pass</span>' 
+                      : '<span class="px-2 py-0.5 rounded-full text-[10.5px] font-sans font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">Violated</span>'}
+                  </td>
                 </tr>
-                <tr>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 font-sans">Wildman-Crippen LogP</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold">${logp}</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center text-slate-500">&le; 5.0</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold ${logpPass ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}">${logpPass ? 'Pass' : 'Violated'}</td>
+                <tr class="hover:bg-slate-50/60 dark:hover:bg-neutral-900/40 transition-colors duration-150">
+                  <td class="py-2.5 px-3 font-sans text-slate-900 dark:text-white">Wildman-Crippen LogP</td>
+                  <td class="py-2.5 px-3 text-center font-bold text-slate-800 dark:text-neutral-200">${logp}</td>
+                  <td class="py-2.5 px-3 text-center text-slate-400 dark:text-neutral-400">&le; 5.0</td>
+                  <td class="py-2.5 px-3 text-center font-bold">
+                    ${logpPass 
+                      ? '<span class="px-2 py-0.5 rounded-full text-[10.5px] font-sans font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">Pass</span>' 
+                      : '<span class="px-2 py-0.5 rounded-full text-[10.5px] font-sans font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">Violated</span>'}
+                  </td>
                 </tr>
-                <tr>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 font-sans">H-Bond Donors (HBD)</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold">${hbd}</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center text-slate-500">&le; 5</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold ${hbdPass ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}">${hbdPass ? 'Pass' : 'Violated'}</td>
+                <tr class="hover:bg-slate-50/60 dark:hover:bg-neutral-900/40 transition-colors duration-150">
+                  <td class="py-2.5 px-3 font-sans text-slate-900 dark:text-white">H-Bond Donors (HBD)</td>
+                  <td class="py-2.5 px-3 text-center font-bold text-slate-800 dark:text-neutral-200">${hbd}</td>
+                  <td class="py-2.5 px-3 text-center text-slate-400 dark:text-neutral-400">&le; 5</td>
+                  <td class="py-2.5 px-3 text-center font-bold">
+                    ${hbdPass 
+                      ? '<span class="px-2 py-0.5 rounded-full text-[10.5px] font-sans font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">Pass</span>' 
+                      : '<span class="px-2 py-0.5 rounded-full text-[10.5px] font-sans font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">Violated</span>'}
+                  </td>
                 </tr>
-                <tr>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 font-sans">H-Bond Acceptors (HBA)</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold">${hba}</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center text-slate-500">&le; 10</td>
-                  <td class="p-2 border border-slate-200 dark:border-slate-800 text-center font-bold ${hbaPass ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}">${hbaPass ? 'Pass' : 'Violated'}</td>
+                <tr class="hover:bg-slate-50/60 dark:hover:bg-neutral-900/40 transition-colors duration-150">
+                  <td class="py-2.5 px-3 font-sans text-slate-900 dark:text-white">H-Bond Acceptors (HBA)</td>
+                  <td class="py-2.5 px-3 text-center font-bold text-slate-800 dark:text-neutral-200">${hba}</td>
+                  <td class="py-2.5 px-3 text-center text-slate-400 dark:text-neutral-400">&le; 10</td>
+                  <td class="py-2.5 px-3 text-center font-bold">
+                    ${hbaPass 
+                      ? '<span class="px-2 py-0.5 rounded-full text-[10.5px] font-sans font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">Pass</span>' 
+                      : '<span class="px-2 py-0.5 rounded-full text-[10.5px] font-sans font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">Violated</span>'}
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           <!-- Pharmacokinetics & Veber Rules -->
-          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2 text-xs font-mono">
-            <div class="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1 font-sans">Pharmacokinetics &amp; Bioavailability</div>
-            <div class="flex justify-between"><span class="text-slate-500">TPSA (Topological Polar Surface):</span> <span class="font-bold text-slate-900 dark:text-white">${tpsa} Å² (&le; 140 Å²)</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Rotatable Bonds Count:</span> <span class="font-bold text-slate-900 dark:text-white">${rotb} (&le; 10)</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Gastrointestinal (GI) Absorption:</span> <span class="text-emerald-700 dark:text-emerald-400 font-bold">${pk.gi_absorption?.level || 'High'}</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Blood-Brain Barrier (BBB):</span> <span class="text-slate-800 dark:text-slate-200">${pk.bbb_permeant?.is_permeant ? 'Permeant' : 'Non-Permeant'}</span></div>
-            <div class="flex justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
-              <span class="text-slate-500">CYP450 Liability:</span>
-              <span class="text-slate-800 dark:text-slate-200">${(pk.cyp450_inhibition?.alerts || []).length > 0 ? pk.cyp450_inhibition.alerts.map(a => a.cyp).join(', ') : 'No Inhibitory Alerts'}</span>
+          <div class="dossier-subbox p-4 bg-slate-50/70 dark:bg-[#0e1017] rounded-xl border border-slate-200/60 dark:border-neutral-800/70 space-y-2.5 text-xs font-mono shadow-sm">
+            <div class="font-bold text-slate-800 dark:text-neutral-200 border-b border-slate-100 dark:border-neutral-800/60 pb-1.5 font-sans text-xs">Pharmacokinetics &amp; Bioavailability</div>
+            <div class="flex justify-between py-0.5"><span class="text-slate-400 dark:text-neutral-400">TPSA (Topological Polar Surface):</span> <span class="font-bold text-slate-900 dark:text-white">${tpsa} Å² (&le; 140 Å²)</span></div>
+            <div class="flex justify-between py-0.5"><span class="text-slate-400 dark:text-neutral-400">Rotatable Bonds Count:</span> <span class="font-bold text-slate-900 dark:text-white">${rotb} (&le; 10)</span></div>
+            <div class="flex justify-between py-0.5"><span class="text-slate-400 dark:text-neutral-400">Gastrointestinal (GI) Absorption:</span> <span class="text-emerald-600 dark:text-emerald-400 font-bold">${pk.gi_absorption?.level || 'High'}</span></div>
+            <div class="flex justify-between py-0.5"><span class="text-slate-400 dark:text-neutral-400">Blood-Brain Barrier (BBB):</span> <span class="text-slate-800 dark:text-neutral-200">${pk.bbb_permeant?.is_permeant ? 'Permeant' : 'Non-Permeant'}</span></div>
+            <div class="flex justify-between pt-1.5 border-t border-slate-100 dark:border-neutral-800/60">
+              <span class="text-slate-400 dark:text-neutral-400">CYP450 Liability:</span>
+              <span class="text-slate-800 dark:text-neutral-200 font-semibold">${(pk.cyp450_inhibition?.alerts || []).length > 0 ? pk.cyp450_inhibition.alerts.map(a => a.cyp).join(', ') : 'No Inhibitory Alerts'}</span>
             </div>
           </div>
         </div>
@@ -4046,15 +4412,15 @@ class BindoraApp {
 
       <!-- SECTION: AI-GENERATED MECHANISTIC HYPOTHESIS -->
       ${this.state.narrative ? `
-        <div class="dossier-card p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-2 page-break-inside-avoid">
-          <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-            <span class="font-bold text-purple-800 dark:text-purple-300 uppercase tracking-wider text-xs flex items-center space-x-1.5 font-sans">
-              <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>
+        <div class="dossier-card p-5 rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white/70 dark:bg-[#0a0c10] space-y-3 page-break-inside-avoid shadow-sm backdrop-blur-sm">
+          <div class="flex items-center justify-between border-b border-slate-100 dark:border-neutral-800/70 pb-3">
+            <span class="font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider text-xs flex items-center space-x-2 font-sans">
+              <svg class="w-4 h-4 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>
               <span>Section ${aiSecNumber}: AI Mechanistic Synthesis (DeepSeek LLM Hypothesis)</span>
             </span>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800 font-semibold font-mono">In-Silico Hypothesis</span>
+            <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/20 font-semibold font-mono">In-Silico Hypothesis</span>
           </div>
-          <div class="dossier-subbox p-3 bg-white dark:bg-slate-950/80 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-xs leading-relaxed font-sans">
+          <div class="dossier-subbox p-4 bg-slate-50/70 dark:bg-[#0e1017] rounded-xl border border-slate-200/60 dark:border-neutral-800/70 text-slate-800 dark:text-neutral-200 text-xs leading-relaxed font-sans shadow-sm">
             ${this.renderMarkdown(this.state.narrative.narrative || '')}
           </div>
         </div>
@@ -4075,7 +4441,15 @@ class BindoraApp {
         ${uniprot.tissue_specificity ? '<div><span class="font-bold text-slate-900 dark:text-slate-200">Tissue Specificity:</span> <span class="text-slate-700 dark:text-slate-300">' + uniprot.tissue_specificity + '</span></div>' : ''}
       `;
     } else {
-      container.innerHTML = '<p class="text-slate-500 italic">No UniProt pathway annotation available for this target. Load a receptor with known annotations to view biological function and signaling cascade details.</p>';
+      container.innerHTML = `
+        <div class="py-6 px-4 text-center rounded-lg border border-dashed border-slate-200 dark:border-neutral-800/80 bg-slate-50/50 dark:bg-black/20">
+          <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-neutral-800/80 text-slate-500 dark:text-neutral-400 mx-auto flex items-center justify-center mb-2">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          </div>
+          <p class="text-xs font-semibold text-slate-800 dark:text-neutral-200">No UniProt Annotation Available</p>
+          <p class="text-[11px] text-slate-500 dark:text-neutral-400 mt-1 max-w-md mx-auto">This receptor does not currently have deposited functional pathway annotations in UniProt KB for this entry. Custom PDB files or synthetic constructs may not map to a canonical accession ID.</p>
+        </div>
+      `;
     }
   }
 
@@ -4296,7 +4670,7 @@ class BindoraApp {
     if (!container) return;
     if (!flexCandidates || flexCandidates.length === 0) {
       if (!container.querySelector(".flex-residue-card")) {
-        container.innerHTML = `<span class="col-span-2 text-[11px] text-slate-500 italic p-2 text-center">No contacting active site residues detected yet.</span>`;
+        container.innerHTML = `<span class="col-span-2 text-[11px] text-slate-400 dark:text-neutral-500 italic p-3 text-center font-mono">No contacting active site residues detected yet.</span>`;
       }
       return;
     }
@@ -4308,18 +4682,21 @@ class BindoraApp {
     // Render clean 2-column cards (no awkward wrapping)
     container.innerHTML = flexCandidates.map(c => {
       const isChecked = previouslyChecked.has(c.id);
-      const rotBadge = c.rotatable_bonds ? `<span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-950/80 text-cyan-400 border border-cyan-900/60 font-mono flex-shrink-0">${c.rotatable_bonds} rot</span>` : '';
+      const rotBadge = c.rotatable_bonds ? 
+        `<span class="flex-badge-rot font-mono">${c.rotatable_bonds} rot</span>` : '';
       return `
-        <div class="flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none ${isChecked ? 'bg-cyan-950/70 border-cyan-500/80 text-cyan-200 shadow-sm shadow-cyan-950/40' : 'bg-slate-900/60 hover:bg-slate-800/80 border-slate-800 text-slate-300 hover:border-slate-700'}"
+        <div class="flex-residue-card ${isChecked ? 'is-selected' : ''}"
              data-id="${c.id}" data-chain="${c.chain}" data-resnum="${c.res_num}" data-resname="${c.res_name}" title="Click to focus in 3D viewer & toggle flexible rotamers">
           <input type="checkbox" value="${c.id}" ${isChecked ? 'checked' : ''} class="hidden flex-residue-cb">
           <div class="flex items-center space-x-1.5 min-w-0">
-            <span class="font-mono font-semibold ${isChecked ? 'text-cyan-100' : 'text-slate-200'}">${c.res_name} ${c.res_num}</span>
-            <span class="text-[9px] px-1 py-0.2 rounded bg-slate-950/90 text-slate-400 border border-slate-800 font-mono">Ch:${c.chain}</span>
+            <span class="font-mono font-bold text-xs truncate">${c.res_name} ${c.res_num}</span>
+            <span class="flex-badge-chain">Ch:${c.chain}</span>
             ${rotBadge}
           </div>
-          <div class="flex items-center space-x-1.5 flex-shrink-0">
-            <span class="flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition ${isChecked ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-black' : 'border-slate-700 text-transparent'}">✓</span>
+          <div class="flex-check-box">
+            <svg class="w-3 h-3 ${isChecked ? 'block' : 'hidden'} flex-check-svg stroke-[2.5]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
           </div>
         </div>
       `;
@@ -4357,7 +4734,7 @@ class BindoraApp {
               const rChain = card?.getAttribute('data-chain') || '';
               return `${rName} ${rNum} (${rChain})`;
             }).join(', ');
-            actionHintText.innerHTML = `<span class="text-slate-200 font-mono font-semibold">${names}</span>`;
+            actionHintText.innerHTML = `<span class="text-slate-800 dark:text-slate-200 font-mono font-semibold">${names}</span>`;
           }
         } else {
           actionHint.classList.add("hidden");
@@ -4377,20 +4754,18 @@ class BindoraApp {
     container.querySelectorAll(".flex-residue-card").forEach(card => {
       card.addEventListener("click", () => {
         const cb = card.querySelector(".flex-residue-cb");
-        const isCurrentlyChecked = cb.checked;
-        const newCheckedState = !isCurrentlyChecked;
+        const newCheckedState = !cb.checked;
         cb.checked = newCheckedState;
 
-        const indicator = card.querySelector(".flex-check-indicator");
-        if (newCheckedState) {
-          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-cyan-950/70 border-cyan-500/80 text-cyan-200 shadow-sm shadow-cyan-950/40";
-          if (indicator) {
-            indicator.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition bg-cyan-500 text-slate-950 border-cyan-400 font-black";
-          }
-        } else {
-          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-slate-900/60 hover:bg-slate-800/80 border-slate-800 text-slate-300 hover:border-slate-700";
-          if (indicator) {
-            indicator.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition border-slate-700 text-transparent";
+        card.classList.toggle("is-selected", newCheckedState);
+        const checkSvg = card.querySelector(".flex-check-svg");
+        if (checkSvg) {
+          if (newCheckedState) {
+            checkSvg.classList.remove("hidden");
+            checkSvg.classList.add("block");
+          } else {
+            checkSvg.classList.add("hidden");
+            checkSvg.classList.remove("block");
           }
         }
 
@@ -4419,9 +4794,12 @@ class BindoraApp {
         e.stopPropagation();
         container.querySelectorAll(".flex-residue-cb").forEach(cb => { cb.checked = false; });
         container.querySelectorAll(".flex-residue-card").forEach(card => {
-          card.className = "flex-residue-card flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition text-xs select-none bg-slate-900/60 hover:bg-slate-800/80 border-slate-800 text-slate-300 hover:border-slate-700";
-          const ind = card.querySelector(".flex-check-indicator");
-          if (ind) ind.className = "flex-check-indicator w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border transition border-slate-700 text-transparent";
+          card.classList.remove("is-selected");
+          const svg = card.querySelector(".flex-check-svg");
+          if (svg) {
+            svg.classList.add("hidden");
+            svg.classList.remove("block");
+          }
         });
         if (this.viewer && this.viewer.clearFlexibleHighlights) {
           this.viewer.clearFlexibleHighlights();

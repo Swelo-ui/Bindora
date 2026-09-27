@@ -201,6 +201,10 @@ class BindoraAPI {
       })
     });
   }
+
+  static async getSystemHardwareInfo() {
+    return this.request("/api/system/hardware");
+  }
 }
 
 // Primary export

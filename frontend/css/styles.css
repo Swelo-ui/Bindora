@@ -1,77 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ==========================================================================
-   Bindora Dock — Research-Grade Obsidian & Charcoal Design System
-   Palette: #090a0f (Obsidian Black), #0f1016 (Graphite Surface),
-            #151620 (Charcoal Card), #22242f (Precision Dark Border),
-            #2563eb (Research Cobalt), #38bdf8 (Sky Accent)
+   Bindora Dock — Rasayan Labs Ultra-Premium Deep-Tech Aesthetic
+   Aesthetic: Authoritative, Disciplined Preclinical Computing (Linear / Vercel)
+   Base: Pure Pitch Black (#000000)
+   Surfaces: Deep Slate / Onyx (#08090d, #0e1017)
+   Hairline Borders: #1c1d25, #272935
+   Typography: Inter (sans) & JetBrains Mono (metrics, coords, chemical keys)
+   Accents: Semantic Only (Emerald #10b981, Amber #f59e0b, Rose #f43f5e)
    ========================================================================== */
 
 :root {
-  --bg-dark: #090a0f;
-  --bg-surface: #0f1016;
-  --bg-card: #151620;
-  --bg-card-hover: #1c1d27;
-  --border-subtle: #22242f;
-  --border-muted: #2d303e;
+  --bg-dark: #000000;
+  --bg-surface: #08090d;
+  --bg-card: #0e1017;
+  --bg-card-hover: #141620;
+  --border-subtle: #1c1d25;
+  --border-muted: #272935;
 
-  --brand-blue: #2563eb;
-  --brand-cobalt: #1d4ed8;
-  --brand-cyan: #38bdf8;
-  --brand-teal: #14b8a6;
-  --brand-purple: #8b5cf6;
+  --text-primary: #ffffff;
+  --text-secondary: #9ca3af;
+  --text-tertiary: #6b7280;
 
-  --primary: #2563eb;
-  --primary-dark: #1d4ed8;
-  --secondary: #0f1016;
-  --accent-cyan: #38bdf8;
-  --accent-teal: #14b8a6;
-  --accent-purple: #8b5cf6;
+  --primary: #ffffff;
+  --primary-dark: #e5e5e5;
+  --secondary: #08090d;
+  
   --accent-emerald: #10b981;
   --accent-amber: #f59e0b;
   --accent-rose: #f43f5e;
+  --accent-cyan: #38bdf8;
+  --accent-purple: #a855f7;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: var(--bg-dark);
-  background-image:
-    radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.035) 0%, transparent 55%),
-    radial-gradient(circle at 100% 100%, rgba(21, 22, 32, 0.5) 0%, transparent 45%);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #000000;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.02) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(14, 16, 23, 0.5) 0%, transparent 40%);
   background-attachment: fixed;
-  color: #f1f5f9;
+  color: #f3f4f6;
   overflow-x: hidden;
+  letter-spacing: -0.01em;
 }
 
-/* Custom scrollbars */
+/* Custom disciplined scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #090a0f;
+  background: #000000;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #242633;
-  border-radius: 3px;
+  background: #1c1d25;
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #393b4d;
+  background: #272935;
 }
 
-/* 3Dmol Canvas Container */
+/* 3Dmol Canvas Container - Crisp pitch black framed container */
 #viewport-container {
   position: relative;
   width: 100%;
   height: 100%;
   min-height: 540px;
-  background: radial-gradient(circle at center, #11131a 0%, #07080c 100%);
-  border: 1px solid #1e202b;
+  background: #000000;
+  border: 1px solid #1c1d25;
   border-radius: 0.75rem;
   overflow: hidden;
 }
@@ -80,22 +84,23 @@ body {
   width: 100%;
   height: 100%;
   min-height: 540px;
+  background: #000000;
 }
 
-/* Navigation Tabs */
-.nav-tab {
-  white-space: nowrap !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  height: 32px !important;
-  line-height: 1 !important;
-  vertical-align: middle !important;
-  flex-shrink: 0 !important;
-  transition: all 0.2s ease;
+/* Strict Monospace Utility */
+.font-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
 }
 
+/* Navigation Tabs & Header Floating Pill */
 #main-header nav {
+  background: rgba(14, 16, 23, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 3px 5px !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
   overflow: visible !important;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
@@ -107,51 +112,105 @@ body {
   height: 0 !important;
 }
 
-#main-header .nav-tab {
-  font-size: 11px;
+.nav-tab {
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 30px !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+  flex-shrink: 0 !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  font-size: 11.5px;
   letter-spacing: -0.01em;
-  padding: 4px 8px !important;
-  height: 29px !important;
+  padding: 4px 11px !important;
+  border-radius: 8px;
+  color: #94a3b8;
+  background: transparent;
+  border: 1px solid transparent;
 }
 
-@media (min-width: 1536px) {
-  #main-header .nav-tab {
-    font-size: 12px;
-    padding: 5px 10px !important;
-    height: 31px !important;
-  }
+.nav-tab:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .nav-tab.active {
-  border-color: #383a48;
-  color: #ffffff;
-  background: #1c1e27;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 6px rgba(0, 0, 0, 0.35) !important;
+  font-weight: 600;
 }
 
-/* Glass Panels with Research Charcoal Backdrop */
+/* Main Navigation Header — True Authentic Frosted Glassmorphism */
+#main-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  backdrop-filter: blur(24px) saturate(190%) contrast(100%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(190%) contrast(100%) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html.dark #main-header,
+#main-header {
+  background: linear-gradient(180deg, rgba(16, 18, 27, 0.82) 0%, rgba(7, 8, 12, 0.72) 100%) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 8px 32px -4px rgba(0, 0, 0, 0.6) !important;
+}
+
+html.light #main-header {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(248, 250, 252, 0.65) 100%) !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.75) !important;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.95), 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 1px 3px 0 rgba(15, 23, 42, 0.03) !important;
+}
+
+html.light #main-header nav {
+  background: rgba(241, 245, 249, 0.75) !important;
+  border: 1px solid rgba(226, 232, 240, 0.85) !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(255, 255, 255, 0.8) !important;
+}
+
+html.light .nav-tab {
+  color: #64748b !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+html.light .nav-tab:hover {
+  color: #0f172a !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+}
+
+html.light .nav-tab.active {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(203, 213, 225, 0.9) !important;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 1) !important;
+  font-weight: 600 !important;
+}
+
+/* Deep Slate / Onyx Glass Panels - Zero Blurry Neon Glow */
 .glass-panel {
-  background: rgba(17, 18, 24, 0.86);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #08090d;
+  border: 1px solid #1c1d25;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .glass-panel:hover {
-  border-color: rgba(255, 255, 255, 0.16);
+  border-color: #272935;
 }
 
-/* Hero Section Elements */
+/* Hero Section Float Animation */
 @keyframes hero-float {
-
-  0%,
-  100% {
+  0%, 100% {
     transform: translateY(0px) scale(1);
   }
-
   50% {
-    transform: translateY(-8px) scale(1.008);
+    transform: translateY(-6px) scale(1.004);
   }
 }
 
@@ -159,50 +218,65 @@ body {
   animation: hero-float 6s ease-in-out infinite;
 }
 
-/* Gradient Text */
+/* Typographic Text Gradients - Elegant High-End Monochromatic */
 .text-gradient-brand {
-  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 50%, #94a3b8 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #d4d4d8 50%, #9ca3af 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .text-gradient-cyan {
-  background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #e2e8f0 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-/* Brand Button Gradients */
+/* Primary Action Button: Solid High-Contrast White */
 .btn-brand-primary {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  color: #ffffff;
-  font-weight: 600;
-  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  transition: all 0.2s ease;
+  background: #ffffff !important;
+  color: #000000 !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid #ffffff !important;
+  border-radius: 0.5rem;
+  transition: all 0.15s ease !important;
 }
 
 .btn-brand-primary:hover {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.38);
+  background: #e5e5e5 !important;
+  color: #000000 !important;
+  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.15) !important;
   transform: translateY(-1px);
+}
+
+/* Secondary Button: Ghost Outlined */
+.btn-brand-secondary {
+  background: transparent !important;
+  color: #d4d4d8 !important;
+  border: 1px solid #27272a !important;
+  border-radius: 0.5rem;
+  transition: all 0.15s ease !important;
+}
+
+.btn-brand-secondary:hover {
+  border-color: #52525b !important;
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.04) !important;
 }
 
 /* Pulse animation for docking engine */
 @keyframes pulse-ring {
   0% {
-    transform: scale(0.95);
-    opacity: 0.8;
+    transform: scale(0.96);
+    opacity: 0.7;
   }
-
   50% {
-    transform: scale(1.05);
-    opacity: 0.4;
+    transform: scale(1.03);
+    opacity: 0.3;
   }
-
   100% {
-    transform: scale(0.95);
-    opacity: 0.8;
+    transform: scale(0.96);
+    opacity: 0.7;
   }
 }
 
@@ -210,17 +284,79 @@ body {
   animation: pulse-ring 2s infinite ease-in-out;
 }
 
-/* Badge Glows */
+/* Semantic Badges Only */
 .badge-verified {
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid #10b981;
-  color: #34d399;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #10b981;
 }
 
 .badge-computational {
-  background: rgba(245, 158, 11, 0.15);
-  border: 1px solid #f59e0b;
-  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #f59e0b;
+}
+
+.badge-warning {
+  background: rgba(244, 63, 94, 0.08);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  color: #f43f5e;
+}
+
+/* Scientific Metric Callouts & Labels */
+.metric-value-lg {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 2.25rem;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.metric-label-micro {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+/* Global Form Controls & Inputs Dark Mode Calibration */
+html.dark input:not([type="checkbox"]):not([type="radio"]),
+html.dark select,
+html.dark textarea {
+  background-color: #0e1017 !important;
+  border-color: #1c1d25 !important;
+  color: #ffffff !important;
+}
+
+html.dark input:not([type="checkbox"]):not([type="radio"]):focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  border-color: #3b3d4f !important;
+  outline: none !important;
+}
+
+/* Scientific Tables Disciplined Styling */
+html.dark table thead th {
+  background-color: #0e1017;
+  color: #9ca3af;
+  border-color: #1c1d25;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 8px 12px;
+}
+
+html.dark table tbody td {
+  border-color: #141620;
+  padding: 8px 12px;
+}
+
+html.dark table tbody tr:hover {
+  background-color: #0e1017;
 }
 
 /* ==========================================================================
@@ -463,7 +599,7 @@ body {
 }
 
 /* ==========================================================================
-   Toast Notification System
+   Toast Notification System (Linear / Vercel Deep-Tech Style)
    ========================================================================== */
 #toast-container {
   position: fixed;
@@ -489,12 +625,11 @@ body {
 @keyframes toast-slide-in {
   from {
     opacity: 0;
-    transform: translateX(6rem);
+    transform: translateY(1rem) scale(0.98);
   }
-
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -502,226 +637,366 @@ body {
 @keyframes toast-slide-out {
   from {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0) scale(1);
   }
-
   to {
     opacity: 0;
-    transform: translateX(6rem);
+    transform: translateY(1rem) scale(0.98);
   }
+}
+
+html.dark #toast-container > div {
+  background: #08090d !important;
+  border-width: 1px !important;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  border-radius: 0.75rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+}
+
+html.dark #toast-container .bg-emerald-900\/95 {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  color: #f3f4f6 !important;
+}
+
+html.dark #toast-container .bg-emerald-900\/95 svg {
+  color: #10b981;
+}
+
+html.dark #toast-container .bg-rose-900\/95 {
+  border-color: rgba(244, 63, 94, 0.4) !important;
+  color: #f3f4f6 !important;
+}
+
+html.dark #toast-container .bg-rose-900\/95 svg {
+  color: #f43f5e;
+}
+
+html.dark #toast-container .bg-amber-900\/95 {
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  color: #f3f4f6 !important;
+}
+
+html.dark #toast-container .bg-amber-900\/95 svg {
+  color: #f59e0b;
+}
+
+html.dark #toast-container .bg-blue-900\/95 {
+  border-color: #272935 !important;
+  color: #f3f4f6 !important;
+}
+
+html.dark #toast-container .bg-blue-900\/95 svg {
+  color: #ffffff;
 }
 
 /* ==========================================================================
    Narrative Markdown Rendered Content
    ========================================================================== */
 .narrative-md p {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: #d1d5db;
+  line-height: 1.6;
 }
 
 .narrative-md h1,
 .narrative-md h2,
 .narrative-md h3 {
   display: block;
+  color: #ffffff;
+  font-weight: 700;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.01em;
+}
+
+.narrative-md h2 {
+  font-size: 1.1rem;
+  border-bottom: 1px solid #1c1d25;
+  padding-bottom: 0.35rem;
 }
 
 .narrative-md strong {
   font-weight: 600;
-  color: #f1f5f9;
+  color: #ffffff;
+}
+
+.narrative-md code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8em;
+  background-color: #0e1017;
+  border: 1px solid #1c1d25;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  color: #f3f4f6;
 }
 
 /* ==========================================================================
-   Light Mode Theme Overrides
-   html.light = light mode active
+   Light Mode Theme Overrides (Clean Preclinical Scientific Deep-Tech)
+   html.light = active when user switches to Light Mode
    ========================================================================== */
 
-/* 1. Base Body & Typography */
+/* 1. Base Body & Canvas */
 html.light body {
-  background-color: #f3f6fa !important;
-  background-image:
-    radial-gradient(circle at 15% 10%, rgba(13, 110, 253, 0.07) 0%, transparent 40%),
-    radial-gradient(circle at 85% 20%, rgba(123, 92, 255, 0.05) 0%, transparent 45%),
-    radial-gradient(circle at 50% 80%, rgba(0, 198, 255, 0.04) 0%, transparent 50%) !important;
+  background-color: #f8fafc !important;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(15, 23, 42, 0.03) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, rgba(226, 232, 240, 0.6) 0%, transparent 40%) !important;
   color: #0f172a !important;
 }
 
-/* 2. Header & Branding */
-html.light #main-header {
-  background: rgba(255, 255, 255, 0.95) !important;
-  border-bottom: 1px solid #e2e8f0 !important;
-  box-shadow: 0 1px 12px rgba(15, 23, 42, 0.04) !important;
+/* 2. Frosted Header & Controls in Light Mode */
+html.light #header-version-badge,
+html.light #backend-status-badge {
+  background-color: rgba(241, 245, 249, 0.8) !important;
+  color: #334155 !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8) !important;
 }
 
-html.light #header-version-badge {
-  background: rgba(13, 110, 253, 0.08) !important;
-  color: #0D6EFD !important;
-  border: 1px solid rgba(13, 110, 253, 0.25) !important;
+html.light #btn-user-auth,
+html.light #btn-theme-toggle,
+html.light #btn-reset-session,
+html.light #btn-cli-guide,
+html.light #btn-about {
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  border: 1px solid rgba(226, 232, 240, 0.85) !important;
+  color: #334155 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
 }
 
-/* 3. Navigation Tabs */
-html.light .nav-tab {
-  color: #475569 !important;
-  background: transparent !important;
-  border-color: transparent !important;
+html.light #btn-user-auth:hover,
+html.light #btn-theme-toggle:hover,
+html.light #btn-reset-session:hover,
+html.light #btn-cli-guide:hover,
+html.light #btn-about:hover {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.08) !important;
 }
 
-html.light .nav-tab:hover {
-  color: #0D6EFD !important;
-  background: rgba(13, 110, 253, 0.06) !important;
+html.light #btn-user-auth svg,
+html.light #btn-reset-session svg,
+html.light #btn-cli-guide svg,
+html.light #btn-about svg {
+  color: #64748b !important;
 }
 
-html.light .nav-tab.active {
-  color: #0D6EFD !important;
-  background: rgba(13, 110, 253, 0.12) !important;
-  border-color: #0D6EFD !important;
-  box-shadow: 0 2px 8px rgba(13, 110, 253, 0.16) !important;
+html.light #btn-user-auth:hover svg,
+html.light #btn-reset-session:hover svg,
+html.light #btn-cli-guide:hover svg,
+html.light #btn-about:hover svg {
+  color: #0f172a !important;
 }
 
-/* 4. Glass Panels & Cards */
-html.light .glass-panel {
-  background: rgba(255, 255, 255, 0.94) !important;
-  border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05) !important;
-  color: #1e293b !important;
+/* 3. Deep-Tech Surfaces & Panels Mapping */
+html.light .glass-panel,
+html.light .bg-\[\#08090d\],
+html.light .bg-\[\#050508\] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
 }
 
 html.light .glass-panel:hover {
-  border-color: rgba(13, 110, 253, 0.3) !important;
+  border-color: #cbd5e1 !important;
 }
 
-/* 5. Text Colors */
-html.light .text-white {
+html.light .bg-\[\#0e1017\],
+html.light .bg-\[\#121319\],
+html.light .bg-\[\#141620\],
+html.light .bg-\[\#161720\],
+html.light .bg-\[\#13141b\],
+html.light .bg-\[\#1f202c\],
+html.light .bg-\[\#1c1d25\] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
   color: #0f172a !important;
 }
 
-html.light .text-slate-100 {
-  color: #1e293b !important;
-}
-
-html.light .text-slate-200 {
-  color: #1e293b !important;
-}
-
-html.light .text-slate-300 {
-  color: #334155 !important;
-}
-
-html.light .text-slate-400 {
-  color: #64748b !important;
-}
-
-html.light .text-slate-500 {
-  color: #64748b !important;
-}
-
-html.light .text-cyan-300 {
-  color: #0284c7 !important;
-}
-
-html.light .text-cyan-400 {
-  color: #0369a1 !important;
-}
-
-html.light .text-[#00C6FF] {
-  color: #0284c7 !important;
-}
-
-/* 6. Backgrounds & Borders */
-html.light .bg-\[#071326\],
-html.light .bg-\[#0B1F3B\] {
-  background-color: #f3f6fa !important;
-}
-
-html.light .bg-slate-950,
-html.light .bg-slate-900 {
-  background-color: #ffffff !important;
-}
-
-html.light .bg-slate-900\/90,
-html.light .bg-slate-900\/80,
-html.light .bg-slate-900\/60,
-html.light .bg-slate-900\/50,
-html.light .bg-slate-900\/40 {
+html.light .bg-black:not(#viewport-container):not(#gldiv):not(.wp-code-box) {
   background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html.light #dock-interaction-diagram-container {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.03) !important;
+}
+
+html.light #dock-interaction-diagram-container span {
+  color: #64748b !important;
 }
 
 html.light .bg-slate-800,
-html.light .bg-slate-800\/70,
-html.light .bg-slate-800\/50,
-html.light .bg-slate-800\/40 {
+html.light .bg-slate-700,
+html.light .bg-neutral-800,
+html.light .bg-neutral-900,
+html.light .bg-neutral-950,
+html.light .bg-slate-900,
+html.light .bg-slate-950,
+html.light [class*="bg-slate-800"],
+html.light [class*="bg-slate-700"],
+html.light [class*="bg-neutral-800"] {
   background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
 }
 
-html.light .bg-\[#0e274a\] {
-  background-color: #ffffff !important;
+html.light .bg-neutral-900\/60,
+html.light .bg-neutral-900\/40,
+html.light .bg-slate-900\/60,
+html.light .bg-slate-900\/40,
+html.light .bg-slate-900\/50,
+html.light .bg-slate-900\/80,
+html.light .bg-slate-900\/90 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
 }
 
-html.light .hover\:bg-\[#133564\]:hover {
-  background-color: #f1f5f9 !important;
+/* Semantic Badges in Light Mode */
+html.light [class*="bg-emerald-950"] {
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
 }
 
+html.light [class*="bg-amber-950"] {
+  background-color: #fffbeb !important;
+  color: #b45309 !important;
+  border-color: #fde68a !important;
+}
+
+html.light [class*="bg-rose-950"] {
+  background-color: #fff1f2 !important;
+  color: #be123c !important;
+  border-color: #fecdd3 !important;
+}
+
+html.light [class*="bg-purple-950"] {
+  background-color: #faf5ff !important;
+  color: #7e22ce !important;
+  border-color: #e9d5ff !important;
+}
+
+html.light [class*="bg-cyan-950"],
+html.light [class*="bg-sky-950"] {
+  background-color: #f0f9ff !important;
+  color: #0369a1 !important;
+  border-color: #bae6fd !important;
+}
+
+/* Hairline Border Normalization */
+html.light .border-neutral-800,
+html.light .border-neutral-700,
+html.light .border-neutral-800\/80,
+html.light .border-neutral-700\/60,
 html.light .border-slate-800,
 html.light .border-slate-700,
 html.light .border-slate-800\/80,
 html.light .border-slate-700\/60,
-html.light .border-\[#163252\] {
+html.light .border-\[\#1c1d25\],
+html.light .border-\[\#272935\],
+html.light .border-\[\#242633\],
+html.light .border-\[\#272937\],
+html.light .border-\[\#383a48\],
+html.light .border-\[\#163252\] {
   border-color: #e2e8f0 !important;
 }
 
-/* 7. Home Page Specifics */
-html.light #tab-home .inline-flex.rounded-full {
-  background: rgba(13, 110, 253, 0.08) !important;
-  border-color: rgba(13, 110, 253, 0.25) !important;
-  color: #0369a1 !important;
+html.light .divide-neutral-800\/80 > *,
+html.light .divide-neutral-800 > *,
+html.light .divide-slate-800\/60 > *,
+html.light .divide-slate-800\/80 > *,
+html.light .divide-slate-100 > * {
+  border-color: #f1f5f9 !important;
 }
 
-html.light #tab-home .inline-flex.rounded-full span {
-  color: #0369a1 !important;
+/* 4. Typography Calibration */
+html.light .text-white,
+html.light .text-neutral-100 {
+  color: #0f172a !important;
 }
 
-html.light #tab-home .glass-panel {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 246, 255, 0.92) 100%) !important;
+html.light .text-neutral-200,
+html.light .text-slate-100,
+html.light .text-slate-200 {
+  color: #1e293b !important;
 }
 
-/* Feature icon containers */
-html.light .bg-cyan-950\/60,
-html.light .bg-cyan-950\/40,
-html.light .bg-cyan-950\/80,
-html.light .bg-cyan-950 {
-  background-color: rgba(0, 198, 255, 0.1) !important;
-  border-color: rgba(0, 198, 255, 0.3) !important;
-  color: #0284c7 !important;
+html.light .text-neutral-300,
+html.light .text-slate-300 {
+  color: #334155 !important;
 }
 
-html.light .bg-emerald-950,
-html.light .bg-emerald-950\/80,
-html.light .bg-emerald-950\/40 {
-  background-color: rgba(16, 185, 129, 0.1) !important;
-  border-color: rgba(16, 185, 129, 0.3) !important;
-  color: #059669 !important;
+html.light .text-neutral-400,
+html.light .text-slate-400 {
+  color: #64748b !important;
 }
 
-html.light .bg-purple-950,
-html.light .bg-purple-950\/80 {
-  background-color: rgba(123, 92, 255, 0.1) !important;
-  border-color: rgba(123, 92, 255, 0.3) !important;
-  color: #7c3aed !important;
+html.light .text-neutral-500,
+html.light .text-slate-500 {
+  color: #64748b !important;
 }
 
-html.light .bg-rose-950,
-html.light .bg-rose-950\/80 {
-  background-color: rgba(244, 63, 94, 0.1) !important;
-  border-color: rgba(244, 63, 94, 0.3) !important;
-  color: #e11d48 !important;
+html.light .text-gradient-brand,
+html.light .text-gradient-cyan {
+  background: linear-gradient(180deg, #0f172a 0%, #334155 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
 }
 
-html.light .bg-amber-950,
-html.light .bg-amber-950\/80 {
-  background-color: rgba(245, 158, 11, 0.1) !important;
-  border-color: rgba(245, 158, 11, 0.3) !important;
-  color: #d97706 !important;
+html.light .metric-value-lg {
+  color: #0f172a !important;
 }
 
-/* 8. Controls, Inputs, Dropdowns */
+html.light .metric-label-micro {
+  color: #64748b !important;
+}
+
+/* 5. Buttons Calibration */
+html.light .btn-brand-primary,
+html.light button.bg-white.text-black {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  border-color: #0f172a !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2) !important;
+}
+
+html.light .btn-brand-primary:hover,
+html.light button.bg-white.text-black:hover {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15) !important;
+}
+
+html.light button.bg-white.text-black svg {
+  color: #ffffff !important;
+}
+
+html.light .btn-brand-secondary {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light .btn-brand-secondary:hover {
+  background-color: #f8fafc !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+/* 6. Form Controls, Inputs & Selects */
 html.light input:not([type="checkbox"]):not([type="radio"]),
 html.light select,
 html.light textarea {
@@ -733,8 +1008,8 @@ html.light textarea {
 html.light input:focus,
 html.light select:focus,
 html.light textarea:focus {
-  border-color: #0D6EFD !important;
-  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15) !important;
+  border-color: #0f172a !important;
+  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.08) !important;
   outline: none !important;
 }
 
@@ -743,200 +1018,252 @@ html.light textarea::placeholder {
   color: #94a3b8 !important;
 }
 
-/* Header utility buttons */
-html.light #btn-user-auth,
-html.light #btn-theme-toggle,
-html.light #btn-reset-session,
-html.light #btn-about {
-  background-color: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
-  color: #334155 !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+/* 7. Tables */
+html.light table {
+  border-color: #e2e8f0 !important;
 }
 
-html.light #btn-user-auth:hover,
-html.light #btn-theme-toggle:hover,
-html.light #btn-reset-session:hover,
-html.light #btn-about:hover {
+html.light table thead th {
+  background-color: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+html.light table tbody td {
+  border-color: #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+html.light table tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+/* 8. Home Tab & Benchmark Spotlight Cards */
+html.light #tab-home .grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3 > div {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.light #tab-home .grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3 > div:hover {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.light #tab-home .grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3 > div button {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light #tab-home .grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3 > div button:hover {
   background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+html.light #tab-home .grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-3 > div .bg-black {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Hero Quick-Start Buttons (Run 1HSG / Run 1M17) */
+html.light #tab-home .lg\:col-span-6 .flex.flex-wrap.items-center.gap-3 button:not(:first-child) {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.light #tab-home .lg\:col-span-6 .flex.flex-wrap.items-center.gap-3 button:not(:first-child):hover {
+  background-color: #f8fafc !important;
   border-color: #94a3b8 !important;
   color: #0f172a !important;
 }
 
-/* Status badge */
-html.light #backend-status-badge {
-  background-color: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
+/* Home Eyebrow Pill */
+html.light #tab-home .inline-flex.rounded-full {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
   color: #334155 !important;
 }
 
 /* 9. 3D Viewport in Light Mode */
 html.light #viewport-container {
-  background: radial-gradient(circle at center, #f0f4f9 0%, #dbe4ef 100%) !important;
+  background: radial-gradient(circle at center, #f8fafc 0%, #e2e8f0 100%) !important;
   border: 1px solid #cbd5e1 !important;
 }
 
-html.light #viewer-empty-state p {
-  color: #64748b !important;
+/* Benchmark Case Studies Cards */
+.benchmark-case-card {
+  background-color: #0e1017;
+  border: 1px solid #1c1d25;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.benchmark-case-card:hover {
+  background-color: #141620;
+  border-color: #38bdf8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+.benchmark-case-name {
+  color: #38bdf8;
+}
+.benchmark-case-badge {
+  background-color: #1c1d25;
+  color: #94a3b8;
+  border: 1px solid #272935;
+}
+.benchmark-case-target {
+  color: #f1f5f9;
+}
+.benchmark-case-desc {
+  color: #94a3b8;
 }
 
-/* 10. Tables */
-html.light table thead {
-  background-color: #f8fafc !important;
-  border-bottom: 1px solid #e2e8f0 !important;
-  color: #475569 !important;
-}
-
-html.light table tbody tr {
-  border-bottom: 1px solid #f1f5f9 !important;
-  color: #1e293b !important;
-}
-
-html.light table tbody tr:hover {
-  background-color: rgba(13, 110, 253, 0.04) !important;
-}
-
-/* 11. Modals */
-html.light #modal-about .glass-panel,
-html.light #modal-firebase-auth>div {
-  background-color: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
-  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
-  color: #0f172a !important;
-}
-
-/* 12. Mobile sub-nav */
-html.light .lg\:hidden.bg-\[#0B1F3B\] {
-  background-color: #ffffff !important;
-  border-bottom: 1px solid #e2e8f0 !important;
-}
-
-/* 13. Footer */
-html.light footer {
-  background-color: #f8fafc !important;
-  border-top: 1px solid #e2e8f0 !important;
-  color: #64748b !important;
-}
-
-/* 14. Scrollbar in light mode */
-html.light ::-webkit-scrollbar-track {
-  background: #f0f4fa;
-}
-
-html.light ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-}
-
-html.light ::-webkit-scrollbar-thumb:hover {
-  background: #0D6EFD;
-}
-
-/* 15. Narrative in light mode */
-html.light .narrative-md strong {
-  color: #0f172a !important;
-}
-
-html.light .narrative-md p {
-  color: #334155 !important;
-}
-
-html.light .narrative-md em {
-  color: #475569 !important;
-}
-
-html.light .narrative-md h1 {
-  color: #0f172a !important;
-}
-
-html.light .narrative-md h2 {
-  color: #0369a1 !important;
-}
-
-html.light .narrative-md h3 {
-  color: #0f172a !important;
-  border-color: #e2e8f0 !important;
-}
-
-html.light .narrative-md code {
-  background: rgba(0, 0, 0, 0.06) !important;
-  color: #0369a1 !important;
-  border-color: #cbd5e1 !important;
-}
-
-html.light .narrative-md hr {
-  border-color: #e2e8f0 !important;
-}
-
-/* Toast notifications in light mode */
-html.light #toast-container .bg-rose-900\/95 {
-  background-color: rgba(254, 242, 242, 0.98) !important;
-  border-color: #f87171 !important;
-  color: #991b1b !important;
-}
-
-html.light #toast-container .bg-emerald-900\/95 {
-  background-color: rgba(236, 253, 245, 0.98) !important;
-  border-color: #34d399 !important;
-  color: #065f46 !important;
-}
-
-html.light #toast-container .bg-amber-900\/95 {
-  background-color: rgba(254, 252, 232, 0.98) !important;
-  border-color: #fbbf24 !important;
-  color: #92400e !important;
-}
-
-html.light #toast-container .bg-blue-900\/95 {
-  background-color: rgba(239, 246, 255, 0.98) !important;
-  border-color: #60a5fa !important;
-  color: #1e40af !important;
-}
-
-html.light #toast-container svg {
-  opacity: 0.9;
-}
-
-/* 16. Benchmark Case Cards (Tab 1) in Light Mode */
 html.light .benchmark-case-card {
   background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
 }
-
 html.light .benchmark-case-card:hover {
-  border-color: #0D6EFD !important;
-  box-shadow: 0 4px 14px rgba(13, 110, 253, 0.12) !important;
+  background-color: #f8fafc !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08) !important;
+  transform: translateY(-1px);
 }
-
 html.light .benchmark-case-name {
   color: #0284c7 !important;
 }
-
 html.light .benchmark-case-badge {
-  background-color: #eff6ff !important;
-  color: #1d4ed8 !important;
-  border: 1px solid #bfdbfe !important;
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
 }
-
 html.light .benchmark-case-target {
   color: #0f172a !important;
 }
-
 html.light .benchmark-case-desc {
   color: #64748b !important;
 }
 
-/* 17. Tab 1 Ligand & Receptor Info Panels & Switchers */
+/* 9. 3D Viewport in Light Mode */
+html.light #viewport-container {
+  background: radial-gradient(circle at center, #f8fafc 0%, #e2e8f0 100%) !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+html.light #viewer-empty-state .w-14,
+html.light #viewer-empty-state [class*="w-14"] {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0284c7 !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08) !important;
+}
+html.light #viewer-empty-state svg {
+  color: #0284c7 !important;
+}
+html.light #viewer-empty-state p:first-of-type {
+  color: #0f172a !important;
+}
+html.light #viewer-empty-state p:last-of-type {
+  color: #64748b !important;
+}
+
+/* Floating Pose Stepper */
+html.light .absolute.bottom-4.left-4 {
+  background-color: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(203, 213, 225, 0.9) !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08) !important;
+}
+html.light #dock-current-mode-label {
+  color: #0f172a !important;
+}
+html.light #btn-prev-pose,
+html.light #btn-next-pose {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+html.light #btn-prev-pose:hover,
+html.light #btn-next-pose:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+/* Interactivity Hint */
+html.light .absolute.top-4.right-4 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(203, 213, 225, 0.9) !important;
+  color: #475569 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06) !important;
+}
+
+/* Measure HUD */
+html.light #measure-hud {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #f43f5e !important;
+  color: #e11d48 !important;
+}
+html.light #btn-clear-measure {
+  background-color: #fff1f2 !important;
+  color: #be123c !important;
+  border-color: #fecdd3 !important;
+}
+
+/* 2D Interaction Diagram Container */
+#dock-interaction-diagram-container {
+  background-color: #000000;
+  border: 1px solid #1c1d25;
+  transition: all 0.2s ease;
+}
+html.light #dock-interaction-diagram-container {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.03) !important;
+}
+html.light #dock-interaction-diagram-container span {
+  color: #64748b !important;
+}
+
+/* 10. Tab 1 & Tab 2 Specific Components */
+html.light #btn-reset-pocket,
+html.light #btn-blind-docking {
+  background-color: #f8fafc !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+html.light #btn-reset-pocket:hover,
+html.light #btn-blind-docking:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+}
+
+html.light #btn-save-cloud {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+html.light #btn-save-cloud:hover {
+  background-color: #f8fafc !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+html.light #btn-save-cloud svg {
+  color: #64748b !important;
+}
+
 html.light #card-ligand-info,
 html.light #card-receptor-info {
   background-color: #f8fafc !important;
   border: 1px solid #e2e8f0 !important;
   color: #1e293b !important;
-}
-
-html.light #card-ligand-info p,
-html.light #card-receptor-info p {
-  color: #64748b !important;
 }
 
 html.light #tab-btn-ligand-pubchem,
@@ -949,169 +1276,32 @@ html.light #tab-btn-receptor-paste {
   background-color: transparent !important;
 }
 
+html.light #tab-btn-ligand-pubchem.bg-neutral-800,
+html.light #tab-btn-receptor-rcsb.bg-neutral-800,
 html.light #tab-btn-ligand-pubchem.bg-slate-800,
 html.light #tab-btn-receptor-rcsb.bg-slate-800 {
   background-color: #ffffff !important;
-  color: #0D6EFD !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
-}
-
-/* 18. Tab 2 3D Docking Overlays, Stepper & Controls */
-html.light #viewport-container .bg-slate-950\/70,
-html.light #viewport-container [class*="bg-slate-950"] {
-  background-color: rgba(255, 255, 255, 0.92) !important;
-  border-color: #cbd5e1 !important;
-  color: #475569 !important;
-}
-
-html.light #dock-current-mode-label {
   color: #0f172a !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
 }
 
-html.light #btn-prev-pose,
-html.light #btn-next-pose {
-  background-color: #f1f5f9 !important;
-  color: #0284c7 !important;
-  border: 1px solid #cbd5e1 !important;
-}
-
-html.light #btn-prev-pose:hover,
-html.light #btn-next-pose:hover {
-  background-color: #e2e8f0 !important;
-}
-
-html.light #measure-hud {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  border-color: #f43f5e !important;
-  color: #e11d48 !important;
-}
-
-html.light #btn-save-cloud {
-  background-color: #ffffff !important;
-  border-color: #cbd5e1 !important;
-  color: #0369a1 !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
-}
-
-html.light #btn-save-cloud:hover {
-  background-color: #f1f5f9 !important;
-  border-color: #94a3b8 !important;
-}
-
-html.light #select-protein-style,
-html.light #select-ligand-style,
-html.light #select-ligand-color,
-html.light #docking-exhaustiveness {
-  background-color: #ffffff !important;
-  border-color: #cbd5e1 !important;
-  color: #0f172a !important;
-}
-
-/* 19. Tab 7 Research Dossier Paper Sheet in Light Mode */
-html.light #tab-dossier .glass-panel {
-  background-color: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06) !important;
-}
-
-html.light #tab-dossier .dossier-card {
-  background-color: #f8fafc !important;
-  border: 1px solid #e2e8f0 !important;
-}
-
-html.light #tab-dossier .dossier-subbox {
-  background-color: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
-}
-
-html.light #tab-dossier table {
+html.light #docking-status-banner {
   background-color: #ffffff !important;
   border-color: #e2e8f0 !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.06) !important;
 }
 
-html.light #tab-dossier th {
-  background-color: #f1f5f9 !important;
-  color: #0f172a !important;
-  border-color: #e2e8f0 !important;
-}
-
-html.light #tab-dossier td {
-  border-color: #f1f5f9 !important;
-}
-
-html.light #tab-dossier .bg-slate-900\/60,
-html.light #tab-dossier [class*="bg-slate-900"],
-html.light #tab-dossier .bg-slate-950\/80,
-html.light #tab-dossier [class*="bg-slate-950"] {
+html.light .dock-stage-pill {
   background-color: #f8fafc !important;
-  border: 1px solid #e2e8f0 !important;
-  color: #1e293b !important;
+  border-color: #e2e8f0 !important;
+  color: #64748b !important;
 }
 
-html.light #tab-dossier #dossier-ligand-name,
-html.light #tab-dossier #dossier-target-name {
-  color: #0f172a !important;
-}
-
-/* 20. Tab 0 Case Studies Badges */
-html.light #tab-home [class*="bg-cyan-950"].text-cyan-300 {
-  background-color: #e0f2fe !important;
-  color: #0369a1 !important;
-  border-color: #bae6fd !important;
-}
-
-html.light #tab-home [class*="bg-blue-950"].text-blue-300 {
-  background-color: #eff6ff !important;
-  color: #1d4ed8 !important;
-  border-color: #bfdbfe !important;
-}
-
-html.light #tab-home [class*="bg-purple-950"].text-purple-300 {
-  background-color: #f5f3ff !important;
-  color: #6d28d9 !important;
-  border-color: #ddd6fe !important;
-}
-
-html.light #tab-home [class*="bg-teal-950"].text-teal-300 {
-  background-color: #ecfdf5 !important;
-  color: #047857 !important;
-  border-color: #a7f3d0 !important;
-}
-
-/* 21. Header & Navigation Light Theme */
-html.light #main-header {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  border-bottom: 1px solid #e2e8f0 !important;
-  box-shadow: 0 1px 6px rgba(15, 23, 42, 0.05) !important;
-}
-
-html.light #main-header .nav-tab {
-  color: #475569 !important;
-}
-
-html.light #main-header .nav-tab:hover {
-  color: #0D6EFD !important;
-  background-color: #f1f5f9 !important;
-}
-
-html.light #main-header .nav-tab.active {
-  color: #0D6EFD !important;
-  background-color: #eff6ff !important;
-  border-color: #bfdbfe !important;
-  box-shadow: 0 1px 3px rgba(13, 110, 253, 0.15) !important;
-}
-
-html.light #header-version-badge {
-  background-color: #eff6ff !important;
-  color: #1d4ed8 !important;
-  border-color: #bfdbfe !important;
-}
-
-/* 22. Tab 2 Preparation Protocol Transparency Log & Redocking */
 html.light #prep-log-content {
   border-top-color: #e2e8f0 !important;
 }
 
+html.light #prep-log-content .bg-black,
 html.light #prep-log-content .bg-slate-950\/80,
 html.light #prep-log-content [class*="bg-slate-950"] {
   background-color: #f8fafc !important;
@@ -1129,53 +1319,358 @@ html.light #redocking-results-panel {
   border-color: #cbd5e1 !important;
 }
 
-html.light #btn-run-redocking {
+html.light #btn-run-redock-validation {
+  background-color: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  border-color: #e2e8f0 !important;
+}
+html.light #btn-run-redock-validation:not(:disabled) {
   background-color: #ffffff !important;
+  color: #0f172a !important;
   border-color: #cbd5e1 !important;
-  color: #0284c7 !important;
+}
+html.light #btn-run-redock-validation:not(:disabled):hover {
+  background-color: #f8fafc !important;
+  border-color: #94a3b8 !important;
 }
 
-html.light #btn-run-redocking:hover {
-  background-color: #f0f9ff !important;
-  border-color: #38bdf8 !important;
-}
-
-/* 23. Tab 5 AI Pharmacologist Report Light Mode */
-html.light #tab-ai-narrative .bg-purple-950\/80 {
-  background-color: #f3e8ff !important;
-  border-color: #d8b4fe !important;
-  color: #6b21a8 !important;
-}
-
-html.light #tab-ai-narrative .bg-amber-950\/40 {
-  background-color: #fef3c7 !important;
-  border-color: #fcd34d !important;
-  color: #92400e !important;
-}
-
-html.light #tab-ai-narrative .bg-amber-950\/25 {
-  background-color: #fffbeb !important;
-  border-color: #fde68a !important;
-  color: #78350f !important;
-}
-
-html.light #tab-ai-narrative .bg-amber-950\/25 strong {
-  color: #92400e !important;
-}
-
-/* 24. Tab 3 ADME Physicochemical Descriptors Light Mode */
-html.light #tab-adme .grid-cols-3 .glass-panel,
-html.light #tab-adme .grid-cols-6 .glass-panel {
+/* 11. Tab 3 ADME Descriptors in Light Mode */
+html.light #tab-adme .bg-\[\#08090d\] {
   background-color: #ffffff !important;
   border-color: #e2e8f0 !important;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
 }
+html.light #tab-adme .bg-amber-950\/40,
+html.light #tab-adme [class*="bg-amber-950"] {
+  background-color: #fffbeb !important;
+  color: #92400e !important;
+  border: 1px solid #fde68a !important;
+}
+html.light #tab-adme .text-amber-400 {
+  color: #b45309 !important;
+}
+html.light #tab-adme .border-amber-500\/40 {
+  border-color: #fde68a !important;
+  background-color: #ffffff !important;
+}
+html.light #adme-cyp-val {
+  color: #0f172a !important;
+}
 
-/* 25. Research Whitepaper Component (Light & Dark Theme Polish) */
+/* 12. Tab 5 AI Narrative Report */
+html.light #tab-ai-narrative .bg-purple-950\/80 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html.light #tab-ai-narrative .bg-amber-950\/40,
+html.light #tab-ai-narrative .bg-amber-950\/20,
+html.light #tab-ai-narrative .border-amber-500\/40 {
+  background-color: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #92400e !important;
+}
+
+html.light #tab-ai-narrative .bg-amber-950\/25,
+html.light #tab-ai-narrative .bg-amber-950\/20 strong {
+  color: #78350f !important;
+}
+
+/* 13. Modals & Saved Runs List in Light Mode */
+.saved-run-item {
+  color: #f1f5f9;
+}
+.saved-run-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+.saved-run-title {
+  color: #ffffff;
+}
+.saved-run-meta {
+  color: #38bdf8;
+}
+.saved-run-badge {
+  background-color: #1c1d25;
+  color: #94a3b8;
+  border: 1px solid #272935;
+}
+
+html.light .saved-run-item {
+  color: #1e293b !important;
+}
+html.light .saved-run-item:hover {
+  background-color: #f1f5f9 !important;
+}
+html.light .saved-run-title {
+  color: #0f172a !important;
+}
+html.light .saved-run-meta {
+  color: #0284c7 !important;
+}
+html.light .saved-run-badge {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+html.light #saved-runs-list {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+html.light #saved-runs-list .bg-slate-800 {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+html.light #saved-runs-list .text-white {
+  color: #0f172a !important;
+}
+
+html.light #btn-auth-signout,
+html.light .bg-\[\#1a0f12\] {
+  background-color: #fff1f2 !important;
+  color: #be123c !important;
+  border: 1px solid #fecdd3 !important;
+}
+html.light #btn-auth-signout:hover,
+html.light .bg-\[\#1a0f12\]:hover {
+  background-color: #ffe4e6 !important;
+  color: #9f1239 !important;
+}
+
+html.light #btn-toggle-edit-profile,
+html.light #btn-cancel-edit-profile {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+html.light #btn-toggle-edit-profile:hover,
+html.light #btn-cancel-edit-profile:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html.light #input-edit-display-name,
+html.light #input-edit-photo-url {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+html.light #modal-firebase-auth > div,
+html.light #modal-about > div,
+html.light #modal-cli-guide > div,
+html.light #modal-batch-workflow-guide > div {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+  color: #0f172a !important;
+}
+
+html.light #modal-firebase-auth .bg-black,
+html.light #modal-about .bg-black,
+html.light #modal-cli-guide .bg-black,
+html.light #modal-batch-workflow-guide .bg-black,
+html.light #modal-about .bg-\[\#0e1017\],
+html.light #modal-cli-guide .bg-\[\#0e1017\],
+html.light #modal-batch-workflow-guide .bg-\[\#0e1017\],
+html.light #modal-firebase-auth .bg-\[\#0e1017\],
+html.light #auth-logged-in-view .bg-black {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+html.light #modal-cli-guide .bg-\[\#08090d\] {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #1e293b !important;
+}
+html.light #modal-cli-guide .bg-\[\#08090d\] code {
+  color: #f8fafc !important;
+}
+
+/* 13b. Tab 6 Batch & Tab 7 Dossier in Light Mode */
+html.light .dossier-card,
+html.light #tab-dossier .bg-\[\#08090d\],
+html.light #tab-batch .bg-\[\#08090d\],
+html.light #tab-batch .bg-black {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html.light .dossier-subbox {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html.light #tab-dossier table {
+  background-color: #ffffff !important;
+}
+
+html.light #tab-dossier thead tr {
+  background-color: #f8fafc !important;
+  color: #475569 !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+html.light #tab-dossier tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+html.light #dossier-svg-container {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* 14. Mobile Sub-Nav in Light Mode */
+html.light .lg\:hidden {
+  background-color: #ffffff !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+html.light .lg\:hidden .nav-tab {
+  background-color: #f8fafc !important;
+  color: #475569 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+html.light .lg\:hidden .nav-tab.active {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  font-weight: 600 !important;
+}
+
+/* 15. Footer */
+html.light footer {
+  background-color: #ffffff !important;
+  border-top-color: #e2e8f0 !important;
+  color: #64748b !important;
+}
+
+/* 16. Scrollbar */
+html.light ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 17. Narrative Markdown */
+html.light .narrative-md strong {
+  color: #0f172a !important;
+}
+
+html.light .narrative-md p {
+  color: #334155 !important;
+}
+
+html.light .narrative-md em {
+  color: #475569 !important;
+}
+
+html.light .narrative-md h1,
+html.light .narrative-md h2,
+html.light .narrative-md h3 {
+  color: #0f172a !important;
+}
+
+html.light .narrative-md code {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light .narrative-md hr {
+  border-color: #e2e8f0 !important;
+}
+
+/* 18. Toast Notifications */
+html.light #toast-container > div {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12) !important;
+  color: #0f172a !important;
+}
+
+/* 25. Research Whitepaper Component (Rasayan Labs Deep-Tech Dark Aesthetic) */
 #research-validation-whitepaper {
-  background: linear-gradient(180deg, #111218 0%, #090a0f 100%);
-  border: 1px solid #22242f;
+  background: #08090d;
+  border: 1px solid #1c1d25;
   transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+html.dark #research-validation-whitepaper .wp-journal-header {
+  border-bottom-color: #1c1d25;
+}
+
+html.dark #research-validation-whitepaper .wp-abstract-box {
+  background-color: #0e1017;
+  border-color: #1c1d25;
+}
+
+html.dark #research-validation-whitepaper .wp-section-header {
+  border-bottom-color: #1c1d25;
+}
+
+html.dark #research-validation-whitepaper .wp-subcard {
+  background-color: #0e1017;
+  border-color: #1c1d25;
+}
+
+html.dark #research-validation-whitepaper .wp-subcard:hover {
+  background-color: #12141e;
+  border-color: #272935;
+}
+
+html.dark #research-validation-whitepaper .wp-table-container {
+  border-color: #1c1d25;
+  background-color: #000000;
+}
+
+html.dark #research-validation-whitepaper .wp-table thead tr {
+  background-color: #0e1017;
+  border-bottom-color: #1c1d25;
+  color: #9ca3af;
+}
+
+html.dark #research-validation-whitepaper .wp-table tbody tr {
+  border-bottom-color: #141620;
+  color: #f3f4f6;
+}
+
+html.dark #research-validation-whitepaper .wp-table tbody tr:hover {
+  background-color: #0e1017;
+}
+
+html.dark #research-validation-whitepaper .wp-ref-box {
+  background-color: #0e1017;
+  border-color: #1c1d25;
+}
+
+html.dark #research-validation-whitepaper .wp-code-box {
+  background-color: #050508;
+  border-color: #1c1d25;
+  color: #e5e7eb;
+}
+
+html.dark #research-validation-whitepaper .wp-math-box {
+  background-color: #0e1017;
+  border-color: #1c1d25;
+  color: #ffffff;
+}
+
+html.dark #research-validation-whitepaper .wp-footer-bar {
+  border-top-color: #1c1d25;
 }
 
 html.light #research-validation-whitepaper {
@@ -1247,4 +1742,201 @@ html.light #research-validation-whitepaper .wp-math-box {
 
 html.light #research-validation-whitepaper .wp-footer-bar {
   border-top-color: #e2e8f0 !important;
+}
+
+/* 26. Flexible Side Chains & Residue Selector UI/UX (Rasayan Labs / Deep-Tech) */
+.flex-residue-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(14, 16, 23, 0.7);
+  color: #e4e4e7;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.flex-residue-card:hover {
+  background: rgba(22, 25, 36, 0.95);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  transform: translateY(-0.5px);
+}
+
+.flex-residue-card.is-selected {
+  background: rgba(6, 182, 212, 0.12) !important;
+  border-color: rgba(6, 182, 212, 0.75) !important;
+  color: #e0f2fe !important;
+  box-shadow: 0 0 14px rgba(6, 182, 212, 0.2), inset 0 0 0 1px rgba(6, 182, 212, 0.4) !important;
+}
+
+/* Light Theme Flexible Residue Card */
+html.light .flex-residue-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #1e293b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+html.light .flex-residue-card:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+html.light .flex-residue-card.is-selected {
+  background: #ecfeff !important;
+  border-color: #0891b2 !important;
+  color: #0e7490 !important;
+  box-shadow: 0 0 0 1px rgba(8, 145, 178, 0.5), 0 2px 5px rgba(8, 145, 178, 0.12) !important;
+}
+
+/* Residue Micro-Badges */
+.flex-badge-chain {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1;
+  padding: 0.2rem 0.35rem;
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a1a1aa;
+}
+
+html.light .flex-badge-chain {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+.flex-badge-rot {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  color: #22d3ee;
+  font-weight: 600;
+}
+
+html.light .flex-badge-rot {
+  background: #e0f2fe;
+  border-color: #bae6fd;
+  color: #0284c7;
+}
+
+/* Residue Checkbox Indicator */
+.flex-check-box {
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 0.25rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+html.light .flex-check-box {
+  border-color: #cbd5e1;
+  background: #ffffff;
+}
+
+.flex-residue-card.is-selected .flex-check-box {
+  border-color: #06b6d4;
+  background: #06b6d4;
+  color: #000000;
+}
+
+html.light .flex-residue-card.is-selected .flex-check-box {
+  border-color: #0891b2;
+  background: #0891b2;
+  color: #ffffff;
+}
+
+/* Light Theme support for details-flex-residues container */
+html.light #details-flex-residues {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light #flex-action-hint {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Hardware Diagnostics Modal styles */
+#modal-hardware-diagnostics .hw-core-card {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#modal-hardware-diagnostics .hw-core-card:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(20, 23, 33, 0.8);
+}
+
+/* Light Mode Overrides for Hardware Diagnostics Modal */
+html.light #modal-hardware-diagnostics > div {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+  color: #0f172a !important;
+}
+
+html.light #modal-hardware-diagnostics .bg-\[\#0e1017\],
+html.light #modal-hardware-diagnostics .bg-black {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light #modal-hardware-diagnostics .hw-core-card {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+html.light #modal-hardware-diagnostics .hw-core-card:hover {
+  border-color: #cbd5e1 !important;
+  background-color: #f1f5f9 !important;
+}
+
+html.light #modal-hardware-diagnostics #hw-cpu-name,
+html.light #modal-hardware-diagnostics #hw-physical-cores,
+html.light #modal-hardware-diagnostics #hw-logical-cores,
+html.light #modal-hardware-diagnostics #hw-ram-used,
+html.light #modal-hardware-diagnostics h3,
+html.light #modal-hardware-diagnostics .text-white {
+  color: #0f172a !important;
+}
+
+html.light #modal-hardware-diagnostics #hw-overall-load {
+  color: #0f172a !important;
+}
+
+html.light #modal-hardware-diagnostics #hw-ram-free,
+html.light #modal-hardware-diagnostics #hw-ram-total {
+  color: #64748b !important;
+}
+
+html.light #modal-hardware-diagnostics #btn-refresh-hardware {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+html.light #modal-hardware-diagnostics #btn-refresh-hardware:hover {
+  background-color: #e2e8f0 !important;
+}
+
+html.light #modal-hardware-diagnostics #btn-close-hardware-modal-footer {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
 }

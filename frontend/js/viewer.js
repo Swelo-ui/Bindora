@@ -39,9 +39,13 @@ class MolecularViewer {
       showResidueLabels: true
     };
 
-    // Surface tracking — prevents accumulation bug
+    // Surface tracking — prevents accumulation bug & async race conditions
     this._surfaceId = null;
+    this.surfaceObj = null;
     this._surfaceUpdating = false;
+    this._pocketSurface = null;
+    this._pocketSurfaceId = null;
+    this._surfaceBuildEpoch = 0;
     this.lastInteractions = null;
 
     this.init();
@@ -148,6 +152,8 @@ class MolecularViewer {
   loadReceptor(pdbContent, format = 'pdb') {
     if (!this.viewer || !pdbContent) return;
     
+    this._removeSurface();
+
     if (this.receptorModel) {
       this.viewer.removeModel(this.receptorModel);
       this.receptorModel = null;
@@ -174,9 +180,13 @@ class MolecularViewer {
     const colorType = this.settings.proteinColor || 'spectrum';
 
     // Remove any previously-added pocket surface when switching styles
-    if (this._pocketSurface) {
-      try { this.viewer.removeSurface(this._pocketSurface); } catch (e) {}
-      this._pocketSurface = null;
+    this._clearPocketSurface();
+    if (style !== 'pocket_surface' && !this.settings.showSurface) {
+      try {
+        if (typeof this.viewer.removeAllSurfaces === 'function') {
+          this.viewer.removeAllSurfaces();
+        }
+      } catch (e) {}
     }
 
     let colorScheme = {};
@@ -208,22 +218,47 @@ class MolecularViewer {
 
     } else if (style === 'pocket_surface') {
       if (this.ligandModel) {
-        // Faded cartoon ribbon base + translucent VDW pocket surface around ligand (5Å)
+        // Faded cartoon ribbon base + translucent VDW pocket surface around ligand (5.5Å)
         this.receptorModel.setStyle({}, { cartoon: { color: 'lightgray', opacity: 0.38, thickness: 0.42 } });
+        const currentEpoch = ++this._surfaceBuildEpoch;
         try {
-          this._pocketSurface = this.viewer.addSurface(
-            $3Dmol.SurfaceType.VDW,
+          const M = window["$" + "3Dmol"];
+          const SType = M ? M.SurfaceType.VDW : 1;
+          const surfRes = this.viewer.addSurface(
+            SType,
             { opacity: 0.78, colorscheme: 'whiteCarbon' },
             { model: this.receptorModel },
             { model: this.ligandModel, within: { distance: 5.5, sel: {} } }
           );
+          if (surfRes) {
+            this._pocketSurface = surfRes;
+            if (surfRes.surfid !== undefined) {
+              this._pocketSurfaceId = surfRes.surfid;
+            }
+            if (typeof surfRes.then === 'function') {
+              surfRes.then(id => {
+                // If user switched style or mode before worker finished, discard immediately!
+                if (this._surfaceBuildEpoch !== currentEpoch || this.settings.proteinStyle !== 'pocket_surface') {
+                  try { this.viewer.removeSurface(id); } catch (e) {}
+                  if (!this.settings.showSurface && typeof this.viewer.removeAllSurfaces === 'function') {
+                    this.viewer.removeAllSurfaces();
+                  }
+                  this.viewer.render();
+                } else {
+                  this._pocketSurfaceId = id;
+                  this.viewer.render();
+                }
+              }).catch(err => {
+                console.warn('[3Dmol] Pocket surface async error:', err);
+              });
+            }
+          }
         } catch (e) {
-          // FIX: fallback to cartoon if surface fails
           console.warn('[3Dmol] Pocket surface failed, falling back to cartoon:', e);
           this.receptorModel.setStyle({}, { cartoon: { ...colorScheme, opacity: 0.98, thickness: 0.48 } });
         }
       } else {
-        // FIX: No ligand loaded — show normal cartoon instead of near-invisible ghost
+        // No ligand loaded — show normal cartoon instead of near-invisible ghost
         this.receptorModel.setStyle({}, { cartoon: { ...colorScheme, opacity: 0.98, thickness: 0.48 } });
       }
 
@@ -311,6 +346,9 @@ class MolecularViewer {
       this.ligandModel = null;
     }
 
+    // Always clear old pocket surface from prior pose
+    this._clearPocketSurface();
+
     try {
       this.ligandModel = this.viewer.addModel(pdbOrPdbqtContent, format);
       this.applyLigandStyle();
@@ -327,8 +365,13 @@ class MolecularViewer {
         }
       }, 650);
 
-      if (this.settings.showSurface) {
+      // Re-evaluate surface based on user's active settings
+      if (this.settings.proteinStyle === 'pocket_surface') {
+        this.applyProteinStyle();
+      } else if (this.settings.showSurface) {
         this.updateSurface();
+      } else {
+        this._removeSurface();
       }
     } catch (e) {
       console.error('[3Dmol] Failed to load ligand:', e);
@@ -735,27 +778,55 @@ class MolecularViewer {
     if (this.lastInteractions) this.renderInteractions(this.lastInteractions);
   }
 
-  // Internal helper: safely remove ALL surfaces (prevents accumulation)
+  // Internal helper: safely remove pocket surface
+  _clearPocketSurface() {
+    this._pocketBuildEpoch = (this._pocketBuildEpoch || 0) + 1;
+    if (this._pocketSurfaceId !== null && this._pocketSurfaceId !== undefined) {
+      const pId = this._pocketSurfaceId.surfid !== undefined ? this._pocketSurfaceId.surfid : this._pocketSurfaceId;
+      try { this.viewer.removeSurface(pId); } catch (e) {}
+      this._pocketSurfaceId = null;
+    }
+    if (this._pocketSurface) {
+      const pId = this._pocketSurface.surfid !== undefined ? this._pocketSurface.surfid : this._pocketSurface;
+      if (typeof pId === 'number') {
+        try { this.viewer.removeSurface(pId); } catch (e) {}
+      }
+      this._pocketSurface = null;
+    }
+  }
+
+  // Internal helper: safely remove ALL surfaces (prevents accumulation & async orphans)
   _removeSurface() {
     if (!this.viewer) return;
-    // Try removeAllSurfaces first (safest, removes every surface layer)
-    try {
-      if (typeof this.viewer.removeAllSurfaces === 'function') {
-        this.viewer.removeAllSurfaces();
-        this._surfaceId = null;
-        this.surfaceObj = null;
-        return;
-      }
-    } catch (e) {}
-    // Fallback: remove by stored ID
+    this._surfaceUpdating = false;
+    this._surfaceBuildEpoch = (this._surfaceBuildEpoch || 0) + 1;
+
+    // 1. Clear pocket surface
+    this._clearPocketSurface();
+
+    // 2. Remove standard surface ID if any
     if (this._surfaceId !== null && this._surfaceId !== undefined) {
-      try { this.viewer.removeSurface(this._surfaceId); } catch (e) {}
+      const id = this._surfaceId.surfid !== undefined ? this._surfaceId.surfid : this._surfaceId;
+      try { this.viewer.removeSurface(id); } catch (e) {}
       this._surfaceId = null;
     }
     if (this.surfaceObj !== null && this.surfaceObj !== undefined) {
-      try { this.viewer.removeSurface(this.surfaceObj); } catch (e) {}
+      const id = this.surfaceObj.surfid !== undefined ? this.surfaceObj.surfid : this.surfaceObj;
+      try { this.viewer.removeSurface(id); } catch (e) {}
       this.surfaceObj = null;
     }
+
+    // 3. Absolute cleanup of all surfaces in 3Dmol scene
+    try {
+      if (typeof this.viewer.removeAllSurfaces === 'function') {
+        this.viewer.removeAllSurfaces();
+      }
+    } catch (e) {}
+
+    // 4. Force WebGL render so canvas updates immediately
+    try {
+      this.viewer.render();
+    } catch (e) {}
   }
 
   toggleSurface(show) {
@@ -766,8 +837,6 @@ class MolecularViewer {
 
   updateSurface() {
     if (!this.viewer) return;
-    // Prevent concurrent surface additions (race condition guard)
-    if (this._surfaceUpdating) return;
 
     // Always remove all existing surfaces before doing anything
     this._removeSurface();
@@ -777,9 +846,13 @@ class MolecularViewer {
       return;
     }
 
+    // Prevent concurrent surface additions (race condition guard)
+    if (this._surfaceUpdating) return;
+
     const M = window["$" + "3Dmol"];
     const SType = M ? M.SurfaceType.VDW : 1;
     this._surfaceUpdating = true;
+    const currentEpoch = ++this._surfaceBuildEpoch;
 
     try {
       let surfResult;
@@ -800,20 +873,36 @@ class MolecularViewer {
         }, { model: this.receptorModel });
       }
 
-      // Handle both Promise (newer 3Dmol) and numeric ID (older 3Dmol)
-      if (surfResult && typeof surfResult.then === 'function') {
-        surfResult.then(id => {
-          this._surfaceId = id;
-          this.surfaceObj = id;
+      if (surfResult) {
+        if (surfResult.surfid !== undefined) {
+          this._surfaceId = surfResult.surfid;
+          this.surfaceObj = surfResult.surfid;
+        }
+        if (typeof surfResult.then === 'function') {
+          surfResult.then(id => {
+            this._surfaceUpdating = false;
+            // Guard: If user toggled off while worker was calculating, remove immediately!
+            if (this._surfaceBuildEpoch !== currentEpoch || !this.settings.showSurface) {
+              try { this.viewer.removeSurface(id); } catch (e) {}
+              try {
+                if (typeof this.viewer.removeAllSurfaces === 'function') this.viewer.removeAllSurfaces();
+              } catch (e) {}
+              this.viewer.render();
+            } else {
+              this._surfaceId = id;
+              this.surfaceObj = id;
+              this.viewer.render();
+            }
+          }).catch(err => {
+            console.error('[3Dmol] Surface async error:', err);
+            this._surfaceUpdating = false;
+          });
+        } else {
+          this._surfaceId = surfResult;
+          this.surfaceObj = surfResult;
           this._surfaceUpdating = false;
-        }).catch(err => {
-          console.error('[3Dmol] Surface async error:', err);
-          this._surfaceUpdating = false;
-        });
-      } else if (surfResult !== undefined && surfResult !== null) {
-        this._surfaceId = surfResult;
-        this.surfaceObj = surfResult;
-        this._surfaceUpdating = false;
+          this.viewer.render();
+        }
       } else {
         this._surfaceUpdating = false;
       }

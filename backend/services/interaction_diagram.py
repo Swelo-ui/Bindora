@@ -274,16 +274,23 @@ class InteractionDiagramGenerator:
         residue_list.sort(key=lambda r: r["angle"])
         n_res = len(residue_list)
 
-        # Enforce minimum angular separation
+        # Enforce minimum angular separation with iterative circular relaxation (5 passes)
         if n_res > 1:
-            min_angular_sep = (2.0 * math.pi) / max(n_res + 1, 10)
-            for i in range(1, n_res):
-                diff = residue_list[i]["angle"] - residue_list[i-1]["angle"]
-                if diff < min_angular_sep:
-                    residue_list[i]["angle"] = residue_list[i-1]["angle"] + min_angular_sep
+            min_angular_sep = (2.0 * math.pi) / max(n_res, 8)
+            for _ in range(5):
+                for i in range(n_res):
+                    prev_i = (i - 1 + n_res) % n_res
+                    diff = residue_list[i]["angle"] - residue_list[prev_i]["angle"]
+                    if diff < 0:
+                        diff += 2.0 * math.pi
+                    if diff < min_angular_sep:
+                        push = (min_angular_sep - diff) * 0.5 + 0.05
+                        residue_list[i]["angle"] += push
+                        residue_list[prev_i]["angle"] -= push
 
         # Multi-tier radial distribution: ray from ligand center outward past molecular boundary
-        tier_offsets = [0.0, 32.0] if n_res <= 8 else [0.0, 28.0, 52.0]
+        # Stagger adjacent angular residues across distinct radial tiers to prevent lateral & vertical jamming
+        tier_offsets = [0.0, 52.0, 24.0, 76.0]
 
         nodes = []
         for idx, r in enumerate(residue_list):
@@ -292,7 +299,7 @@ class InteractionDiagramGenerator:
             r_tier = tier_offsets[tier]
 
             # Ray distance from ligand center to molecular envelope along angle
-            r_lig = math.sqrt((mol_w * 0.5 * math.cos(ang))**2 + (mol_h * 0.5 * math.sin(ang))**2) + 56.0
+            r_lig = math.sqrt((mol_w * 0.5 * math.cos(ang))**2 + (mol_h * 0.5 * math.sin(ang))**2) + 60.0
             r_total = r_lig + r_tier
 
             px = lig_cx + r_total * math.cos(ang)
@@ -301,8 +308,8 @@ class InteractionDiagramGenerator:
             # Guaranteed canvas insetting: badge border can NEVER clip SVG boundary
             min_x = r["half_w"] + 14.0
             max_x = width - r["half_w"] - 14.0
-            min_y = 24.0
-            max_y = legend_y - 26.0
+            min_y = 26.0
+            max_y = legend_y - 28.0
 
             px = max(min_x, min(max_x, px))
             py = max(min_y, min(max_y, py))
@@ -317,28 +324,40 @@ class InteractionDiagramGenerator:
                 "max_y": max_y
             })
 
-        # Step 3: Exact 2D AABB Box Collision Relaxation for Badges (35 passes)
-        for _ in range(35):
+        # Step 3: Exact 2D AABB Box Collision Relaxation for Badges (60 passes)
+        for _ in range(60):
             for i in range(len(nodes)):
                 for j in range(i + 1, len(nodes)):
                     dx = nodes[i]["x"] - nodes[j]["x"]
                     dy = nodes[i]["y"] - nodes[j]["y"]
-                    req_w = nodes[i]["res"]["half_w"] + nodes[j]["res"]["half_w"] + 10.0
-                    req_h = 30.0
+                    req_w = nodes[i]["res"]["half_w"] + nodes[j]["res"]["half_w"] + 18.0
+                    req_h = 38.0  # Height of badge is 24px; 38px ensures at least 14px vertical clearance
                     overlap_x = req_w - abs(dx)
                     overlap_y = req_h - abs(dy)
 
                     if overlap_x > 0 and overlap_y > 0:
+                        # If both X and Y overlap, resolve using directional displacement
+                        if abs(dx) < 1e-2:
+                            dx = 0.1
+                        if abs(dy) < 1e-2:
+                            dy = 0.1
+
                         if overlap_x < overlap_y:
-                            shift = overlap_x / 2.0 + 1.0
+                            shift = overlap_x / 2.0 + 2.5
                             sgn = 1.0 if dx >= 0 else -1.0
                             nodes[i]["x"] += shift * sgn
                             nodes[j]["x"] -= shift * sgn
                         else:
-                            shift = overlap_y / 2.0 + 1.0
+                            shift = overlap_y / 2.0 + 2.5
                             sgn = 1.0 if dy >= 0 else -1.0
                             nodes[i]["y"] += shift * sgn
                             nodes[j]["y"] -= shift * sgn
+
+                        # Also apply minor radial push to prevent corner clipping
+                        if overlap_x > 2.0 and overlap_y > 2.0:
+                            sgn_y = 1.0 if dy >= 0 else -1.0
+                            nodes[i]["y"] += 3.0 * sgn_y
+                            nodes[j]["y"] -= 3.0 * sgn_y
 
                         nodes[i]["x"] = max(nodes[i]["min_x"], min(nodes[i]["max_x"], nodes[i]["x"]))
                         nodes[i]["y"] = max(nodes[i]["min_y"], min(nodes[i]["max_y"], nodes[i]["y"]))
@@ -365,12 +384,12 @@ class InteractionDiagramGenerator:
             best_cand = None
             best_penalty = 1e9
 
-            # Evaluate 63 candidate positions around the line (7 longitudinal x 9 lateral offsets)
-            for t in [0.20, 0.28, 0.38, 0.48, 0.58, 0.68, 0.78]:
+            # Evaluate candidate positions around the line (mid-line favored)
+            for t in [0.38, 0.48, 0.58, 0.30, 0.66]:
                 base_x = res_x + dir_x * (line_len * t)
                 base_y = res_y + dir_y * (line_len * t)
 
-                for lat in [0.0, 18.0, -18.0, 28.0, -28.0, 38.0, -38.0, 50.0, -50.0]:
+                for lat in [0.0, 16.0, -16.0, 26.0, -26.0, 36.0, -36.0]:
                     cpx = base_x + norm_x * lat
                     cpy = base_y + norm_y * lat
 
@@ -380,14 +399,19 @@ class InteractionDiagramGenerator:
 
                     penalty = 0.0
 
-                    # 1. Box collision test with the residue badge
-                    if abs(cpx - res_x) < (half_w + 12.0) and abs(cpy - res_y) < 22.0:
-                        penalty += 60000.0
+                    # 1. Box collision test with ALL residue badges in nodes (guarantees zero overlap with ANY badge)
+                    for nd in nodes:
+                        b_hw = nd["res"]["half_w"]
+                        bx = nd["x"]
+                        by = nd["y"]
+                        # Pill is 34x15 (half-w=17, half-h=7.5), badge is (2*b_hw)x24 (half-h=12)
+                        if abs(cpx - bx) < (b_hw + 17.0 + 10.0) and abs(cpy - by) < (12.0 + 7.5 + 10.0):
+                            penalty += 90000.0
 
                     # 2. Distance to target interacting atom (must be >= 22 px)
                     d_tpt = math.hypot(cpx - target_pt[0], cpy - target_pt[1])
                     if d_tpt < 22.0:
-                        penalty += 4000.0 * (22.0 - d_tpt)
+                        penalty += 5000.0 * (22.0 - d_tpt)
 
                     # 3. Distance to ALL other ligand atoms (strictly prevent landing inside aromatic rings or on bonds)
                     for a_idx, ap in enumerate(atom_coords):
@@ -395,17 +419,17 @@ class InteractionDiagramGenerator:
                             continue
                         d_atom = math.hypot(cpx - ap[0], cpy - ap[1])
                         if d_atom < 22.0:
-                            penalty += 5000.0 * (22.0 - d_atom)
+                            penalty += 6000.0 * (22.0 - d_atom)
 
-                    # 4. Box clearance from all previously placed distance pills (must be >= 38px X and >= 18px Y)
+                    # 4. Box clearance from all previously placed distance pills (must be >= 40px X and >= 20px Y)
                     for prev in placed_pills:
                         dx = abs(cpx - prev['x'])
                         dy = abs(cpy - prev['y'])
-                        if dx < 38.0 and dy < 18.0:
-                            penalty += 80000.0 * (1.0 + (38.0 - dx) + (18.0 - dy))
+                        if dx < 40.0 and dy < 20.0:
+                            penalty += 90000.0 * (1.0 + (40.0 - dx) + (20.0 - dy))
 
                     # Minor preference for centered t and smaller lateral displacement
-                    penalty += abs(lat) * 1.5 + abs(t - 0.45) * 10.0
+                    penalty += abs(lat) * 1.5 + abs(t - 0.48) * 12.0
 
                     if penalty < best_penalty:
                         best_penalty = penalty
