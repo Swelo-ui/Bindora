@@ -239,6 +239,40 @@ class BindoraApp {
       downloadPngBtn.addEventListener("click", () => this.viewer && this.viewer.downloadScreenshot());
     }
 
+    const exportMdBtn = document.getElementById("btn-export-openmm-md");
+    if (exportMdBtn) {
+      exportMdBtn.addEventListener("click", async () => {
+        if (!this.state.docking || !this.state.docking.top_pose) {
+          this.showToast("Please run a docking calculation first.", "warning");
+          return;
+        }
+        try {
+          this.showToast("Generating OpenMM explicit-solvent MD simulation bundle...", "info");
+          const topPose = this.state.docking.poses ? (this.state.docking.poses[this.state.currentPoseIdx] || this.state.docking.top_pose) : this.state.docking.top_pose;
+          const res = await fetch("/api/openmm/export", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              receptor_pdb: this.state.receptor.cleaned_pdb,
+              docked_pose_pdbqt: topPose.pdbqt_content,
+              smiles: this.state.ligand.canonical_smiles || this.state.ligand.smiles || "",
+              job_name: `${this.state.receptor.pdb_id || "complex"}_${this.state.ligand.name || "ligand"}_md`,
+              sim_time_ns: 1.0
+            })
+          });
+          const data = await res.json();
+          if (data.status === "SUCCESS") {
+            this.showToast(`OpenMM package ready: ${data.job_name}`, "success");
+            alert(`OpenMM MD Simulation Package Ready!\n\nLocation:\n${data.output_directory}\n\nGenerated Files:\n• ${data.files_generated.join("\n• ")}\n\nInstructions:\n${data.instructions}`);
+          } else {
+            this.showToast(`Export failed: ${data.error || "Unknown error"}`, "error");
+          }
+        } catch (err) {
+          this.showToast(`Export failed: ${err.message}`, "error");
+        }
+      });
+    }
+
     // Molecular Surface Toggle
     const surfaceToggle = document.getElementById("toggle-surface");
     if (surfaceToggle) {
@@ -1899,7 +1933,7 @@ class BindoraApp {
     if (poseStepper) poseStepper.classList.add("hidden");
 
     const poseTable = document.getElementById("pose-table-rows");
-    if (poseTable) poseTable.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-xs text-slate-500 italic">No docking run loaded yet.</td></tr>`;
+    if (poseTable) poseTable.innerHTML = `<tr><td colspan="4" class="text-center p-6 text-xs text-neutral-500 italic font-mono">No docking run loaded yet.</td></tr>`;
 
     const diagContainer = document.getElementById("dock-interaction-diagram-container");
     if (diagContainer) diagContainer.innerHTML = `<span class="text-xs text-slate-500 italic">Run docking to render 2D radial interaction schematic</span>`;
@@ -1918,6 +1952,8 @@ class BindoraApp {
     if (mToggle) mToggle.checked = false;
     const mHud = document.getElementById("measure-hud");
     if (mHud) mHud.classList.add("hidden");
+    const statusStrip = document.getElementById("dock-physics-status-strip");
+    if (statusStrip) statusStrip.classList.add("hidden");
 
     const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
     setTxt("dock-affinity-score", "— kcal/mol");
@@ -2171,12 +2207,17 @@ class BindoraApp {
         redockBtn.disabled = false;
         redockBtn.className = "w-full py-2 px-3 rounded-lg bg-cyan-900/40 hover:bg-cyan-800/60 text-cyan-300 border border-cyan-700/60 text-xs font-semibold transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-sm";
       }
+      if (this.state.redockingValidation) {
+        this.renderRedockingResults(this.state.redockingValidation, true);
+      }
     } else {
       if (redockNameEl) redockNameEl.textContent = "No co-crystallized ligand detected";
       if (redockBtn) {
         redockBtn.disabled = true;
         redockBtn.className = "w-full py-2 px-3 rounded-lg bg-slate-800 text-slate-500 border border-slate-700 text-xs font-semibold transition flex items-center justify-center space-x-1.5 cursor-not-allowed";
       }
+      const redockPanel = document.getElementById("redock-results-panel");
+      if (redockPanel) redockPanel.classList.add("hidden");
     }
 
     // Update Preparation Protocol Transparency Log
@@ -2259,6 +2300,36 @@ class BindoraApp {
     this.showToast("Grid box restored to detected active pocket centroid.", "success");
   }
 
+  renderRedockingResults(res, isAuto = false) {
+    if (!res) return;
+    const resultsPanel = document.getElementById("redock-results-panel");
+    const affVal = document.getElementById("redock-aff-val");
+    const rmsdVal = document.getElementById("redock-rmsd-val");
+    const badgeBox = document.getElementById("redock-badge-container");
+
+    if (resultsPanel) resultsPanel.classList.remove("hidden");
+    if (affVal) affVal.textContent = res.affinity_kcal != null ? `${typeof res.affinity_kcal === 'number' ? res.affinity_kcal.toFixed(2) : res.affinity_kcal} kcal/mol` : "—";
+    if (rmsdVal) rmsdVal.textContent = res.rmsd_angstroms != null ? `${typeof res.rmsd_angstroms === 'number' ? res.rmsd_angstroms.toFixed(2) : res.rmsd_angstroms} Å` : "—";
+
+    if (badgeBox) {
+      const isVal = res.is_validated ?? (res.rmsd_angstroms != null && res.rmsd_angstroms <= 2.0);
+      const badgeText = res.validation_badge || (isVal ? `Protocol Validated (RMSD: ${res.rmsd_angstroms} Å < 2.0 Å)` : `Deviated (RMSD: ${res.rmsd_angstroms} Å)`);
+      if (isVal) {
+        badgeBox.innerHTML = `<span class="px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 text-[11px] font-bold inline-flex items-center space-x-1.5"><svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <span>${badgeText}</span></span>`;
+      } else {
+        badgeBox.innerHTML = `<span class="px-2.5 py-1 rounded-full bg-amber-950 text-amber-300 border border-amber-800 text-[11px] font-bold inline-flex items-center space-x-1.5"><svg class="w-3.5 h-3.5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> <span>${badgeText}</span></span>`;
+      }
+    }
+
+    if (this.viewer && res.docked_pdb && !isAuto) {
+      if (res.cryst_pdb) {
+        this.viewer.loadRedockOverlay(res.cryst_pdb, res.docked_pdb);
+      } else {
+        this.viewer.loadLigand(res.docked_pdb);
+      }
+    }
+  }
+
   async runRedockingValidation(isAuto = false) {
     if (!this.state.receptor || !this.state.receptor.native_ligand?.pdb_block) {
       if (!isAuto) this.showToast("No co-crystallized native ligand found in current receptor.", "error");
@@ -2268,30 +2339,24 @@ class BindoraApp {
     const recKey = this.state.receptor.pdb_id || this.state.receptor.title || "custom_rec";
     this.state.redockCache = this.state.redockCache || {};
 
-    if (this.state.redockCache[recKey]) {
+    // If auto-triggered and already cached, render cached results and return
+    if (isAuto && this.state.redockCache[recKey]) {
       this.state.redockingValidation = this.state.redockCache[recKey];
-      this.updateReceptorView();
+      this.renderRedockingResults(this.state.redockingValidation, true);
+      this.updateStudioCards();
       this.updateDossierView();
-      if (!isAuto) {
-        this.showToast(`Loaded cached redocking: RMSD = ${this.state.redockingValidation.rmsd_angstroms} Å`, "info");
-      }
       return;
     }
 
     const btn = document.getElementById("btn-run-redock-validation");
-    const resultsPanel = document.getElementById("redock-results-panel");
-    const affVal = document.getElementById("redock-aff-val");
-    const rmsdVal = document.getElementById("redock-rmsd-val");
-    const badgeBox = document.getElementById("redock-badge-container");
-
     const originalBtnText = btn ? btn.innerHTML : "";
     if (btn) {
       btn.disabled = true;
-      btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-3.5 w-3.5 text-white inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Redocking ${nat.name}...`;
+      btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-3.5 w-3.5 text-cyan-400 inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Redocking ${nat.name}...`;
     }
 
     if (!isAuto) {
-      this.showToast(`Starting redocking validation of native ligand '${nat.name}'...`, "info");
+      this.showToast(`Starting live redocking validation of native ligand '${nat.name}'...`, "info");
     }
     this._redockingRunning = true;
     this._redockingFailed = false;
@@ -2315,27 +2380,7 @@ class BindoraApp {
       this.state.redockCache[recKey] = res;
       this._redockingFailed = false;
 
-      if (resultsPanel) resultsPanel.classList.remove("hidden");
-      if (affVal) affVal.textContent = `${res.affinity_kcal} kcal/mol`;
-      if (rmsdVal) rmsdVal.textContent = `${res.rmsd_angstroms} Å`;
-
-      if (badgeBox) {
-        if (res.is_validated) {
-          badgeBox.innerHTML = `<span class="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[11px] font-bold inline-flex items-center space-x-1.5"><svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <span>${res.validation_badge}</span></span>`;
-        } else {
-          badgeBox.innerHTML = `<span class="px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-[11px] font-bold inline-flex items-center space-x-1.5"><svg class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> <span>${res.validation_badge}</span></span>`;
-        }
-      }
-
-      // Preview 3D overlay of crystallographic reference vs redocked pose
-      if (this.viewer && res.docked_pdb && !isAuto) {
-        if (res.cryst_pdb) {
-          this.viewer.loadRedockOverlay(res.cryst_pdb, res.docked_pdb);
-        } else {
-          this.viewer.loadLigand(res.docked_pdb);
-        }
-      }
-
+      this.renderRedockingResults(res, false);
       this.updateStudioCards();
       this.updateDossierView();
       if (!isAuto) {
@@ -2710,6 +2755,48 @@ class BindoraApp {
     const elHbonds = document.getElementById("dock-hbonds-count");
     if (elHbonds) elHbonds.textContent = `${interactions.total_hbond_count || 0}`;
 
+    // Update Phase 1 & Phase 2 Physics & Consensus Status Strip
+    const statusStrip = document.getElementById("dock-physics-status-strip");
+    if (statusStrip) {
+      statusStrip.classList.remove("hidden");
+      const elCons = document.getElementById("dock-consensus-badge");
+      if (elCons) {
+        const cRank = currentPose.consensus_rank || currentPose.mode || 1;
+        const cConf = currentPose.consensus_confidence || "MODERATE_CONFIDENCE";
+        const cLabel = cConf === "HIGH_CONFIDENCE" ? "High" : (cConf === "DECOY_HIGH_STRAIN" ? "Decoy!" : "Mod");
+        const cClass = cConf === "HIGH_CONFIDENCE" ? "bg-emerald-950 text-emerald-300 border-emerald-800" : (cConf === "DECOY_HIGH_STRAIN" ? "bg-rose-950 text-rose-300 border-rose-800" : "bg-amber-950 text-amber-300 border-amber-800");
+        elCons.className = `px-2 py-0.5 rounded font-bold text-[11px] border ${cClass}`;
+        elCons.textContent = `Rank #${cRank} (${cLabel})`;
+      }
+      const elGbsa = document.getElementById("dock-mmgbsa-score");
+      if (elGbsa) {
+        const gVal = currentPose.mmgbsa_delta_g_kcal;
+        elGbsa.textContent = gVal != null ? `${gVal.toFixed(2)} kcal/mol` : "—";
+      }
+      const elStr = document.getElementById("dock-strain-score");
+      if (elStr) {
+        const sVal = currentPose.ligand_strain_kcal;
+        if (sVal != null) {
+          elStr.textContent = `${sVal.toFixed(2)} kcal/mol`;
+          elStr.className = sVal <= 4.0 ? "text-emerald-400 font-bold" : (sVal <= 6.0 ? "text-amber-400 font-bold" : "text-rose-400 font-bold");
+        } else {
+          elStr.textContent = "—";
+        }
+      }
+      const elCov = document.getElementById("dock-covalent-badge");
+      if (elCov) {
+        if (currentPose.covalent && currentPose.covalent.is_covalent_candidate) {
+          const topP = currentPose.covalent.top_pairing;
+          const targetStr = topP ? `${topP.nucleophile_residue}` : currentPose.covalent.feasibility_assessment;
+          elCov.textContent = targetStr;
+          elCov.className = "text-purple-300 font-bold text-[11px]";
+        } else {
+          elCov.textContent = "None (Reversible)";
+          elCov.className = "text-neutral-400 font-bold text-[11px]";
+        }
+      }
+    }
+
     // Pose Stepper Label
     const elMode = document.getElementById("dock-current-mode-label");
     if (elMode) {
@@ -2743,22 +2830,49 @@ class BindoraApp {
         }
 
         const isSelected = idx === this.state.currentPoseIdx;
+        const consensusRank = p.consensus_rank || p.mode || (idx + 1);
+        const consensusScore = p.consensus_score != null ? p.consensus_score.toFixed(2) : '—';
+        const conf = p.consensus_confidence || 'N/A';
+        const confBadge = conf === 'HIGH_CONFIDENCE' 
+          ? '<span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[9px] font-mono">High</span>'
+          : conf === 'MODERATE_CONFIDENCE'
+          ? '<span class="px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 text-[9px] font-mono">Mod</span>'
+          : conf === 'DECOY_HIGH_STRAIN'
+          ? '<span class="px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 text-[9px] font-mono font-bold" title="High strain decoy flagged">Decoy</span>'
+          : '<span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-[9px] font-mono">—</span>';
+
+        const strainVal = p.ligand_strain_kcal;
+        const strainHtml = strainVal != null 
+          ? `<span class="${strainVal <= 4.0 ? 'text-emerald-400' : strainVal <= 6.0 ? 'text-amber-400' : 'text-rose-400 font-bold'}">${strainVal.toFixed(1)}</span>`
+          : '<span class="text-neutral-500">—</span>';
+
+        const mmgbsaVal = p.mmgbsa_delta_g_kcal;
+        const mmgbsaHtml = mmgbsaVal != null
+          ? `<span class="text-cyan-300 font-medium">${mmgbsaVal.toFixed(1)}</span>`
+          : '<span class="text-neutral-500">—</span>';
+
+        const covBadge = p.covalent?.is_covalent_candidate && p.covalent?.covalent_feasibility_score >= 0.40
+          ? `<span class="ml-1 px-1 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 text-[9px] font-mono" title="Covalent Warhead: ${p.covalent.feasibility_assessment}">Cov</span>`
+          : '';
+
         return `
-        <tr class="cursor-pointer transition select-none ${isSelected ? 'bg-cyan-950/70 text-white font-semibold border-l-2 border-l-cyan-400' : 'hover:bg-slate-800/40 text-slate-300'}" onclick="window.bindoraApp ? window.bindoraApp.selectPose(${idx}) : window.app.selectPose(${idx})">
-          <td class="px-2 py-1.5 whitespace-nowrap font-mono text-cyan-300">
-            <span class="font-bold">Pose ${p.mode}</span> ${badgeHtml}
+        <tr class="cursor-pointer transition select-none ${isSelected ? 'bg-cyan-950/70 text-white font-semibold border-l-2 border-l-cyan-400' : 'hover:bg-neutral-800/50 text-neutral-300'}" onclick="window.bindoraApp ? window.bindoraApp.selectPose(${idx}) : window.app.selectPose(${idx})">
+          <td class="py-2.5 pl-3 pr-1 whitespace-nowrap font-mono text-cyan-300">
+            <div class="flex items-center space-x-1.5 truncate">
+              <span class="font-bold text-slate-100 text-xs">#${consensusRank}</span>
+              <span class="text-neutral-500 text-[10px]">M${p.mode}</span>
+              ${confBadge}
+              ${covBadge}
+            </div>
           </td>
-          <td class="px-1.5 py-1.5 font-mono text-right text-slate-100 font-semibold whitespace-nowrap">
-            ${p.affinity_kcal != null ? p.affinity_kcal : '—'}
+          <td class="py-2.5 px-2 font-mono text-right text-slate-100 font-semibold whitespace-nowrap text-xs">
+            ${p.affinity_kcal != null ? p.affinity_kcal.toFixed(1) : '—'}
           </td>
-          <td class="px-1.5 py-1.5 font-mono text-right text-emerald-400 whitespace-nowrap">
-            ${p.vinardo_affinity_kcal != null ? p.vinardo_affinity_kcal : '—'}
+          <td class="py-2.5 px-2 font-mono text-right whitespace-nowrap text-xs">
+            ${mmgbsaHtml}
           </td>
-          <td class="px-1.5 py-1.5 font-mono text-right text-slate-400 whitespace-nowrap">
-            ${p.rmsd_lb != null ? p.rmsd_lb : '0'}
-          </td>
-          <td class="px-2.5 py-1.5 font-mono text-right text-slate-400 whitespace-nowrap">
-            ${p.rmsd_ub != null ? p.rmsd_ub : '0'}
+          <td class="py-2.5 pl-1 pr-3 font-mono text-right text-slate-400 whitespace-nowrap text-xs">
+            ${p.rmsd_lb != null ? p.rmsd_lb.toFixed(1) : '0.0'}
           </td>
         </tr>
       `;

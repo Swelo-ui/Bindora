@@ -41,18 +41,58 @@ Unlike black-box docking wrappers or cherry-picked demos, Bindora v2.0 enforces 
 | **Chemistry Robustness** | Failed on phosphorylated ligands | **3-Tier Meeko Charge Fallback** (Gasteiger -> Formal -> Zero) | Reliable preparation of ADP, ATP, phospho-tyrosine without NaN aborts. |
 | **Scientific Integrity** | Unsigned reports | **SHA-256 Checksums** & `ScientificIntegrityError` enforcement | Reports cannot conceal failures or strip mandatory scientific caveats. |
 | **Execution Resilience** | Fragile loops (single fail crashes job) | **Per-Complex Isolation** + JSON Checkpoint Auto-Resume | Multi-hour screens can be stopped and resumed seamlessly without losing progress. |
+| **Scoring Mechanics** | Pure Empirical Vina | **Consensus Matrix (Vina + Vinardo + OpenMM MM-GBSA)** | Solvation desolvation penalty eliminates classical Vina "grease decoy bias". |
+| **Ligand Strain Gate** | Unchecked (up to 15+ kcal) | **Intramolecular MMFF94 Strain Gate** | True initial conformer preservation; unphysical strained poses flagged as decoys. |
+| **Covalent Docking** | Distance check only | **Virtual Covalent Adduct Topology Builder** | Physical bond synthesis (1.82 Å C-S), leaving group elimination, PDB CONECT records. |
+| **Receptor Flexibility** | Rigid / Rigid Rotamers | **Monte Carlo Backbone $\phi/\psi$ Induced-Fit (IFD)** | Active-site loop breathing within Ramachandran basins relieving steric clashes. |
+| **Macrocycle Sampling** | Fails on >10 torsions | **RDKit ETKDGv3 Conformer Ensemble** | Distance-geometry sampling for 12–18 membered rings and high-torsion peptide mimetics. |
+| **Downstream MD** | None | **1-Click Standalone OpenMM MD Simulation Package** | Explicit TIP3P solvent, 0.15 M NaCl, PME, NVT/NPT, NetCDF trajectory generation. |
 
 ---
 
-## 3. Key Modules & Scientific Methodology
+## 3. Advanced Biophysics & SBDD Architecture (v2.1+)
+
+### 3.1. Multi-Engine Consensus Scoring Matrix & MM-GBSA Rescoring
+Bindora Dock combines empirical docking with continuum solvation physics:
+* **AutoDock Vina $\Delta G$ & Vinardo Scoring:** High-speed sampling of binding poses.
+* **OpenMM MM-GBSA (OBC2 / GBn2 Continuum Solvation):** Evaluates polar/non-polar desolvation free energies ($\Delta G_{\text{GB}}$). Greasy decoys that artificially score well in standard Vina receive a severe desolvation penalty, eliminating false positives in virtual screening.
+* **Multi-Tier Confidence Classification:** Poses are ranked and tagged as `HIGH_CONFIDENCE`, `MODERATE_CONFIDENCE`, or `DECOY_HIGH_STRAIN`.
+
+### 3.2. Intramolecular Ligand Strain Gating
+Standard empirical docking often yields collapsed, high-energy ligand conformations. Bindora preserves the true pre-docking reference geometry and calculates internal torsional strain via MMFF94/UFF force fields:
+* **Physical Quantization Baseline ($\le 4.0\text{ kcal/mol}$):** Green-lit poses conforming to experimental PDB crystallographic resolution limits.
+* **Decoy Gating ($> 6.0\text{ kcal/mol}$):** Pose penalized and tagged as unphysical strain decoy.
+
+### 3.3. Virtual Covalent Adduct Topology Builder
+* **True Covalent Bond Synthesis:** Identifies electrophile-nucleophile pairs (e.g. acrylamide, haloacetamide, vinyl sulfone to CYS-SG at $1.82\text{ \AA}$, or SER-OG at $1.43\text{ \AA}$).
+* **Leaving Group Elimination:** Automatically excises leaving halogens in $\alpha$-haloacetamides with stoichiometric fidelity.
+* **Explicit PDB `CONECT` Records:** Generates valid bidirectional atomic connectivity records for downstream simulation engines.
+
+### 3.4. Monte Carlo Protein Loop Sampling & Induced-Fit Docking (IFD)
+* **Backbone $\phi/\psi$ Dihedral Sampling:** Identifies flexible active-site loops within $8.5\text{ \AA}$ and performs harmonic Monte Carlo perturbations ($\pm 10^\circ - 15^\circ$) confined to sterically-allowed Ramachandran basins.
+* **Composite IFD Scoring Function:**
+  $$\Delta G_{\text{IFD}} = \Delta G_{\text{vina}} + 0.35 \times \Delta E_{\text{receptor\_strain}}$$
+
+### 3.5. 1-Click OpenMM Molecular Dynamics Simulation Package
+From the docking results matrix, users can export a standalone, cluster-ready simulation package:
+* `complex.pdb`: Prepared complex with AMBER ff14SB parameterization.
+* `ligand.sdf`: Docked ligand coordinates and partial charges.
+* `run_openmm_md.py`: Self-contained Python script implementing TIP3P periodic water box ($10\text{ \AA}$ padding), $0.15\text{ M}$ physiological NaCl, PME electrostatics, Langevin integrator, conjugate-gradient minimization, NVT heating, NPT equilibration, and production MD ($1.0\text{ ns}$ to $100\text{ ns}$) with NetCDF/DCD trajectory recording.
+
+---
+
+## 4. Key Modules & Scientific Methodology
 
 | Module | Engine / Source | Methodology & Scientific References |
 |:---|:---|:---|
 | **Molecular Docking** | AutoDock Vina 1.2.7 | Iterated local search + Monte Carlo sampling (Trott & Olson, 2010; Eberhardt et al., *JCIM* 2021). |
+| **MM-GBSA Rescoring** | OpenMM 8.x + Amber14 | Molecular mechanics continuum solvation (OBC2/GBn2) free energy evaluation. |
+| **Covalent Docking** | Bindora Adduct Builder | True covalent adduct bond formation with explicit PDB CONECT records and leaving-group cleavage. |
+| **Induced-Fit Docking** | Bindora IFD Service | Monte Carlo backbone $\phi/\psi$ dihedral loop breathing and composite strain scoring. |
 | **Flexible Side Chains** | Meeko + Vina `--flex` | Induced-fit modeling allowing active-site side chains to flex during docking (`meeko.Polymer.flexibilize_sidechain`). |
 | **Blind Pocket Detection** | `fpocket` + SciPy Voronoi | Automated cavity tessellation via alpha spheres (2.8 Å ≤ r ≤ 5.0 Å) and druggability scoring fallback. |
 | **Vinardo Scoring** | AutoDock Vina v1.2.7 | Optimized empirical scoring function with improved affinity predictions (Quiroga & Villarreal, *PLoS ONE* 2016). |
-| **Consensus Matrix** | Multi-Engine Calibration | Multi-metric consensus ranking combining Vina ΔG, Vinardo score, and ligand efficiency. |
+| **Consensus Matrix** | Multi-Engine Calibration | Multi-metric consensus ranking combining Vina ΔG, MM-GBSA, Vinardo score, and ligand strain. |
 | **Ensemble Cross-Docking** | UniProt PDB Xrefs + Vina | Multi-structure docking across deposited crystal conformations with mean affinity ± SD and consistency metrics. |
 | **Similarity Search** | PubChem `fastsimilarity_2d` | Instant retrieval of structural analogues and scaffolds with Tanimoto threshold filtering (≥ 85%). |
 | **Pharmacophore Matching** | ChEMBL + RDKit BaseFeatures | Active-ligand derived consensus chemical feature profiling (IC₅₀ ≤ 1000 nM) and candidate screening. |

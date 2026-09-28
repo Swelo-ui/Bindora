@@ -143,7 +143,62 @@ class HardwareTelemetrySampler:
             "total_ram_gb": total_ram,
             "available_ram_gb": avail_ram,
             "used_ram_gb": used_ram,
-            "ram_percent": ram_pct
+            "ram_percent": ram_pct,
+            "gpu": self.detect_gpu_capabilities()
+        }
+
+    @classmethod
+    def detect_gpu_capabilities(cls) -> Dict[str, Any]:
+        """Detect available GPU acceleration platforms (CUDA, OpenCL) and GPU docking engine binaries."""
+        import shutil
+        from pathlib import Path
+        from backend.config import VINA_GPU_EXE, UNIDOCK_EXE, BIN_DIR
+
+        cuda_available = False
+        opencl_available = False
+        platforms_found = []
+
+        try:
+            import openmm as mm
+            num_p = mm.Platform.getNumPlatforms()
+            for i in range(num_p):
+                p_name = mm.Platform.getPlatform(i).getName()
+                platforms_found.append(p_name)
+                if p_name.upper() == "CUDA":
+                    cuda_available = True
+                elif p_name.upper() == "OPENCL":
+                    opencl_available = True
+        except Exception:
+            pass
+
+        # Check GPU docking binaries
+        gpu_bin_found = None
+        if VINA_GPU_EXE and Path(VINA_GPU_EXE).exists():
+            gpu_bin_found = str(VINA_GPU_EXE)
+        elif UNIDOCK_EXE and Path(UNIDOCK_EXE).exists():
+            gpu_bin_found = str(UNIDOCK_EXE)
+        else:
+            for bname in ["vina-gpu", "AutoDock-Vina-GPU-2.1", "unidock"]:
+                w = shutil.which(bname)
+                if w:
+                    gpu_bin_found = w
+                    break
+
+        preferred_accel = "CPU"
+        if cuda_available:
+            preferred_accel = "CUDA (NVIDIA Tensor/CUDA Cores)"
+        elif opencl_available:
+            preferred_accel = "OpenCL (Hardware GPU Acceleration)"
+
+        return {
+            "cuda_available": cuda_available,
+            "opencl_available": opencl_available,
+            "gpu_hardware_ready": cuda_available or opencl_available,
+            "preferred_acceleration_platform": preferred_accel,
+            "openmm_platforms": platforms_found,
+            "gpu_docking_binary_present": bool(gpu_bin_found),
+            "gpu_docking_binary_path": gpu_bin_found,
+            "gpu_docking_ready": bool(gpu_bin_found and (cuda_available or opencl_available))
         }
 
     @classmethod
@@ -153,3 +208,4 @@ class HardwareTelemetrySampler:
                 if cls._instance is None:
                     cls._instance = cls()
         return cls._instance
+

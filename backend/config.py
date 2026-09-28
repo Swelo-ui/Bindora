@@ -90,6 +90,32 @@ def _resolve_vina_path():
 VINA_EXE = _resolve_vina_path()
 GNINA_EXE = os.environ.get("GNINA_EXE", str(BIN_DIR / "gnina.exe"))
 
+def _resolve_gpu_docking_path():
+    """Locate AutoDock-Vina-GPU or Uni-Dock binary if installed or configured."""
+    env_gpu = os.environ.get("VINA_GPU_EXE") or os.environ.get("UNIDOCK_EXE")
+    if env_gpu and os.path.exists(env_gpu):
+        return Path(env_gpu)
+    candidates = [
+        BIN_DIR / "AutoDock-Vina-GPU-2.1.exe",
+        BIN_DIR / "vina-gpu.exe",
+        BIN_DIR / "unidock.exe",
+        BIN_DIR / "AutoDock-Vina-GPU-2.1",
+        BIN_DIR / "vina-gpu",
+        BIN_DIR / "unidock",
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    for name in ["AutoDock-Vina-GPU-2.1", "vina-gpu", "unidock"]:
+        w = shutil.which(name)
+        if w:
+            return Path(w)
+    return None
+
+VINA_GPU_EXE = _resolve_gpu_docking_path()
+UNIDOCK_EXE = os.environ.get("UNIDOCK_EXE", str(BIN_DIR / ("unidock.exe" if sys.platform == "win32" else "unidock")))
+USE_GPU_DOCKING = os.environ.get("USE_GPU_DOCKING", "auto").lower() in ("true", "1", "yes", "auto")
+
 CACHE_DIR = DATA_DIR / "cache"
 BENCHMARKS_DIR = DATA_DIR / "benchmarks"
 

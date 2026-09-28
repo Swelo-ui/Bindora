@@ -78,6 +78,31 @@ class BioactivityService:
                 "Treat docking pose strictly as hypothesis-generating and interpret with extreme caution."
             )
 
+        # Empirical scoring uncertainty modeling (Vina scoring RMSE σ ≈ 2.0 kcal/mol)
+        sigma_scoring = 2.0  # kcal/mol empirical scoring standard error
+        ci_factor = 1.96     # 95% confidence bounds
+        delta_g_low = affinity_kcal - (ci_factor * sigma_scoring)
+        delta_g_high = affinity_kcal + (ci_factor * sigma_scoring)
+
+        kd_low_molar = math.exp(delta_g_low / rt)
+        kd_high_molar = math.exp(delta_g_high / rt)
+        kd_low_nm = kd_low_molar * 1e9
+        kd_high_nm = kd_high_molar * 1e9
+        pkd_high = round(-math.log10(kd_low_molar), 2)
+        pkd_low = round(-math.log10(kd_high_molar), 2)
+
+        def _fmt_conc(nm_val: float) -> str:
+            if nm_val < 1.0:
+                return f"{nm_val*1000:.1f} pM"
+            elif nm_val < 1000.0:
+                return f"{nm_val:.1f} nM"
+            elif nm_val < 1e6:
+                return f"{nm_val/1000.0:.1f} uM"
+            else:
+                return f"{nm_val/1e6:.1f} mM"
+
+        formatted_range = f"Predicted pKd: {pkd:.1f} +/- 1.5 (~{_fmt_conc(kd_low_nm)} to {_fmt_conc(kd_high_nm)})"
+
         return {
             # Canonical scientific fields
             "docking_score_kcal": round(affinity_kcal, 2),
@@ -100,7 +125,23 @@ class BioactivityService:
             "gas_constant_kcal_mol_k": gas_constant_r,
             "gas_constant_kcal_per_mol_k": gas_constant_r,
             "standard_state": "1 M",
-            "scientific_disclaimer": "This value is mathematically derived from the docking score and is not an experimentally measured or rigorously calculated thermodynamic Kd.",
+            "scientific_disclaimer": (
+                "This value is mathematically derived from the docking score and is not an experimentally measured "
+                "or rigorously calculated thermodynamic Kd. Empirical scoring carries an inherent uncertainty of "
+                "+/- 2.0 kcal/mol (translating to a ~100x uncertainty span in Kd)."
+            ),
+
+            # Empirical 95% Confidence Interval
+            "kd_confidence_interval_95": {
+                "kd_lower_nm": round(kd_low_nm, 2) if kd_low_nm < 1e6 else round(kd_low_nm, 0),
+                "kd_upper_nm": round(kd_high_nm, 2) if kd_high_nm < 1e6 else round(kd_high_nm, 0),
+                "pkd_lower": pkd_low,
+                "pkd_upper": pkd_high,
+                "scoring_rmse_kcal": sigma_scoring,
+                "confidence_level": "95% (empirical scoring uncertainty sigma = +/- 2.0 kcal/mol)",
+                "formatted_range": formatted_range
+            },
+            "formatted_kd_range": formatted_range,
             
             # Backward-compatible keys
             "binding_affinity_kcal": round(affinity_kcal, 2),

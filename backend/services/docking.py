@@ -9,7 +9,7 @@ import gemmi
 from rdkit import Chem
 from rdkit.Chem import AllChem, Lipinski
 from meeko import MoleculePreparation, PDBQTWriterLegacy
-from backend.config import VINA_EXE, get_subprocess_kwargs
+from backend.config import VINA_EXE, VINA_GPU_EXE, UNIDOCK_EXE, USE_GPU_DOCKING, get_subprocess_kwargs
 from backend.utils.vina_setup import ensure_vina
 from backend.services.biophysical_prep import BiophysicalReceptorPreparer
 from backend.services.interaction_engine import InteractionEngine
@@ -68,7 +68,8 @@ class DockingEngine:
     def prepare_receptor(
         pdb_content: str,
         target_chain: Optional[str] = None,
-        retain_structural_waters: bool = False
+        retain_structural_waters: bool = False,
+        auto_conserved_waters: bool = True
     ) -> Dict[str, Any]:
         """Clean receptor PDB, mmCIF, or PDBQT, extract co-crystallized native ligand, compute blind docking box, and produce PDBQT."""
         trimmed = pdb_content.strip()
@@ -273,19 +274,44 @@ class DockingEngine:
             "size": {"x": round(blind_sx, 1), "y": round(blind_sy, 1), "z": round(blind_sz, 1)}
         }
 
-        # Filter catalytic structural water molecules near pocket if requested
+        # Automated conserved bridging structural water detection
         retained_structural_waters = []
-        if retain_structural_waters and candidate_water_lines:
+        if (retain_structural_waters or auto_conserved_waters) and candidate_water_lines:
+            prot_polar_coords = []
+            for pline in protein_lines:
+                try:
+                    p_elem = pline[76:78].strip() or pline[12:14].strip()
+                    if p_elem in ("N", "O", "S"):
+                        prot_polar_coords.append((float(pline[30:38]), float(pline[38:46]), float(pline[46:54])))
+                except Exception:
+                    pass
+
             for wline in candidate_water_lines:
                 try:
                     wx = float(wline[30:38])
                     wy = float(wline[38:46])
                     wz = float(wline[46:54])
                     p_dist = math.sqrt((wx - center_x)**2 + (wy - center_y)**2 + (wz - center_z)**2)
-                    if p_dist <= 6.5:
-                        retained_structural_waters.append(wline)
+                    max_box_r = 7.0 if retain_structural_waters else 6.5
+                    if p_dist <= max_box_r:
+                        # Check bridging contacts (>= 2 contacts within 1.8 - 3.6 A to protein polar atoms)
+                        hb_contacts = 0
+                        for px, py, pz in prot_polar_coords:
+                            if abs(wx - px) > 3.6 or abs(wy - py) > 3.6 or abs(wz - pz) > 3.6:
+                                continue
+                            d_h = math.sqrt((wx - px)**2 + (wy - py)**2 + (wz - pz)**2)
+                            if 1.8 <= d_h <= 3.6:
+                                hb_contacts += 1
+                                if hb_contacts >= 2:
+                                    break
+                        if retain_structural_waters or hb_contacts >= 2:
+                            retained_structural_waters.append(wline)
                 except Exception:
                     continue
+
+            # Limit auto-detected waters to top 5 to avoid overcrowding pocket
+            if not retain_structural_waters and len(retained_structural_waters) > 5:
+                retained_structural_waters = retained_structural_waters[:5]
 
         # Filter catalytic metals: retain those in or near the binding pocket
         retained_metals = []
@@ -331,7 +357,8 @@ class DockingEngine:
             pdbqt_text = "\n".join(pdbqt_lines) + "\nTER\nEND\n"
 
         prep_log = {
-            "waters_removed": waters_removed,
+            "waters_removed": max(0, waters_removed - len(retained_structural_waters)),
+            "conserved_structural_waters_retained": len(retained_structural_waters),
             "ions_and_buffer_removed": ions_removed,
             "catalytic_metals_retained": prep_stats.get("catalytic_metals_retained", len(retained_metals)),
             "protein_atoms_retained": len(cleaned_pdb_lines),
@@ -658,19 +685,31 @@ class DockingEngine:
                 pass
             conformer_desc = "Preserved input 3D crystallographic/optimized coordinates (Chem.AddHs with addCoords=True)"
             minimization_desc = "Input 3D coordinates retained; partial charges assigned"
+            is_macro = False
+            macro_sizes = []
         else:
-            mol_h = Chem.AddHs(mol)
-            params = AllChem.ETKDGv3()
-            params.randomSeed = 42
-            embed_result = AllChem.EmbedMolecule(mol_h, params)
-            if embed_result != 0:
-                AllChem.EmbedMolecule(mol_h, useRandomCoords=True)
-            try:
-                AllChem.MMFFOptimizeMolecule(mol_h, maxIters=500)
-            except Exception:
-                pass
-            conformer_desc = "RDKit ETKDGv3 (Experimental Torsion Knowledge Distance Geometry)"
-            minimization_desc = "MMFF94 (Merck Molecular Force Field) gradient optimization (500 max iterations)"
+            from backend.services.macrocycle import MacrocycleConformerEngine
+            is_macro, macro_sizes, _ = MacrocycleConformerEngine.is_macrocycle(mol)
+            if is_macro:
+                macro_res = MacrocycleConformerEngine.sample_macrocycle_conformers(
+                    mol, num_confs=20, energy_window=15.0, rmsd_threshold=0.5, random_seed=42
+                )
+                mol_h = macro_res["best_mol"]
+                conformer_desc = f"RDKit Macrocycle Distance Geometry ({macro_res.get('sampling_engine', 'srETKDGv3')}, max ring size {max(macro_sizes)})"
+                minimization_desc = f"{macro_res.get('force_field', 'MMFF94')} global energy minimum conformer ({macro_res.get('global_min_energy_kcal')} kcal/mol)"
+            else:
+                mol_h = Chem.AddHs(mol)
+                params = AllChem.ETKDGv3()
+                params.randomSeed = 42
+                embed_result = AllChem.EmbedMolecule(mol_h, params)
+                if embed_result != 0:
+                    AllChem.EmbedMolecule(mol_h, useRandomCoords=True)
+                try:
+                    AllChem.MMFFOptimizeMolecule(mol_h, maxIters=500)
+                except Exception:
+                    pass
+                conformer_desc = "RDKit ETKDGv3 (Experimental Torsion Knowledge Distance Geometry)"
+                minimization_desc = "MMFF94 (Merck Molecular Force Field) gradient optimization (500 max iterations)"
 
         # Prepare PDBQT using Meeko with robust sanitized charges
         pdbqt_str = DockingEngine._convert_mol_to_meeko_pdbqt(mol_h)
@@ -689,7 +728,9 @@ class DockingEngine:
             "conformer_algorithm": conformer_desc,
             "energy_minimization": minimization_desc,
             "torsions_configured": f"Meeko flexible torsions enabled ({rotb_count} active rotatable bonds)",
-            "partial_charges": "Meeko Gasteiger-PEPE charge distribution model"
+            "partial_charges": "Meeko Gasteiger-PEPE charge distribution model",
+            "is_macrocycle": is_macro,
+            "macrocycle_ring_sizes": macro_sizes if is_macro else []
         }
 
         return {
@@ -714,7 +755,9 @@ class DockingEngine:
         reference_pdb: Optional[str] = None,
         flexible_residues: Optional[List[str]] = None,
         receptor_pdb: Optional[str] = None,
-        cpu: Optional[int] = None
+        cpu: Optional[int] = None,
+        use_gpu: bool = False,
+        ligand_smiles: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Run AutoDock Vina on the prepared receptor and ligand PDBQT files with optional multi-seed replicate sampling and flexible side chains."""
         vina_path = ensure_vina()
@@ -778,6 +821,7 @@ class DockingEngine:
         all_runs_top_affinities = []
         best_poses = []
         best_top_affinity = 999.0
+        using_gpu = False
 
         for s in seeds:
             with tempfile.TemporaryDirectory() as tmp_dir:
@@ -803,7 +847,15 @@ class DockingEngine:
                     "--num_modes", str(num_modes),
                     "--out", str(out_file)
                 ]
-                if cpu is not None and int(cpu) > 0:
+
+                # Check for GPU-accelerated engine (AutoDock-Vina-GPU or Uni-Dock)
+                using_gpu = False
+                gpu_exe = VINA_GPU_EXE
+                if (use_gpu or USE_GPU_DOCKING) and gpu_exe and Path(gpu_exe).exists():
+                    using_gpu = True
+                    cmd[0] = str(gpu_exe)
+
+                if not using_gpu and cpu is not None and int(cpu) > 0:
                     cmd.extend(["--cpu", str(cpu)])
                 if flex_pdbqt_str:
                     flex_file = tmp_path / "flex.pdbqt"
@@ -832,6 +884,27 @@ class DockingEngine:
                     raise RuntimeError(f"AutoDock Vina calculation timed out after {calc_timeout}s.")
                 finally:
                     _ACTIVE_SUBPROCESSES.discard(process)
+
+                # Graceful GPU fallback: if GPU engine fails (e.g. no CUDA device on host), fall back to multi-core CPU Vina
+                if returncode != 0 and using_gpu:
+                    print("[DOCKING ENGINE] GPU engine failed (no CUDA GPU detected or driver error). Gracefully falling back to multi-core CPU AutoDock Vina.")
+                    cmd[0] = str(vina_path)
+                    using_gpu = False
+                    if cpu is not None and int(cpu) > 0:
+                        cmd.extend(["--cpu", str(cpu)])
+                    process = subprocess.Popen(
+                        cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        **get_subprocess_kwargs()
+                    )
+                    _ACTIVE_SUBPROCESSES.add(process)
+                    try:
+                        stdout, stderr = process.communicate(timeout=calc_timeout)
+                        returncode = process.returncode
+                    finally:
+                        _ACTIVE_SUBPROCESSES.discard(process)
 
                 if returncode != 0:
                     err_lines = [l.strip() for l in (stderr or stdout or "").splitlines() if l.strip()]
@@ -909,7 +982,8 @@ class DockingEngine:
                 "confidence_interval_95": round(1.96 * (sd_aff / math.sqrt(len(all_runs_top_affinities))), 3)
             }
 
-        # Multi-engine scoring: compute Vinardo and GNINA scores for poses
+        # Multi-engine scoring and physics-based strain / MM-GBSA rescoring
+        from backend.services.refinement import ComplexRefinementService
         for p in best_poses:
             p_pdbqt = p.get("pdbqt_content", "")
             if p_pdbqt:
@@ -917,6 +991,52 @@ class DockingEngine:
                     receptor_pdbqt, p_pdbqt, center, size
                 )
                 p["gnina"] = DockingEngine.score_pose_gnina(receptor_pdbqt, p_pdbqt)
+
+                # Physics-based true ligand strain & MM-GBSA rescoring
+                try:
+                    strain_data = ComplexRefinementService.calculate_ligand_strain(p_pdbqt, smiles=ligand_smiles)
+                    p["ligand_strain_kcal"] = strain_data.get("ligand_strain_relaxation_kcal")
+                    p["is_high_strain"] = strain_data.get("is_high_strain", False)
+                    p["strain_classification"] = strain_data.get("strain_classification")
+                    p["strain_warning"] = strain_data.get("strain_warning")
+                    p["decoy_filter_flag"] = strain_data.get("decoy_filter_flag", "PASS")
+
+                    mmgbsa_data = ComplexRefinementService.calculate_mmgbsa_rescore(
+                        receptor_pdb or receptor_pdbqt, p_pdbqt, strain_data
+                    )
+                    p["mmgbsa"] = mmgbsa_data
+                    p["mmgbsa_delta_g_kcal"] = mmgbsa_data.get("mmgbsa_delta_g_kcal")
+                except Exception as refine_err:
+                    p["refinement_notice"] = str(refine_err)
+
+        # Targeted Covalent Inhibitor (TCI) evaluation
+        from backend.services.covalent import CovalentDockingService
+        cov_bonus = 0.0
+        if best_poses:
+            try:
+                for p in best_poses:
+                    p_pdbqt = p.get("pdbqt_content", "")
+                    cov_res = CovalentDockingService.evaluate_covalent_geometry(
+                        p_pdbqt, receptor_pdb or receptor_pdbqt, smiles=ligand_smiles, pocket_center=center
+                    )
+                    p["covalent"] = cov_res
+                    p["covalent_feasibility_score"] = cov_res.get("covalent_feasibility_score", 0.0)
+                    p["covalent_status"] = cov_res.get("feasibility_assessment", "NONE")
+                    p["covalent_energy_bonus_kcal"] = cov_res.get("covalent_energy_bonus_kcal", 0.0)
+                if best_poses[0].get("covalent", {}).get("is_covalent_candidate"):
+                    cov_bonus = best_poses[0]["covalent"].get("covalent_energy_bonus_kcal", 0.0)
+            except Exception as cov_err:
+                pass
+
+        # Multi-Engine Consensus Matrix & Re-Ranking
+        from backend.services.consensus import ConsensusScoringService
+        if best_poses:
+            try:
+                best_poses = ConsensusScoringService.compute_pose_consensus(
+                    best_poses, covalent_bonus_kcal=cov_bonus
+                )
+            except Exception as cons_err:
+                pass
 
         # Compute reference RMSD if reference structure is provided
         if reference_pdb and best_poses:
@@ -931,10 +1051,12 @@ class DockingEngine:
                 print(f"[RMSD REFERENCE NOTICE] {ex}")
 
         total_duration = round(time.time() - t_overall_start, 2)
+        exec_device = "GPU (AutoDock-Vina-GPU)" if locals().get("using_gpu") else f"CPU ({cpu} threads)"
         if best_poses:
             for p in best_poses:
                 p["execution_duration_s"] = total_duration
                 p["cpu_count_used"] = cpu
+                p["execution_device"] = exec_device
 
         return best_poses
 

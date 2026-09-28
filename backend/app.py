@@ -338,7 +338,9 @@ def run_docking():
             replicates=replicates,
             flexible_residues=flexible_residues,
             receptor_pdb=receptor_pdb,
-            cpu=cpu
+            cpu=cpu,
+            use_gpu=data.get("use_gpu", False),
+            ligand_smiles=smiles or data.get("ligand_smiles")
         )
 
         if not poses:
@@ -757,6 +759,173 @@ def screen_pharmacophore():
 
     results.sort(key=lambda x: x.get("match_score_pct", 0.0), reverse=True)
     return jsonify({"screened": results, "total": len(results)})
+
+# ==========================================
+# PHASE 2 API ENDPOINTS (Days 61-120)
+# ==========================================
+
+@app.route("/api/covalent/evaluate", methods=["POST"])
+def evaluate_covalent():
+    """Evaluate covalent binding feasibility for an electrophilic ligand against receptor nucleophiles."""
+    data = request.get_json() or {}
+    docked_pose = data.get("docked_pose_pdbqt") or data.get("docked_pose_pdb", "")
+    receptor = data.get("receptor_pdbqt") or data.get("receptor_pdb", "")
+    smiles = data.get("smiles", "").strip() or None
+    pocket_center = data.get("pocket_center")
+
+    if not docked_pose or not receptor:
+        return jsonify({"error": "Missing 'docked_pose_pdbqt'/'docked_pose_pdb' or 'receptor_pdbqt'/'receptor_pdb'"}), 400
+
+    from backend.services.covalent import CovalentDockingService
+    result = CovalentDockingService.evaluate_covalent_geometry(
+        docked_pose_pdb_or_pdbqt=docked_pose,
+        receptor_pdb_or_pdbqt=receptor,
+        smiles=smiles,
+        pocket_center=pocket_center
+    )
+    return jsonify(result)
+
+@app.route("/api/macrocycle/sample", methods=["POST"])
+def sample_macrocycle():
+    """Sample conformational ensemble for macrocycle using srETKDGv3 and MMFF94."""
+    data = request.get_json() or {}
+    smiles = data.get("smiles", "").strip()
+    num_confs = int(data.get("num_confs", 20))
+    energy_window = float(data.get("energy_window", 15.0))
+    rmsd_threshold = float(data.get("rmsd_threshold", 0.5))
+
+    if not smiles:
+        return jsonify({"error": "Missing 'smiles' in request body"}), 400
+
+    from backend.services.macrocycle import MacrocycleConformerEngine
+    try:
+        result = MacrocycleConformerEngine.sample_macrocycle_conformers(
+            smiles,
+            num_confs=num_confs,
+            energy_window=energy_window,
+            rmsd_threshold=rmsd_threshold
+        )
+        # Exclude non-serializable mol objects from direct json response
+        return jsonify({
+            "is_macrocycle": result["is_macrocycle"],
+            "max_ring_size": result["max_ring_size"],
+            "macrocycle_ring_sizes": result["macrocycle_ring_sizes"],
+            "sampling_engine": result["sampling_engine"],
+            "force_field": result["force_field"],
+            "initial_conformers_sampled": result["initial_conformers_sampled"],
+            "conformers_within_energy_window": result["conformers_within_energy_window"],
+            "conformers_retained_after_rmsd_pruning": result["conformers_retained_after_rmsd_pruning"],
+            "global_min_energy_kcal": result["global_min_energy_kcal"],
+            "relative_energies_kcal": result["relative_energies_kcal"]
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/openmm/export", methods=["POST"])
+def export_openmm_script():
+    """Generate standalone OpenMM explicit-solvent MD simulation package & MM-PBSA script."""
+    data = request.get_json() or {}
+    receptor_pdb = data.get("receptor_pdb", "")
+    docked_pose = data.get("docked_pose_pdbqt") or data.get("docked_pose_pdb", "")
+    output_dir = data.get("output_dir", "")
+    smiles = data.get("smiles", "").strip() or None
+    job_name = data.get("job_name", "bindora_complex_md")
+    sim_time_ns = float(data.get("sim_time_ns", 1.0))
+
+    if not receptor_pdb or not docked_pose:
+        return jsonify({"error": "Missing 'receptor_pdb' or 'docked_pose_pdbqt'/'docked_pose_pdb'"}), 400
+
+    if not output_dir:
+        import tempfile
+        output_dir = tempfile.mkdtemp(prefix="bindora_openmm_")
+
+    from backend.services.md_export import OpenMMExportService
+    try:
+        pkg = OpenMMExportService.generate_simulation_package(
+            receptor_pdb=receptor_pdb,
+            docked_pose_pdb_or_pdbqt=docked_pose,
+            output_dir=output_dir,
+            ligand_smiles=smiles,
+            job_name=job_name,
+            sim_time_ns=sim_time_ns
+        )
+        return jsonify(pkg)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/benchmark/pdbbind", methods=["GET", "POST"])
+def pdbbind_benchmark():
+    """Query PDBbind core set reference complexes or evaluate docking predictions against benchmark."""
+    from backend.services.pdbbind_validation import PDBbindValidationEngine
+    if request.method == "GET":
+        ref_data = PDBbindValidationEngine.get_reference_dataset()
+        return jsonify({
+            "dataset_name": "CASF-2016 / PDBbind Core Set Curated Benchmark",
+            "complexes_count": len(ref_data),
+            "complexes": ref_data
+        })
+    else:
+        data = request.get_json() or {}
+        predictions = data.get("predictions", [])
+        if not predictions:
+            return jsonify({"error": "Missing 'predictions' array in request body"}), 400
+        result = PDBbindValidationEngine.evaluate_benchmark(predictions)
+        return jsonify(result)
+
+@app.route("/api/docking/induced-fit", methods=["POST"])
+def run_induced_fit():
+    """Execute Monte Carlo loop and backbone phi/psi induced-fit docking (IFD)."""
+    data = request.get_json() or {}
+    receptor_pdb = data.get("receptor_pdb", "")
+    ligand_sdf_or_pdbqt = data.get("ligand", "")
+    pocket_center = data.get("center", {})
+    pocket_size = data.get("size", {})
+    exhaustiveness = int(data.get("exhaustiveness", 8))
+    loop_radius = float(data.get("loop_radius", 8.5))
+    num_iterations = int(data.get("num_iterations", 5))
+
+    if not receptor_pdb or not ligand_sdf_or_pdbqt or not pocket_center or not pocket_size:
+        return jsonify({"error": "Missing required fields (receptor_pdb, ligand, center, size)"}), 400
+
+    from backend.services.induced_fit import InducedFitService
+    try:
+        result = InducedFitService.run_induced_fit_docking(
+            receptor_pdb=receptor_pdb,
+            ligand_sdf_or_pdbqt=ligand_sdf_or_pdbqt,
+            pocket_center=pocket_center,
+            pocket_size=pocket_size,
+            loop_radius=loop_radius,
+            num_iterations=num_iterations,
+            exhaustiveness=exhaustiveness
+        )
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/covalent/build-adduct", methods=["POST"])
+def build_covalent_adduct():
+    """Build physical covalent adduct complex with bidirectional CONECT records."""
+    data = request.get_json() or {}
+    receptor_pdb = data.get("receptor_pdb", "")
+    ligand_pose_pdbqt = data.get("pose_pdbqt", "")
+    warhead_type = data.get("warhead_type", None)
+    target_residue = data.get("target_residue", None)
+
+    if not receptor_pdb or not ligand_pose_pdbqt:
+        return jsonify({"error": "Missing 'receptor_pdb' or 'pose_pdbqt'"}), 400
+
+    from backend.services.covalent import CovalentDockingEngine
+    try:
+        result = CovalentDockingEngine.build_covalent_adduct_complex(
+            receptor_pdb=receptor_pdb,
+            ligand_pose_pdbqt=ligand_pose_pdbqt,
+            warhead_type=warhead_type,
+            target_residue=target_residue
+        )
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     print(f"Starting Bindora Server on http://{HOST}:{PORT}")

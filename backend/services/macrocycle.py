@@ -1,0 +1,249 @@
+"""
+Macrocyclic Conformational Sampling Module for Bindora Dock.
+
+Addresses the conformational sampling bottleneck for macrocycles (ring size >= 12, cyclic peptides,
+macrolides, kinase macrocycles like Lorlatinib).
+
+Provides:
+- Macrocycle ring size and topology detection
+- Distance Geometry with srETKDGv3 / ETKDGv3 macrocycle parameters
+- MMFF94 / UFF force field relaxation of ring closures
+- Relative energy window filtering & RMSD-based conformational pruning
+- Multi-conformer ensemble preparation for flexible docking
+"""
+
+import math
+from typing import Dict, Any, List, Optional, Tuple, Union
+from rdkit import Chem
+from rdkit.Chem import AllChem, rdMolDescriptors, rdMolAlign
+
+
+class MacrocycleConformerEngine:
+    """
+    Specialized conformational sampling engine for macrocyclic ligands (ring size >= 12).
+    Standard distance geometry frequently fails to sample native ring topologies; this engine
+    uses experimental torsion distance geometry (srETKDGv3) with random coordinates and force-field
+    gradient minimization to identify low-strain ring conformations.
+    """
+
+    DEFAULT_MIN_RING_SIZE = 12
+
+    @classmethod
+    def is_macrocycle(
+        cls,
+        mol_or_smiles: Union[Chem.Mol, str],
+        min_ring_size: int = DEFAULT_MIN_RING_SIZE
+    ) -> Tuple[bool, List[int], List[List[int]]]:
+        """
+        Check if a molecule contains any ring of size >= min_ring_size.
+
+        Returns:
+            (is_macro, ring_sizes, ring_atom_indices)
+        """
+        mol = None
+        if isinstance(mol_or_smiles, str):
+            mol = Chem.MolFromSmiles(mol_or_smiles)
+        else:
+            mol = mol_or_smiles
+
+        if mol is None:
+            return False, [], []
+
+        Chem.FastFindRings(mol)
+        ring_info = mol.GetRingInfo()
+        atom_rings = ring_info.AtomRings()
+
+        macro_sizes = []
+        macro_rings = []
+        for r in atom_rings:
+            sz = len(r)
+            if sz >= min_ring_size:
+                macro_sizes.append(sz)
+                macro_rings.append(list(r))
+
+        return len(macro_sizes) > 0, macro_sizes, macro_rings
+
+    @classmethod
+    def sample_macrocycle_conformers(
+        cls,
+        mol_or_smiles: Union[Chem.Mol, str],
+        num_confs: int = 25,
+        energy_window: float = 15.0,
+        rmsd_threshold: float = 0.5,
+        random_seed: int = 42
+    ) -> Dict[str, Any]:
+        """
+        Sample low-strain conformational ensemble for macrocyclic molecule.
+
+        Parameters:
+            mol_or_smiles: RDKit Mol or SMILES string
+            num_confs: Number of initial conformers to sample via Distance Geometry
+            energy_window: Energy cutoff (kcal/mol) relative to global minimum
+            rmsd_threshold: Minimum RMSD (Angstroms) to consider conformers distinct
+            random_seed: Reproducible random seed
+
+        Returns:
+            Dictionary containing best conformer mol, energies, and sampling metadata.
+        """
+        if isinstance(mol_or_smiles, str):
+            mol = Chem.MolFromSmiles(mol_or_smiles)
+        else:
+            mol = Chem.Mol(mol_or_smiles)
+
+        if mol is None:
+            raise ValueError("Invalid molecule provided for macrocycle sampling.")
+
+        is_macro, ring_sizes, ring_rings = cls.is_macrocycle(mol)
+        mol_h = Chem.AddHs(mol)
+
+        # 1. Setup Distance Geometry Parameters
+        params = None
+        engine_name = "srETKDGv3"
+        try:
+            if hasattr(AllChem, "srETKDGv3"):
+                params = AllChem.srETKDGv3()
+            else:
+                params = AllChem.ETKDGv3()
+                engine_name = "ETKDGv3"
+        except Exception:
+            params = AllChem.ETKDGv3()
+            engine_name = "ETKDGv3"
+
+        params.randomSeed = random_seed
+        params.useRandomCoords = True
+        params.boxSizeMult = 2.0
+        if hasattr(params, "useMacrocycleTorsions"):
+            params.useMacrocycleTorsions = True
+        if hasattr(params, "useMacrocycle14config"):
+            params.useMacrocycle14config = True
+        if hasattr(params, "boundsMatForceScaling"):
+            params.boundsMatForceScaling = 1.0
+        params.clearConfs = True
+        params.numThreads = 1
+
+        # 2. Embed multiple conformers
+        conf_ids = AllChem.EmbedMultipleConfs(mol_h, numConfs=num_confs, params=params)
+
+        # Fallback if srETKDGv3 failed to embed
+        if len(conf_ids) == 0:
+            engine_name = "ETKDG_Random_Fallback"
+            fb_params = AllChem.ETKDG()
+            fb_params.randomSeed = random_seed
+            fb_params.useRandomCoords = True
+            fb_params.useExpTorsionAnglePrefs = False
+            fb_params.useBasicKnowledge = False
+            conf_ids = AllChem.EmbedMultipleConfs(mol_h, numConfs=num_confs, params=fb_params)
+
+        if len(conf_ids) == 0:
+            # Last-resort fallback: single standard embedding
+            AllChem.EmbedMolecule(mol_h, useRandomCoords=True)
+            conf_ids = [0] if mol_h.GetNumConformers() > 0 else []
+
+        if len(conf_ids) == 0:
+            raise RuntimeError("Distance geometry failed to generate 3D coordinates for macrocycle.")
+
+        # 3. Energy minimization of all conformers using MMFF94 (fallback to UFF)
+        ff_type = "MMFF94"
+        raw_energies: List[Tuple[int, float]] = []
+
+        # Check if MMFF parameters exist
+        mmff_props = AllChem.MMFFGetMoleculeProperties(mol_h)
+        if mmff_props is not None:
+            results = AllChem.MMFFOptimizeMoleculeConfs(mol_h, maxIters=500, numThreads=1)
+            for cid, (converged, energy) in zip(conf_ids, results):
+                raw_energies.append((cid, energy))
+        else:
+            ff_type = "UFF"
+            results = AllChem.UFFOptimizeMoleculeConfs(mol_h, maxIters=500, numThreads=1)
+            for cid, (converged, energy) in zip(conf_ids, results):
+                raw_energies.append((cid, energy))
+
+        if not raw_energies:
+            raise RuntimeError("Force field optimization failed on macrocycle conformers.")
+
+        # 4. Sort by absolute energy
+        raw_energies.sort(key=lambda x: x[1])
+        min_energy = raw_energies[0][1]
+
+        # 5. Energy window filtering
+        within_window: List[Tuple[int, float, float]] = []
+        for cid, energy in raw_energies:
+            rel_e = energy - min_energy
+            if rel_e <= energy_window:
+                within_window.append((cid, energy, rel_e))
+
+        # 6. RMSD Pruning to eliminate duplicate conformers
+        retained_confs: List[Tuple[int, float, float]] = []
+        for item in within_window:
+            cid, energy, rel_e = item
+            if not retained_confs:
+                retained_confs.append(item)
+                continue
+
+            # Check RMSD against all already retained conformers using fast coordinate alignment
+            is_duplicate = False
+            for ret_cid, _, _ in retained_confs:
+                try:
+                    rmsd = rdMolAlign.AlignMol(mol_h, mol_h, prbCid=cid, refCid=ret_cid)
+                    if rmsd < rmsd_threshold:
+                        is_duplicate = True
+                        break
+                except Exception:
+                    pass
+
+            if not is_duplicate:
+                retained_confs.append(item)
+
+        # 7. Construct best conformer mol (with lowest energy coordinates)
+        best_cid = retained_confs[0][0]
+        best_mol = Chem.Mol(mol_h)
+        # Keep only best conformer
+        for c in list(best_mol.GetConformers()):
+            if c.GetId() != best_cid:
+                best_mol.RemoveConformer(c.GetId())
+
+        # Construct list of separate Mol objects for retained ensemble
+        ensemble_mols = []
+        for r_cid, r_e, r_rel in retained_confs:
+            conf_mol = Chem.Mol(mol_h)
+            for c in list(conf_mol.GetConformers()):
+                if c.GetId() != r_cid:
+                    conf_mol.RemoveConformer(c.GetId())
+            conf_mol.SetProp("_Energy_kcal", f"{r_e:.2f}")
+            conf_mol.SetProp("_RelEnergy_kcal", f"{r_rel:.2f}")
+            ensemble_mols.append(conf_mol)
+
+        return {
+            "is_macrocycle": is_macro,
+            "max_ring_size": max(ring_sizes) if ring_sizes else 0,
+            "macrocycle_ring_sizes": ring_sizes,
+            "sampling_engine": engine_name,
+            "force_field": ff_type,
+            "initial_conformers_sampled": len(conf_ids),
+            "conformers_within_energy_window": len(within_window),
+            "conformers_retained_after_rmsd_pruning": len(retained_confs),
+            "global_min_energy_kcal": round(min_energy, 2),
+            "energy_window_cutoff_kcal": energy_window,
+            "rmsd_pruning_cutoff_angstroms": rmsd_threshold,
+            "relative_energies_kcal": [round(x[2], 2) for x in retained_confs],
+            "best_mol": best_mol,
+            "ensemble_mols": ensemble_mols
+        }
+
+    @classmethod
+    def prepare_macrocycle_ensemble_for_docking(
+        cls,
+        mol: Chem.Mol,
+        max_docking_confs: int = 5
+    ) -> List[Chem.Mol]:
+        """
+        Produce top N diverse, low-energy macrocycle conformers formatted for docking.
+        """
+        sampled = cls.sample_macrocycle_conformers(
+            mol,
+            num_confs=30,
+            energy_window=12.0,
+            rmsd_threshold=0.75
+        )
+        ensemble = sampled.get("ensemble_mols", [])
+        return ensemble[:max_docking_confs]

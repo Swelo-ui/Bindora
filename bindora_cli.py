@@ -295,7 +295,8 @@ def cmd_dock(args):
             exhaustiveness=exh,
             num_modes=modes,
             seed=args.seed,
-            cpu=getattr(args, "cpu", None)
+            cpu=getattr(args, "cpu", None),
+            ligand_smiles=smiles
         )
     except Exception as e:
         print_error(f"AutoDock Vina execution failed: {e}")
@@ -306,7 +307,8 @@ def cmd_dock(args):
         print_error("AutoDock Vina completed but returned no binding poses.")
         return False
 
-    print_success(f"Docking calculation completed in {dock_time}s! Produced {len(poses)} poses.")
+    exec_dev = poses[0].get("execution_device", "CPU")
+    print_success(f"Docking calculation completed in {dock_time}s on {exec_dev}! Produced {len(poses)} poses.")
 
     # Output directory
     out_dir = Path(args.out or f"docking_{pdb_id}_{lig_name}")
@@ -321,17 +323,35 @@ def cmd_dock(args):
 
     print_section("STEP 4: Binding Energetics & Thermodynamics")
     print(f"  {Colors.BOLD}Top Pose Binding Affinity (ΔG):{Colors.RESET} {Colors.GREEN}{affinity:.2f} kcal/mol{Colors.RESET}")
-    print(f"  {Colors.BOLD}Predicted Dissociation Constant (Kd):{Colors.RESET} {thermo.get('theoretical_kd_nm', 'N/A')} nM ({thermo.get('theoretical_kd_um', 'N/A')} µM)")
+    print(f"  {Colors.BOLD}Affinity-Derived Kd Estimate:{Colors.RESET} {thermo.get('theoretical_kd_nm', 'N/A')} nM ({thermo.get('theoretical_kd_um', 'N/A')} µM)")
+    print(f"  {Colors.BOLD}Kd 95% Confidence Range:{Colors.RESET} {Colors.CYAN}{thermo.get('formatted_kd_range', 'N/A')}{Colors.RESET}")
     print(f"  {Colors.BOLD}pKd (-log10 Kd):{Colors.RESET} {thermo.get('pkd', 'N/A')}")
     print(f"  {Colors.BOLD}Ligand Efficiency (LE):{Colors.RESET} {thermo.get('ligand_efficiency', {}).get('value')} kcal/mol/heavy atom")
     print(f"  {Colors.BOLD}Potency Tier:{Colors.RESET} {thermo.get('potency_class', 'N/A')}")
+    
+    if top_pose.get("ligand_strain_kcal") is not None:
+        strain_val = top_pose["ligand_strain_kcal"]
+        s_col = Colors.GREEN if strain_val <= 4.0 else (Colors.YELLOW if strain_val <= 6.0 else Colors.RED)
+        print(f"  {Colors.BOLD}Ligand Conformational Strain:{Colors.RESET} {s_col}{strain_val} kcal/mol ({top_pose.get('strain_classification', '')}){Colors.RESET}")
+    if top_pose.get("mmgbsa_delta_g_kcal") is not None:
+        print(f"  {Colors.BOLD}MM-GBSA Solvation Rescore:{Colors.RESET} {Colors.CYAN}{top_pose['mmgbsa_delta_g_kcal']} kcal/mol{Colors.RESET}")
+    if top_pose.get("consensus_score") is not None:
+        c_conf = top_pose.get("consensus_confidence", "N/A")
+        c_col = Colors.GREEN if c_conf == "HIGH_CONFIDENCE" else (Colors.YELLOW if c_conf == "MODERATE_CONFIDENCE" else Colors.RED)
+        print(f"  {Colors.BOLD}Multi-Engine Consensus Rank:{Colors.RESET} #{top_pose.get('consensus_rank', 1)} (Score: {top_pose.get('consensus_score')}, {c_col}{c_conf}{Colors.RESET})")
+    if top_pose.get("covalent") and top_pose["covalent"].get("is_covalent_candidate"):
+        cov = top_pose["covalent"]
+        top_p = cov.get("top_pairing")
+        pair_str = f" -> {top_p['nucleophile_residue']}" if top_p else ""
+        print(f"  {Colors.BOLD}Covalent Warhead Feasibility:{Colors.RESET} {Colors.MAGENTA}{cov.get('feasibility_assessment')}{pair_str} (Score: {cov.get('covalent_feasibility_score')}, Bonus: {cov.get('covalent_energy_bonus_kcal')} kcal/mol){Colors.RESET}")
 
     # Analyze Contacts
     contacts = DockingEngine.analyze_interactions(rec_prep["cleaned_pdb"], top_pose["pdbqt_content"])
     print_section("STEP 5: Intermolecular Active-Site Contacts")
-    print(f"  Hydrogen Bonds:     {contacts.get('total_hbond_count', 0)}")
-    print(f"  Hydrophobic Bonds:  {contacts.get('total_hydrophobic_count', 0)}")
-    print(f"  Key Residues:       {', '.join(contacts.get('interacting_residues', [])[:8])}")
+    print(f"  Hydrogen Bonds:       {contacts.get('total_hbond_count', 0)}")
+    print(f"  Metal Coordinations:  {contacts.get('total_metal_coordination_count', 0)}")
+    print(f"  Hydrophobic Bonds:    {contacts.get('total_hydrophobic_count', 0)}")
+    print(f"  Key Residues:         {', '.join(contacts.get('interacting_residues', [])[:8])}")
 
     # Save output files
     pose_pdbqt_file = out_dir / f"{lig_name}_top_pose.pdbqt"

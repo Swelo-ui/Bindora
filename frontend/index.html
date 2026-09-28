@@ -1231,6 +1231,26 @@
           <span class="text-[10px] text-neutral-500 font-mono">&le; 3.5 Å donor-acceptor contacts</span>
         </div>
       </div>
+      
+      <!-- Phase 1 & Phase 2 Physics & Consensus Status Strip -->
+      <div id="dock-physics-status-strip" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between">
+          <span class="text-neutral-400">Consensus:</span>
+          <span id="dock-consensus-badge" class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold text-[11px]">—</span>
+        </div>
+        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between">
+          <span class="text-neutral-400">MM-GBSA:</span>
+          <span id="dock-mmgbsa-score" class="text-cyan-300 font-bold">—</span>
+        </div>
+        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between">
+          <span class="text-neutral-400">Ligand Strain:</span>
+          <span id="dock-strain-score" class="text-emerald-400 font-bold">—</span>
+        </div>
+        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between">
+          <span class="text-neutral-400">Covalent Warhead:</span>
+          <span id="dock-covalent-badge" class="text-neutral-300 font-bold text-[11px]">None (Reversible)</span>
+        </div>
+      </div>
 
       <!-- Main Viewer & Controls Grid -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1764,30 +1784,38 @@
           </div>
 
           <!-- Poses Ranked Table (Professional Scientific Layout - No Slider / Scrollbar) -->
-          <div class="bg-[#08090d] p-3.5 rounded-xl border border-neutral-800 space-y-2">
-            <div class="flex items-center justify-between pb-1 border-b border-neutral-800/80">
+          <div class="bg-[#08090d] p-4 rounded-xl border border-neutral-800 space-y-3 shadow-lg">
+            <div class="flex items-center justify-between pb-2 border-b border-neutral-800/80">
               <div class="flex items-center space-x-2">
                 <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <h4 class="font-bold text-xs text-white">Calculated Binding Poses</h4>
-                <span id="dock-poses-mode-count" class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-neutral-900 text-neutral-400 border border-neutral-800">0 Modes</span>
+                <h4 class="font-bold text-xs text-white tracking-wide">Calculated Binding Poses</h4>
               </div>
-              <span class="text-[9.5px] text-neutral-500 font-mono">ΔG: kcal/mol • RMSD: Å</span>
+              <span id="dock-poses-mode-count" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#0e1017] text-neutral-400 border border-neutral-800 font-medium">0 Modes</span>
             </div>
-            <div class="rounded-lg border border-neutral-800 bg-black overflow-x-auto custom-scrollbar">
-              <table class="w-full text-[11px] text-left border-collapse">
+            
+            <div class="rounded-lg border border-neutral-800 bg-black/90 overflow-hidden">
+              <table class="w-full text-xs text-left border-collapse table-fixed">
                 <thead class="bg-[#0e1017] text-neutral-400 font-semibold border-b border-neutral-800 text-[10px] font-mono uppercase tracking-wider">
                   <tr>
-                    <th class="px-2.5 py-2 text-left font-mono whitespace-nowrap">Pose</th>
-                    <th class="px-2 py-2 text-right font-mono whitespace-nowrap" title="AutoDock Vina Free Energy (kcal/mol)">Vina ΔG</th>
-                    <th class="px-2 py-2 text-right font-mono whitespace-nowrap" title="Vinardo Empirical Score (kcal/mol)">Vinardo</th>
-                    <th class="px-2 py-2 text-right font-mono whitespace-nowrap" title="RMSD Lower Bound (Å)">RMSD l.b.</th>
-                    <th class="px-2.5 py-2 text-right font-mono whitespace-nowrap" title="RMSD Upper Bound (Å)">RMSD u.b.</th>
+                    <th class="w-[32%] py-2 pl-3 pr-1 text-left font-mono whitespace-nowrap">Pose</th>
+                    <th class="w-[23%] py-2 px-2 text-right font-mono whitespace-nowrap" title="AutoDock Vina Free Energy (kcal/mol)">Vina ΔG</th>
+                    <th class="w-[24%] py-2 px-2 text-right font-mono whitespace-nowrap" title="MM-GBSA Solvation Free Energy (kcal/mol)">MM-GBSA</th>
+                    <th class="w-[21%] py-2 pl-1 pr-3 text-right font-mono whitespace-nowrap" title="RMSD to lowest-energy mode (Å)">RMSD</th>
                   </tr>
                 </thead>
                 <tbody id="pose-table-rows" class="divide-y divide-neutral-800/80 font-mono">
-                  <tr><td colspan="5" class="px-3 py-4 text-center text-neutral-500 italic font-mono">No docking run executed yet</td></tr>
+                  <tr><td colspan="4" class="px-3 py-5 text-center text-neutral-500 italic font-mono text-xs">No docking run executed yet</td></tr>
                 </tbody>
               </table>
+            </div>
+
+            <!-- Clean Footer Action Bar -->
+            <div class="flex items-center justify-between pt-1 border-t border-neutral-800/60">
+              <span class="text-[10px] text-neutral-500 font-mono">ΔG in kcal/mol &bull; RMSD in Å</span>
+              <button id="btn-export-openmm-md" class="text-[10.5px] font-mono px-2.5 py-1 rounded-lg bg-[#0e1017] hover:bg-neutral-800 text-cyan-300 hover:text-white border border-neutral-800 hover:border-cyan-500/50 transition flex items-center space-x-1.5 cursor-pointer shadow-sm group" title="Export complete OpenMM explicit solvent simulation script and parameters">
+                <svg class="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                <span>Export OpenMM MD</span>
+              </button>
             </div>
           </div>
 

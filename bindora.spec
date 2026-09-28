@@ -62,6 +62,14 @@ hiddenimports = [
     'sqlalchemy.dialects.sqlite',
     'flask',
     'flask_cors',
+    'backend.services.consensus',
+    'backend.services.covalent',
+    'backend.services.induced_fit',
+    'backend.services.macrocycle',
+    'backend.services.md_export',
+    'backend.services.pdbbind_validation',
+    'backend.services.refinement',
+    'backend.services.hardware_profiler',
 ] + rdkit_hidden + meeko_hidden + gemmi_hidden + openmm_hidden + waitress_hidden + webview_hidden + psutil_hidden
 
 a = Analysis(

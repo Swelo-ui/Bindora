@@ -69,6 +69,10 @@ class InteractionEngine:
         for hal in halogens:
             contact_residues.add(hal["residue"])
 
+        metal_coords = cls._find_metal_coordinations(rec_atoms, lig_atoms, max_dist=3.5)
+        for mc in metal_coords:
+            contact_residues.add(mc["residue"])
+
         hydrophobics = cls._find_hydrophobic_contacts(rec_atoms, lig_atoms, max_dist=hydrophobic_cutoff)
         for hp in hydrophobics:
             contact_residues.add(hp["residue"])
@@ -108,6 +112,7 @@ class InteractionEngine:
             "pi_stacking": pi_stacks,
             "pi_cation": pi_cations,
             "halogen_bonds": halogens,
+            "metal_coordinations": metal_coords,
             "hydrophobic_contacts": hydrophobics[:16],
             "interacting_residues": sorted(list(contact_residues)),
             "flexible_candidates": flex_candidates,
@@ -116,6 +121,7 @@ class InteractionEngine:
             "total_pi_stacking_count": len(pi_stacks),
             "total_pi_cation_count": len(pi_cations),
             "total_halogen_count": len(halogens),
+            "total_metal_coordination_count": len(metal_coords),
             "total_hydrophobic_count": len(hydrophobics),
             "detection_criteria": cls.get_criteria(hbond_cutoff, hydrophobic_cutoff)
         }
@@ -170,6 +176,13 @@ class InteractionEngine:
                 "max_distance_angstroms": hydrophobic_cutoff,
                 "distance_max_angstroms": hydrophobic_cutoff,
                 "geometry": "Carbon-carbon non-polar contact distance <= 4.0 Å"
+            },
+            "metal_coordination": {
+                "max_distance_angstroms": 3.5,
+                "direct_distance_angstroms": 2.8,
+                "geometry": "Coordination between catalytic metal (Zn, Mg, Mn, Fe, Ca, Ni, Cu, Co) and ligand donor (O, N, S, P, halogens) <= 3.5 Å (direct <= 2.8 Å)",
+                "metals": ["ZN", "MG", "MN", "FE", "CA", "NI", "CU", "CO"],
+                "ligand_donors": ["O", "N", "S", "P", "F", "CL", "BR"]
             }
         }
 
@@ -892,3 +905,62 @@ class InteractionEngine:
             if key not in unique or unique[key]["distance"] > hp["distance"]:
                 unique[key] = hp
         return list(unique.values())
+
+    @classmethod
+    def _find_metal_coordinations(
+        cls,
+        rec_atoms: List[Dict[str, Any]],
+        lig_atoms: List[Dict[str, Any]],
+        max_dist: float = 3.5
+    ) -> List[Dict[str, Any]]:
+        """
+        Detect catalytic and structural metal coordination interactions.
+        Metals: ZN, MG, MN, FE, CA, CO, NI, CU.
+        Ligand coordinating atoms: O, N, S, P, halogens.
+        """
+        CATALYTIC_METALS = {"ZN", "MG", "MN", "FE", "CA", "CO", "NI", "CU"}
+        LIGAND_COORDINATORS = {"O", "N", "S", "P", "F", "CL", "BR"}
+
+        coordinations = []
+        for ratom in rec_atoms:
+            elem = ratom["elem"].upper()
+            res_name = ratom["res_name"].upper()
+            if elem not in CATALYTIC_METALS and res_name not in CATALYTIC_METALS:
+                continue
+
+            metal_elem = elem if elem in CATALYTIC_METALS else res_name
+            rx, ry, rz = ratom["coord"]
+
+            for latom in lig_atoms:
+                lelem = latom["elem"].upper()
+                if lelem not in LIGAND_COORDINATORS:
+                    continue
+
+                lx, ly, lz = latom["coord"]
+                if abs(lx - rx) > max_dist or abs(ly - ry) > max_dist or abs(lz - rz) > max_dist:
+                    continue
+
+                dist = math.sqrt((lx - rx)**2 + (ly - ry)**2 + (lz - rz)**2)
+                if dist <= max_dist:
+                    res_id = f"{ratom['res_name']} {ratom['res_num']}:{ratom['chain']}"
+                    coord_type = (
+                        "Direct Coordination (Inner Sphere)"
+                        if dist <= 2.8
+                        else "Weak / Outer-Sphere Coordination"
+                    )
+                    coordinations.append({
+                        "type": coord_type,
+                        "metal": metal_elem,
+                        "distance": round(dist, 2),
+                        "residue": res_id,
+                        "res_name": ratom["res_name"],
+                        "res_num": ratom["res_num"],
+                        "chain": ratom["chain"],
+                        "receptor_atom": ratom["atom_name"],
+                        "ligand_atom": latom["atom_name"],
+                        "ligand_atom_idx": latom.get("atom_idx", 0),
+                        "start_coord": [float(lx), float(ly), float(lz)],
+                        "end_coord": [float(rx), float(ry), float(rz)]
+                    })
+
+        return coordinations
