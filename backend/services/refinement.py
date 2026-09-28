@@ -194,12 +194,40 @@ class ComplexRefinementService:
                     "decoy_filter_flag": "PASS"
                 }
 
-            # 1. Energy of initial docked pose (In-Place)
+            # Pre-relaxation: If explicit hydrogens were added, relax ONLY the hydrogen atoms first
+            # (freezing heavy atoms) so that default heuristic proton dihedrals (-OH, -NH2)
+            # do not introduce artificial steric clashes into the scaffold strain calculation!
+            try:
+                for a in mol_h.GetAtoms():
+                    if a.GetAtomicNum() != 1:  # Non-hydrogen heavy atom
+                        ff.AddFixedPoint(a.GetIdx())
+                ff.Minimize(maxIts=100)
+            except Exception:
+                pass
+
+            # 1. Energy of initial docked pose with relaxed hydrogens (In-Place)
             e_init = ff.CalcEnergy()
 
             # 2. Energy of locally relaxed conformer (Free In-Vacuo Minimum)
-            ff.Minimize(maxIts=300)
-            e_min = ff.CalcEnergy()
+            # Create a fresh unconstrained forcefield to relax the entire heavy-atom scaffold
+            ff_free = None
+            if props:
+                try:
+                    ff_free = AllChem.MMFFGetMoleculeForceField(mol_h, props)
+                except Exception:
+                    ff_free = None
+            if not ff_free:
+                try:
+                    ff_free = AllChem.UFFGetMoleculeForceField(mol_h)
+                except Exception:
+                    ff_free = None
+
+            if ff_free:
+                ff_free.Minimize(maxIts=300)
+                e_min = ff_free.CalcEnergy()
+            else:
+                ff.Minimize(maxIts=300)
+                e_min = ff.CalcEnergy()
 
             strain_delta = round(max(0.0, e_init - e_min), 2)
             is_high_strain = strain_delta > 8.0

@@ -2785,14 +2785,16 @@ class BindoraApp {
       }
       const elCov = document.getElementById("dock-covalent-badge");
       if (elCov) {
-        if (currentPose.covalent && currentPose.covalent.is_covalent_candidate) {
-          const topP = currentPose.covalent.top_pairing;
-          const targetStr = topP ? `${topP.nucleophile_residue}` : currentPose.covalent.feasibility_assessment;
-          elCov.textContent = targetStr;
+        const cov = currentPose.covalent;
+        const topP = cov?.top_pairing;
+        if (cov && cov.is_covalent_candidate && topP && (cov.covalent_feasibility_score >= 0.40 || topP.covalent_feasibility_score >= 0.40)) {
+          elCov.textContent = `${topP.nucleophile_residue} (Warhead: ${topP.warhead_name || 'Active'})`;
           elCov.className = "text-purple-300 font-bold text-[11px]";
+          elCov.title = `Covalent pairing feasible with ${topP.nucleophile_residue} (Distance: ${topP.distance_angstroms} Å)`;
         } else {
           elCov.textContent = "None (Reversible)";
-          elCov.className = "text-neutral-400 font-bold text-[11px]";
+          elCov.className = "text-neutral-400 font-medium text-[11px]";
+          elCov.title = "No covalent pairing within attack distance; standard non-covalent reversible binding";
         }
       }
     }
@@ -2810,59 +2812,47 @@ class BindoraApp {
     const elModeCount = document.getElementById("dock-poses-mode-count");
     if (elModeCount) elModeCount.textContent = `${poses.length} Mode${poses.length !== 1 ? 's' : ''}`;
 
-    // Pose Table (Clean, Professional Scientific Rows - No Clipping)
+    // Pose Table (Clean, Professional Scientific Rows - Fixed Alignment & No Clipping)
     const poseTable = document.getElementById("pose-table-rows");
     if (poseTable) {
       poseTable.innerHTML = poses.map((p, idx) => {
-        const pInt = p.interactions || {};
-        const hb = pInt.total_hbond_count || (pInt.hydrogen_bonds ? pInt.hydrogen_bonds.length : 0);
-        const sb = pInt.total_salt_bridge_count || (pInt.salt_bridges ? pInt.salt_bridges.length : 0);
-        const ps = pInt.total_pi_stacking_count || (pInt.pi_stacking ? pInt.pi_stacking.length : 0);
-        const pc = pInt.total_pi_cation_count || (pInt.pi_cation ? pInt.pi_cation.length : 0);
-        const hal = pInt.total_halogen_count || (pInt.halogen_bonds ? pInt.halogen_bonds.length : 0);
-        const hp = pInt.total_hydrophobic_count || (pInt.hydrophobic_contacts ? pInt.hydrophobic_contacts.length : 0);
-        const typeCount = [hb, sb, ps, pc, hal, hp].filter(c => c > 0).length;
-
-        let badgeHtml = '';
-        if (typeCount > 0) {
-          const typeNames = [hb ? 'H-Bond' : '', sb ? 'Salt-Bridge' : '', ps ? 'π-π' : '', pc ? 'π-Cat' : '', hal ? 'Halogen' : '', hp ? 'Hydrophobic' : ''].filter(Boolean).join(', ');
-          badgeHtml = `<span class="ml-1 px-1.5 py-0.5 rounded ${typeCount >= 4 ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/80' : 'bg-slate-800 text-slate-300 border border-slate-700/80'} text-[9px] font-mono font-medium" title="${typeCount} interaction classes detected (${typeNames})">${typeCount} contact${typeCount !== 1 ? 's' : ''}</span>`;
-        }
-
         const isSelected = idx === this.state.currentPoseIdx;
         const consensusRank = p.consensus_rank || p.mode || (idx + 1);
-        const consensusScore = p.consensus_score != null ? p.consensus_score.toFixed(2) : '—';
         const conf = p.consensus_confidence || 'N/A';
         const confBadge = conf === 'HIGH_CONFIDENCE' 
-          ? '<span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[9px] font-mono">High</span>'
+          ? '<span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[9px] font-mono font-medium">High</span>'
           : conf === 'MODERATE_CONFIDENCE'
-          ? '<span class="px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 text-[9px] font-mono">Mod</span>'
+          ? '<span class="px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 text-[9px] font-mono font-medium">Mod</span>'
           : conf === 'DECOY_HIGH_STRAIN'
-          ? '<span class="px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 text-[9px] font-mono font-bold" title="High strain decoy flagged">Decoy</span>'
-          : '<span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-[9px] font-mono">—</span>';
+          ? '<span class="px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 text-[9px] font-mono font-bold" title="High strain / unphysical pose flagged as decoy">Decoy</span>'
+          : conf === 'DISCORDANT_SCORING'
+          ? '<span class="px-1.5 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-800 text-[9px] font-mono font-medium" title="Scoring discordance across empirical and physics engines">Disc</span>'
+          : '<span class="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 text-[9px] font-mono font-medium">Mod</span>';
 
-        const strainVal = p.ligand_strain_kcal;
-        const strainHtml = strainVal != null 
-          ? `<span class="${strainVal <= 4.0 ? 'text-emerald-400' : strainVal <= 6.0 ? 'text-amber-400' : 'text-rose-400 font-bold'}">${strainVal.toFixed(1)}</span>`
-          : '<span class="text-neutral-500">—</span>';
-
-        const mmgbsaVal = p.mmgbsa_delta_g_kcal;
-        const mmgbsaHtml = mmgbsaVal != null
-          ? `<span class="text-cyan-300 font-medium">${mmgbsaVal.toFixed(1)}</span>`
-          : '<span class="text-neutral-500">—</span>';
-
-        const covBadge = p.covalent?.is_covalent_candidate && p.covalent?.covalent_feasibility_score >= 0.40
-          ? `<span class="ml-1 px-1 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 text-[9px] font-mono" title="Covalent Warhead: ${p.covalent.feasibility_assessment}">Cov</span>`
+        const covBadge = p.covalent?.is_covalent_candidate && (p.covalent?.covalent_feasibility_score >= 0.40 || p.covalent?.top_pairing?.covalent_feasibility_score >= 0.40)
+          ? `<span class="px-1 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 text-[9px] font-mono font-medium" title="Covalent Warhead: ${p.covalent.feasibility_assessment}">Cov</span>`
           : '';
 
+        const mmgbsaVal = p.mmgbsa_delta_g_kcal;
+        let mmgbsaHtml = '<span class="text-neutral-500">—</span>';
+        if (mmgbsaVal != null) {
+          if (mmgbsaVal <= 0) {
+            mmgbsaHtml = `<span class="text-cyan-400 font-medium">${mmgbsaVal.toFixed(1)}</span>`;
+          } else {
+            mmgbsaHtml = `<span class="text-amber-400/90 font-medium">+${mmgbsaVal.toFixed(1)}</span>`;
+          }
+        }
+
         return `
-        <tr class="cursor-pointer transition select-none ${isSelected ? 'bg-cyan-950/70 text-white font-semibold border-l-2 border-l-cyan-400' : 'hover:bg-neutral-800/50 text-neutral-300'}" onclick="window.bindoraApp ? window.bindoraApp.selectPose(${idx}) : window.app.selectPose(${idx})">
-          <td class="py-2.5 pl-3 pr-1 whitespace-nowrap font-mono text-cyan-300">
-            <div class="flex items-center space-x-1.5 truncate">
-              <span class="font-bold text-slate-100 text-xs">#${consensusRank}</span>
-              <span class="text-neutral-500 text-[10px]">M${p.mode}</span>
-              ${confBadge}
-              ${covBadge}
+        <tr class="cursor-pointer transition-colors duration-150 select-none ${isSelected ? 'bg-cyan-500/15 text-white font-semibold border-l-2 border-l-cyan-400' : 'hover:bg-neutral-800/40 text-neutral-300'}" onclick="window.bindoraApp ? window.bindoraApp.selectPose(${idx}) : window.app.selectPose(${idx})">
+          <td class="py-2.5 pl-3 pr-1 whitespace-nowrap font-mono">
+            <div class="flex items-center space-x-1.5">
+              <span class="font-bold text-slate-100 text-xs w-5 text-left shrink-0">#${consensusRank}</span>
+              <span class="text-neutral-400 text-[10px] font-mono w-6 text-left shrink-0">M${p.mode}</span>
+              <div class="flex items-center space-x-1 shrink-0">
+                ${confBadge}
+                ${covBadge}
+              </div>
             </div>
           </td>
           <td class="py-2.5 px-2 font-mono text-right text-slate-100 font-semibold whitespace-nowrap text-xs">
