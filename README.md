@@ -50,19 +50,19 @@ Unlike black-box docking wrappers or cherry-picked demos, Bindora v2.0 enforces 
 |:---|:---|:---|
 | **Molecular Docking** | AutoDock Vina 1.2.7 | Iterated local search + Monte Carlo sampling (Trott & Olson, 2010; Eberhardt et al., *JCIM* 2021). |
 | **Flexible Side Chains** | Meeko + Vina `--flex` | Induced-fit modeling allowing active-site side chains to flex during docking (`meeko.Polymer.flexibilize_sidechain`). |
-| **Blind Pocket Detection** | `fpocket` + SciPy Voronoi | Automated cavity tessellation via alpha spheres ($2.8\text{ \AA} \le r \le 5.0\text{ \AA}$) and druggability scoring fallback. |
+| **Blind Pocket Detection** | `fpocket` + SciPy Voronoi | Automated cavity tessellation via alpha spheres (2.8 Å ≤ r ≤ 5.0 Å) and druggability scoring fallback. |
 | **Vinardo Scoring** | AutoDock Vina v1.2.7 | Optimized empirical scoring function with improved affinity predictions (Quiroga & Villarreal, *PLoS ONE* 2016). |
 | **Consensus Matrix** | Multi-Engine Calibration | Multi-metric consensus ranking combining Vina ΔG, Vinardo score, and ligand efficiency. |
 | **Ensemble Cross-Docking** | UniProt PDB Xrefs + Vina | Multi-structure docking across deposited crystal conformations with mean affinity ± SD and consistency metrics. |
-| **Similarity Search** | PubChem `fastsimilarity_2d` | Instant retrieval of structural analogues and scaffolds with Tanimoto threshold filtering ($\ge 85\%$). |
-| **Pharmacophore Matching** | ChEMBL + RDKit BaseFeatures | Active-ligand derived consensus chemical feature profiling ($\text{IC}_{50} \le 1000\text{ nM}$) and candidate screening. |
+| **Similarity Search** | PubChem `fastsimilarity_2d` | Instant retrieval of structural analogues and scaffolds with Tanimoto threshold filtering (≥ 85%). |
+| **Pharmacophore Matching** | ChEMBL + RDKit BaseFeatures | Active-ligand derived consensus chemical feature profiling (IC₅₀ ≤ 1000 nM) and candidate screening. |
 | **2D Interaction Diagrams** | RDKit `MolDraw2DSVG` | LigPlot-style radial schematics with dashed H-bond lines and hydrophobic contact arcs. |
 | **Ligand Prep & Torsions** | Meeko + RDKit | ETKDGv3 conformer generation, MMFF94 minimization, Gasteiger charges with finite-charge fallback, flexible torsions. |
 | **Receptor Ingestion** | RCSB PDB & Meeko | Water/heteroatom stripping, pH 7.4 protonation, AD4 atom typing, auto pocket centroiding. |
 | **Published BOILED-Egg** | Daina & Zoete (2016 SI) | Exact 101-point polygon coordinates for GIA (white) and BBB (yolk) evaluated via ray-casting point-in-polygon. |
 | **SAScore Engine** | RDKit Contrib SA_Score | Fragment contribution and ring complexity score on 1–10 scale (Ertl & Schuffenhauer, 2009). |
 | **Structural Alert Catalogs** | RDKit FilterCatalogs | Multi-catalog substructure screening: PAINS (A/B/C), Brenk, NIH clinical reactive, and ZINC filters. |
-| **Affinity-Derived Kd-like Estimate** | Statistical Mechanics / Isothermal Model | $K_d = \exp(\text{score}/RT)$ at $298.15\text{ K}$ ($RT \approx 0.5925\text{ kcal/mol}$). Explicitly marked as a model-derived estimate, not an experimental thermodynamic constant. Ligand Efficiency $\text{LE} = |\text{Score}| / N_{\text{heavy}}$. |
+| **Affinity-Derived Kd-like Estimate** | Statistical Mechanics / Isothermal Model | Kd = exp(score / RT) at 298.15 K (RT ≈ 0.5925 kcal/mol). Explicitly marked as a model-derived estimate, not an experimental thermodynamic constant. Ligand Efficiency LE = |Score| / N_heavy. |
 | **Bioactivity Validation** | ChEMBL REST Services | Curated wet-lab Ki / IC50 / EC50 matching against target organism assays. |
 | **Pathway Annotations** | UniProtKB REST API | SIFTS cross-referencing (`query=xref:pdb-{pdb_id}`) for biological function & catalytic activity. |
 | **AI Explanation Layer** | AI Narrative / Rules Engine | Grounded educational narrative explaining active site contacts using strictly data-bound rules. |
@@ -72,19 +72,19 @@ Unlike black-box docking wrappers or cherry-picked demos, Bindora v2.0 enforces 
 ## 4. Scientific Validation & Gold-Standard Benchmarking (1M17 & 1HSG)
 
 To guarantee scientific rigor, academic defensibility, and publication-grade integrity, Bindora Dock v2.0 enforces four non-negotiable principles:
-1. **Explicit Data Tiering:** Transparently distinguishes empirical scoring outputs ($\text{kcal/mol}$) from derived thermodynamic estimates, deterministic RDKit descriptors, and experimental wet-lab assay records (ChEMBL).
-2. **Standardized $K_d$-like Nomenclature:** Renamed to **"Affinity-Derived $K_d$-like Estimate"** marked as **"Derived / Model-based"** with an explicit disclaimer:
-   > *"This value is mathematically derived from the docking score and is not an experimentally measured or rigorously calculated thermodynamic $K_d$."*
+1. **Explicit Data Tiering:** Transparently distinguishes empirical scoring outputs (kcal/mol) from derived thermodynamic estimates, deterministic RDKit descriptors, and experimental wet-lab assay records (ChEMBL).
+2. **Standardized Kd-like Nomenclature:** Renamed to **"Affinity-Derived Kd-like Estimate"** marked as **"Derived / Model-based"** with an explicit disclaimer:
+   > *"This value is mathematically derived from the docking score and is not an experimentally measured or rigorously calculated thermodynamic Kd."*
 3. **Topology-Aware Chemical Symmetry RMSD Engine:** Eliminates arbitrary same-element proximity matching. Uses template bond-order assignment (`AssignBondOrdersFromTemplate`) and Maximum Common Substructure (MCS) graph isomorphism to evaluate all valid chemical symmetry automorphisms (e.g., 12 automorphisms for Indinavir) **strictly in place** without spatial translation or rotation.
 4. **Zero Synthetic / Hardcoded Outputs:** All reported benchmark metrics are computed via live execution of AutoDock Vina 1.2.5 and verified against crystallographic ground truth.
 
 ### 4.1. Gold-Standard Crystallographic Redocking Benchmarks (Live Numerical Verification)
 
-| Benchmark System | PDB ID | Target Receptor | Native Ligand (HA / Torsions) | Search Box (Å) | Engine Settings | Vina Score (kcal/mol) | Rank 1 Crystal RMSD (Å) | Atom Mapping Method | Derived $K_d$-like Estimate | Ligand Efficiency (kcal/mol/HA) | Validation Outcome |
+| Benchmark System | PDB ID | Target Receptor | Native Ligand (HA / Torsions) | Search Box (Å) | Engine Settings | Vina Score (kcal/mol) | Rank 1 Crystal RMSD (Å) | Atom Mapping Method | Derived Kd-like Estimate | Ligand Efficiency (kcal/mol/HA) | Validation Outcome |
 | :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :--- | :---: | :---: | :---: |
-| **HIV-1 Protease Homodimer** | `1HSG` | Retropepsin C2 Homodimer (Chains A & B preserved) | Indinavir / MK1 (45 HA, 13 torsions) | $22.0 \times 22.0 \times 22.0$ | $e=8$, seed 42 | **$-10.54$** | **$0.46\text{ \AA}$** | `topological_symmetry_graph_isomorphism` (12 autos) | $19.0\text{ nM}$ ($0.019\text{ }\mu\text{M}$) | $0.234$ | **PASS** (Sub-Angstrom, $\le 2.0\text{ \AA}$) |
-| **EGFR Kinase Domain** | `1M17` | Human EGFR Kinase (Chain A) | Erlotinib / AQ4 (29 HA, 11 torsions) | $22.0 \times 22.0 \times 22.0$ | $e=8$, seed 42 | **$-7.10$** | **$1.52\text{ \AA}$** | `topological_symmetry_graph_isomorphism` (1 auto) | $6289.2\text{ nM}$ ($6.29\text{ }\mu\text{M}$) | $0.245$ | **PASS** ($\le 2.0\text{ \AA}$) |
-| **EGFR Cross-Docking** | `1M17` | Human EGFR Kinase (Erlotinib Pocket) | Gefitinib / Iressa (31 HA, 10 torsions) | $22.0 \times 22.0 \times 22.0$ | $e=8$, seed 42 | **$-7.99$** | N/A (Cross-docking) | Pocket adaptation & scoring difference | $1390.0\text{ nM}$ ($1.39\text{ }\mu\text{M}$) | $0.258$ | **BENCHMARK** (Relative affinity) |
+| **HIV-1 Protease Homodimer** | `1HSG` | Retropepsin C2 Homodimer (Chains A & B preserved) | Indinavir / MK1 (45 HA, 13 torsions) | 22.0 × 22.0 × 22.0 | e=8, seed 42 | **-10.54** | **0.46 Å** | `topological_symmetry_graph_isomorphism` (12 autos) | 19.0 nM (0.019 µM) | 0.234 | **PASS** (Sub-Angstrom, ≤ 2.0 Å) |
+| **EGFR Kinase Domain** | `1M17` | Human EGFR Kinase (Chain A) | Erlotinib / AQ4 (29 HA, 11 torsions) | 22.0 × 22.0 × 22.0 | e=8, seed 42 | **-7.10** | **1.52 Å** | `topological_symmetry_graph_isomorphism` (1 auto) | 6289.2 nM (6.29 µM) | 0.245 | **PASS** (≤ 2.0 Å) |
+| **EGFR Cross-Docking** | `1M17` | Human EGFR Kinase (Erlotinib Pocket) | Gefitinib / Iressa (31 HA, 10 torsions) | 22.0 × 22.0 × 22.0 | e=8, seed 42 | **-7.99** | N/A (Cross-docking) | Pocket adaptation & scoring difference | 1390.0 nM (1.39 µM) | 0.258 | **BENCHMARK** (Relative affinity) |
 
 ---
 
@@ -158,8 +158,8 @@ python tests/benchmark_screening.py --subset diverse --exhaustiveness 4
 
 > [!IMPORTANT]
 > **Scientific Interpretation & Statistical Caveats:**
-> 1. **Sample-Size Context ($N=15$):** The single-target smoke test (VEGFR2: 5 actives, 10 decoys) demonstrates a directional ROC-AUC of **0.84** following ChEMBL nM unit-scale calibration. At $N=15$, statistical confidence intervals remain broad (approx. $\pm 0.15$ to $0.20$); this serves as an initial smoke test rather than definitive library-wide validation.
-> 2. **Enrichment Factor (EF%) Quantization Floor:** At $N=15$, EF1% is subject to severe quantization distortion ($\text{int}(15 \times 0.01) = 0 \implies \max(1, 0) = 1$). A value of EF1% = 20.0 simply indicates that rank-1 was an active, rather than sustained 20.0-fold early recovery. Statistically interpretable EF% figures require screening libraries of $N \ge 100+$ compounds per class.
+> 1. **Sample-Size Context (N = 15):** The single-target smoke test (VEGFR2: 5 actives, 10 decoys) demonstrates a directional ROC-AUC of **0.84** following ChEMBL nM unit-scale calibration. At N = 15, statistical confidence intervals remain broad (approx. ±0.15 to 0.20); this serves as an initial smoke test rather than definitive library-wide validation.
+> 2. **Enrichment Factor (EF%) Quantization Floor:** At N = 15, EF1% is subject to severe quantization distortion (int(15 × 0.01) = 0 ⟹ max(1, 0) = 1). A value of EF1% = 20.0 simply indicates that rank-1 was an active, rather than sustained 20.0-fold early recovery. Statistically interpretable EF% figures require screening libraries of N ≥ 100+ compounds per class.
 > 3. **Pose Accuracy vs. Screening Power:** AutoDock Vina's empirical scoring function was designed for crystallographic pose reconstruction (local energetic minimum in a pocket), not library-scale ranking against property-matched decoys. Raw Vina scores typically benefit from consensus or ML rescoring functions (Vinardo, CNN/GNINA) against property-matched decoys (Mysinger et al., 2012).
 > 4. **Roadmap:** The comprehensive **8-Target Diverse Screening Suite** (multi-target class evaluation with statistical sample size) is actively tracked under Phase 3.
 <!-- BENCHMARK_DUDE_END -->

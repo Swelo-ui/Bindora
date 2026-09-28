@@ -281,9 +281,9 @@ class NarrativeExplainer:
         sec1 = (
             f"### 1. 3D Binding Mechanism & Active Site Interactions\n\n"
             f"AutoDock Vina molecular docking of **{drug}** against receptor **{target}** (PDB ID: `{pdb_id}`) yielded a docking score of **{affinity} kcal/mol**. "
-            f"Based on standard isothermal thermodynamic approximation ($T = 298.15\\text{{ K}}$, $RT \\approx 0.592\\text{{ kcal/mol}}$), this corresponds to an affinity-derived Kd-like estimate of approximately **{kd_nm} nM** ({kd_um} µM) *(Model-derived estimate: $K_d = \\exp(\\text{{score}}/RT)$; not an experimental thermodynamic $K_d$)*, placing the predicted score in the **{potency}** tier.\n\n"
+            f"Based on standard isothermal thermodynamic approximation (T = 298.15 K, RT ≈ 0.592 kcal/mol), this corresponds to an affinity-derived Kd-like estimate of approximately **{kd_nm} nM** ({kd_um} µM) *(Model-derived estimate: Kd = exp(score / RT); not an experimental thermodynamic Kd)*, placing the predicted score in the **{potency}** tier.\n\n"
             f"{mode_line}"
-            f"- **Ligand Efficiency (LE):** Calculated at **{le} kcal/mol/heavy atom** (benchmark target ≥ 0.30 kcal/mol/heavy atom; $|\\text{{score}}| / \\text{{heavy atoms}}$).\n"
+            f"- **Ligand Efficiency (LE):** Calculated at **{le} kcal/mol/heavy atom** (benchmark target ≥ 0.30 kcal/mol/heavy atom; |Score| / N_heavy).\n"
             f"- **Hydrogen Bonding Network:** {len(hbonds)} hydrogen bond(s) identified within 3.5 Å: {hb_details}.\n"
             f"- **Non-Polar Contacts:** {len(hydrophobics)} hydrophobic contact(s) anchoring the lipophilic scaffold inside the pocket.\n"
             f"- **Key Interacting Residues:** {res_list_str}."

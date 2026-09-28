@@ -48,8 +48,8 @@ This test proves your docking engine's crystallographic accuracy, pocket detecti
    - **Automatic Redocking Validation triggers in the background:**
      - The **Redocking Self-Validation** badge automatically updates to:
        `Protocol Validated (RMSD: 0.76 Å < 2.0 Å)` with status `Pass (Publication Grade)`.
-     - *Expected benchmark value:* Heavy-atom RMSD must be $< 1.0\text{ \AA}$ (sub-angstrom crystallographic accuracy).
-   - The **Pathway & Function** accordion displays authentic UniProt annotations for gene `Ptgs2`.
+      - *Expected benchmark value:* Heavy-atom RMSD must be < 1.0 Å (sub-angstrom crystallographic accuracy).
+    - The **Pathway & Function** accordion displays authentic UniProt annotations for gene `Ptgs2`.
 
 #### Step 2: Ingest Investigational Ligand
 1. Click on **Tab 2: Investigational Ligand**.
@@ -68,15 +68,15 @@ This test proves your docking engine's crystallographic accuracy, pocket detecti
 #### Step 3: Run 3D Molecular Docking
 1. Click on **Tab 3: 3D Molecular Docking**.
 2. Review the docking parameters:
-   - **Grid Box Center:** Automatically centered on pocket centroid ($X \approx 24.3, Y \approx 21.5, Z \approx 16.5$).
+   - **Grid Box Center:** Automatically centered on pocket centroid (X ≈ 24.3, Y ≈ 21.5, Z ≈ 16.5).
    - **Grid Box Size:** Default `22.0 Å` cubic volume.
    - **Exhaustiveness:** Set to `8 (Standard Academic)`.
    - **Sampling Mode:** Set to `3 Seeds (Mean ± SD - Academic Standard)`.
 3. Click the large blue button: **"Execute 3D Molecular Docking"**.
 4. **Expected Results (What you should see):**
-   - **Binding Free Energy ($\Delta G$):**
-     - Mode 1: Expected $\approx -6.5$ to $-7.0\text{ kcal/mol}$ (Literature experimental $\Delta G_{\text{exp}} \approx -6.8\text{ kcal/mol}$, $IC_{50} = 10.8\text{ nM}$).
-     - Vinardo $\Delta G$: Expected $\approx -4.2$ to $-4.8\text{ kcal/mol}$.
+   - **Binding Free Energy (ΔG):**
+     - Mode 1: Expected ≈ -6.5 to -7.0 kcal/mol (Literature experimental ΔG_exp ≈ -6.8 kcal/mol, IC₅₀ = 10.8 nM).
+     - Vinardo ΔG: Expected ≈ -4.2 to -4.8 kcal/mol.
    - **Replicate Statistics Banner:**
      - Reports 3-seed replicate result: `Mean: -6.78 ± 0.05 kcal/mol (N=3 seeds)`.
    - **Interacting Residues:**
@@ -87,25 +87,25 @@ This test proves your docking engine's crystallographic accuracy, pocket detecti
      - The Aspirin scaffold is drawn in the center, with cyan dashed lines showing hydrogen bonds to pocket residues with distance tags (e.g. `SER 530:A`), and amber arcs showing hydrophobic contacts.
    - **Binding Energy Landscape Chart:**
      - Located below the pose table, an interactive dual-axis chart renders:
-       - Blue bars for AutoDock Vina $\Delta G$ across Modes 1 to 9.
-       - Green bars for Vinardo $\Delta G$.
+       - Blue bars for AutoDock Vina ΔG across Modes 1 to 9.
+       - Green bars for Vinardo ΔG.
        - Amber dashed line overlay showing RMSD lower bound (l.b.) dispersion.
 
 #### Step 4: Inspect ADME Pharmacokinetics & Safety
 1. Click on **Tab 4: Pharmacokinetics & ADME**.
 2. **Expected Values:**
    - **Lipinski Rule of Five:** `Pass (0 violations)`.
-   - **Molecular Weight:** `180.16 Da` ($< 500$).
-   - **LogP (Lipophilicity):** `1.31` ($< 5$).
-   - **H-Bond Donors:** `1` ($< 5$).
-   - **H-Bond Acceptors:** `4` ($< 10$).
+   - **Molecular Weight:** `180.16 Da` (< 500).
+   - **LogP (Lipophilicity):** `1.31` (< 5).
+   - **H-Bond Donors:** `1` (< 5).
+   - **H-Bond Acceptors:** `4` (< 10).
    - **GI Absorption:** `High` (Egan BOILED-Egg model).
    - **CYP450 Liability Card:** Notice the distinct amber banner labeled `Exploratory Heuristic — Not a Validated Predictor`, explicitly detailing that SMARTS pattern matching is exploratory.
 
 #### Step 5: Validate with ChEMBL & AI Pharmacologist
 1. Click on **Tab 5: AI Research Pharmacologist**.
 2. **Expected Output:**
-   - **ChEMBL Bioactivity Cross-Check:** The system queries ChEMBL curated assays for Aspirin vs COX-2, returning `Experimentally Corroborated` with curated wet-lab $IC_{50} = 10.8\text{ nM}$.
+   - **ChEMBL Bioactivity Cross-Check:** The system queries ChEMBL curated assays for Aspirin vs COX-2, returning `Experimentally Corroborated` with curated wet-lab IC₅₀ = 10.8 nM.
    - **Educational Narrative:** Bindora AI Pharmacologist synthesizes a multi-section pharmacological report discussing active pocket fit, Ser530 steric hindrance, and experimental validation limitations.
 
 #### Step 6: Multi-Ligand Batch Screening (Tab 6)
@@ -114,13 +114,13 @@ This test proves your docking engine's crystallographic accuracy, pocket detecti
 3. Click **"Run Batch Virtual Screening"**.
 4. **Expected Output:**
    - The **Comparative Ranking Matrix** executes docking for all 4 candidates against COX-2.
-   - **Consensus Scoring:** Evaluates relative rank delta ($\Delta\text{Rank}$) and free energy delta ($\Delta\Delta G$).
+   - **Consensus Scoring:** Evaluates relative rank delta (ΔRank) and free energy delta (ΔΔG).
    - Candidates aligning in rank and energy display green `High-Confidence` badges with tooltip showing `|ΔRank|=0, |ΔΔG|<=3.0 kcal/mol`.
 
 #### Step 7: Export Academic Research Dossier (Tab 7)
 1. Click on **Tab 7: Research Dossier**.
 2. Review the dossier:
-   - **Section A (Deterministic Computations):** Displays Vina $\Delta G$, Vinardo score, 3-seed replicate statistics, native redocking RMSD, ADME descriptors, and embeds the **2D LigPlot radial interaction schematic**.
+   - **Section A (Deterministic Computations):** Displays Vina ΔG, Vinardo score, 3-seed replicate statistics, native redocking RMSD, ADME descriptors, and embeds the **2D LigPlot radial interaction schematic**.
    - **Section B (AI Mechanistic Synthesis):** Contains the DeepSeek hypothesis clearly demarcated as non-deterministic.
    - **Reproducibility Metadata:** Shows AutoDock Vina v1.2.7 version, timestamp, and citation references.
 3. Click **"Print / Export PDF Dossier"** to preview or save a publication-ready PDF report.
@@ -131,12 +131,12 @@ This test proves your docking engine's crystallographic accuracy, pocket detecti
 
 1. In **Tab 1**, load PDB: **`1IEP`** (Abl1 Tyrosine Kinase).
    - Native Ligand detected: `STI` (Imatinib).
-   - Native Redocking validation will automatically run in background $\implies$ Expected RMSD: **`~0.80 Å`** (Sub-angstrom reconstruction).
+   - Native Redocking validation will automatically run in background ⟹ Expected RMSD: **`~0.80 Å`** (Sub-angstrom reconstruction).
 2. In **Tab 2**, select preset: **`Imatinib`** (Formula: `C29H31N7O`, MW: `493.60 Da`).
 3. In **Tab 3**, click **"Execute 3D Molecular Docking"**.
 4. **Expected Literature Benchmark:**
-   - Predicted Vina $\Delta G$: **$\approx -11.6\text{ kcal/mol}$**.
-   - Published Experimental Value: $K_d = 10.0\text{ nM} \implies \Delta G_{\text{exp}} = \mathbf{-10.91\text{ kcal/mol}}$ (Accuracy within $0.7\text{ kcal/mol}$!).
+   - Predicted Vina ΔG: **≈ -11.6 kcal/mol**.
+   - Published Experimental Value: Kd = 10.0 nM ⟹ ΔG_exp = **-10.91 kcal/mol** (Accuracy within 0.7 kcal/mol!).
    - Key Gatekeeper Residue: Interacts directly with **`THR 315`** and **`MET 318`**.
 
 ---
@@ -148,14 +148,14 @@ This test proves your docking engine's crystallographic accuracy, pocket detecti
 2. In **Tab 2**, load preset: **`Lapatinib`**.
 3. In **Tab 3**, execute docking.
 4. **Expected Literature Benchmark:**
-   - Predicted Vina $\Delta G$: **$\approx -10.67\text{ kcal/mol}$**.
-   - Published Experimental Value: $\Delta G_{\text{exp}} = \mathbf{-10.91\text{ kcal/mol}}$ (Accuracy within **$0.24\text{ kcal/mol}$**!).
+   - Predicted Vina ΔG: **≈ -10.67 kcal/mol**.
+   - Published Experimental Value: ΔG_exp = **-10.91 kcal/mol** (Accuracy within **0.24 kcal/mol**!).
 
 ---
 
 ## 3. Reference Expected Values Table
 
-| Target System | PDB Code | Investigational API | Experimental $\Delta G$ | Predicted Vina $\Delta G$ | Native Redock RMSD | Key Active Residues |
+| Target System | PDB Code | Investigational API | Experimental ΔG | Predicted Vina ΔG | Native Redock RMSD | Key Active Residues |
 | :--- | :---: | :--- | :---: | :---: | :---: | :--- |
 | **Cyclooxygenase-2** | `1CX2` | SC-558 (S58) | **-11.32 kcal/mol** | **-10.76 kcal/mol** | **0.76 Å** | SER 530, TYR 385, ARG 120 |
 | **Cyclooxygenase-2** | `1CX2` | Aspirin | **-6.82 kcal/mol** | **-6.78 kcal/mol** | N/A (Cross-dock) | SER 530, TYR 385, LEU 352 |

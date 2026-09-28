@@ -579,15 +579,15 @@ def generate_markdown_report(report: Dict[str, Any]) -> str:
         "",
         "## Executive Summary",
         "",
-        "This empirical benchmark validates Bindora's molecular docking engine against curated protein-ligand complexes with published crystallographic coordinates and wet-lab experimental binding affinities ($K_d / K_i / \\Delta G_{\\text{exp}}$).",
+        "This empirical benchmark validates Bindora's molecular docking engine against curated protein-ligand complexes with published crystallographic coordinates and wet-lab experimental binding affinities (Kd / Ki / ΔG_exp).",
         "",
         "| Benchmark Metric | AutoDock Vina | Vinardo Scoring | Target Standard |",
         "| :--- | :---: | :---: | :---: |",
-        f"| **Pearson Correlation ($R$)** | **{stats['vina_pearson_r']:.3f}** | **{stats['vinardo_pearson_r']:.3f}** | > 0.50 (CASF Core) |",
-        f"| **Spearman Rank Correlation ($\\rho$)** | **{stats['vina_spearman_rho']:.3f}** | — | > 0.50 |",
+        f"| **Pearson Correlation (R)** | **{stats['vina_pearson_r']:.3f}** | **{stats['vinardo_pearson_r']:.3f}** | > 0.50 (CASF Core) |",
+        f"| **Spearman Rank Correlation (ρ)** | **{stats['vina_spearman_rho']:.3f}** | — | > 0.50 |",
         f"| **Root Mean Square Error (RMSE)** | **{stats['vina_rmse_kcal']:.2f} kcal/mol** | **{stats['vinardo_rmse_kcal']:.2f} kcal/mol** | < 2.5 kcal/mol |",
         f"| **Mean Absolute Error (MAE)** | **{stats['vina_mae_kcal']:.2f} kcal/mol** | **{stats['vinardo_mae_kcal']:.2f} kcal/mol** | < 2.0 kcal/mol |",
-        f"| **Pose Redocking Success (RMSD $\\le 2.0$ Å)** | **{pose_stats['rmsd_success_rate_percent']}%** ({pose_stats['rmsd_under_2a_count']}/{pose_stats['total_native_complexes']}) | — | > 70% |",
+        f"| **Pose Redocking Success (RMSD ≤ 2.0 Å)** | **{pose_stats['rmsd_success_rate_percent']}%** ({pose_stats['rmsd_under_2a_count']}/{pose_stats['total_native_complexes']}) | — | > 70% |",
         f"| **Mean Crystallographic RMSD** | **{pose_stats['mean_rmsd_angstroms']:.2f} Å** | — | < 2.0 Å |",
         f"| **Literature Vina R (CASF-2016, 285 complexes)** | {stats.get('literature_r', 'N/A')} | — | Reference |",
         f"| **Literature Vina RMSE (CASF-2016, 285 complexes)** | {stats.get('literature_rmse', 'N/A')} kcal/mol | — | Reference |",
@@ -599,7 +599,7 @@ def generate_markdown_report(report: Dict[str, Any]) -> str:
         "",
         "## Itemized Benchmark Results Matrix",
         "",
-        "| PDB | Target Receptor | Investigational Ligand | Exp $\\Delta G$ | Vina $\\Delta G$ | Vinardo | Error | RMSD (Å) | Benchmark Status |",
+        "| PDB | Target Receptor | Investigational Ligand | Exp ΔG | Vina ΔG | Vinardo | Error | RMSD (Å) | Benchmark Status |",
         "| :---: | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |"
     ]
 

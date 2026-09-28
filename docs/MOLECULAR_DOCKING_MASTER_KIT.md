@@ -59,7 +59,9 @@ Drug discovery me docking score sirf ek number nahi hai; ye **Gibbs Free Energy 
 ### 2.1 The Master Equation
 Binding spontaneity Gibbs-Helmholtz equation se govern hoti hai:
 
-$$\Delta G = \Delta H - T \Delta S$$
+```text
+ΔG = ΔH - T·ΔS
+```
 
 * **ΔG (Gibbs Free Energy, kcal/mol):**
   - Spontaneous binding ke liye **ΔG hamesha negative (< 0)** hona chahiye.
@@ -69,11 +71,13 @@ $$\Delta G = \Delta H - T \Delta S$$
 * **Hydrophobic Desolvation (Favorable Entropy):** Pocket ke andar baithe paani ke ordered molecules jab bahar nikalte hain, to bulk solvent ki entropy badhti hai, jo binding ko promote karti hai.
 
 ### 2.2 Thermodynamic Translation: ΔG se Kd aur Ki
-Dissociation constant ($K_d$) aur Inhibition constant ($K_i$) ka direct rishta ΔG se hota hai:
+Dissociation constant (Kd) aur Inhibition constant (Ki) ka direct rishta ΔG se hota hai:
 
-$$\Delta G = R \cdot T \cdot \ln(K_d) \quad \implies \quad K_d = \exp\left(\frac{\Delta G}{R \cdot T}\right)$$
+```text
+ΔG = R · T · ln(Kd)   ⟹   Kd = exp(ΔG / (R · T))
+```
 
-*Jaha $R = 1.987 \times 10^{-3} \text{ kcal/(mol}\cdot\text{K)}$ aur $T = 298.15\text{ K}$ ($25^\circ\text{C}$).*
+*Jaha R = 1.987 × 10⁻³ kcal/(mol·K) aur T = 298.15 K (25°C).*
 
 | Binding Affinity (ΔG) | Estimated Kd / Ki | Potency Level | Biological Meaning |
 | :--- | :--- | :--- | :--- |
@@ -92,29 +96,36 @@ $$\Delta G = R \cdot T \cdot \ln(K_d) \quad \implies \quad K_d = \exp\left(\frac
 AutoDock Vina (Scripps Research Institute, Trott & Olson 2009) koi black box nahi hai. Ye ek calibrated empirical scoring potential use karta hai jo PDBbind benchmark database par train kiya gaya hai.
 
 ### 3.1 The Mathematical Terms & Weights
-Vina interatomic distance $r_{ij}$ ko surface distance $d_{ij}$ me convert karta hai:
-$$d_{ij} = r_{ij} - R_i - R_j$$
-*(Jaha $R_i$ aur $R_j$ atoms ke Van der Waals radii hain).*
+Vina interatomic distance r_ij ko surface distance d_ij me convert karta hai:
 
-Har atom pair $(i, j)$ ke beech ki interaction energy ka formula:
+```text
+d_ij = r_ij - R_i - R_j
+```
+*(Jaha R_i aur R_j atoms ke Van der Waals radii hain).*
 
-$$c = \sum_{i < j} f(t_i, t_j, r_{ij})$$
+Har atom pair (i, j) ke beech ki interaction energy ka formula:
 
-| Term Name | Optimal Weight ($w$) | Mathematical Formulation | Physical Function |
+```text
+c = Σ f(t_i, t_j, r_ij)   [for all i < j]
+```
+
+| Term Name | Optimal Weight (w) | Mathematical Formulation | Physical Function |
 | :--- | :--- | :--- | :--- |
-| **Gauss 1** | **-0.0356** | $\exp(-(d / 0.5)^2)$ | Short-range attractive Van der Waals dispersion. |
-| **Gauss 2** | **-0.00516** | $\exp(-((d - 3.0) / 2.0)^2)$ | Medium-range steric attraction. |
-| **Repulsion** | **+0.840** | $d^2 \quad (\text{for } d < 0)$ | Harsh penalty for steric clashes (jab atoms aapas me takra rahe hon). |
-| **Hydrophobic** | **-0.0351** | $1 \text{ if } d \le 0.5\text{ Å}; \quad 0 \text{ if } d \ge 1.5\text{ Å}$ | Favorable hydrophobic desolvation contact (grease packing). |
-| **Hydrogen Bonding** | **-0.587** | $1 \text{ if } d \le -0.7\text{ Å}; \quad 0 \text{ if } d \ge 0.0\text{ Å}$ | Directional electrostatic H-bond stabilization without explicit point charges. |
+| **Gauss 1** | **-0.0356** | exp(-(d / 0.5)²) | Short-range attractive Van der Waals dispersion. |
+| **Gauss 2** | **-0.00516** | exp(-((d - 3.0) / 2.0)²) | Medium-range steric attraction. |
+| **Repulsion** | **+0.840** | d² (for d < 0) | Harsh penalty for steric clashes (jab atoms aapas me takra rahe hon). |
+| **Hydrophobic** | **-0.0351** | 1 if d ≤ 0.5 Å; 0 if d ≥ 1.5 Å | Favorable hydrophobic desolvation contact (grease packing). |
+| **Hydrogen Bonding** | **-0.587** | 1 if d ≤ -0.7 Å; 0 if d ≥ 0.0 Å | Directional electrostatic H-bond stabilization without explicit point charges. |
 
 ### 3.2 Conformational Entropy Loss Penalty
-Vina intermolecular score $c$ ko rotatable bonds ($N_{\text{rot}}$) ke hisab se divide karta hai:
+Vina intermolecular score c ko rotatable bonds (N_rot) ke hisab se divide karta hai:
 
-$$\text{Final Score } (s) = \frac{c}{1 + w_{\text{rot}} \cdot N_{\text{rot}}}$$
+```text
+Final Score (s) = c / (1 + w_rot · N_rot)
+```
 
-- **$w_{\text{rot}} = 0.0585$** (Rotational entropy weight).
-- **$N_{\text{rot}}$:** Molecule ke andar kitne active single bonds hain jo dock hone par freeze ho jayenge.
+- **w_rot = 0.0585** (Rotational entropy weight).
+- **N_rot:** Molecule ke andar kitne active single bonds hain jo dock hone par freeze ho jayenge.
 - **Scientific Significance:** Agar kisi molecule me 15 rotatable bonds hain, to Vina uske score ko heavily penalize karega kyonki floppy molecules ko pocket me freeze karne ka entropy cost bohot zyada hota hai. Rigid molecules naturally behtar dock hoti hain!
 
 ---
@@ -125,38 +136,38 @@ Har shortform aur term ka saral aur accurate scientific matlab:
 
 | Abbreviation / Term | Full Name | Scientific Meaning & Definition | Benchmark / Reference Value |
 | :--- | :--- | :--- | :--- |
-| **Å (Angstrom)** | Unit of Length | $1\text{ Å} = 10^{-10}\text{ meters} = 0.1\text{ nanometers}$. Atom aur bond lengths measure karne ki international unit. | Carbon-Carbon bond length $\approx 1.54\text{ Å}$. H-bond $\approx 2.8\text{ Å}$. |
+| **Å (Angstrom)** | Unit of Length | 1 Å = 10⁻¹⁰ meters = 0.1 nanometers. Atom aur bond lengths measure karne ki international unit. | Carbon-Carbon bond length ≈ 1.54 Å. H-bond ≈ 2.8 Å. |
 | **ADME** | Absorption, Distribution, Metabolism, Excretion | Pharmacology ka core framework jo batata hai ki body dawa ke sath kya karti hai. | Drug discovery ka #1 failure reason. |
 | **Ames Test** | Ames Mutagenicity | Salmonella bacteria par kiya jane wala test jo batata hai ki kya molecule DNA mutate karke Cancer cause kar sakta hai. | **Required:** Negative (Non-mutagenic). |
-| **B-Factor** | Temperature Factor | PDB structure me atom kitna vibrate ya fluctuate kar raha hai. Zyada B-factor ka matlab floppy/flexible loop. | $< 30\text{ Å}^2$: High confidence / rigid.<br>$> 60\text{ Å}^2$: Highly mobile / uncertain. |
+| **B-Factor** | Temperature Factor | PDB structure me atom kitna vibrate ya fluctuate kar raha hai. Zyada B-factor ka matlab floppy/flexible loop. | < 30 Å²: High confidence / rigid.<br>> 60 Å²: Highly mobile / uncertain. |
 | **Blind Docking** | Global Cavity Search | Jab binding pocket ka coordinate pata na ho, to grid box ko poore protein par expand karke dock karna. | Used for allosteric site discovery. |
-| **cLogP / WLOGP** | Octanol-Water Partition Coefficient | Molecule kitna lipophilic (fat-soluble) hai vs hydrophilic (water-soluble). | **Ideal:** $1.0 \text{ to } 3.0$.<br>Poor oral absorption if $> 5.0$. |
+| **cLogP / WLOGP** | Octanol-Water Partition Coefficient | Molecule kitna lipophilic (fat-soluble) hai vs hydrophilic (water-soluble). | **Ideal:** 1.0 to 3.0.<br>Poor oral absorption if > 5.0. |
 | **CYP450** | Cytochrome P450 Enzymes | Liver ke 5 mukhya enzymes (CYP1A2, 2C9, 2C19, 2D6, 3A4) jo drugs ko metabolize karte hain. | Checked for drug-drug interactions. |
-| **ΔG (Delta G)** | Binding Free Energy | Ligand aur receptor judne par release hone wali net Gibbs free energy ($\text{kcal/mol}$). | **Strong:** $\le -8.0\text{ kcal/mol}$.<br>**Weak:** $> -5.0\text{ kcal/mol}$. |
+| **ΔG (Delta G)** | Binding Free Energy | Ligand aur receptor judne par release hone wali net Gibbs free energy (kcal/mol). | **Strong:** ≤ -8.0 kcal/mol.<br>**Weak:** > -5.0 kcal/mol. |
 | **Exhaustiveness** | Global Search Depth | AutoDock Vina ke Monte Carlo algorithm dwara run ki jane wali independent search trajectories ki sankhya. | **Fast:** 4<br>**Academic:** 8<br>**Publication:** 16 - 32 |
-| **FQ** | Fit Quality | Ligand Efficiency ko molecular size ke hisab se normalize karne wala index ($\text{LE} / \text{LE}_{\text{scale}}$). | **Target:** $\ge 0.80$. |
-| **Gasteiger Charges** | Partial Atomic Charges | Electronegativity equilibration method jisse har atom par partial electron density ($+q$ ya $-q$) assign hoti hai. | Essential for PDBQT preparation. |
-| **HBA** | Hydrogen Bond Acceptors | Polar Oxygen ya Nitrogen jinke paas lone electron pair hota hai jo proton attract karta hai. | **Lipinski:** $\le 10$. |
-| **HBD** | Hydrogen Bond Donors | Wo Hydrogens jo Oxygen ya Nitrogen se covalent bond se jude hain ($-\text{OH}, -\text{NH}_2$). | **Lipinski:** $\le 5$. |
+| **FQ** | Fit Quality | Ligand Efficiency ko molecular size ke hisab se normalize karne wala index (LE / LE_scale). | **Target:** ≥ 0.80. |
+| **Gasteiger Charges** | Partial Atomic Charges | Electronegativity equilibration method jisse har atom par partial electron density (+q ya -q) assign hoti hai. | Essential for PDBQT preparation. |
+| **HBA** | Hydrogen Bond Acceptors | Polar Oxygen ya Nitrogen jinke paas lone electron pair hota hai jo proton attract karta hai. | **Lipinski:** ≤ 10. |
+| **HBD** | Hydrogen Bond Donors | Wo Hydrogens jo Oxygen ya Nitrogen se covalent bond se jude hain (-OH, -NH₂). | **Lipinski:** ≤ 5. |
 | **hERG** | Human Ether-à-go-go Channel | Heart ka potassium channel. Agar drug ise block kare to fatal cardiac arrhythmia (QT prolongation) hoti hai. | **Required:** Low / Non-inhibitor. |
 | **HIA** | Human Intestinal Absorption | Dawa goli ke roop me khane par aanto se blood me kitni absorb hogi. | **Target:** High absorption (> 80%). |
-| **Kd / Ki** | Dissociation / Inhibition Constant | Protein-ligand complex ko break karne ke liye required equilibrium concentration ($\text{nM}$ ya $\mu\text{M}$). | **Target:** $< 100\text{ nM}$. |
-| **LE** | Ligand Efficiency | Binding energy per heavy atom ($-\Delta G / N_{\text{heavy}}$). Small molecules ki potency compare karne ke kaam aata hai. | **Target:** $\ge 0.30\text{ kcal/mol/atom}$. |
-| **LipE / LLE** | Lipophilic Efficiency | $\text{pIC}_{50} - \text{cLogP}$. Batata hai ki binding specific molecular bonds se hai ya sirf generic grease se. | **Target:** $\ge 5.0$. |
-| **Lipinski Ro5** | Rule of Five (Pfizer) | Oral bioavailability ke 4 golden rules: $\text{MW} \le 500$, $\text{LogP} \le 5$, $\text{HBD} \le 5$, $\text{HBA} \le 10$. | Max 1 violation allowed. |
+| **Kd / Ki** | Dissociation / Inhibition Constant | Protein-ligand complex ko break karne ke liye required equilibrium concentration (nM ya µM). | **Target:** < 100 nM. |
+| **LE** | Ligand Efficiency | Binding energy per heavy atom (-ΔG / N_heavy). Small molecules ki potency compare karne ke kaam aata hai. | **Target:** ≥ 0.30 kcal/mol/atom. |
+| **LipE / LLE** | Lipophilic Efficiency | pIC₅₀ - cLogP. Batata hai ki binding specific molecular bonds se hai ya sirf generic grease se. | **Target:** ≥ 5.0. |
+| **Lipinski Ro5** | Rule of Five (Pfizer) | Oral bioavailability ke 4 golden rules: MW ≤ 500, LogP ≤ 5, HBD ≤ 5, HBA ≤ 10. | Max 1 violation allowed. |
 | **mmCIF / CIF** | Macromolecular Crystallographic Information File | PDB format ka modern successor jo 100,000 se zyada atoms wale mega-complexes ko represent kar sakta hai. | Bindora auto-detects and converts CIF. |
-| **MW** | Molecular Weight | Molecule ka atomic mass ($\text{g/mol}$ ya Daltons). | **Lead-like:** $250 - 350\text{ Da}$.<br>**Drug-like:** $\le 500\text{ Da}$. |
+| **MW** | Molecular Weight | Molecule ka atomic mass (g/mol ya Daltons). | **Lead-like:** 250 - 350 Da.<br>**Drug-like:** ≤ 500 Da. |
 | **PAINS** | Pan-Assay Interference Compounds | Chemical groups jo false positive fluorescent ya covalent binding signal dete hain (e.g. Rhodanines, Quinones). | **Target:** Zero PAINS alerts. |
 | **PDB** | Protein Data Bank | 3D biological macromolecule coordinates store karne wala standard crystallographic format. | File extension: `.pdb` |
 | **PDBQT** | PDB + Charges (Q) + Torsions (T) | AutoDock Vina ka required input format with partial charges and rotatable bonds hierarchy. | File extension: `.pdbqt` |
 | **PGP** | P-glycoprotein Efflux Pump | Cell membrane pump jo drugs ko cells aur brain se bahar phenk deta hai. | Efflux liability assessment. |
-| **QED** | Quantitative Estimate of Drug-likeness | 0.0 se 1.0 ke scale par composite desirability function jo overall drug quality batata hai. | **Good:** $> 0.67$. |
-| **RMSD** | Root Mean Square Deviation | Do 3D poses ke corresponding atoms ke beech ka average spatial distance difference ($\text{Å}$). | **Success:** $\le 2.0\text{ Å}$.<br>**Fail:** $> 2.0\text{ Å}$. |
-| **RotB** | Rotatable Bonds | Single non-ring bonds jo freely rotate ho sakte hain (excluding terminal methyls and amide bonds). | **Veber:** $\le 10$. |
-| **SA Score** | Synthetic Accessibility Score | 1 (chemistry lab me banana bohot easy) se 10 (banana virtually impossible) tak ka complexity score. | **Target:** $< 4.0$. |
+| **QED** | Quantitative Estimate of Drug-likeness | 0.0 se 1.0 ke scale par composite desirability function jo overall drug quality batata hai. | **Good:** > 0.67. |
+| **RMSD** | Root Mean Square Deviation | Do 3D poses ke corresponding atoms ke beech ka average spatial distance difference (Å). | **Success:** ≤ 2.0 Å.<br>**Fail:** > 2.0 Å. |
+| **RotB** | Rotatable Bonds | Single non-ring bonds jo freely rotate ho sakte hain (excluding terminal methyls and amide bonds). | **Veber:** ≤ 10. |
+| **SA Score** | Synthetic Accessibility Score | 1 (chemistry lab me banana bohot easy) se 10 (banana virtually impossible) tak ka complexity score. | **Target:** < 4.0. |
 | **SMILES** | Chemical String Notation | 2D chemical structure ka compact alphanumeric text code (e.g. Aspirin = `CC(=O)Oc1ccccc1C(=O)O`). | Universal input format. |
-| **TPSA** | Topological Polar Surface Area | Molecule ke polar atoms (O, N, attached H) ka total surface area ($\text{Å}^2$). | **Oral:** $\le 140\text{ Å}^2$.<br>**Brain (BBB):** $\le 90\text{ Å}^2$. |
-| **Veber Filter** | GSK Bioavailability Rules | Rotatable Bonds $\le 10$ aur $\text{TPSA} \le 140\text{ Å}^2$. Predicts high oral absorption in rats/humans. | Standard medicinal chemistry rule. |
+| **TPSA** | Topological Polar Surface Area | Molecule ke polar atoms (O, N, attached H) ka total surface area (Å²). | **Oral:** ≤ 140 Å².<br>**Brain (BBB):** ≤ 90 Å². |
+| **Veber Filter** | GSK Bioavailability Rules | Rotatable Bonds ≤ 10 aur TPSA ≤ 140 Å². Predicts high oral absorption in rats/humans. | Standard medicinal chemistry rule. |
 
 ---
 
@@ -198,9 +209,9 @@ Raw PDB file direct dock nahi ki ja sakti kyonki X-ray crystallography me Hydrog
 
 ### 5.2 Histidine Protonation Trap (pH 7.4)
 Histidine ke paas imidazole ring hoti hai jiska pKa ~6.0 hota hai:
-- **HID:** Hydrogen on Delta-nitrogen ($N_\delta$).
-- **HIE:** Hydrogen on Epsilon-nitrogen ($N_\epsilon$).
-- **HIP:** Both nitrogens protonated (Formal $+1$ positive charge).
+- **HID:** Hydrogen on Delta-nitrogen (N_δ).
+- **HIE:** Hydrogen on Epsilon-nitrogen (N_ε).
+- **HIP:** Both nitrogens protonated (Formal +1 positive charge).
 - Bindora automatic hydrogen optimization run karta hai taaki active site ke hydrogen bond donor/acceptor networks sahi ban sakein.
 
 ---
@@ -234,7 +245,7 @@ Histidine ke paas imidazole ring hoti hai jiska pKa ~6.0 hota hai:
 ```
 
 ### 6.1 Force-Field Energy Minimization
-2D drawing me bond angles flat hote hain ($180^\circ$ ya $120^\circ$). Real 3D space me $sp^3$ Carbon tetrahedral ($109.5^\circ$) hota hai.  
+2D drawing me bond angles flat hote hain (180° ya 120°). Real 3D space me sp³ Carbon tetrahedral (109.5°) hota hai.  
 Bindora **MMFF94 (Merck Molecular Force Field)** run karke bond stretch, angle bend, out-of-plane inversion, aur Van der Waals clashes ko minimize karke global lowest-energy conformer banata hai.
 
 ---
@@ -259,12 +270,12 @@ Grid box wo 3D boundary hai jiske andar AutoDock Vina ligand ke conformations ko
 
 ### 7.1 Golden Rules for Grid Box Setup
 1. **Targeted / Focused Docking:**
-   - **Center:** Known co-crystallized inhibitor ke coordinates ka geometric mean ($X_{\text{avg}}, Y_{\text{avg}}, Z_{\text{avg}}$). Bindora me **"Pocket Centroid"** button ise 1 click me calculate karta hai.
-   - **Size:** $20\text{ Å} \times 20\text{ Å} \times 20\text{ Å}$ se $24\text{ Å} \times 24\text{ Å} \times 24\text{ Å}$.
+   - **Center:** Known co-crystallized inhibitor ke coordinates ka geometric mean (X_avg, Y_avg, Z_avg). Bindora me **"Pocket Centroid"** button ise 1 click me calculate karta hai.
+   - **Size:** 20 Å × 20 Å × 20 Å se 24 Å × 24 Å × 24 Å.
    - **Why?** Ye dimension ligand ko freely ghumne aur sabhi possible binding poses explore karne ki poori azaadi deti hai bina search volume ko unnecessarily bada kiye.
 2. **Blind Docking:**
-   - **Size:** $55\text{ Å} \times 55\text{ Å} \times 55\text{ Å}$ ya bada.
-   - **Caution:** Bada box search space ko $10\times$ bada deta hai. Blind docking me hamesha **Exhaustiveness ko 32** par set karna zaroori hai, warna algorithm pocket dhoondhe bina kisi random surface par trap ho jayega.
+   - **Size:** 55 Å × 55 Å × 55 Å ya bada.
+   - **Caution:** Bada box search space ko 10× bada deta hai. Blind docking me hamesha **Exhaustiveness ko 32** par set karna zaroori hai, warna algorithm pocket dhoondhe bina kisi random surface par trap ho jayega.
 
 ---
 
@@ -342,7 +353,9 @@ Computational pharmacology me kisi docking protocol ko tab tak valid nahi mana j
 ### 10.1 RMSD Equation
 Root Mean Square Deviation crystal pose aur redocked pose ke har heavy atom ke coordinates ke beech ka Euclidean distance error hai:
 
-$$\text{RMSD} = \sqrt{\frac{1}{N} \sum_{i=1}^{N} \left( (x_i^{\text{dock}} - x_i^{\text{cryst}})^2 + (y_i^{\text{dock}} - y_i^{\text{cryst}})^2 + (z_i^{\text{dock}} - z_i^{\text{cryst}})^2 \right)}$$
+```text
+RMSD = √[ (1/N) · Σ ( (x_i^dock - x_i^cryst)² + (y_i^dock - y_i^cryst)² + (z_i^dock - z_i^cryst)² ) ]
+```
 
 ### 10.2 Scientific Thresholds
 - **RMSD ≤ 1.0 Å (Sub-Angstrom):** Exceptional crystallographic accuracy. Atoms almost exact overlay par baithte hain.
@@ -368,20 +381,20 @@ Bindora 3Dmol viewer me har bond ka visual code aur criteria:
 ```
 
 1. **Hydrogen Bonds (Yellow Dashed Lines):**
-   - **Distance:** $1.8\text{ Å} \text{ se } 3.2\text{ Å}$.
-   - **Rule:** Donor $-\text{NH}$ ya $-\text{OH}$ proton ko Acceptor $=\text{O}$ ya $:\text{N}$ ke lone pair se share karta hai. Angle $\ge 120^\circ$.
+   - **Distance:** 1.8 Å se 3.2 Å.
+   - **Rule:** Donor -NH ya -OH proton ko Acceptor =O ya :N ke lone pair se share karta hai. Angle ≥ 120°.
 2. **Salt Bridges (Magenta Dashed Lines):**
-   - **Distance:** $\le 4.0\text{ Å}$.
-   - **Rule:** Opposite formal charges ka attraction (e.g. `ASP 855` ya `GLU 286` ka $-\text{COO}^-$ group, ligand ke protonated basic nitrogen $-\text{NH}_3^+$ ya `ARG 555` ke guanidinium se judta hai).
+   - **Distance:** ≤ 4.0 Å.
+   - **Rule:** Opposite formal charges ka attraction (e.g. `ASP 855` ya `GLU 286` ka -COO⁻ group, ligand ke protonated basic nitrogen -NH₃⁺ ya `ARG 555` ke guanidinium se judta hai).
 3. **π-π Stacking (Cyan Dashed Lines):**
-   - **Distance:** $\le 4.5\text{ Å}$.
-   - **Rule:** Aromatic rings ke $\pi$-electron clouds aapas me Face-to-Face (sandwich) ya Edge-to-Face (T-shaped) orient hote hain (`PHE`, `TYR`, `TRP`, `HIS`).
+   - **Distance:** ≤ 4.5 Å.
+   - **Rule:** Aromatic rings ke π-electron clouds aapas me Face-to-Face (sandwich) ya Edge-to-Face (T-shaped) orient hote hain (`PHE`, `TYR`, `TRP`, `HIS`).
 4. **π-Cation Interactions (Orange Lines):**
-   - **Distance:** $\le 4.5\text{ Å}$.
+   - **Distance:** ≤ 4.5 Å.
    - **Rule:** Aromatic benzene ring aur positive ion (`ARG`, `LYS`, ya protonated ligand nitrogen) ka attraction.
 5. **Halogen Bonds (Green Lines):**
-   - **Distance:** $\le 3.5\text{ Å}$.
-   - **Rule:** Halogen atom (F, Cl, Br, I) ke head par ek electropositive $\sigma$-hole hota hai jo receptor ke backbone carbonyl oxygen se judta hai.
+   - **Distance:** ≤ 3.5 Å.
+   - **Rule:** Halogen atom (F, Cl, Br, I) ke head par ek electropositive σ-hole hota hai jo receptor ke backbone carbonyl oxygen se judta hai.
 
 ---
 
@@ -389,7 +402,9 @@ Bindora 3Dmol viewer me har bond ka visual code aur criteria:
 
 Bindora me **"Pocket Surface (5Å)"** select karne par jo translucent cloud dikhta hai, wo receptor ke active pocket ki 3D Van der Waals boundary hoti hai:
 
-$$\text{Surface Selection} = \left\{ \text{Atom}_i \in \text{Receptor} \mid \min_{j \in \text{Ligand}} \|\mathbf{r}_i - \mathbf{r}_j\| \le 5.5\text{ Å} \right\}$$
+```text
+Surface Selection = { Atom_i ∈ Receptor | min_j ||r_i - r_j|| ≤ 5.5 Å }
+```
 
 ### 12.1 Gufa (Buried Pocket) vs. Darwaza (Solvent Front)
 * **Pichla Hissa (Jaha Cloud Dikh Raha Hai):**
@@ -437,10 +452,10 @@ Docking sirf affinity batati hai. Dawa mariz tak tabhi pahuchegi jab wo **ADME (
    - **Periphery Drugs (Heart, Cancer, Diabetes):** Yolk se bahar hona chahiye taaki central nervous system side-effects na hon.
 3. **P-glycoprotein Substrate (PGP+ / PGP-):** Blue dots indicate substrate for P-gp pump jo drug ko cells se bahar throw kar deta hai.
 4. **Lipinski's Rule of Five:**
-   - Molecular Weight $\le 500\text{ Da}$
-   - $\text{cLogP} \le 5.0$
-   - $\text{HBD} \le 5$
-   - $\text{HBA} \le 10$
+   - Molecular Weight ≤ 500 Da
+   - cLogP ≤ 5.0
+   - HBD ≤ 5
+   - HBA ≤ 10
 
 ---
 
@@ -455,7 +470,7 @@ Har tab aur button ka practical workflow:
 
 ### Tab 2: 3D Molecular Docking Studio
 - **Ligand Input:** SMILES string paste karein ya 2D Ketcher editor me chemical structure draw karein.
-- **Pocket Centroid Button:** Co-crystallized inhibitor ke coordinates ka geometric center $(X,Y,Z)$ calculate karta hai.
+- **Pocket Centroid Button:** Co-crystallized inhibitor ke coordinates ka geometric center (X, Y, Z) calculate karta hai.
 - **Blind Docking Button:** Grid box ko poore protein surface par expand karta hai.
 - **Exhaustiveness Selector:** 4 (Fast), 8 (Standard), 16 (Publication), 32 (Deep Exploration).
 - **Sampling Mode:** Single seed vs multi-seed replicate sampling.
@@ -466,7 +481,7 @@ Har tab aur button ka practical workflow:
 - RDKit engine se Lipinski Rule of 5, Veber filter, PAINS alerts, synthetic accessibility, aur BOILED-Egg plot generate karta hai.
 
 ### Tab 4: Wet-Lab Bioactivity Cross-Check
-- EMBL-EBI ChEMBL database se direct query karke wet-lab experimental assays ($K_i, \text{IC}_{50}, \text{EC}_{50}$) ke sath docking score compare karta hai.
+- EMBL-EBI ChEMBL database se direct query karke wet-lab experimental assays (Ki, IC₅₀, EC₅₀) ke sath docking score compare karta hai.
 
 ### Tab 5: AI Scientific Report
 - Publication-ready manuscript generate karta hai with Abstract, Methods, Results, Discussion, aur References.
@@ -488,11 +503,11 @@ Nature, Journal of Medicinal Chemistry, Bioorganic & Medicinal Chemistry me publ
    - *RDKit Open-Source Cheminformatics (Release 2024.x)*
    - *Meeko 0.5.x Flexible Torsion Engine*
 2. **Report Grid Box Coordinates Explicitly:**
-   - Journal paper me Grid Box center $(X, Y, Z)$ aur dimensions $(L_X, L_Y, L_Z)$ in Angstroms likhna zaroori hota hai.
+   - Journal paper me Grid Box center (X, Y, Z) aur dimensions (Lx, Ly, Lz) in Angstroms (Å) likhna zaroori hota hai.
 3. **Include Redocking RMSD Proof:**
    - Paper me likhein: *"The docking protocol was scientifically validated by redocking the co-crystallized native ligand, yielding a heavy-atom RMSD of 0.82 Å (RMSD < 2.0 Å benchmark)."*
 4. **Pair Docking Scores with Ligand Efficiency (LE) & 2D Interaction Plots:**
-   - Report $\Delta G$ in $\text{kcal/mol}$, calculate $K_i$ in $\text{nM}$, and present the 2D LigPlot interaction schematic showing Hydrogen bonds and Salt bridges.
+   - Report ΔG in kcal/mol, calculate Ki in nM, and present the 2D LigPlot interaction schematic showing Hydrogen bonds and Salt bridges.
 
 ---
 *Bindora Dock — Precision Preclinical Pharmacology & Molecular Simulation System.*

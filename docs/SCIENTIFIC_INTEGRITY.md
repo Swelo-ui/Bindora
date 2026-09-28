@@ -64,7 +64,7 @@ emit_pipeline_report(
 1. **Biophysical Type & Bounds Checking:**
    - Numerical values (`vina_affinity_kcal`, `rmsd_angstroms`, etc.) are checked with `validate_numeric_field`.
    - Rejects `NaN`, infinite values, or strings mimicking numbers.
-   - Enforces physical energy boundaries (e.g. affinities between $-30.0$ and $+20.0\text{ kcal/mol}$).
+   - Enforces physical energy boundaries (e.g. affinities between -30.0 and +20.0 kcal/mol).
 
 2. **Cryptographic Run Provenance:**
    - Every emitted file automatically receives a SHA-256 calculation signature (`provenance.sha256_sig`) calculated from the raw payload parameters.

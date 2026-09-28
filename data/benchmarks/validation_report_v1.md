@@ -4,22 +4,22 @@
 
 ## Executive Summary
 
-This empirical benchmark validates Bindora's molecular docking engine against curated protein-ligand complexes with published crystallographic coordinates and wet-lab experimental binding affinities ($K_d / K_i / \Delta G_{\text{exp}}$).
+This empirical benchmark validates Bindora's molecular docking engine against curated protein-ligand complexes with published crystallographic coordinates and wet-lab experimental binding affinities (Kd / Ki / ΔG_exp).
 
 | Benchmark Metric | AutoDock Vina | Vinardo Scoring | Target Standard |
 | :--- | :---: | :---: | :---: |
-| **Pearson Correlation ($R$)** | **-0.686** | **-0.825** | > 0.50 (CASF Core) |
-| **Spearman Rank Correlation ($\rho$)** | **-0.300** | — | > 0.50 |
+| **Pearson Correlation (R)** | **-0.686** | **-0.825** | > 0.50 (CASF Core) |
+| **Spearman Rank Correlation (ρ)** | **-0.300** | — | > 0.50 |
 | **Root Mean Square Error (RMSE)** | **2.62 kcal/mol** | **5.17 kcal/mol** | < 2.5 kcal/mol |
 | **Mean Absolute Error (MAE)** | **1.93 kcal/mol** | **4.87 kcal/mol** | < 2.0 kcal/mol |
-| **Pose Redocking Success (RMSD $\le 2.0$ Å)** | **40.0%** (2/5) | — | > 70% |
+| **Pose Redocking Success (RMSD ≤ 2.0 Å)** | **40.0%** (2/5) | — | > 70% |
 | **Mean Crystallographic RMSD** | **1.84 Å** | — | < 2.0 Å |
 
 ---
 
 ## Itemized Benchmark Results Matrix
 
-| PDB | Target Receptor | Investigational Ligand | Exp $\Delta G$ | Vina $\Delta G$ | Vinardo | Error | RMSD (Å) | Benchmark Status |
+| PDB | Target Receptor | Investigational Ligand | Exp ΔG | Vina ΔG | Vinardo | Error | RMSD (Å) | Benchmark Status |
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
 | `1CX2` | Cyclooxygenase-2 (COX-2) | SC-558 | -11.32 | -10.76 | -7.38 | 0.56 | 0.76 | ✅ Validated (< 2.0 Å) |
 | `1IEP` | Abl1 Tyrosine Kinase | Imatinib (STI-571) | -10.91 | -11.61 | -7.58 | 0.7 | 0.80 | ✅ Validated (< 2.0 Å) |
