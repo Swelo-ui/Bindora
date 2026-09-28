@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: bindora-dock
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /api/health
+    envVars:
+      - key: BINDORA_HOST
+        value: 0.0.0.0
+      - key: BINDORA_PORT
+        value: 5000

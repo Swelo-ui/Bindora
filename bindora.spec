@@ -12,6 +12,7 @@ meeko_datas, meeko_binaries, meeko_hidden = collect_all('meeko')
 gemmi_datas, gemmi_binaries, gemmi_hidden = collect_all('gemmi')
 waitress_datas, waitress_binaries, waitress_hidden = collect_all('waitress')
 webview_datas, webview_binaries, webview_hidden = collect_all('webview')
+psutil_datas, psutil_binaries, psutil_hidden = collect_all('psutil')
 
 # Collect OpenMM package and runtime DLL/plugin libraries
 try:
@@ -38,14 +39,15 @@ datas = [
     ('data/benchmarks', 'data/benchmarks'),
 ]
 
-datas += rdkit_datas + meeko_datas + gemmi_datas + openmm_datas + openmm_extra_datas + waitress_datas + webview_datas
-binaries = rdkit_binaries + meeko_binaries + gemmi_binaries + openmm_binaries + waitress_binaries + webview_binaries
+datas += rdkit_datas + meeko_datas + gemmi_datas + openmm_datas + openmm_extra_datas + waitress_datas + webview_datas + psutil_datas
+binaries = rdkit_binaries + meeko_binaries + gemmi_binaries + openmm_binaries + waitress_binaries + webview_binaries + psutil_binaries
 
 hiddenimports = [
     'waitress',
     'webview',
     'clr',
     'pythonnet',
+    'psutil',
     'openmm',
     'openmm.app',
     'openmm.unit',
@@ -60,7 +62,7 @@ hiddenimports = [
     'sqlalchemy.dialects.sqlite',
     'flask',
     'flask_cors',
-] + rdkit_hidden + meeko_hidden + gemmi_hidden + openmm_hidden + waitress_hidden + webview_hidden
+] + rdkit_hidden + meeko_hidden + gemmi_hidden + openmm_hidden + waitress_hidden + webview_hidden + psutil_hidden
 
 a = Analysis(
     ['desktop_launcher.py'],

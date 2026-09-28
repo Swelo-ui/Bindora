@@ -132,7 +132,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 # Server configuration
 HOST = os.environ.get("BINDORA_HOST", "127.0.0.1")
-PORT = int(os.environ.get("BINDORA_PORT", "5000"))
+PORT = int(os.environ.get("PORT") or os.environ.get("BINDORA_PORT", "5000"))
 DEBUG = os.environ.get("BINDORA_DEBUG", "False").lower() in ("true", "1", "yes")
 
 # Security configuration

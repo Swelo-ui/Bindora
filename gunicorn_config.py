@@ -6,7 +6,8 @@ import os
 import multiprocessing
 
 # Server socket
-bind = f"{os.getenv('BINDORA_HOST', '0.0.0.0')}:{os.getenv('BINDORA_PORT', '5000')}"
+_port = os.getenv('PORT') or os.getenv('BINDORA_PORT', '5000')
+bind = f"{os.getenv('BINDORA_HOST', '0.0.0.0')}:{_port}"
 
 # Worker processes
 workers = int(os.getenv('GUNICORN_WORKERS', 2))
