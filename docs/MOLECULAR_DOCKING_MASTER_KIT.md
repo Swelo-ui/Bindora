@@ -2,286 +2,412 @@
 **Author:** Bindora Computational Pharmacology Studio  
 **Engine:** Scripps AutoDock Vina v1.2.5 & RDKit Open-Source Cheminformatics  
 **Target Audience:** Students, Researchers, Medicinal Chemists, & Molecular Modelers  
+**Publication Version:** 3.0 (Comprehensive Research Edition)
 
 ---
 
 ## Table of Contents
-1. [Introduction: Molecular Docking Kya Hai aur Kyu Zaroori Hai?](#1-introduction-molecular-docking-kya-hai)
-2. [Complete Dictionary of Abbreviations & Scientific Terms (Har Word Ka Matlab)](#2-complete-dictionary-of-abbreviations--scientific-terms)
-3. [Biological & 3D Structural Anatomy (Structure Ko Kaise Samajhein?)](#3-biological--3d-structural-anatomy)
-4. [Non-Covalent Chemical Interactions (3D Bonds Ki Pehchan)](#4-non-covalent-chemical-interactions)
-5. [The Science Behind the "Cloud" (Molecular Surface & Pocket Cavity)](#5-the-science-behind-the-cloud-molecular-surface)
-6. [Bindora Dock: Step-by-Step Practical Docking Workflow](#6-bindora-dock-step-by-step-practical-docking-workflow)
-7. [Grid Box, Exhaustiveness, & Native CPU Multi-Threading](#7-grid-box-exhaustiveness--native-cpu-multi-threading)
-8. [Flexible Side Chains (Induced-Fit Simulation)](#8-flexible-side-chains-induced-fit-simulation)
-9. [Redocking Self-Validation & RMSD Benchmark](#9-redocking-self-validation--rmsd-benchmark)
-10. [ADME, BOILED-Egg, & Pharmacokinetics Interpretation](#10-adme-boiled-egg--pharmacokinetics-interpretation)
-11. [Troubleshooting & Pro Tips for Publishing Research Papers](#11-troubleshooting--pro-tips-for-publishing-research-papers)
+1. [Introduction: Molecular Docking in the Real World](#1-introduction-molecular-docking-in-the-real-world)
+2. [Thermodynamics & Biophysics of Binding (ΔG, Kd, Ki)](#2-thermodynamics--biophysics-of-binding)
+3. [AutoDock Vina Scoring Function Deep-Dive (The Exact Mathematical Terms)](#3-autodock-vina-scoring-function-deep-dive)
+4. [Complete Alphabetical Dictionary of Abbreviations & Terms](#4-complete-alphabetical-dictionary-of-abbreviations--terms)
+5. [Receptor Preparation Protocol (PDB to PDBQT Step-by-Step)](#5-receptor-preparation-protocol)
+6. [Ligand Preparation Protocol (2D SMILES to 3D PDBQT)](#6-ligand-preparation-protocol)
+7. [The Grid Box (Bounding Box) Science](#7-the-grid-box-bounding-box-science)
+8. [Exhaustiveness & Native CPU Multi-Core Scaling](#8-exhaustiveness--native-cpu-multi-core-scaling)
+9. [Flexible Side Chains (Induced-Fit Docking)](#9-flexible-side-chains-induced-fit-docking)
+10. [Redocking Self-Validation & The 2.0 Å RMSD Benchmark](#10-redocking-self-validation--the-20-å-rmsd-benchmark)
+11. [Decoding 3D Non-Covalent Interactions in the Viewer](#11-decoding-3d-non-covalent-interactions-in-the-viewer)
+12. [The Science Behind the "Cloud" (Pocket Cavity Surfaces)](#12-the-science-behind-the-cloud-pocket-cavity-surfaces)
+13. [ADME, Pharmacokinetics, & The BOILED-Egg Model](#13-adme-pharmacokinetics--the-boiled-egg-model)
+14. [Complete Bindora Studio Walkthrough (Tab by Tab & Every Button)](#14-complete-bindora-studio-walkthrough)
+15. [Publishing Your Docking Results in High-Impact Journals](#15-publishing-your-docking-results-in-high-impact-journals)
 
 ---
 
-## 1. Introduction: Molecular Docking Kya Hai?
+## 1. Introduction: Molecular Docking in the Real World
 
-### 1.1 Simple Real-World Intuition
-Sochiye aapke paas ek **Taala (Lock)** hai — ye hamara **Target Protein / Receptor** (jaise koi bimari failane wala enzyme ya virus ka protein) hai.  
+### 1.1 Simple Intuition: Chabi aur Taala
+Sochiye aapke paas ek **Taala (Lock)** hai — ye hamara **Target Protein / Receptor** (jaise koi cancer-causing enzyme ya virus ka protease protein) hai.  
 Aapke paas hajaron alag-alag aakaar ki **Chabiyan (Keys)** hain — ye hamare **Drug Molecules / Ligands** hain.
 
-**Molecular Docking** computer par chalne wali wo simulation hai jo do sawalon ka jawab deti hai:
-1. **Pose Prediction:** Kya chabi taale ke keyhole (binding pocket) ke andar ghus sakti hai, aur ghusne ke baad kis angle par baithti hai?
-2. **Affinity Estimation:** Chabi taale ke kitne tight fit baithti hai? (Binding Free Energy, $\Delta G$).
+**Molecular Docking** computer par chalne wali wo biophysical simulation hai jo do ahem sawalon ka jawab calculate karti hai:
+1. **Conformational Pose Search:** Kya chabi taale ke keyhole (binding pocket) ke andar ghus sakti hai, aur ghusne ke baad 3D space me kis orientation aur angle par baithti hai?
+2. **Binding Affinity Estimation (ΔG):** Chabi taale ke kitne tight fit baithti hai? (Bonds kitne majboot bante hain aur kitni free energy release hoti hai).
 
 ```
-[Target Protein / Lock] + [Drug Candidate / Key] 
-              ↓ (AutoDock Vina Global Search)
-    [Protein-Ligand Complex in Optimal 3D Conformation]
+   Target Protein (Receptor / Lock)  +  Drug Candidate (Ligand / Key)
+                                 │
+                                 ▼
+                     [AutoDock Vina ILS Engine]
+            (Iterated Local Search with Monte Carlo Sampling)
+                                 │
+                                 ▼
+              Optimal 3D Complex Pose + Binding Affinity (ΔG)
 ```
 
-### 1.2 Two Classical Models of Binding
-1. **Fischer's Lock-and-Key Model (1894):** Protein ka pocket rigid (sakht) hota hai aur ligand aakar exact fit hota hai. (Standard rigid docking is concept par chalti hai).
-2. **Koshland's Induced-Fit Model (1958):** Jaise haath dastane (glove) me jata hai to dastana haath ke aakaar ke anusaar thoda sa adjust hota hai, waise hi jab drug protein pocket me ghusti hai to pocket ke amino acids thode move karte hain. (Bindora ka **Flexible Side Chains** feature is Induced-Fit ko simulate karta hai).
+### 1.2 Two Classical Binding Paradigms
+1. **Fischer's Lock-and-Key Model (1894):** Protein ka pocket pathar ki tarah rigid (sakht) hota hai aur ligand exact key ki tarah fit hota hai. (Standard rigid docking is principle par chalti hai).
+2. **Koshland's Induced-Fit Model (1958):** Jaise haath dastane (glove) me jata hai to dastana ungliyon ke anusaar thoda sa expand aur adjust hota hai, waise hi jab drug molecule binding cavity me ghusti hai to pocket ke amino acids thode move karte hain. Bindora ka **Flexible Side Chains** feature is Induced-Fit mechanism ko simulate karta hai.
 
 ---
 
-## 2. Complete Dictionary of Abbreviations & Scientific Terms
+## 2. Thermodynamics & Biophysics of Binding
 
-Yeh dictionary docking me aane wale har technical word aur shortform ka complete encyclopedia hai:
+Drug discovery me docking score sirf ek number nahi hai; ye **Gibbs Free Energy of Binding (ΔG)** ka empirical estimation hota hai.
 
-| Term / Shortform | Full Form | Scientific Meaning (Asal Matlab) | Good vs Bad Value |
+### 2.1 The Master Equation
+Binding spontaneity Gibbs-Helmholtz equation se govern hoti hai:
+
+$$\Delta G = \Delta H - T \Delta S$$
+
+* **ΔG (Gibbs Free Energy, kcal/mol):**
+  - Spontaneous binding ke liye **ΔG hamesha negative (< 0)** hona chahiye.
+  - Jitni zyada negative value hogi (e.g. -11.5 kcal/mol vs -5.2 kcal/mol), complex utna hi zyada thermodynamically stable hoga.
+* **ΔH (Enthalpy):** Favorable heat release. Ye Hydrogen bonds, Salt bridges, Van der Waals dispersion forces, aur electrostatic attractions se aati hai.
+* **-T·ΔS (Entropy Penalty):** Unfavorable disorder penalty. Jab ek free, floppy drug molecule pocket ke andar bandh jati hai, to uske rotatable bonds freeze ho jate hain (**Conformational Entropy Loss**). Vina is loss ko penalize karta hai.
+* **Hydrophobic Desolvation (Favorable Entropy):** Pocket ke andar baithe paani ke ordered molecules jab bahar nikalte hain, to bulk solvent ki entropy badhti hai, jo binding ko promote karti hai.
+
+### 2.2 Thermodynamic Translation: ΔG se Kd aur Ki
+Dissociation constant ($K_d$) aur Inhibition constant ($K_i$) ka direct rishta ΔG se hota hai:
+
+$$\Delta G = R \cdot T \cdot \ln(K_d) \quad \implies \quad K_d = \exp\left(\frac{\Delta G}{R \cdot T}\right)$$
+
+*Jaha $R = 1.987 \times 10^{-3} \text{ kcal/(mol}\cdot\text{K)}$ aur $T = 298.15\text{ K}$ ($25^\circ\text{C}$).*
+
+| Binding Affinity (ΔG) | Estimated Kd / Ki | Potency Level | Biological Meaning |
 | :--- | :--- | :--- | :--- |
-| **$\Delta G$ (Delta G)** | Gibbs Free Energy of Binding | Ligand aur protein judne par kitni energy release hoti hai ($\text{kcal/mol}$). Jitni zyada negative, utna strong bond. | **Good:** $\le -7.0\text{ kcal/mol}$<br>**Weak:** $> -5.0\text{ kcal/mol}$ |
-| **$K_d$ / $K_i$** | Dissociation / Inhibition Constant | Dawa aur protein ke complex ko todne ke liye kitni concentration chahiye ($\text{nM}$ ya $\mu\text{M}$). | **Good:** $< 100\text{ nM}$ (Tight)<br>**Weak:** $> 10\text{ }\mu\text{M}$ |
-| **RMSD** | Root Mean Square Deviation | Do 3D structures ke beech ka physical distance difference ($\text{\AA}$). Redocking validation me use hota hai. | **Success:** $< 2.0\text{ \AA}$<br>**Fail:** $> 2.0\text{ \AA}$ |
-| **PDB** | Protein Data Bank | Protein ke har atom ke $X, Y, Z$ 3D coordinates store karne wala standard format. | File extension: `.pdb` |
-| **PDBQT** | Protein Data Bank + Charges (Q) + Torsions (T) | AutoDock Vina ka required format. Isme har atom par **Partial Charge ($Q$)** aur ghumnay wale bonds (**Torsion Tree, $T$**) hote hain. | File extension: `.pdbqt` |
-| **SMILES** | Simplified Molecular Input Line Entry System | Kisi chemical molecule ka 1-line text representation (e.g., Ethanol = `CCO`, Aspirin = `CC(=O)Oc1ccccc1C(=O)O`). | Standard chemical string |
-| **LE** | Ligand Efficiency | Binding energy divided by heavy atom count ($-\Delta G / N_{\text{heavy}}$). Batata hai ki molecule ka har atom kitna productive hai. | **Good:** $\ge 0.30\text{ kcal/mol/atom}$ |
-| **LipE / LLE** | Lipophilic Ligand Efficiency | $\text{pIC}_{50} - \text{cLogP}$. Batata hai ki binding sirf grease (fat) ki wajah se to nahi aa rahi, balki specific chemical bonds se aa rahi hai. | **Target:** $\ge 5.0$ |
-| **cLogP / WLOGP** | Octanol-Water Partition Coefficient | Molecule kitna oily/fat-soluble (lipophilic) hai vs water-soluble (hydrophilic). | **Ideal:** $1.0 \text{ to } 3.0$<br>**Poor:** $> 5.0$ (Too greasy) |
-| **TPSA** | Topological Polar Surface Area | Molecule ke polar atoms (Oxygen, Nitrogen, Polar H) ka total surface area ($\text{\AA}^2$). | **Oral Drug:** $\le 140\text{ \AA}^2$<br>**Brain (BBB):** $\le 90\text{ \AA}^2$ |
-| **HBD** | Hydrogen Bond Donors | Wo Hydrogen atoms jo electronegative N ya O se jude hote hain (e.g., $-\text{OH}, -\text{NH}_2$). | **Rule of 5:** $\le 5$ |
-| **HBA** | Hydrogen Bond Acceptors | Wo Nitrogen ya Oxygen jinke paas lone pair hota hai jo H ko attract karta hai. | **Rule of 5:** $\le 10$ |
-| **RotB** | Rotatable Bonds | Molecule ke single non-ring bonds jo freely 360 degree ghum sakte hain. Jyada hone par molecule loose/floppy ho jata hai. | **Ideal:** $\le 10$ |
-| **MW** | Molecular Weight | Molecule ka molecular mass ($\text{g/mol}$). | **Lipinski:** $\le 500\text{ Da}$ |
-| **PAINS** | Pan-Assay Interference Compounds | Aise chemical groups jo lab testing me fake/false positive results dete hain (e.g., rhodanines, catechols). | **Result:** Zero alerts required |
-| **QED** | Quantitative Estimate of Drug-likeness | 0 se 1 ke scale par dawa jese gun hone ka overall composite index. | **Good:** $> 0.67$ |
-| **SA Score** | Synthetic Accessibility Score | 1 (chemistry lab me banana bohot aasan) se 10 (banana lagbhag namumkin) tak ka score. | **Lead candidate:** $< 4.0$ |
-| **CYP450** | Cytochrome P450 Enzymes | Liver ke 5 mukhya enzymes (CYP1A2, 2C9, 2C19, 2D6, 3A4) jo dawa ko metabolize karke body se bahar nikalte hain. | Inhibition check zaroori hai |
-| **hERG** | Human Ether-à-go-go-Related Gene | Dil (heart) ka potassium channel. Agar dawa ise block kare to cardiac arrhythmia (heart attack) ho sakta hai. | Non-inhibitor hona chahiye |
-| **Ames Mutagenicity** | Ames Bacterial Reverse Mutation Test | Batata hai ki kya molecule DNA me mutation ya Cancer create kar sakta hai. | Negative hona zaroori hai |
+| **-12.0 kcal/mol** | **~1.6 nM (Nanomolar)** | **Extremely Potent** | World-class clinical drug (e.g. Dasatinib, Osimertinib). Chhoti si dose hi target ko block kar deti hai. |
+| **-9.5 kcal/mol** | **~105 nM** | **High Potency** | Strong lead candidate. Standard pharmaceutical development range. |
+| **-7.5 kcal/mol** | **~3.1 μM (Micromolar)** | **Moderate Potency** | Acceptable screening hit. Needs medicinal chemistry optimization. |
+| **-5.0 kcal/mol** | **~215 μM** | **Weak / Inactive** | Barely binds. Fast dissociation; drug leaves the pocket easily. |
+| **-2.0 kcal/mol** | **~34 mM (Millimolar)** | **Non-binder** | No specific binding. Equivalent to background thermal noise. |
+
+> **Rule of Thumb:** Har **-1.36 kcal/mol** energy badhne par binding affinity **10 guna (10x)** badh jati hai!
 
 ---
 
-## 3. Biological & 3D Structural Anatomy
+## 3. AutoDock Vina Scoring Function Deep-Dive
 
-Protein aur Ligand ko 3D viewer me pehchanne ka tarika:
+AutoDock Vina (Scripps Research Institute, Trott & Olson 2009) koi black box nahi hai. Ye ek calibrated empirical scoring potential use karta hai jo PDBbind benchmark database par train kiya gaya hai.
 
-```
-               PROTEIN ARCHITECTURE
-┌────────────────────────────────────────────────────────┐
-│  Primary:    Amino Acid Sequence (Met-Ala-His-Leu...)   │
-│  Secondary:  Alpha-Helices (Springs) & Beta-Sheets     │
-│  Tertiary:   Folded 3D Globular Structure              │
-│  Quaternary: Multi-subunit Complex (e.g. Hemoglobin)   │
-└────────────────────────────────────────────────────────┘
-```
+### 3.1 The Mathematical Terms & Weights
+Vina interatomic distance $r_{ij}$ ko surface distance $d_{ij}$ me convert karta hai:
+$$d_{ij} = r_{ij} - R_i - R_j$$
+*(Jaha $R_i$ aur $R_j$ atoms ke Van der Waals radii hain).*
 
-### 3.1 Amino Acids Ke 4 Parivaar (The 20 Building Blocks)
-Protein 20 amino acids se banta hai. Inke gun yaad rakhna docking samajhne ki chabi hai:
+Har atom pair $(i, j)$ ke beech ki interaction energy ka formula:
 
-1. **Hydrophobic / Greasy (Non-Polar):**
-   - **Members:** `LEU` (Leucine), `ILE` (Isoleucine), `VAL` (Valine), `PHE` (Phenylalanine), `MET` (Methionine), `ALA` (Alanine), `PRO` (Proline), `TRP` (Tryptophan).
-   - **Role:** Ye pocket ke andar paani se door chupkar baithte hain. Drug ke aromatic rings aur carbon chains ko pakadte hain.
-2. **Positively Charged / Basic:**
-   - **Members:** `LYS` (Lysine, $+\text{NH}_3^+$), `ARG` (Arginine, Guanidinium group), `HIS` (Histidine, partial positive).
-   - **Role:** Drug ke negative groups ($-\text{COO}^-$, $-\text{SO}_3^-$) ke sath majboot **Salt Bridges** banate hain.
-3. **Negatively Charged / Acidic:**
-   - **Members:** `ASP` (Aspartate, $-\text{COO}^-$), `GLU` (Glutamate, $-\text{COO}^-$).
-   - **Role:** Drug ke basic Nitrogen ($-\text{NH}_2, -\text{NH}^+$) ko khinchkar Ionic interaction karte hain.
-4. **Polar Neutral (Hydrogen Bonders):**
-   - **Members:** `SER` (Serine, $-\text{OH}$), `THR` (Threonine, $-\text{OH}$), `TYR` (Tyrosine, Phenolic $-\text{OH}$), `ASN` (Asparagine), `GLN` (Glutamine), `CYS` (Cysteine, $-\text{SH}$).
-   - **Role:** Directional Hydrogen Bonds bana kar drug ki orientation fix karte hain.
+$$c = \sum_{i < j} f(t_i, t_j, r_{ij})$$
 
-### 3.2 3D Element Color Code (CPK Standard)
-Viewer me har atom ka rang international standard par based hota hai:
-- **Carbon (C):** Cyan (`cyanCarbon`) ya Green (`greenCarbon`) ya Gray (`whiteCarbon`).
-- **Oxygen (O):** Red (Lal).
-- **Nitrogen (N):** Dark Blue (Neela).
-- **Hydrogen (H):** White (Safed).
-- **Sulfur (S):** Yellow (Peela).
-- **Phosphorus (P):** Orange (Narangi).
-- **Fluorine (F):** Light Green.
-- **Chlorine (Cl):** Bright Green.
-- **Bromine (Br):** Dark Red / Brown.
-- **Iodine (I):** Purple.
+| Term Name | Optimal Weight ($w$) | Mathematical Formulation | Physical Function |
+| :--- | :--- | :--- | :--- |
+| **Gauss 1** | **-0.0356** | $\exp(-(d / 0.5)^2)$ | Short-range attractive Van der Waals dispersion. |
+| **Gauss 2** | **-0.00516** | $\exp(-((d - 3.0) / 2.0)^2)$ | Medium-range steric attraction. |
+| **Repulsion** | **+0.840** | $d^2 \quad (\text{for } d < 0)$ | Harsh penalty for steric clashes (jab atoms aapas me takra rahe hon). |
+| **Hydrophobic** | **-0.0351** | $1 \text{ if } d \le 0.5\text{ Å}; \quad 0 \text{ if } d \ge 1.5\text{ Å}$ | Favorable hydrophobic desolvation contact (grease packing). |
+| **Hydrogen Bonding** | **-0.587** | $1 \text{ if } d \le -0.7\text{ Å}; \quad 0 \text{ if } d \ge 0.0\text{ Å}$ | Directional electrostatic H-bond stabilization without explicit point charges. |
+
+### 3.2 Conformational Entropy Loss Penalty
+Vina intermolecular score $c$ ko rotatable bonds ($N_{\text{rot}}$) ke hisab se divide karta hai:
+
+$$\text{Final Score } (s) = \frac{c}{1 + w_{\text{rot}} \cdot N_{\text{rot}}}$$
+
+- **$w_{\text{rot}} = 0.0585$** (Rotational entropy weight).
+- **$N_{\text{rot}}$:** Molecule ke andar kitne active single bonds hain jo dock hone par freeze ho jayenge.
+- **Scientific Significance:** Agar kisi molecule me 15 rotatable bonds hain, to Vina uske score ko heavily penalize karega kyonki floppy molecules ko pocket me freeze karne ka entropy cost bohot zyada hota hai. Rigid molecules naturally behtar dock hoti hain!
 
 ---
 
-## 4. Non-Covalent Chemical Interactions (3D Bonds Ki Pehchan)
+## 4. Complete Alphabetical Dictionary of Abbreviations & Terms
 
-Dawa protein se Fevicol ki tarah permanent nahi judti; wo **kamjor lekin hajaron non-covalent forces** ke sum se judti hai. Bindora inko 3D viewer aur 2D LigPlot schematic me live draw karta hai:
+Har shortform aur term ka saral aur accurate scientific matlab:
+
+| Abbreviation / Term | Full Name | Scientific Meaning & Definition | Benchmark / Reference Value |
+| :--- | :--- | :--- | :--- |
+| **Å (Angstrom)** | Unit of Length | $1\text{ Å} = 10^{-10}\text{ meters} = 0.1\text{ nanometers}$. Atom aur bond lengths measure karne ki international unit. | Carbon-Carbon bond length $\approx 1.54\text{ Å}$. H-bond $\approx 2.8\text{ Å}$. |
+| **ADME** | Absorption, Distribution, Metabolism, Excretion | Pharmacology ka core framework jo batata hai ki body dawa ke sath kya karti hai. | Drug discovery ka #1 failure reason. |
+| **Ames Test** | Ames Mutagenicity | Salmonella bacteria par kiya jane wala test jo batata hai ki kya molecule DNA mutate karke Cancer cause kar sakta hai. | **Required:** Negative (Non-mutagenic). |
+| **B-Factor** | Temperature Factor | PDB structure me atom kitna vibrate ya fluctuate kar raha hai. Zyada B-factor ka matlab floppy/flexible loop. | $< 30\text{ Å}^2$: High confidence / rigid.<br>$> 60\text{ Å}^2$: Highly mobile / uncertain. |
+| **Blind Docking** | Global Cavity Search | Jab binding pocket ka coordinate pata na ho, to grid box ko poore protein par expand karke dock karna. | Used for allosteric site discovery. |
+| **cLogP / WLOGP** | Octanol-Water Partition Coefficient | Molecule kitna lipophilic (fat-soluble) hai vs hydrophilic (water-soluble). | **Ideal:** $1.0 \text{ to } 3.0$.<br>Poor oral absorption if $> 5.0$. |
+| **CYP450** | Cytochrome P450 Enzymes | Liver ke 5 mukhya enzymes (CYP1A2, 2C9, 2C19, 2D6, 3A4) jo drugs ko metabolize karte hain. | Checked for drug-drug interactions. |
+| **ΔG (Delta G)** | Binding Free Energy | Ligand aur receptor judne par release hone wali net Gibbs free energy ($\text{kcal/mol}$). | **Strong:** $\le -8.0\text{ kcal/mol}$.<br>**Weak:** $> -5.0\text{ kcal/mol}$. |
+| **Exhaustiveness** | Global Search Depth | AutoDock Vina ke Monte Carlo algorithm dwara run ki jane wali independent search trajectories ki sankhya. | **Fast:** 4<br>**Academic:** 8<br>**Publication:** 16 - 32 |
+| **FQ** | Fit Quality | Ligand Efficiency ko molecular size ke hisab se normalize karne wala index ($\text{LE} / \text{LE}_{\text{scale}}$). | **Target:** $\ge 0.80$. |
+| **Gasteiger Charges** | Partial Atomic Charges | Electronegativity equilibration method jisse har atom par partial electron density ($+q$ ya $-q$) assign hoti hai. | Essential for PDBQT preparation. |
+| **HBA** | Hydrogen Bond Acceptors | Polar Oxygen ya Nitrogen jinke paas lone electron pair hota hai jo proton attract karta hai. | **Lipinski:** $\le 10$. |
+| **HBD** | Hydrogen Bond Donors | Wo Hydrogens jo Oxygen ya Nitrogen se covalent bond se jude hain ($-\text{OH}, -\text{NH}_2$). | **Lipinski:** $\le 5$. |
+| **hERG** | Human Ether-à-go-go Channel | Heart ka potassium channel. Agar drug ise block kare to fatal cardiac arrhythmia (QT prolongation) hoti hai. | **Required:** Low / Non-inhibitor. |
+| **HIA** | Human Intestinal Absorption | Dawa goli ke roop me khane par aanto se blood me kitni absorb hogi. | **Target:** High absorption (> 80%). |
+| **Kd / Ki** | Dissociation / Inhibition Constant | Protein-ligand complex ko break karne ke liye required equilibrium concentration ($\text{nM}$ ya $\mu\text{M}$). | **Target:** $< 100\text{ nM}$. |
+| **LE** | Ligand Efficiency | Binding energy per heavy atom ($-\Delta G / N_{\text{heavy}}$). Small molecules ki potency compare karne ke kaam aata hai. | **Target:** $\ge 0.30\text{ kcal/mol/atom}$. |
+| **LipE / LLE** | Lipophilic Efficiency | $\text{pIC}_{50} - \text{cLogP}$. Batata hai ki binding specific molecular bonds se hai ya sirf generic grease se. | **Target:** $\ge 5.0$. |
+| **Lipinski Ro5** | Rule of Five (Pfizer) | Oral bioavailability ke 4 golden rules: $\text{MW} \le 500$, $\text{LogP} \le 5$, $\text{HBD} \le 5$, $\text{HBA} \le 10$. | Max 1 violation allowed. |
+| **mmCIF / CIF** | Macromolecular Crystallographic Information File | PDB format ka modern successor jo 100,000 se zyada atoms wale mega-complexes ko represent kar sakta hai. | Bindora auto-detects and converts CIF. |
+| **MW** | Molecular Weight | Molecule ka atomic mass ($\text{g/mol}$ ya Daltons). | **Lead-like:** $250 - 350\text{ Da}$.<br>**Drug-like:** $\le 500\text{ Da}$. |
+| **PAINS** | Pan-Assay Interference Compounds | Chemical groups jo false positive fluorescent ya covalent binding signal dete hain (e.g. Rhodanines, Quinones). | **Target:** Zero PAINS alerts. |
+| **PDB** | Protein Data Bank | 3D biological macromolecule coordinates store karne wala standard crystallographic format. | File extension: `.pdb` |
+| **PDBQT** | PDB + Charges (Q) + Torsions (T) | AutoDock Vina ka required input format with partial charges and rotatable bonds hierarchy. | File extension: `.pdbqt` |
+| **PGP** | P-glycoprotein Efflux Pump | Cell membrane pump jo drugs ko cells aur brain se bahar phenk deta hai. | Efflux liability assessment. |
+| **QED** | Quantitative Estimate of Drug-likeness | 0.0 se 1.0 ke scale par composite desirability function jo overall drug quality batata hai. | **Good:** $> 0.67$. |
+| **RMSD** | Root Mean Square Deviation | Do 3D poses ke corresponding atoms ke beech ka average spatial distance difference ($\text{Å}$). | **Success:** $\le 2.0\text{ Å}$.<br>**Fail:** $> 2.0\text{ Å}$. |
+| **RotB** | Rotatable Bonds | Single non-ring bonds jo freely rotate ho sakte hain (excluding terminal methyls and amide bonds). | **Veber:** $\le 10$. |
+| **SA Score** | Synthetic Accessibility Score | 1 (chemistry lab me banana bohot easy) se 10 (banana virtually impossible) tak ka complexity score. | **Target:** $< 4.0$. |
+| **SMILES** | Chemical String Notation | 2D chemical structure ka compact alphanumeric text code (e.g. Aspirin = `CC(=O)Oc1ccccc1C(=O)O`). | Universal input format. |
+| **TPSA** | Topological Polar Surface Area | Molecule ke polar atoms (O, N, attached H) ka total surface area ($\text{Å}^2$). | **Oral:** $\le 140\text{ Å}^2$.<br>**Brain (BBB):** $\le 90\text{ Å}^2$. |
+| **Veber Filter** | GSK Bioavailability Rules | Rotatable Bonds $\le 10$ aur $\text{TPSA} \le 140\text{ Å}^2$. Predicts high oral absorption in rats/humans. | Standard medicinal chemistry rule. |
+
+---
+
+## 5. Receptor Preparation Protocol (PDB to PDBQT Step-by-Step)
+
+Raw PDB file direct dock nahi ki ja sakti kyonki X-ray crystallography me Hydrogens dikhte nahi hain aur water molecules pocket ko block karte hain.
+
+```
+       RAW CRYSTALLOGRAPHIC TARGET (.PDB / .CIF)
+                         │
+                         ▼
+             [1. Solvent Water Stripping]
+          (Remove bulk HOH; preserve bridging waters)
+                         │
+                         ▼
+            [2. Heteroatom & Buffer Cleanup]
+          (Remove SO4, PO4, Glycerol, Crystallization Salts)
+                         │
+                         ▼
+             [3. Chain & Alternate Location Selection]
+          (Resolve A/B conformations; pick functional chain)
+                         │
+                         ▼
+               [4. Polar Hydrogen Addition]
+          (Add essential protonation states at pH 7.4)
+                         │
+                         ▼
+             [5. Partial Charge Assignment]
+          (Calculate Gasteiger-Marsili electrostatics)
+                         │
+                         ▼
+             CLEAN RECEPTOR FILE (.PDBQT)
+```
+
+### 5.1 Why Do We Remove Water Molecules?
+- In an X-ray crystal structure, hundreds of water molecules (`HOH`) freeze inside the crystal lattice.
+- When a drug enters the binding pocket, it **displaces bulk water molecules** into the surrounding solution. If you leave crystallographic waters in place, AutoDock Vina will treat them as solid stone walls and the drug will not be able to enter the cavity (steric clash).
+- **Exception (Catalytic Bridging Waters):** Agar koi water molecule receptor aur ligand ke beech stable double-hydrogen bond bridge bana rahi ho (jaise HIV-1 protease me Water 301), to use retain kiya ja sakta hai.
+
+### 5.2 Histidine Protonation Trap (pH 7.4)
+Histidine ke paas imidazole ring hoti hai jiska pKa ~6.0 hota hai:
+- **HID:** Hydrogen on Delta-nitrogen ($N_\delta$).
+- **HIE:** Hydrogen on Epsilon-nitrogen ($N_\epsilon$).
+- **HIP:** Both nitrogens protonated (Formal $+1$ positive charge).
+- Bindora automatic hydrogen optimization run karta hai taaki active site ke hydrogen bond donor/acceptor networks sahi ban sakein.
+
+---
+
+## 6. Ligand Preparation Protocol (2D SMILES to 3D PDBQT)
+
+```
+       2D Chemical SMILES String (e.g. CC(=O)Nc1ccc(O)cc1)
+                         │
+                         ▼
+            [1. Tautomer & Protonation at pH 7.4]
+       (Carboxylic acids -> COO-, Primary Amines -> NH3+)
+                         │
+                         ▼
+            [2. 3D Conformer Generation (ETKDGv3)]
+       (Experimental-Torsion Knowledge Distance Geometry)
+                         │
+                         ▼
+          [3. Force-Field Energy Minimization (MMFF94)]
+       (Relieve bond strain, adjust dihedral angles)
+                         │
+                         ▼
+             [4. Meeko Torsion Tree Definition]
+       (Identify rigid rings, select active rotatable bonds)
+                         │
+                         ▼
+             [5. Gasteiger Partial Charge Addition]
+                         │
+                         ▼
+                LIGAND FILE (.PDBQT)
+```
+
+### 6.1 Force-Field Energy Minimization
+2D drawing me bond angles flat hote hain ($180^\circ$ ya $120^\circ$). Real 3D space me $sp^3$ Carbon tetrahedral ($109.5^\circ$) hota hai.  
+Bindora **MMFF94 (Merck Molecular Force Field)** run karke bond stretch, angle bend, out-of-plane inversion, aur Van der Waals clashes ko minimize karke global lowest-energy conformer banata hai.
+
+---
+
+## 7. The Grid Box (Bounding Box) Science
+
+Grid box wo 3D boundary hai jiske andar AutoDock Vina ligand ke conformations ko sample karta hai.
+
+```
+                  GRID BOX PARAMETERS
+       ┌──────────────────────────────────────┐
+       │                                      │
+       │     Center Coordinates: (X, Y, Z)    │
+       │     Box Dimensions:     (Lx, Ly, Lz) │
+       │     Grid Spacing:       1.0 Å        │
+       │                                      │
+       │          [ Active Pocket ]           │
+       │             (Centroid)               │
+       │                                      │
+       └──────────────────────────────────────┘
+```
+
+### 7.1 Golden Rules for Grid Box Setup
+1. **Targeted / Focused Docking:**
+   - **Center:** Known co-crystallized inhibitor ke coordinates ka geometric mean ($X_{\text{avg}}, Y_{\text{avg}}, Z_{\text{avg}}$). Bindora me **"Pocket Centroid"** button ise 1 click me calculate karta hai.
+   - **Size:** $20\text{ Å} \times 20\text{ Å} \times 20\text{ Å}$ se $24\text{ Å} \times 24\text{ Å} \times 24\text{ Å}$.
+   - **Why?** Ye dimension ligand ko freely ghumne aur sabhi possible binding poses explore karne ki poori azaadi deti hai bina search volume ko unnecessarily bada kiye.
+2. **Blind Docking:**
+   - **Size:** $55\text{ Å} \times 55\text{ Å} \times 55\text{ Å}$ ya bada.
+   - **Caution:** Bada box search space ko $10\times$ bada deta hai. Blind docking me hamesha **Exhaustiveness ko 32** par set karna zaroori hai, warna algorithm pocket dhoondhe bina kisi random surface par trap ho jayega.
+
+---
+
+## 8. Exhaustiveness & Native CPU Multi-Core Scaling
+
+### 8.1 Exhaustiveness Ka Asal Matlab
+Vina ka search space ek pahadi ilaqe (energy landscape) jesa hota hai jisme hazaron gaddhe (local energy minima) hote hain aur sirf ek sabse gehra gaddha (global minimum = true binding pose) hota hai.  
+**Exhaustiveness** ka matlab hai: *Algorithm ne alag-alag random points se kitni independent search trajectories launch ki hain.*
+
+```
+Energy
+  ▲
+  │     Local Trap          Global Minimum (True Pose)
+  │       /\                  /
+  │      /  \                /
+  │  ───/    \───          ─/    \─
+  │              \        /
+  │               \______/
+  └───────────────────────────────────► Conformation Coordinate
+```
+
+- **Exhaustiveness = 4:** Sirf 4 trajectories. Fast hai lekin global minimum miss hone ka 40% risk rehta hai.
+- **Exhaustiveness = 8 (Standard Academic):** 8 trajectories. Good balance for preliminary screening.
+- **Exhaustiveness = 16 (Publication Grade):** 16 trajectories. Recommended for master's/PhD thesis data.
+- **Exhaustiveness = 32 (Deep High-Precision):** 32 trajectories. Benchmark precision. Flexible sidechains aur redocking ke liye mandatory.
+
+### 8.2 Native Hardware Acceleration Monitor
+AutoDock Vina single thread par chalne par bohot slow ho jata hai.  
+Bindora client-side server par detected **100% CPU cores** (`--cpu <cores>`) ko command-line argument me pass karta hai.  
+- Agar aapke laptop me **4 Cores / 4 Threads** hain (e.g. Intel Core i5), to Vina 4 independent Monte Carlo threads parallel run karta hai.
+- Bindora ka continuous background telemetry sampler Windows kernel ticks ko sample karke live per-core load monitor me dikhata hai.
+
+---
+
+## 9. Flexible Side Chains (Induced-Fit Docking)
+
+### 9.1 The Rigid Receptor Limitation
+Standard docking me receptor ke atoms stone ki tarah freeze hote hain. Agar active site ke entry gate par ek `TYR` ya `MET` residue ka sidechain thoda sa bahar nikla ho, to standard docking me drug molecule andar ghus hi nahi paegi aur docking score fail ho jayega (**False Negative**).
+
+### 9.2 Meeko Polymer Decomposition
+Bindora Meeko engine use karta hai:
+1. Active site residues select karein (e.g. `A:TYR:456`, `A:MET:766`, `A:THR:854`).
+2. Engine receptor ko split karta hai:
+   - **Rigid Receptor PDBQT:** 99% protein static rehta hai.
+   - **Flex PDBQT:** Selected residues ke single bonds free rotate ho sakte hain.
+3. Vina simulation ke dauran drug aur side-chains **dono ko simulataneously move karta hai**. Isse drug ke aane par amino acid rasta bana deta hai!
+- **Golden Rule:** Kabhi bhi 6 se zyada flexible residues na chunein. Har extra flexible residue se conformational space exponentially multiply ho jata hai, jisse calculation time ghanto tak badh sakta hai.
+
+---
+
+## 10. Redocking Self-Validation & The 2.0 Å RMSD Benchmark
+
+Computational pharmacology me kisi docking protocol ko tab tak valid nahi mana jata jab tak wo **Redocking Test** pass na kare.
+
+```
+              REDOCKING VALIDATION PROTOCOL
+              
+            Known Crystal Complex (e.g. 1CX2, 2ITY)
+                              │
+              ┌───────────────┴───────────────┐
+              ▼                               ▼
+    [Extract Crystal Ligand]       [Clean Receptor Target]
+              │                               │
+              └───────────────┬───────────────┘
+                              ▼
+               [Dock Crystal Ligand Back In]
+                              │
+                              ▼
+            [Calculate Heavy-Atom RMSD Alignment]
+              │
+              ├─── RMSD ≤ 2.0 Å  ──► [VALIDATED: Protocol Approved]
+              └─── RMSD > 2.0 Å  ──► [FAILED: Protocol Inaccurate]
+```
+
+### 10.1 RMSD Equation
+Root Mean Square Deviation crystal pose aur redocked pose ke har heavy atom ke coordinates ke beech ka Euclidean distance error hai:
+
+$$\text{RMSD} = \sqrt{\frac{1}{N} \sum_{i=1}^{N} \left( (x_i^{\text{dock}} - x_i^{\text{cryst}})^2 + (y_i^{\text{dock}} - y_i^{\text{cryst}})^2 + (z_i^{\text{dock}} - z_i^{\text{cryst}})^2 \right)}$$
+
+### 10.2 Scientific Thresholds
+- **RMSD ≤ 1.0 Å (Sub-Angstrom):** Exceptional crystallographic accuracy. Atoms almost exact overlay par baithte hain.
+- **1.0 Å < RMSD ≤ 2.0 Å:** Internationally accepted validation success benchmark (Nature, J. Med. Chem., JACS standard).
+- **RMSD > 2.0 Å:** Failed validation. Iska matlab grid box coordinates galat hain, box size chota hai, ya exhaustiveness kam hai.
+
+---
+
+## 11. Decoding 3D Non-Covalent Interactions in the Viewer
+
+Bindora 3Dmol viewer me har bond ka visual code aur criteria:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                    NON-COVALENT FORCES HIERARCHY                       │
+│                   3D INTERACTION STRENGTH HIERARCHY                    │
 │                                                                        │
-│  1. Salt Bridge (Ionic)   :  ~3.0 - 5.0 kcal/mol  [Strongest]          │
-│  2. Hydrogen Bond         :  ~1.0 - 3.0 kcal/mol  [Directional]        │
-│  3. Pi-Cation / Pi-Pi     :  ~1.0 - 2.5 kcal/mol  [Aromatic rings]     │
-│  4. Halogen Bond          :  ~0.5 - 2.0 kcal/mol  [Sigma-hole]         │
-│  5. Hydrophobic / VDW     :  ~0.5 - 1.0 kcal/mol  [Bulk surface pack]  │
+│  1. Salt Bridge (Ionic)   :  ~3.0 - 5.0 kcal/mol  [Magenta Dashes]     │
+│  2. Hydrogen Bond         :  ~1.0 - 3.0 kcal/mol  [Yellow Dashes]      │
+│  3. Pi-Cation / Pi-Pi     :  ~1.0 - 2.5 kcal/mol  [Cyan / Orange]      │
+│  4. Halogen Bond (σ-hole) :  ~0.5 - 2.0 kcal/mol  [Green Lines]        │
+│  5. Hydrophobic (VDW)     :  ~0.5 - 1.0 kcal/mol  [Cavity Packing]     │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **Hydrogen Bonds (H-Bonds — Peeli/Yellow Dashed Lines):**
-   - **Distance:** $1.8\text{ \AA} \text{ se } 3.2\text{ \AA}$.
-   - **Rule:** Ek Donor ($-\text{N}-\text{H}$ ya $-\text{O}-\text{H}$) apna proton Acceptor ($=\text{O}$ ya $:\text{N}$) ko share karta hai. Angle $120^\circ \text{ se } 180^\circ$ hona chahiye.
-2. **Salt Bridges (Ionic Bonds — Gulabi/Magenta Dashed Lines):**
-   - **Distance:** $\le 4.0\text{ \AA}$.
-   - **Rule:** Full formal negative charge (`ASP`/`GLU`) aur full formal positive charge (`ARG`/`LYS`) ke beech ka electrostatic attraction.
-3. **$\pi$-$\pi$ Stacking (Aromatic Interaction — Cyan/Aasmani Dashed Lines):**
-   - **Distance:** $\le 4.5\text{ \AA}$.
-   - **Rule:** Do aromatic benzene rings (jaise drug ki ring aur protein ke `PHE`, `TYR`, ya `TRP`) ek dusre ke upar parallel (Face-to-Face) ya T-shape (Edge-to-Face) baithti hain.
-4. **$\pi$-Cation Interaction (Narangi/Orange Lines):**
-   - **Distance:** $\le 4.5\text{ \AA}$.
-   - **Rule:** Aromatic electron cloud aur positive charge (`LYS`, `ARG`, ya tertiary amine) ka attraction.
+1. **Hydrogen Bonds (Yellow Dashed Lines):**
+   - **Distance:** $1.8\text{ Å} \text{ se } 3.2\text{ Å}$.
+   - **Rule:** Donor $-\text{NH}$ ya $-\text{OH}$ proton ko Acceptor $=\text{O}$ ya $:\text{N}$ ke lone pair se share karta hai. Angle $\ge 120^\circ$.
+2. **Salt Bridges (Magenta Dashed Lines):**
+   - **Distance:** $\le 4.0\text{ Å}$.
+   - **Rule:** Opposite formal charges ka attraction (e.g. `ASP 855` ya `GLU 286` ka $-\text{COO}^-$ group, ligand ke protonated basic nitrogen $-\text{NH}_3^+$ ya `ARG 555` ke guanidinium se judta hai).
+3. **π-π Stacking (Cyan Dashed Lines):**
+   - **Distance:** $\le 4.5\text{ Å}$.
+   - **Rule:** Aromatic rings ke $\pi$-electron clouds aapas me Face-to-Face (sandwich) ya Edge-to-Face (T-shaped) orient hote hain (`PHE`, `TYR`, `TRP`, `HIS`).
+4. **π-Cation Interactions (Orange Lines):**
+   - **Distance:** $\le 4.5\text{ Å}$.
+   - **Rule:** Aromatic benzene ring aur positive ion (`ARG`, `LYS`, ya protonated ligand nitrogen) ka attraction.
 5. **Halogen Bonds (Green Lines):**
-   - **Distance:** $\le 3.5\text{ \AA}$.
-   - **Rule:** Halogen atom (Cl, Br, I) ke aage ek electropositive "$\sigma$-hole" hota hai jo Oxygen lone pair se judta hai.
+   - **Distance:** $\le 3.5\text{ Å}$.
+   - **Rule:** Halogen atom (F, Cl, Br, I) ke head par ek electropositive $\sigma$-hole hota hai jo receptor ke backbone carbonyl oxygen se judta hai.
 
 ---
 
-## 5. The Science Behind the "Cloud" (Molecular Surface)
+## 12. The Science Behind the "Cloud" (Pocket Cavity Surfaces)
 
-Bindora ke 3D viewer me **"Pocket Surface (5Å)"** ya **"Surface"** toggle on karne par jo translucent grey/colored cloud dikhta hai, uska exact scientific formula yeh hai:
+Bindora me **"Pocket Surface (5Å)"** select karne par jo translucent cloud dikhta hai, wo receptor ke active pocket ki 3D Van der Waals boundary hoti hai:
 
-$$\text{Surface Selection} = \left\{ \text{Atom}_i \in \text{Receptor} \mid \min_{j \in \text{Ligand}} \|\mathbf{r}_i - \mathbf{r}_j\| \le 5.5\text{ \AA} \right\}$$
+$$\text{Surface Selection} = \left\{ \text{Atom}_i \in \text{Receptor} \mid \min_{j \in \text{Ligand}} \|\mathbf{r}_i - \mathbf{r}_j\| \le 5.5\text{ Å} \right\}$$
 
-### Kyu Ye Kisi Par Banta Hai aur Kisi Par Adha/Nahi Banta?
-1. **Gufa (Buried Pocket) vs. Darwaza (Solvent Front):**
-   - **Pichla Hissa (Cloud Covered):** Drug ka pichla hissa active site ke andar gehraai me hota hai. Waha protein ke amino acids use charo taraf se gherte hain, isliye waha protein ki deewaar (cloud) banti hai.
-   - **Aage Ka Hissa (Khula / No Cloud):** Dawa ka aage ka hissa (jaise Gefitinib ka morpholine group) cellular cytoplasm/paani ki taraf bahar jhankta hai taaki dawa blood me dissolve ho sake. Darwaze par protein atoms maujood nahi hote, isliye waha cloud physically ban hi nahi sakta!
-2. **Cloud Colors Ka Scientific Code:**
-   - **White/Grey:** Hydrophobic non-polar pocket walls (`LEU`, `VAL`, `PHE`).
-   - **Lal (Red):** Electronegative Oxygen (`ASP`, `GLU`).
-   - **Neela (Blue):** Electropositive Nitrogen (`LYS`, `ARG`).
-   - **Peela/Green:** Gatekeeper Methionine/Cysteine Sulfur (`MET`, `CYS`).
+### 12.1 Gufa (Buried Pocket) vs. Darwaza (Solvent Front)
+* **Pichla Hissa (Jaha Cloud Dikh Raha Hai):**
+  Drug ka pichla hissa active site ke andar gehraai me hota hai. Waha protein ke amino acids use charo taraf se gherte hain, isliye waha protein ki deewaar (cloud) banti hai.
+* **Aage Ka Hissa (Khula / No Cloud):**
+  Dawa ka aage ka hissa (jaise Gefitinib ka morpholine solubilizing group) cellular cytoplasm/paani ki taraf bahar jhankta hai taaki dawa blood me dissolve ho sake. Darwaze par protein atoms maujood nahi hote, isliye waha cloud physically ban hi nahi sakta!
 
----
-
-## 6. Bindora Dock: Step-by-Step Practical Docking Workflow
-
-Docking run karne ka standard scientific protocol:
-
-```
-[Tab 1: Target Prep]  ──→  [Tab 2: Molecular Docking]  ──→  [Tab 3: ADME Profile]
-   • RCSB PDB Download         • SMILES to 3D Conformer        • Lipinski Rule of 5
-   • Water Strip               • Grid Box Definition           • BOILED-Egg Brain/Gut
-   • Gasteiger Charges         • Vina Multi-Core Search        • Bioavailability Radar
-                               • Redocking Self-Validation
-                                        ↓
-[Tab 7: Dossier / Audit] ←── [Tab 5: AI Report] ←── [Tab 4: ChEMBL Cross-Check]
-   • Scripps Vina SHA-256      • Publication Paper Synth       • Experimental IC50 / Ki
-   • Reproducibility Seeds     • Lead Optimization Advice      • Wet-Lab Assays Match
-```
-
-### Step 1: Target Protein Prepare Karna (Tab 1)
-1. RCSB PDB ID enter karein (e.g., `1CX2` for COX-2, `2ITY` for EGFR, `1IEP` for BCR-ABL Kinase, `1HSG` for HIV Protease).
-2. Bindora automatic clean-up run karta hai:
-   - Bulk crystallographic waters (`HOH`) ko remove karta hai taaki pocket khali ho sake.
-   - Crystallization buffer ions (`SO4`, `GOL`, `CL`, `NA`) ko filter karta hai.
-   - PDBQT format me convert karke polar Hydrogens aur **Gasteiger Partial Charges** assign karta hai.
-
-### Step 2: Ligand Prepare Karna (Tab 2)
-1. Ligand input karein: SMILES paste karein ya 2D Molecule Ketcher me draw karein.
-2. Bindora internally **RDKit ETKDGv3** algorithm se 2D representation ko lowest-energy 3D conformation me convert karta hai aur **MMFF94 force-field** se geometry minimize karta hai.
-3. Meeko engine se ligand ki **Torsion Tree** define hoti hai (konsa bond ghumega, konsa rigid ring hai).
-
-### Step 3: Grid Box Set Karna
-- **Pocket Centroid Button:** Automatically co-crystallized drug ke coordinates ka geometric center $(X, Y, Z)$ calculate karta hai.
-- **Blind Docking Button:** Grid box ko $60\text{ \AA} \times 60\text{ \AA} \times 60\text{ \AA}$ tak expand karta hai agar aapko pocket ki location pata na ho.
-- **Ideal Box Size:** Usually $20\text{ \AA} \times 20\text{ \AA} \times 20\text{ \AA}$ se $24\text{ \AA} \times 24\text{ \AA} \times 24\text{ \AA}$ sabse accurate results deta hai.
-
-### Step 4: Execute Docking
-- Click **"Execute 3D Molecular Docking"**. AutoDock Vina local search chalayega aur best 9 binding poses calculate karega.
+### 12.2 Cloud Colors Ka Chemical Code
+- **White / Grey:** Hydrophobic non-polar pocket walls (`LEU`, `VAL`, `PHE`, `ALA`).
+- **Lal (Red):** Electronegative Oxygen (`ASP`, `GLU`) — H-bond acceptors.
+- **Neela (Blue):** Electropositive Nitrogen (`LYS`, `ARG`) — H-bond donors.
+- **Peela / Green:** Gatekeeper Methionine/Cysteine Sulfur (`MET`, `CYS`).
 
 ---
 
-## 7. Grid Box, Exhaustiveness, & Native CPU Multi-Threading
+## 13. ADME, Pharmacokinetics, & The BOILED-Egg Model
 
-### 7.1 Exhaustiveness Kya Hai?
-AutoDock Vina ka global search algorithm **Iterated Local Search (ILS) with Monte Carlo** par chalta hai.  
-**Exhaustiveness** ka matlab hai: *Algorithm ne energy landscape par kitni independent search trajectories chalayi hain.*
-
-| Exhaustiveness Level | Independent Searches | CPU Time | Accuracy & Use Case |
-| :--- | :--- | :--- | :--- |
-| **4 (Screening Fast)** | 4 Trajectories | ~2 to 5 seconds | Huge compound libraries screening (rough filtering). |
-| **8 (Standard Academic)** | 8 Trajectories | ~8 to 15 seconds | College research, preliminary binding pose check. |
-| **16 (Publication Grade)** | 16 Trajectories | ~25 to 45 seconds | Peer-reviewed journals, high-confidence binding modes. |
-| **32 (Deep Exploration)** | 32 Trajectories | ~1 to 2 minutes | Highly flexible molecules ($RotB > 8$) & benchmark redocking. |
-
-### 7.2 Native CPU Hardware Acceleration
-Bindora web-browser me chalne ke bawajood client PC ke **physical & logical CPU cores** ko real-time utilize karta hai:
-- Agar aapke laptop me **4 Cores / 4 Threads** hain (e.g. Intel Core i5), to Vina `--cpu 4` command ke sath 4 parallel C++ threads dispatch karta hai.
-- 8-Core PC par Vina `--cpu 8` par chalta hai, jisse calculation 8 guna fast ho jaati hai.
-- Header me **"Native CPU"** badge par click karke aap har ek core ka live utilization load monitor kar sakte hain.
-
----
-
-## 8. Flexible Side Chains (Induced-Fit Simulation)
-
-### 8.1 Rigid Receptor Ki Kami
-Standard docking me protein ke amino acids pathar ki deewaar ki tarah freeze hote hain. Real biology me jab drug pocket me ghusti hai, to active site ke amino acids apna rasta badalte hain. Agar koi amino acid rasta block kar raha ho, to standard docking me drug waha ghus hi nahi paati (steric clash penalty).
-
-### 8.2 Bindora Flexible Residue Engine
-Bindora Meeko polymer partitioning use karta hai:
-1. Target active site ke flexible candidates (e.g., `A:TYR:456`, `A:MET:766`) select karein.
-2. Engine protein structure ko do hisson me tod deta hai:
-   - **Rigid Receptor PDBQT:** Baaki poora protein static rehta hai.
-   - **Flex PDBQT:** Selected amino acids ke single bonds freely rotate ho sakte hain.
-3. Vina docking ke dauran ligand aur selected side-chains **dono ko ek sath move karta hai**. Isse true **Induced-Fit Docking** prapt hoti hai!
-
----
-
-## 9. Redocking Self-Validation & RMSD Benchmark
-
-Science me kisi computational prediction ko tab tak valid nahi maana jata jab tak wo **known crystallographic benchmark** ko reproduce na kar sake.
-
-```
-       REDOCKING VALIDATION WORKFLOW
-       
-       Crystallographic Co-crystal (RCSB PDB)
-                     │
-       ┌─────────────┴─────────────┐
-       ▼                           ▼
-[Extract Native Ligand]     [Clean Receptor PDBQT]
-       │                           │
-       └─────────────┬─────────────┘
-                     ▼
-          [Dock Native Ligand Back]
-                     │
-                     ▼
-         [Calculate RMSD Alignment]
-    ┌────────────────┬────────────────┐
-    ▼                                 ▼
-RMSD ≤ 2.0 Å                      RMSD > 2.0 Å
-[VALIDATED: PASS]                 [INVALID: FAIL]
-```
-
-### 9.1 RMSD Ka Formula
-Root Mean Square Deviation crystal pose aur redocked pose ke har heavy atom ke beech ke distance ka quadratic mean hota hai:
-
-$$\text{RMSD} = \sqrt{\frac{1}{N} \sum_{i=1}^{N} \|\mathbf{r}_i^{\text{docked}} - \mathbf{r}_i^{\text{crystal}}\|^2}$$
-
-### 9.2 Validation Criteria
-- **$\text{RMSD} \le 1.0\text{ \AA}$ (Sub-Angstrom):** Exceptional crystallographic match (Gold Standard).
-- **$1.0\text{ \AA} < \text{RMSD} \le 2.0\text{ \AA}$:** Validated research benchmark. Paper me publish karne yogya.
-- **$\text{RMSD} > 2.0\text{ \AA}$:** Failed validation. Iska matlab grid box galat hai ya exhaustiveness kam hai.
-
----
-
-## 10. ADME, BOILED-Egg, & Pharmacokinetics Interpretation
-
-Dawa chahe pocket me kitni bhi majbooti se dock ho jaye (chahe $\Delta G = -15\text{ kcal/mol}$ ho), agar wo pet me pachegi nahi ya liver me toxic ban jayegi, to wo mariz ko theek nahi kar sakti. Isliye **ADME Profiling** zaroori hai:
+Docking sirf affinity batati hai. Dawa mariz tak tabhi pahuchegi jab wo **ADME (Absorption, Distribution, Metabolism, Excretion)** criteria pass kare.
 
 ```
             BOILED-Egg PHARMACOKINETIC MODEL
@@ -305,32 +431,68 @@ Dawa chahe pocket me kitni bhi majbooti se dock ho jaye (chahe $\Delta G = -15\t
 └─────────────────────────────────────────────────────────┘
 ```
 
-1. **BOILED-Egg White Zone (HIA):** Human Intestinal Absorption. Dawa goli (tablet) ke roop me khane par aanto me aasani se sokh li jayegi.
+1. **BOILED-Egg White Zone (HIA):** Human Intestinal Absorption. Dawa tablet ke roop me khane par pet aur aanto se blood me absorb ho jayegi.
 2. **BOILED-Egg Yellow Yolk (BBB):** Blood-Brain Barrier penetration.
-   - **Depression / Alzheimer / Epilepsy Drugs:** Yolk ke andar honi chahiye.
-   - **Heart / Diabetes / Cancer Drugs:** Yolk se bahar honi chahiye taaki dimaagi side-effects (dizziness, sedation) na hon.
-3. **P-glycoprotein Substrate ($PGP^+$):** Blue dot ka matlab P-gp pump dawa ko brain se bahar phenk dega.
-4. **Lipinski's Rule of 5:**
+   - **Brain Drugs (Alzheimer, Depression):** Yolk ke andar hona zaroori hai.
+   - **Periphery Drugs (Heart, Cancer, Diabetes):** Yolk se bahar hona chahiye taaki central nervous system side-effects na hon.
+3. **P-glycoprotein Substrate (PGP+ / PGP-):** Blue dots indicate substrate for P-gp pump jo drug ko cells se bahar throw kar deta hai.
+4. **Lipinski's Rule of Five:**
    - Molecular Weight $\le 500\text{ Da}$
-   - $\text{cLogP} \le 5$
+   - $\text{cLogP} \le 5.0$
    - $\text{HBD} \le 5$
    - $\text{HBA} \le 10$
-   - *Max 1 violation allowed for oral drugs.*
 
 ---
 
-## 11. Troubleshooting & Pro Tips for Publishing Research Papers
+## 14. Complete Bindora Studio Walkthrough
 
-1. **Binding Energy Bohot Kam ($>-5.0\text{ kcal/mol}$) Kyu Aa Rahi Hai?**
-   - Molecule bohot chota (fragment) hai. Heavy atoms badhayein ya aromatic rings jodkar hydrophobic contacts banayein.
-2. **Redocking Fail Kyu Ho Rahi Hai?**
-   - Grid box size badhayein ($22\text{ \AA}$ karein).
-   - Exhaustiveness ko 8 se badhakar 32 karein.
-   - Pocket Centroid coordinate check karein.
-3. **Research Paper Me Kaise Report Karein?**
-   - Software citation: *AutoDock Vina 1.2.5 (Scripps Research Institute)*, *RDKit (Open-source cheminformatics)*, *Meeko 0.5.x*.
-   - Binding Affinity ko hamesha **$\text{kcal/mol}$** me likhein aur saath me **$K_i$ calculate** karein.
-   - 2D Interaction Diagram (Hydrogen bonds, Salt bridges, RMSD) ko figure bana kar insert karein.
+Har tab aur button ka practical workflow:
+
+### Tab 1: Target Preparation
+- **RCSB PDB Fetcher:** 4-letter PDB code (e.g. `1CX2`, `2ITY`, `1IEP`, `1HSG`) enter karke direct RCSB server se download karein.
+- **Custom Upload:** Local `.pdb`, `.cif`, ya `.pdbqt` file upload karein.
+- **Automated Cleaning:** Bulk waters, buffers, aur non-standard heteroatoms ko filter karke Gasteiger partial charges assign karta hai.
+
+### Tab 2: 3D Molecular Docking Studio
+- **Ligand Input:** SMILES string paste karein ya 2D Ketcher editor me chemical structure draw karein.
+- **Pocket Centroid Button:** Co-crystallized inhibitor ke coordinates ka geometric center $(X,Y,Z)$ calculate karta hai.
+- **Blind Docking Button:** Grid box ko poore protein surface par expand karta hai.
+- **Exhaustiveness Selector:** 4 (Fast), 8 (Standard), 16 (Publication), 32 (Deep Exploration).
+- **Sampling Mode:** Single seed vs multi-seed replicate sampling.
+- **Execute 3D Molecular Docking:** Scripps Vina multi-core search run karta hai.
+- **Redocking Benchmark Button:** Co-crystallized ligand ko usi pocket me wapas dock karke RMSD score calculate karta hai.
+
+### Tab 3: ADME & Toxicity Profiling
+- RDKit engine se Lipinski Rule of 5, Veber filter, PAINS alerts, synthetic accessibility, aur BOILED-Egg plot generate karta hai.
+
+### Tab 4: Wet-Lab Bioactivity Cross-Check
+- EMBL-EBI ChEMBL database se direct query karke wet-lab experimental assays ($K_i, \text{IC}_{50}, \text{EC}_{50}$) ke sath docking score compare karta hai.
+
+### Tab 5: AI Scientific Report
+- Publication-ready manuscript generate karta hai with Abstract, Methods, Results, Discussion, aur References.
+
+### Tab 6: High-Throughput Batch Virtual Screening
+- Multi-compound SMILES libraries ko single pocket ke against screen karke ranked leaderboard generate karta hai.
+
+### Tab 7: Regulatory Dossier & Audit
+- Exact Scripps Vina version, random seeds, SHA-256 parameter hashes, aur reproducibility logs export karta hai.
+
+---
+
+## 15. Publishing Your Docking Results in High-Impact Journals
+
+Nature, Journal of Medicinal Chemistry, Bioorganic & Medicinal Chemistry me publish karne ke liye standard checklist:
+
+1. **Always Report Software Versions:**
+   - *AutoDock Vina 1.2.5 (Scripps Research Institute)*
+   - *RDKit Open-Source Cheminformatics (Release 2024.x)*
+   - *Meeko 0.5.x Flexible Torsion Engine*
+2. **Report Grid Box Coordinates Explicitly:**
+   - Journal paper me Grid Box center $(X, Y, Z)$ aur dimensions $(L_X, L_Y, L_Z)$ in Angstroms likhna zaroori hota hai.
+3. **Include Redocking RMSD Proof:**
+   - Paper me likhein: *"The docking protocol was scientifically validated by redocking the co-crystallized native ligand, yielding a heavy-atom RMSD of 0.82 Å (RMSD < 2.0 Å benchmark)."*
+4. **Pair Docking Scores with Ligand Efficiency (LE) & 2D Interaction Plots:**
+   - Report $\Delta G$ in $\text{kcal/mol}$, calculate $K_i$ in $\text{nM}$, and present the 2D LigPlot interaction schematic showing Hydrogen bonds and Salt bridges.
 
 ---
 *Bindora Dock — Precision Preclinical Pharmacology & Molecular Simulation System.*
