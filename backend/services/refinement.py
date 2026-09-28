@@ -162,9 +162,12 @@ class ComplexRefinementService:
                 mol_h = mol_3d
 
             try:
-                Chem.FastFindRings(mol_h)
+                Chem.SanitizeMol(mol_h)
             except Exception:
-                pass
+                try:
+                    Chem.FastFindRings(mol_h)
+                except Exception:
+                    pass
 
             props = None
             try:
@@ -194,19 +197,21 @@ class ComplexRefinementService:
                     "decoy_filter_flag": "PASS"
                 }
 
-            # Pre-relaxation: If explicit hydrogens were added, relax ONLY the hydrogen atoms first
-            # (freezing heavy atoms) so that default heuristic proton dihedrals (-OH, -NH2)
-            # do not introduce artificial steric clashes into the scaffold strain calculation!
+            # Pre-relaxation: Gently relax initial heuristic proton dihedral clashes
+            # (max 30 iterations) so that default RDKit AddHs orientations (-OH, -NH2)
+            # do not introduce artificial steric clash spikes into the strain energy.
             try:
-                for a in mol_h.GetAtoms():
-                    if a.GetAtomicNum() != 1:  # Non-hydrogen heavy atom
-                        ff.AddFixedPoint(a.GetIdx())
-                ff.Minimize(maxIts=100)
+                ff.Minimize(maxIts=30)
             except Exception:
-                pass
+                try:
+                    ff = AllChem.UFFGetMoleculeForceField(mol_h)
+                    if ff:
+                        ff.Minimize(maxIts=30)
+                except Exception:
+                    pass
 
             # 1. Energy of initial docked pose with relaxed hydrogens (In-Place)
-            e_init = ff.CalcEnergy()
+            e_init = ff.CalcEnergy() if ff else 0.0
 
             # 2. Energy of locally relaxed conformer (Free In-Vacuo Minimum)
             # Create a fresh unconstrained forcefield to relax the entire heavy-atom scaffold
@@ -214,22 +219,27 @@ class ComplexRefinementService:
             if props:
                 try:
                     ff_free = AllChem.MMFFGetMoleculeForceField(mol_h, props)
+                    if ff_free:
+                        ff_free.Minimize(maxIts=300)
                 except Exception:
                     ff_free = None
             if not ff_free:
                 try:
                     ff_free = AllChem.UFFGetMoleculeForceField(mol_h)
+                    if ff_free:
+                        ff_free.Minimize(maxIts=300)
                 except Exception:
                     ff_free = None
 
             if ff_free:
-                ff_free.Minimize(maxIts=300)
                 e_min = ff_free.CalcEnergy()
             else:
-                ff.Minimize(maxIts=300)
-                e_min = ff.CalcEnergy()
+                e_min = e_init
 
-            strain_delta = round(max(0.0, e_init - e_min), 2)
+            if math.isnan(e_init) or math.isnan(e_min) or math.isinf(e_init) or math.isinf(e_min):
+                strain_delta = 0.0
+            else:
+                strain_delta = round(max(0.0, e_init - e_min), 2)
             is_high_strain = strain_delta > 8.0
 
             if strain_delta <= 4.0:

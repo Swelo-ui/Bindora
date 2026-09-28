@@ -2787,14 +2787,27 @@ class BindoraApp {
       if (elCov) {
         const cov = currentPose.covalent;
         const topP = cov?.top_pairing;
-        if (cov && cov.is_covalent_candidate && topP && (cov.covalent_feasibility_score >= 0.40 || topP.covalent_feasibility_score >= 0.40)) {
-          elCov.textContent = `${topP.nucleophile_residue} (Warhead: ${topP.warhead_name || 'Active'})`;
-          elCov.className = "text-purple-300 font-bold text-[11px]";
-          elCov.title = `Covalent pairing feasible with ${topP.nucleophile_residue} (Distance: ${topP.distance_angstroms} Å)`;
+        const score = topP?.feasibility_score ?? cov?.covalent_feasibility_score ?? 0;
+        const warheadName = topP?.warhead || cov?.warheads_detected?.[0] || 'Active Warhead';
+
+        if (cov && cov.is_covalent_candidate) {
+          if (topP && (score >= 0.25 || topP.distance_angstroms <= 5.8)) {
+            elCov.textContent = `${topP.nucleophile_residue} (${topP.distance_angstroms} Å • ${warheadName.split('/')[0].trim()})`;
+            elCov.className = "text-purple-300 font-bold text-[11px]";
+            elCov.title = `Covalent pairing candidate: ${topP.nucleophile_residue} with ${warheadName} (Distance: ${topP.distance_angstroms} Å, Feasibility: ${(score * 100).toFixed(0)}%)`;
+          } else if (topP) {
+            elCov.textContent = `${topP.nucleophile_residue} (${topP.distance_angstroms} Å • Distant)`;
+            elCov.className = "text-purple-300/80 font-medium text-[11px]";
+            elCov.title = `Warhead detected (${warheadName}), but nucleophile is distant (${topP.distance_angstroms} Å)`;
+          } else {
+            elCov.textContent = `${warheadName.split('/')[0].trim()} (No Nu in 6.5 Å)`;
+            elCov.className = "text-purple-300/80 font-medium text-[11px]";
+            elCov.title = `Electrophilic warhead detected (${warheadName}), but no catalytic nucleophiles within 6.5 Å in this pose`;
+          }
         } else {
           elCov.textContent = "None (Reversible)";
           elCov.className = "text-neutral-400 font-medium text-[11px]";
-          elCov.title = "No covalent pairing within attack distance; standard non-covalent reversible binding";
+          elCov.title = "No electrophilic warhead detected in ligand; standard non-covalent reversible inhibitor";
         }
       }
     }
@@ -2829,8 +2842,11 @@ class BindoraApp {
           ? '<span class="px-1.5 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-800 text-[9px] font-mono font-medium" title="Scoring discordance across empirical and physics engines">Disc</span>'
           : '<span class="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 text-[9px] font-mono font-medium">Mod</span>';
 
-        const covBadge = p.covalent?.is_covalent_candidate && (p.covalent?.covalent_feasibility_score >= 0.40 || p.covalent?.top_pairing?.covalent_feasibility_score >= 0.40)
-          ? `<span class="px-1 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 text-[9px] font-mono font-medium" title="Covalent Warhead: ${p.covalent.feasibility_assessment}">Cov</span>`
+        const topP = p.covalent?.top_pairing;
+        const covScore = topP?.feasibility_score ?? p.covalent?.covalent_feasibility_score ?? 0;
+        const hasCovWarhead = p.covalent?.is_covalent_candidate;
+        const covBadge = (hasCovWarhead && (covScore >= 0.25 || (topP && topP.distance_angstroms <= 5.8)))
+          ? `<span class="px-1 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 text-[9px] font-mono font-medium" title="Covalent Warhead: ${topP ? topP.nucleophile_residue + ' (' + topP.distance_angstroms + ' Å)' : (p.covalent?.feasibility_assessment || 'Active')}">Cov</span>`
           : '';
 
         const mmgbsaVal = p.mmgbsa_delta_g_kcal;

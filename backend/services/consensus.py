@@ -156,7 +156,7 @@ class ConsensusScoringService:
             rank_spread = max(ind_ranks) - min(ind_ranks)
 
             # Confidence classification:
-            # Poses are only flagged as high-strain decoys if internal strain exceeds 8.0 kcal/mol,
+            # Poses are only flagged as high-strain decoys if internal strain exceeds 8.0 kcal/mol cutoff,
             # or if strain is elevated (>6.5 kcal/mol) with net unfavorable MM-GBSA (ΔG > 0.0).
             is_unfavorable_desolv = mmgbsa_vals[i] > 0.0
             if st > cls.HIGH_STRAIN_CUTOFF:
