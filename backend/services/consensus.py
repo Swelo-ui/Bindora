@@ -28,8 +28,8 @@ class ConsensusScoringService:
         "cnn": 0.20
     }
 
-    STRAIN_PENALTY_THRESHOLD = 4.0   # kcal/mol: strain above this begins penalty
-    HIGH_STRAIN_CUTOFF = 6.0         # kcal/mol: flags decoy
+    STRAIN_PENALTY_THRESHOLD = 5.0   # kcal/mol: strain above this begins penalty
+    HIGH_STRAIN_CUTOFF = 8.0         # kcal/mol: flags decoy (> 8.0 kcal/mol)
 
     @classmethod
     def compute_pose_consensus(
@@ -155,14 +155,20 @@ class ConsensusScoringService:
             ind_ranks = [ranks_vina[i], ranks_vinardo[i], ranks_mmgbsa[i], ranks_cnn[i]]
             rank_spread = max(ind_ranks) - min(ind_ranks)
 
-            # Confidence classification
+            # Confidence classification:
+            # Poses are only flagged as high-strain decoys if internal strain exceeds 8.0 kcal/mol,
+            # or if strain is elevated (>6.5 kcal/mol) with net unfavorable MM-GBSA (ΔG > 0.0).
+            is_unfavorable_desolv = mmgbsa_vals[i] > 0.0
             if st > cls.HIGH_STRAIN_CUTOFF:
                 confidence = "DECOY_HIGH_STRAIN"
                 conf_desc = f"Pose flagged as high-strain decoy ({st:.1f} kcal/mol > {cls.HIGH_STRAIN_CUTOFF} kcal/mol cutoff)."
-            elif rank_spread <= 1 and mean_rank <= 2.0:
+            elif st > 6.5 and is_unfavorable_desolv:
+                confidence = "DECOY_HIGH_STRAIN"
+                conf_desc = f"Pose flagged as decoy due to elevated strain ({st:.1f} kcal/mol) and unfavorable MM-GBSA (+{mmgbsa_vals[i]:.1f} kcal/mol)."
+            elif rank_spread <= 2 and mean_rank <= 2.5:
                 confidence = "HIGH_CONFIDENCE"
                 conf_desc = "Strong multi-engine concordance across empirical, physics (MM-GBSA), and DL scoring."
-            elif rank_spread <= 3:
+            elif rank_spread <= 4 or mean_rank <= 4.0:
                 confidence = "MODERATE_CONFIDENCE"
                 conf_desc = "Acceptable agreement across scoring engines with moderate rank dispersion."
             else:

@@ -202,22 +202,22 @@ class ComplexRefinementService:
             e_min = ff.CalcEnergy()
 
             strain_delta = round(max(0.0, e_init - e_min), 2)
-            is_high_strain = strain_delta > 6.0
+            is_high_strain = strain_delta > 8.0
 
             if strain_delta <= 4.0:
                 strain_class = "Low Strain / Native-like Conformation (<= 4.0 kcal/mol)"
                 strain_warn = None
                 decoy_flag = "PASS"
-            elif strain_delta <= 6.0:
-                strain_class = "Moderate Acceptable Strain (4.0 - 6.0 kcal/mol)"
+            elif strain_delta <= 8.0:
+                strain_class = "Moderate Acceptable Strain (4.0 - 8.0 kcal/mol)"
                 strain_warn = None
                 decoy_flag = "PASS"
             else:
-                strain_class = "High Intramolecular Strain (> 6.0 kcal/mol)"
+                strain_class = "High Intramolecular Strain (> 8.0 kcal/mol)"
                 strain_warn = (
                     f"High Ligand Strain Alert (Strain = {strain_delta} kcal/mol): "
-                    "The docked pose carries excessive internal conformational strain compared to its relaxed geometry. "
-                    "Poses with strain > 6.0 kcal/mol frequently indicate steric forced packing or decoy false positives."
+                    "The docked pose carries elevated internal conformational strain compared to its relaxed geometry. "
+                    "Poses with strain > 8.0 kcal/mol frequently indicate steric forced packing or decoy false positives."
                 )
                 decoy_flag = "FLAG_HIGH_STRAIN_DECOY"
 
@@ -339,7 +339,7 @@ class ComplexRefinementService:
 
             # Grease-ball decoy assessment:
             # If vdW is strongly negative but desolvation + strain is massive or electrostatics is repulsive
-            is_grease_decoy = (e_vdw < -15.0 and (e_gb_desolv > 10.0 or strain_val > 6.0))
+            is_grease_decoy = (e_vdw < -15.0 and (e_gb_desolv > 10.0 or strain_val > 8.0))
 
             return {
                 "available": True,

@@ -603,9 +603,13 @@ def crosscheck_bioactivity():
     result = BioactivityService.crosscheck_chembl(drug, target)
     return jsonify(result)
 
-@app.route("/api/narrative/explain", methods=["POST"])
+@app.route("/api/narrative/explain", methods=["POST", "GET"])
+@app.route("/api/explain/narrative", methods=["POST", "GET"])
 def explain_results():
-    data = request.get_json() or {}
+    if request.method == "GET":
+        data = request.args.to_dict()
+    else:
+        data = request.get_json(silent=True) or {}
     api_key = data.get("api_key")
     provider = data.get("provider", "auto")
     
