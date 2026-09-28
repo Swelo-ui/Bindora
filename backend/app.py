@@ -145,6 +145,15 @@ def get_validation_report():
         except Exception:
             pass
 
+    iep_file = BENCHMARKS_DIR / "1iep_benchmark_result.json"
+    iep_data = {}
+    if iep_file.exists():
+        try:
+            with open(iep_file, "r", encoding="utf-8") as f:
+                iep_data = json.load(f)
+        except Exception:
+            pass
+
     return jsonify({
         "status": "success",
         "parent_company": "NexPharmaTech",
@@ -154,7 +163,8 @@ def get_validation_report():
             "1HSG": hsg_data,
             "1AQ1": aq1_data,
             "1M17": m17_data,
-            "1T46": t46_data
+            "1T46": t46_data,
+            "1IEP": iep_data
         }
     })
 
@@ -166,7 +176,7 @@ def search_pubchem():
     
     result = StructureFetcher.search_pubchem(query)
     if not result:
-        return jsonify({"error": f"No compound found in PubChem matching '{query}'"}), 404
+        return jsonify({"error": f"No compound found matching '{query}'. Please verify spelling or try pasting a SMILES string directly."}), 404
     
     # Compute ADME immediately for fast UI response
     smiles = result.get("smiles")

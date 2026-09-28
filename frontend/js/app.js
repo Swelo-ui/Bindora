@@ -1443,9 +1443,11 @@ class BindoraApp {
       if (!data) return;
 
       const { validation_report, flagship_targets } = data;
+      this.state.benchmarkTargets = flagship_targets || {};
       const hsg = flagship_targets?.["1HSG"];
       const aq1 = flagship_targets?.["1AQ1"];
       const m17 = flagship_targets?.["1M17"];
+      const iep = flagship_targets?.["1IEP"];
       const sumStats = validation_report?.summary_statistics;
 
       // Update KPI Stat Cards
@@ -1568,6 +1570,27 @@ class BindoraApp {
       this.checkPharmacophoreEligibility();
       this.state.ensembleStructures = null;
 
+      // Pre-populate redocking validation for benchmark targets
+      this.state.redockCache = this.state.redockCache || {};
+      const bmTargets = this.state.benchmarkTargets || {};
+      const precalc = bmTargets[bm.pdb_id] || (this.state.validationReport?.flagship_targets && this.state.validationReport.flagship_targets[bm.pdb_id]);
+      if (precalc && precalc.is_validated) {
+        const valObj = {
+          pdb_id: bm.pdb_id,
+          is_validated: true,
+          validation_badge: precalc.badge || `Protocol Validated (RMSD: ${precalc.mode1_rmsd_angstroms} Å)`,
+          rmsd_angstroms: precalc.mode1_rmsd_angstroms,
+          affinity_kcal: precalc.vina_affinity_kcal,
+          benchmark_status: precalc.status || "PASS (Research Grade)"
+        };
+        this.state.redockingValidation = valObj;
+        this.state.redockCache[bm.pdb_id] = valObj;
+      } else if (this.state.redockCache[bm.pdb_id]) {
+        this.state.redockingValidation = this.state.redockCache[bm.pdb_id];
+      } else {
+        this.state.redockingValidation = null;
+      }
+
       // 3. Update UI
       this.updateStudioCards();
       this.updatePathwayInfo();
@@ -1593,10 +1616,10 @@ class BindoraApp {
     if (ligCard) {
       ligCard.innerHTML = `<div class="p-6 text-center text-cyan-400 font-medium animate-pulse flex flex-col items-center justify-center space-y-2">
         <svg class="animate-spin w-6 h-6 text-cyan-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-        <span class="text-xs">Searching PubChem REST API for '${query}'...</span>
+        <span class="text-xs">Searching chemical repositories for '${query}'...</span>
       </div>`;
     }
-    this.showToast(`Searching PubChem for '${query}'...`, "info");
+    this.showToast(`Searching for '${query}'...`, "info");
     try {
       const data = await BindoraAPI.searchPubChem(query);
       const ligPrep = await BindoraAPI.prepareLigand(data.smiles || data.sdf, !data.smiles);
@@ -1611,10 +1634,11 @@ class BindoraApp {
         const emptyState = document.getElementById("viewer-empty-state");
         if (emptyState) emptyState.classList.add("hidden");
       }
-      this.showToast(`Found PubChem compound: ${data.name} (CID: ${data.cid})`, "success");
+      const idLabel = data.cid ? ` (ID: ${data.cid})` : "";
+      this.showToast(`Found compound: ${data.name}${idLabel}`, "success");
     } catch (e) {
       this.updateStudioCards();
-      this.showToast(`PubChem search failed: ${e.message}`, "error");
+      this.showToast(`Compound search failed: ${e.message}`, "error");
     }
   }
 
@@ -1989,7 +2013,13 @@ class BindoraApp {
         ` : (hasNative ? `
           <div class="mt-2 pt-2 border-t border-slate-700/60 flex items-center justify-between">
             <span class="text-[11px] text-slate-400">Protocol Validation:</span>
-            <span id="rec-val-status" class="text-[10px] text-cyan-400 flex items-center"><svg class="animate-spin -ml-1 mr-1.5 h-3 w-3 inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Validating native ligand...</span>
+            ${this._redockingRunning ? `
+              <span id="rec-val-status" class="text-[10px] text-cyan-400 flex items-center"><svg class="animate-spin -ml-1 mr-1.5 h-3 w-3 inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Validating native ligand...</span>
+            ` : (this._redockingFailed ? `
+              <span class="text-[10px] text-amber-400 flex items-center">Validation failed &bull; <button onclick="window.app.runRedockingValidation()" class="text-cyan-400 hover:underline ml-1 cursor-pointer font-medium">Retry</button></span>
+            ` : `
+              <span class="text-[10px] text-slate-400 flex items-center">Native ligand detected &bull; <button onclick="window.app.runRedockingValidation()" class="text-cyan-400 hover:underline ml-1 cursor-pointer font-medium">Run validation</button></span>
+            `)}
           </div>
         ` : '');
 
@@ -2076,15 +2106,30 @@ class BindoraApp {
           });
         }
 
-        // Auto-trigger redocking validation if native ligand detected and not yet cached/run
-        if (r.native_ligand?.has_native && !this.state.redockingValidation && !this._redockingRunning) {
+        // Check for cached / precomputed redocking validation if native ligand detected
+        if (r.native_ligand?.has_native && !this.state.redockingValidation && !this._redockingRunning && !this._redockingFailed) {
           const recKey = r.pdb_id || r.title;
           if (this.state.redockCache && this.state.redockCache[recKey]) {
             this.state.redockingValidation = this.state.redockCache[recKey];
             this.updateReceptorView();
             this.updateDossierView();
-          } else {
-            setTimeout(() => this.runRedockingValidation(true), 150);
+          } else if (this.state.benchmarkTargets && this.state.benchmarkTargets[recKey]) {
+            const bmData = this.state.benchmarkTargets[recKey];
+            if (bmData && bmData.is_validated) {
+              const valObj = {
+                pdb_id: recKey,
+                is_validated: true,
+                validation_badge: bmData.badge || `Protocol Validated (RMSD: ${bmData.mode1_rmsd_angstroms} Å)`,
+                rmsd_angstroms: bmData.mode1_rmsd_angstroms,
+                affinity_kcal: bmData.vina_affinity_kcal,
+                benchmark_status: bmData.status || "PASS (Research Grade)"
+              };
+              this.state.redockingValidation = valObj;
+              this.state.redockCache = this.state.redockCache || {};
+              this.state.redockCache[recKey] = valObj;
+              this.updateReceptorView();
+              this.updateDossierView();
+            }
           }
         }
       } else {
@@ -2249,6 +2294,8 @@ class BindoraApp {
       this.showToast(`Starting redocking validation of native ligand '${nat.name}'...`, "info");
     }
     this._redockingRunning = true;
+    this._redockingFailed = false;
+    this.updateStudioCards();
 
     try {
       const getVal = (id, def) => parseFloat(document.getElementById(id)?.value) || def;
@@ -2266,6 +2313,7 @@ class BindoraApp {
 
       this.state.redockingValidation = res;
       this.state.redockCache[recKey] = res;
+      this._redockingFailed = false;
 
       if (resultsPanel) resultsPanel.classList.remove("hidden");
       if (affVal) affVal.textContent = `${res.affinity_kcal} kcal/mol`;
@@ -2296,6 +2344,7 @@ class BindoraApp {
 
     } catch (err) {
       console.error("Redocking error:", err);
+      this._redockingFailed = true;
       if (!isAuto) this.showToast(`Redocking validation failed: ${err.message}`, "error");
     } finally {
       this._redockingRunning = false;
@@ -2303,6 +2352,7 @@ class BindoraApp {
         btn.disabled = false;
         btn.innerHTML = originalBtnText || "<span>Run Self-Validation (Redock Native Ligand)</span>";
       }
+      this.updateStudioCards();
     }
   }
 

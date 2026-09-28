@@ -6,7 +6,7 @@ from sqlalchemy import Column, String, Float, Integer, DateTime, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from backend.db.database import Base
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class DockingSession(Base):
@@ -14,7 +14,7 @@ class DockingSession(Base):
     __tablename__ = "docking_sessions"
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True, nullable=False)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True, nullable=False)
     pdb_id = Column(String(10), index=True)
     ligand_name = Column(String(200))
     ligand_smiles = Column(Text)
@@ -55,7 +55,7 @@ class BatchScreeningJob(Base):
     total_ligands = Column(Integer, nullable=False)
     completed_ligands = Column(Integer, default=0)
     status = Column(String(20), default="queued", nullable=False)  # queued, running, completed, cancelled, interrupted
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     completed_at = Column(DateTime, nullable=True)
     top_hit_name = Column(String(200), nullable=True)
     top_affinity_kcal = Column(Float, nullable=True)
@@ -87,7 +87,7 @@ class BenchmarkRecord(Base):
     rmsd_angstrom = Column(Float)
     affinity_kcal = Column(Float)
     vinardo_affinity_kcal = Column(Float, nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True, nullable=False)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True, nullable=False)
     
     def to_dict(self):
         """Convert to dictionary for JSON serialization"""

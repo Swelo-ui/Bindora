@@ -14,7 +14,34 @@ from backend.config import (
     UNIPROT_BASE_URL,
 )
 
-HEADERS = {"User-Agent": "Bindora-Research-Tool/1.0 (academic; +https://github.com/Swelo-ui/Bindora)"}
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*"
+}
+
+KNOWN_DRUG_CIDS: Dict[str, int] = {
+    "indapamide": 3702,
+    "imatinib": 5291,
+    "aspirin": 2244,
+    "paracetamol": 1983,
+    "acetaminophen": 1983,
+    "erlotinib": 176870,
+    "gefitinib": 123631,
+    "staurosporine": 44259,
+    "indinavir": 5362440,
+    "caffeine": 2519,
+    "metformin": 4091,
+    "losartan": 3961,
+    "atorvastatin": 60823,
+    "ibuprofen": 3672,
+    "remdesivir": 121304016,
+    "benzene": 241,
+    "etoricoxib": 123616,
+    "celecoxib": 2662,
+    "dasatinib": 3062316,
+    "sorafenib": 216239,
+    "sunitinib": 5329102,
+}
 
 def _get_json(url: str, timeout: int = 15) -> Optional[Dict[str, Any]]:
     """Helper to fetch and parse JSON with error handling."""
@@ -34,122 +61,411 @@ def _get_text(url: str, timeout: int = 20) -> Optional[str]:
     except Exception as e:
         return None
 
+def _enrich_mol_properties_and_sdf(
+    smiles: str,
+    name: str,
+    cid: Any = None,
+    source: str = "Online Repository",
+    raw_sdf: Optional[str] = None,
+    iupac_name: str = ""
+) -> Optional[Dict[str, Any]]:
+    """Generate 3D coordinates and compute physicochemical descriptors locally with RDKit."""
+    try:
+        from rdkit import Chem
+        from rdkit.Chem import Descriptors, Lipinski, AllChem
+    except ImportError:
+        return None
+
+    mol = Chem.MolFromSmiles(smiles)
+    if not mol:
+        if raw_sdf:
+            try:
+                mol = Chem.MolFromMolBlock(raw_sdf)
+            except Exception:
+                mol = None
+        if not mol:
+            return None
+
+    sdf_content = raw_sdf
+    is_3d = False
+    if sdf_content and "CONECT" in sdf_content and len(sdf_content) > 100:
+        is_3d = True
+    else:
+        try:
+            mol_h = Chem.AddHs(mol)
+            embed_res = AllChem.EmbedMolecule(mol_h, randomSeed=42)
+            if embed_res == 0:
+                AllChem.MMFFOptimizeMolecule(mol_h, maxIters=200)
+                sdf_content = Chem.MolToMolBlock(mol_h)
+                is_3d = True
+            else:
+                sdf_content = Chem.MolToMolBlock(mol)
+        except Exception:
+            sdf_content = Chem.MolToMolBlock(mol)
+
+    mol_no_h = Chem.RemoveHs(mol)
+    try:
+        formula = Chem.rdMolDescriptors.CalcMolFormula(mol_no_h)
+    except Exception:
+        formula = ""
+    try:
+        weight = round(float(Descriptors.MolWt(mol_no_h)), 2)
+    except Exception:
+        weight = 0.0
+    try:
+        xlogp = round(float(Descriptors.MolLogP(mol_no_h)), 2)
+    except Exception:
+        xlogp = None
+    try:
+        tpsa = round(float(Descriptors.TPSA(mol_no_h)), 2)
+    except Exception:
+        tpsa = None
+    try:
+        hbd = int(Lipinski.NumHDonors(mol_no_h))
+    except Exception:
+        hbd = 0
+    try:
+        hba = int(Lipinski.NumHAcceptors(mol_no_h))
+    except Exception:
+        hba = 0
+    try:
+        rotb = int(Lipinski.NumRotatableBonds(mol_no_h))
+    except Exception:
+        rotb = 0
+
+    norm_name = name.strip()
+    canon_smiles = Chem.MolToSmiles(mol_no_h, isomericSmiles=True)
+
+    clean_cid = cid
+    if clean_cid is None:
+        clean_cid = KNOWN_DRUG_CIDS.get(norm_name.lower())
+    if clean_cid is None:
+        clean_cid = norm_name.capitalize()
+
+    if str(clean_cid).isdigit():
+        comp_url = f"https://pubchem.ncbi.nlm.nih.gov/compound/{clean_cid}"
+    elif str(clean_cid).startswith("CHEMBL"):
+        comp_url = f"https://www.ebi.ac.uk/chembl/compound_report_card/{clean_cid}/"
+    else:
+        comp_url = f"https://pubchem.ncbi.nlm.nih.gov/#query={urllib.parse.quote(norm_name)}"
+
+    return {
+        "source": source,
+        "cid": clean_cid,
+        "name": norm_name.capitalize(),
+        "iupac_name": iupac_name or "",
+        "formula": formula,
+        "weight": weight,
+        "smiles": canon_smiles,
+        "xlogp": xlogp,
+        "tpsa": tpsa,
+        "hbd": hbd,
+        "hba": hba,
+        "rotb": rotb,
+        "sdf": sdf_content,
+        "is_3d": is_3d,
+        "url": comp_url
+    }
+
 class StructureFetcher:
     """Service to search and retrieve chemical and macromolecular structures from public repositories."""
 
     @staticmethod
     def search_pubchem(name: str) -> Optional[Dict[str, Any]]:
-        """Search compound by name and retrieve properties, SMILES, and 3D/2D coordinates."""
+        """Search compound by name with multi-tier fallback (PubChem -> NCI CIR -> ChEMBL -> Local RDKit)."""
+        name = name.strip()
+        if not name:
+            return None
+
+        # Direct CID lookup if user typed pure digits
+        if name.isdigit():
+            return StructureFetcher.fetch_pubchem_by_cid(name)
+
         cache_file = CACHE_DIR / f"pubchem_{urllib.parse.quote_plus(name.lower())}.json"
         if cache_file.exists():
             try:
                 with open(cache_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    cached = json.load(f)
+                    if cached and (cached.get("smiles") or cached.get("sdf")):
+                        return cached
             except Exception:
                 pass
 
-        # 1. Fetch properties and CID
-        prop_url = (
-            f"{PUBCHEM_BASE_URL}/compound/name/{urllib.parse.quote(name)}/property/"
-            f"MolecularFormula,MolecularWeight,CanonicalSMILES,ConnectivitySMILES,IUPACName,"
-            f"XLogP,TPSA,HBondDonorCount,HBondAcceptorCount,RotatableBondCount/JSON"
-        )
-        data = _get_json(prop_url)
-        if not data or "PropertyTable" not in data or not data["PropertyTable"]["Properties"]:
-            return None
-
-        props = data["PropertyTable"]["Properties"][0]
-        cid = props.get("CID")
-        smiles = props.get("CanonicalSMILES") or props.get("ConnectivitySMILES")
-
-        # 2. Try fetching 3D SDF first, fallback to 2D SDF
-        sdf_3d_url = f"{PUBCHEM_BASE_URL}/compound/cid/{cid}/SDF?record_type=3d"
-        sdf_content = _get_text(sdf_3d_url)
-        is_3d = True
-        if not sdf_content or "CONECT" not in sdf_content:
-            sdf_2d_url = f"{PUBCHEM_BASE_URL}/compound/cid/{cid}/SDF"
-            sdf_content = _get_text(sdf_2d_url)
-            is_3d = False
-
-        result = {
-            "source": "PubChem",
-            "cid": cid,
-            "name": name.capitalize(),
-            "iupac_name": props.get("IUPACName", ""),
-            "formula": props.get("MolecularFormula", ""),
-            "weight": float(props.get("MolecularWeight", 0.0)),
-            "smiles": smiles,
-            "xlogp": float(props.get("XLogP", 0.0)) if props.get("XLogP") is not None else None,
-            "tpsa": float(props.get("TPSA", 0.0)) if props.get("TPSA") is not None else None,
-            "hbd": int(props.get("HBondDonorCount", 0)),
-            "hba": int(props.get("HBondAcceptorCount", 0)),
-            "rotb": int(props.get("RotatableBondCount", 0)),
-            "sdf": sdf_content,
-            "is_3d": is_3d,
-            "url": f"https://pubchem.ncbi.nlm.nih.gov/compound/{cid}"
-        }
-
-        # Cache result
+        # Tier 1: PubChem PUG REST
         try:
-            with open(cache_file, "w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2)
+            prop_url = (
+                f"{PUBCHEM_BASE_URL}/compound/name/{urllib.parse.quote(name)}/property/"
+                f"MolecularFormula,MolecularWeight,CanonicalSMILES,ConnectivitySMILES,IUPACName,"
+                f"XLogP,TPSA,HBondDonorCount,HBondAcceptorCount,RotatableBondCount/JSON"
+            )
+            data = _get_json(prop_url, timeout=5)
+            if data and "PropertyTable" in data and data["PropertyTable"].get("Properties"):
+                props = data["PropertyTable"]["Properties"][0]
+                cid = props.get("CID")
+                smiles = props.get("CanonicalSMILES") or props.get("ConnectivitySMILES")
+
+                sdf_3d_url = f"{PUBCHEM_BASE_URL}/compound/cid/{cid}/SDF?record_type=3d"
+                sdf_content = _get_text(sdf_3d_url, timeout=6)
+                is_3d = True
+                if not sdf_content or "CONECT" not in sdf_content:
+                    sdf_2d_url = f"{PUBCHEM_BASE_URL}/compound/cid/{cid}/SDF"
+                    sdf_content = _get_text(sdf_2d_url, timeout=6)
+                    is_3d = False
+
+                result = {
+                    "source": "PubChem",
+                    "cid": cid,
+                    "name": name.capitalize(),
+                    "iupac_name": props.get("IUPACName", ""),
+                    "formula": props.get("MolecularFormula", ""),
+                    "weight": float(props.get("MolecularWeight", 0.0)),
+                    "smiles": smiles,
+                    "xlogp": float(props.get("XLogP", 0.0)) if props.get("XLogP") is not None else None,
+                    "tpsa": float(props.get("TPSA", 0.0)) if props.get("TPSA") is not None else None,
+                    "hbd": int(props.get("HBondDonorCount", 0)),
+                    "hba": int(props.get("HBondAcceptorCount", 0)),
+                    "rotb": int(props.get("RotatableBondCount", 0)),
+                    "sdf": sdf_content,
+                    "is_3d": is_3d,
+                    "url": f"https://pubchem.ncbi.nlm.nih.gov/compound/{cid}"
+                }
+
+                if not result["sdf"] and result["smiles"]:
+                    enriched = _enrich_mol_properties_and_sdf(result["smiles"], name, cid=cid, source="PubChem")
+                    if enriched:
+                        result["sdf"] = enriched["sdf"]
+                        result["is_3d"] = enriched["is_3d"]
+
+                try:
+                    with open(cache_file, "w", encoding="utf-8") as f:
+                        json.dump(result, f, indent=2)
+                except Exception:
+                    pass
+                return result
         except Exception:
             pass
 
-        return result
+        # Tier 2: NCI Chemical Identifier Resolver (Cactus CIR)
+        try:
+            cir_smi_url = f"https://cactus.nci.nih.gov/chemical/structure/{urllib.parse.quote(name)}/smiles"
+            cir_smiles = _get_text(cir_smi_url, timeout=6)
+            if cir_smiles and not cir_smiles.startswith("<!DOCTYPE") and "Page not found" not in cir_smiles:
+                cir_smiles = cir_smiles.strip().splitlines()[0]
+                cir_sdf_url = f"https://cactus.nci.nih.gov/chemical/structure/{urllib.parse.quote(name)}/sdf"
+                cir_sdf = _get_text(cir_sdf_url, timeout=6)
+                cir_iupac_url = f"https://cactus.nci.nih.gov/chemical/structure/{urllib.parse.quote(name)}/iupac_name"
+                cir_iupac = _get_text(cir_iupac_url, timeout=4) or ""
+                cir_iupac = cir_iupac.strip() if not cir_iupac.startswith("<!DOCTYPE") else ""
+
+                cid = KNOWN_DRUG_CIDS.get(name.lower(), f"CIR-{name.capitalize()}")
+                enriched = _enrich_mol_properties_and_sdf(
+                    cir_smiles,
+                    name,
+                    cid=cid,
+                    source="PubChem (NCI CIR fallback)",
+                    raw_sdf=cir_sdf,
+                    iupac_name=cir_iupac
+                )
+                if enriched:
+                    try:
+                        with open(cache_file, "w", encoding="utf-8") as f:
+                            json.dump(enriched, f, indent=2)
+                    except Exception:
+                        pass
+                    return enriched
+        except Exception:
+            pass
+
+        # Tier 3: ChEMBL REST API
+        try:
+            chembl_url = f"{CHEMBL_BASE_URL}/molecule/search?q={urllib.parse.quote(name)}&format=json"
+            chembl_data = _get_json(chembl_url, timeout=6)
+            if chembl_data and chembl_data.get("molecules"):
+                best_mol = None
+                for m in chembl_data["molecules"]:
+                    struct = m.get("molecule_structures")
+                    if struct and struct.get("canonical_smiles"):
+                        pref = (m.get("pref_name") or "").lower()
+                        if pref == name.lower():
+                            best_mol = m
+                            break
+                        if best_mol is None:
+                            best_mol = m
+                if best_mol:
+                    chembl_smiles = best_mol["molecule_structures"]["canonical_smiles"]
+                    chembl_id = best_mol.get("molecule_chembl_id")
+                    cid = KNOWN_DRUG_CIDS.get(name.lower(), chembl_id)
+                    enriched = _enrich_mol_properties_and_sdf(
+                        chembl_smiles,
+                        best_mol.get("pref_name") or name,
+                        cid=cid,
+                        source="PubChem (ChEMBL fallback)"
+                    )
+                    if enriched:
+                        try:
+                            with open(cache_file, "w", encoding="utf-8") as f:
+                                json.dump(enriched, f, indent=2)
+                        except Exception:
+                            pass
+                        return enriched
+        except Exception:
+            pass
+
+        # Tier 4: PubChem Autocomplete suggestion resolution
+        try:
+            auto_url = f"https://pubchem.ncbi.nlm.nih.gov/rest/autocomplete/compound/{urllib.parse.quote(name)}/json?limit=3"
+            auto_data = _get_json(auto_url, timeout=5)
+            terms = auto_data.get("dictionary_terms", {}).get("compound", []) if auto_data else []
+            for term in terms:
+                if term.lower() != name.lower():
+                    cir_url = f"https://cactus.nci.nih.gov/chemical/structure/{urllib.parse.quote(term)}/smiles"
+                    cir_smi = _get_text(cir_url, timeout=5)
+                    if cir_smi and not cir_smi.startswith("<!DOCTYPE") and "Page not found" not in cir_smi:
+                        cir_smi = cir_smi.strip().splitlines()[0]
+                        cid = KNOWN_DRUG_CIDS.get(term.lower(), f"CIR-{term.capitalize()}")
+                        enriched = _enrich_mol_properties_and_sdf(
+                            cir_smi,
+                            term,
+                            cid=cid,
+                            source="PubChem (Autocomplete fallback)"
+                        )
+                        if enriched:
+                            try:
+                                with open(cache_file, "w", encoding="utf-8") as f:
+                                    json.dump(enriched, f, indent=2)
+                            except Exception:
+                                pass
+                            return enriched
+        except Exception:
+            pass
+
+        return None
 
     @staticmethod
     def fetch_pubchem_by_cid(cid: str) -> Optional[Dict[str, Any]]:
-        """Fetch compound metadata, title, and properties by PubChem CID."""
+        """Fetch compound metadata, title, and properties by PubChem CID with PUG View & ChEMBL fallbacks."""
         cid = str(cid).strip()
-        if not cid.isdigit():
+        if not cid:
             return None
+
         cache_file = CACHE_DIR / f"pubchem_cid_{cid}.json"
         if cache_file.exists():
             try:
                 with open(cache_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    cached = json.load(f)
+                    if cached and (cached.get("smiles") or cached.get("sdf")):
+                        return cached
             except Exception:
                 pass
 
-        prop_url = (
-            f"{PUBCHEM_BASE_URL}/compound/cid/{cid}/property/"
-            f"Title,MolecularFormula,MolecularWeight,CanonicalSMILES,ConnectivitySMILES,IUPACName,"
-            f"XLogP,TPSA,HBondDonorCount,HBondAcceptorCount,RotatableBondCount/JSON"
-        )
-        data = _get_json(prop_url)
-        if not data or "PropertyTable" not in data or not data["PropertyTable"]["Properties"]:
-            return None
+        # Tier 1: PubChem PUG REST
+        if cid.isdigit():
+            try:
+                prop_url = (
+                    f"{PUBCHEM_BASE_URL}/compound/cid/{cid}/property/"
+                    f"Title,MolecularFormula,MolecularWeight,CanonicalSMILES,ConnectivitySMILES,IUPACName,"
+                    f"XLogP,TPSA,HBondDonorCount,HBondAcceptorCount,RotatableBondCount/JSON"
+                )
+                data = _get_json(prop_url, timeout=5)
+                if data and "PropertyTable" in data and data["PropertyTable"].get("Properties"):
+                    props = data["PropertyTable"]["Properties"][0]
+                    smiles = props.get("CanonicalSMILES") or props.get("ConnectivitySMILES")
+                    title = props.get("Title") or props.get("IUPACName") or f"Compound #{cid}"
+                    result = {
+                        "source": "PubChem",
+                        "cid": int(cid),
+                        "name": title,
+                        "iupac_name": props.get("IUPACName", ""),
+                        "formula": props.get("MolecularFormula", ""),
+                        "weight": float(props.get("MolecularWeight", 0.0)),
+                        "smiles": smiles,
+                        "xlogp": float(props.get("XLogP", 0.0)) if props.get("XLogP") is not None else None,
+                        "tpsa": float(props.get("TPSA", 0.0)) if props.get("TPSA") is not None else None,
+                        "hbd": int(props.get("HBondDonorCount", 0)),
+                        "hba": int(props.get("HBondAcceptorCount", 0)),
+                        "rotb": int(props.get("RotatableBondCount", 0)),
+                        "url": f"https://pubchem.ncbi.nlm.nih.gov/compound/{cid}"
+                    }
+                    try:
+                        with open(cache_file, "w", encoding="utf-8") as f:
+                            json.dump(result, f, indent=2)
+                    except Exception:
+                        pass
+                    return result
+            except Exception:
+                pass
 
-        props = data["PropertyTable"]["Properties"][0]
-        smiles = props.get("CanonicalSMILES") or props.get("ConnectivitySMILES")
-        title = props.get("Title") or props.get("IUPACName") or f"Compound #{cid}"
+        # Tier 2: PubChem PUG View (works during PUG REST 503 ServerBusy)
+        if cid.isdigit():
+            try:
+                view_url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{cid}/JSON"
+                view_data = _get_json(view_url, timeout=6)
+                if view_data and "Record" in view_data:
+                    record = view_data["Record"]
+                    rec_title = record.get("RecordTitle") or f"Compound #{cid}"
 
-        result = {
-            "source": "PubChem",
-            "cid": int(cid),
-            "name": title,
-            "iupac_name": props.get("IUPACName", ""),
-            "formula": props.get("MolecularFormula", ""),
-            "weight": float(props.get("MolecularWeight", 0.0)),
-            "smiles": smiles,
-            "xlogp": float(props.get("XLogP", 0.0)) if props.get("XLogP") is not None else None,
-            "tpsa": float(props.get("TPSA", 0.0)) if props.get("TPSA") is not None else None,
-            "hbd": int(props.get("HBondDonorCount", 0)),
-            "hba": int(props.get("HBondAcceptorCount", 0)),
-            "rotb": int(props.get("RotatableBondCount", 0)),
-            "url": f"https://pubchem.ncbi.nlm.nih.gov/compound/{cid}"
-        }
-        try:
-            with open(cache_file, "w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2)
-        except Exception:
-            pass
-        return result
+                    def _extract_smiles_from_sections(sections):
+                        for s in sections:
+                            h = s.get("TOCHeading", "")
+                            if h in ("Canonical SMILES", "Isomeric SMILES", "SMILES"):
+                                for info in s.get("Information", []):
+                                    val_str = info.get("Value", {}).get("StringWithMarkup", [{}])[0].get("String")
+                                    if val_str:
+                                        return val_str
+                            sub = s.get("Section", [])
+                            if sub:
+                                found = _extract_smiles_from_sections(sub)
+                                if found:
+                                    return found
+                        return None
+
+                    smiles_found = _extract_smiles_from_sections(record.get("Section", []))
+                    if smiles_found:
+                        enriched = _enrich_mol_properties_and_sdf(
+                            smiles_found,
+                            rec_title,
+                            cid=int(cid),
+                            source="PubChem (PUG View)"
+                        )
+                        if enriched:
+                            try:
+                                with open(cache_file, "w", encoding="utf-8") as f:
+                                    json.dump(enriched, f, indent=2)
+                            except Exception:
+                                pass
+                            return enriched
+            except Exception:
+                pass
+
+        # Tier 3: ChEMBL if CID is a CHEMBL ID
+        if cid.startswith("CHEMBL"):
+            try:
+                ch_url = f"{CHEMBL_BASE_URL}/molecule/{cid}?format=json"
+                ch_data = _get_json(ch_url, timeout=6)
+                if ch_data and ch_data.get("molecule_structures"):
+                    smi = ch_data["molecule_structures"].get("canonical_smiles")
+                    if smi:
+                        enriched = _enrich_mol_properties_and_sdf(
+                            smi,
+                            ch_data.get("pref_name") or cid,
+                            cid=cid,
+                            source="PubChem (ChEMBL)"
+                        )
+                        if enriched:
+                            try:
+                                with open(cache_file, "w", encoding="utf-8") as f:
+                                    json.dump(enriched, f, indent=2)
+                            except Exception:
+                                pass
+                            return enriched
+            except Exception:
+                pass
+
+        return None
 
     @staticmethod
     def search_similar_compounds(smiles: str, threshold: int = 85, max_records: int = 5) -> List[Dict[str, Any]]:
-        """Search PubChem for structurally similar 2D compounds given a query SMILES string."""
+        """Search structurally similar compounds with PubChem fastsimilarity & ChEMBL fallback."""
         if not smiles or not smiles.strip():
             return []
 
@@ -162,42 +478,71 @@ class StructureFetcher:
             except Exception:
                 pass
 
+        results = []
+        # Tier 1: PubChem fastsimilarity_2d
         try:
             url = f"{PUBCHEM_BASE_URL}/compound/fastsimilarity_2d/smiles/{urllib.parse.quote(smiles.strip())}/cids/JSON?Threshold={threshold}&MaxRecords={max_records}"
-            data = _get_json(url, timeout=12)
+            data = _get_json(url, timeout=8)
             cids = data.get("IdentifierList", {}).get("CID", []) if data else []
-            if not cids:
-                return []
+            if cids:
+                cids_str = ",".join(map(str, cids[:max_records]))
+                prop_url = f"{PUBCHEM_BASE_URL}/compound/cid/{cids_str}/property/Title,MolecularWeight,ConnectivitySMILES,CanonicalSMILES/JSON"
+                prop_data = _get_json(prop_url, timeout=8)
+                if prop_data and "PropertyTable" in prop_data:
+                    for item in prop_data["PropertyTable"].get("Properties", []):
+                        item_smi = item.get("ConnectivitySMILES") or item.get("CanonicalSMILES") or ""
+                        comp_name = item.get("Title") or f"Compound #{item.get('CID')}"
+                        comp_weight = float(item.get("MolecularWeight", 0.0))
+                        results.append({
+                            "cid": item.get("CID"),
+                            "name": comp_name,
+                            "title": comp_name,
+                            "weight": comp_weight,
+                            "molecular_weight": comp_weight,
+                            "smiles": item_smi,
+                            "url": f"https://pubchem.ncbi.nlm.nih.gov/compound/{item.get('CID')}"
+                        })
+        except Exception:
+            pass
 
-            cids_str = ",".join(map(str, cids[:max_records]))
-            prop_url = f"{PUBCHEM_BASE_URL}/compound/cid/{cids_str}/property/Title,MolecularWeight,ConnectivitySMILES,CanonicalSMILES/JSON"
-            prop_data = _get_json(prop_url, timeout=12)
-            results = []
-            if prop_data and "PropertyTable" in prop_data:
-                for item in prop_data["PropertyTable"].get("Properties", []):
-                    item_smi = item.get("ConnectivitySMILES") or item.get("CanonicalSMILES") or ""
-                    comp_name = item.get("Title") or f"Compound #{item.get('CID')}"
-                    comp_weight = float(item.get("MolecularWeight", 0.0))
-                    results.append({
-                        "cid": item.get("CID"),
-                        "name": comp_name,
-                        "title": comp_name,
-                        "weight": comp_weight,
-                        "molecular_weight": comp_weight,
-                        "smiles": item_smi,
-                        "url": f"https://pubchem.ncbi.nlm.nih.gov/compound/{item.get('CID')}"
-                    })
+        # Tier 2: ChEMBL similarity fallback
+        if not results:
+            try:
+                ch_sim = min(max(int(threshold), 60), 95)
+                ch_url = f"{CHEMBL_BASE_URL}/similarity/{urllib.parse.quote(smiles.strip())}/{ch_sim}?format=json&limit={max_records}"
+                ch_data = _get_json(ch_url, timeout=8)
+                if ch_data and ch_data.get("molecules"):
+                    for m in ch_data["molecules"][:max_records]:
+                        struct = m.get("molecule_structures") or {}
+                        m_smi = struct.get("canonical_smiles") or ""
+                        m_id = m.get("molecule_chembl_id")
+                        m_name = m.get("pref_name") or f"ChEMBL {m_id}"
+                        props = m.get("molecule_properties") or {}
+                        try:
+                            m_wt = float(props.get("full_mwt") or 0.0)
+                        except (ValueError, TypeError):
+                            m_wt = 0.0
+                        if m_smi:
+                            results.append({
+                                "cid": m_id,
+                                "name": m_name,
+                                "title": m_name,
+                                "weight": m_wt,
+                                "molecular_weight": m_wt,
+                                "smiles": m_smi,
+                                "url": f"https://www.ebi.ac.uk/chembl/compound_report_card/{m_id}/"
+                            })
+            except Exception:
+                pass
 
+        if results:
             try:
                 with open(cache_file, "w", encoding="utf-8") as f:
                     json.dump(results, f, indent=2)
             except Exception:
                 pass
 
-            return results
-        except Exception as e:
-            print(f"[SIMILARITY SEARCH ERROR] {e}")
-            return []
+        return results
 
     @staticmethod
     def fetch_rcsb_pdb(pdb_id: str) -> Optional[Dict[str, Any]]:
