@@ -2043,7 +2043,7 @@ class BindoraApp {
           <div class="mt-2 pt-2 border-t border-slate-700/60 flex items-center justify-between">
             <span class="text-[11px] text-slate-400">Protocol Validation:</span>
             <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${redock.is_validated ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-amber-950 text-amber-300 border border-amber-800'}">
-              ${redock.validation_badge} (RMSD ${redock.rmsd_angstroms} Å)
+              ${redock.validation_badge}
             </span>
           </div>
         ` : (hasNative ? `

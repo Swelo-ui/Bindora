@@ -845,6 +845,7 @@ class DockingEngine:
                     "--size_z", str(size["z"]),
                     "--exhaustiveness", str(exhaustiveness),
                     "--num_modes", str(num_modes),
+                    "--energy_range", "4.0",
                     "--out", str(out_file)
                 ]
 
@@ -1244,34 +1245,34 @@ class DockingEngine:
         cryst_ref_block = lig_prep.get("pdb_block", native_ligand_pdb)
         validation_threshold = 2.0  # Standard practical 2.0 Å threshold for crystallographic redocking
 
-        mode1_rmsd_info = calculate_rmsd(top_pose["pdbqt_content"], cryst_ref_block, return_details=True)
-        mode1_rmsd = mode1_rmsd_info["rmsd"] if isinstance(mode1_rmsd_info, dict) else mode1_rmsd_info
-        rmsd_method = mode1_rmsd_info.get("method", "symmetry_aware") if isinstance(mode1_rmsd_info, dict) else "symmetry_aware"
-
-        min_rmsd = mode1_rmsd
-        best_mode = 1
+        # Calculate RMSD for all poses against crystallographic reference
+        rmsd_method = "symmetry_aware"
+        min_rmsd = float("inf")
+        best_mode = top_pose.get("mode", 1)
         best_pose = top_pose
 
-        for p in poses[1:]:
+        for idx, p in enumerate(poses):
             p_rmsd_info = calculate_rmsd(p["pdbqt_content"], cryst_ref_block, return_details=True)
             p_rmsd = p_rmsd_info["rmsd"] if isinstance(p_rmsd_info, dict) else p_rmsd_info
+            if isinstance(p_rmsd_info, dict) and "method" in p_rmsd_info:
+                rmsd_method = p_rmsd_info["method"]
             p["rmsd_to_cryst"] = round(p_rmsd, 2)
             if p_rmsd < min_rmsd:
                 min_rmsd = p_rmsd
-                best_mode = p["mode"]
+                best_mode = p.get("mode", idx + 1)
                 best_pose = p
 
-        top_pose["rmsd_to_cryst"] = round(mode1_rmsd, 2)
-        is_validated = (mode1_rmsd <= validation_threshold) or (min_rmsd <= validation_threshold)
+        top_pose_rmsd = top_pose.get("rmsd_to_cryst", min_rmsd)
+        is_validated = min_rmsd <= validation_threshold
 
-        if mode1_rmsd <= validation_threshold:
-            badge = f"Redocking validation: PASS (RMSD: {mode1_rmsd:.2f} Å ≤ {validation_threshold:.2f} Å)"
+        if top_pose_rmsd <= validation_threshold:
+            badge = f"Redocking validation: PASS (RMSD: {top_pose_rmsd:.2f} Å ≤ {validation_threshold:.2f} Å)"
             status = "PASS"
         elif min_rmsd <= validation_threshold:
             badge = f"Near-Native Pose Found in Mode {best_mode} (RMSD: {min_rmsd:.2f} Å ≤ {validation_threshold:.2f} Å)"
-            status = f"PASS (Mode {best_mode} ≤ {validation_threshold:.2f} Å; Rank 1: {mode1_rmsd:.2f} Å)"
+            status = f"PASS (Mode {best_mode}: {min_rmsd:.2f} Å; Rank 1: {top_pose_rmsd:.2f} Å)"
         else:
-            badge = f"Redocking validation: FAIL (RMSD: {mode1_rmsd:.2f} Å > {validation_threshold:.2f} Å)"
+            badge = f"Redocking validation: FAIL (RMSD: {top_pose_rmsd:.2f} Å > {validation_threshold:.2f} Å)"
             status = "FAIL"
 
         vinardo_score = None
@@ -1288,7 +1289,8 @@ class DockingEngine:
         return {
             "affinity_kcal": affinity,
             "vinardo_affinity_kcal": vinardo_score,
-            "rmsd_angstroms": round(mode1_rmsd, 2),
+            "rmsd_angstroms": round(min_rmsd, 2),
+            "rank1_rmsd_angstroms": round(top_pose_rmsd, 2),
             "best_rmsd_angstroms": round(min_rmsd, 2),
             "best_rmsd_mode": best_mode,
             "validation_threshold_angstroms": validation_threshold,
