@@ -1127,6 +1127,7 @@ class DockingEngine:
                 p["execution_duration_s"] = total_duration
                 p["cpu_count_used"] = cpu
                 p["execution_device"] = exec_device
+                p["seed_used"] = seeds[0] if seeds else None
 
         return best_poses
 

@@ -154,9 +154,9 @@ class NarrativeExplainer:
             except Exception:
                 pass
 
-        # 1. First, attempt LLM call if API key is provided
+        # 1. First, attempt LLM call if API key is provided and not explicitly set to deterministic/offline
         effective_key = api_key or OPENROUTER_API_KEY or GEMINI_API_KEY
-        if effective_key:
+        if effective_key and provider not in ("deterministic", "offline", "rule_based"):
             try:
                 llm_result = NarrativeExplainer._call_llm(report_data, effective_key, provider, model_to_use)
                 if llm_result:
@@ -304,8 +304,8 @@ class NarrativeExplainer:
                                 print(f"[NARRATIVE] Model {cand_model} output incomplete or missing sections. Trying fallback...")
                     else:
                         print(f"[NARRATIVE] OpenRouter HTTP {resp.status_code} for {cand_model}: {resp.text[:150]}")
-                        # If unauthorized or insufficient credits, do not waste time retrying other models with same key
-                        if resp.status_code in (401, 402, 403):
+                        # If unauthorized, insufficient credits, or model not found, do not waste time retrying
+                        if resp.status_code in (401, 402, 403, 404):
                             break
                 except Exception as ex:
                     print(f"[NARRATIVE] Request error with model {cand_model}: {ex}")

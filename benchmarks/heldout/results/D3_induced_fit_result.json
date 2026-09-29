@@ -1,0 +1,23 @@
+{
+  "compound": "Erlotinib",
+  "cid": "176870",
+  "inchikey": "AAKJLRGGTJKAMG-UHFFFAOYSA-N",
+  "pdb": "1M17",
+  "ha": "29",
+  "smiles_source": "PubChem via D1_regression_smiles.csv",
+  "endpoint_used": "/api/docking/induced-fit",
+  "http_status": 200,
+  "elapsed_s": 136.5,
+  "ifd_status": "SUCCESS",
+  "best_composite_ifd_score": -7.06,
+  "best_vina_affinity_kcal": -7.08,
+  "best_receptor_strain_kcal": 0.06,
+  "best_pocket_rmsd_angstroms": 0.179,
+  "best_backbone_rmsd_angstroms": 0.075,
+  "backbone_movement_assessment": "Backbone movement is minimal (0.08 \u00c5); receptor adaptation is primarily sidechain breathing (0.23 \u00c5).",
+  "ensemble_size": 4,
+  "seed_used": 2108838077,
+  "top_affinity_kcal": -7.08,
+  "ligand_efficiency": 0.244,
+  "status": "OK"
+}

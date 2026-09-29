@@ -475,6 +475,7 @@ def run_docking():
         return jsonify({
             "poses": poses,
             "top_pose": best_pose,
+            "seed_used": best_pose.get("seed_used"),
             "thermodynamics": thermo,
             "interactions": contacts,
             "replicate_stats": replicate_stats,

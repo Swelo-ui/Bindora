@@ -1,0 +1,7 @@
+test_type,compound,cid,inchikey,target_pdb,heavy_atoms,status,score_or_affinity_kcal,ligand_efficiency,poses_count,seed_used,macrocycle_detected,macrocycle_strategy,runtime_s,notes
+standard_docking,Erlotinib,176870,AAKJLRGGTJKAMG-UHFFFAOYSA-N,1M17,29,OK,-7.122,0.246,5,1568609025,False,standard_flexible,37.3,Success
+standard_docking,Lorlatinib,49803313,GYQYAJJFPNQOOW-UHFFFAOYSA-N,4CLI,40,OK,-8.005,0.2,5,1195233556,False,standard_flexible,74.5,Success
+standard_docking,Imatinib,5291,KTUFNOKKBVMGRW-UHFFFAOYSA-N,1IEP,37,OK,-12.852,0.347,5,1198107016,False,standard_flexible,69.0,Success
+standard_docking,Cyclosporin_A,5284373,PMATZTZNYRCHOR-CGLBZJNRSA-N,1M17,85,EXCEPTION,N/A,N/A,0,N/A,True,semi_rigid_macrocycle,461.1,"HTTPConnectionPool(host='127.0.0.1', port=5000): Read timed out. (read timeout=450)"
+induced_fit_docking,Erlotinib,176870,AAKJLRGGTJKAMG-UHFFFAOYSA-N,1M17,29,OK,-7.06,0.244,4,2108838077,N/A,N/A,136.5,"Vina=-7.08 kcal/mol, Backbone RMSD=0.075 A (Backbone movement is minimal (0.08 Å); receptor adaptation i...)"
+narrative_validation,Erlotinib,176870,AAKJLRGGTJKAMG-UHFFFAOYSA-N,1M17,N/A,VALIDATED,-7.122,N/A,N/A,N/A,N/A,N/A,0.0,"conflated_rmsd=False, conflated_strain=False, zero_index=False"

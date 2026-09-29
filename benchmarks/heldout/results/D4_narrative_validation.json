@@ -1,0 +1,17 @@
+{
+  "compound": "Erlotinib",
+  "inchikey": "AAKJLRGGTJKAMG-UHFFFAOYSA-N",
+  "cid": "176870",
+  "docking_score_kcal": -7.122,
+  "narrative_http_status": 200,
+  "narrative_elapsed_s": 0.0,
+  "narrative_text_len": 3634,
+  "narrative_preview": "### 1. 3D Binding Mechanism & Active Site Interactions\n\nIn silico docking of the query ligand against the EGFR kinase domain (PDB entry 1M17) produced a single top-ranked pose (Mode 1) with an AutoDock Vina Docking Score of \u22127.122 kcal/mol and a normalized consensus score of 0.554. The absence of RM",
+  "narrative_source": "Bindora AI Explainer (deepseek/deepseek-v4-flash-0731 via OpenRouter)",
+  "narrative_cached": true,
+  "validation_conflated_rmsd_detected": false,
+  "validation_conflated_strain_detected": false,
+  "validation_zero_index_detected": false,
+  "validation_issues": [],
+  "validation_passed": true
+}
