@@ -958,6 +958,34 @@ def test_c15_pgp_substrate_dataset_no_smiles_from_memory():
     assert has_smiles or has_inchi or has_cid, "Dataset must have SMILES, InChIKey, or CID column"
 
 
+def test_c15_all_frozen_files_match_disk_hashes():
+    """
+    C15: Every entry in FROZEN_HASHES.txt must match the actual SHA-256 hash
+    of the file on disk, guaranteeing 100% frozen data integrity.
+    """
+    import hashlib
+    from pathlib import Path
+
+    frozen_file = Path("benchmarks/heldout/FROZEN_HASHES.txt")
+    assert frozen_file.exists()
+    verified_count = 0
+    for line in frozen_file.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split()
+        if len(parts) >= 2:
+            expected_hash = parts[0]
+            rel_path = parts[1]
+            p = Path(rel_path)
+            assert p.exists(), f"Frozen file {rel_path} does not exist"
+            actual_hash = hashlib.sha256(p.read_bytes()).hexdigest()
+            assert actual_hash == expected_hash, f"Hash mismatch for {rel_path}: expected {expected_hash}, got {actual_hash}"
+            verified_count += 1
+    assert verified_count >= 5, f"Expected >= 5 frozen files verified, got {verified_count}"
+
+
+
 
 
 

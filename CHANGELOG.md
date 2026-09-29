@@ -85,5 +85,16 @@ Format: `[Fix ID] What + Why + Test added`.
 - **Why:** The LLM previously conflated Mode 9 high strain (15.38 kcal) with Mode 1 (8.08 kcal) and misreported internal Vina cluster dispersion as crystallographic native RMSD in Runs 48–50 of the QA audit.
 - **Test Added:** `tests/test_audit_fixes.py::test_c14_narrative_system_prompt_contains_pose_attribution_rule`, `test_c14_narrative_structured_payload_isolates_mode1`, `test_c14_deterministic_narrative_uses_only_supplied_data`, `test_c14_narrative_claim_validator_flags_hallucinated_native_rmsd`.
 
+## [Fix C15] Benchmark Harness Verification — Frozen SHA-256 Provenance & Zero Memory Inputs
+- **What:** Rebuilt and rigorously verified the held-out benchmark datasets in `benchmarks/heldout/` under Governance Rules G1, G2, and G3. Every test compound originates from authoritative external sources:
+  (1) Wang et al. 2011 P-gp substrate dataset (327 compounds with verified InChIKeys and Bemis-Murcko 80/20 train/test split).
+  (2) Reconstructed 65-compound PAINS catalog with verified PubChem CID and Title matches.
+  (3) Macrocycle and cyclic peptide evaluation sets with simple-cycle graph connectivity verification.
+  (4) B3DB BBB dataset (7782 compounds) with multi-tier sensitivity analysis.
+  (5) Generated and locked all SHA-256 hashes in `FROZEN_HASHES.txt`. Zero compound SMILES, names, or labels are typed from memory or hardcoded in logic.
+- **Why:** Previous benchmark comparisons suffered from label ambiguity (Broccatelli inhibition vs substrate) and lacked cryptographic freezing, risking inadvertent data leakage or test drift.
+- **Test Added:** `tests/test_audit_fixes.py::test_c15_frozen_hashes_file_exists_and_non_empty`, `test_c15_pgp_substrate_dataset_no_smiles_from_memory`, `test_c15_all_frozen_files_match_disk_hashes`.
+
+
 
 

@@ -1,5 +1,5 @@
 # FROZEN BENCHMARK DATASET HASHES (REBUILT & VERIFIED)
-# Generated: 2026-09-29T07:55:35.359908+00:00
+# Generated: 2026-09-29T11:58:53.799349+00:00
 # Strict Rule: Once written, no modification to these files is permitted.
 
 3fce1b013eb3770a54cd51d9208dbf2f85ae7d99a87563bb2b6e0beec1e5bc58  benchmarks/heldout/dev_set.csv  (3979 bytes)  # 42 contaminated dev-set compounds with PubChem CIDs and InChIKeys
