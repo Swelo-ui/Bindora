@@ -35,6 +35,7 @@ Format: `[Fix ID] What + Why + Test added`.
 - **Why:** Misattributing custom patterns as authentic Baell PAINS corrupted scientific reporting; the overly restrictive Mannich SMARTS failed to detect tertiary amine Mannich bases that undergo latent ortho-quinone methide elimination.
 - **Test Added:** `tests/test_audit_fixes.py::test_c6_mannich_tertiary_and_primary_amine_detection`, `test_c6_pains_and_bindora_extended_alerts_separation`.
 
-
-
-
+## [Fix C7] P-gp / BBB Separation and Honest Attribution
+- **What:** In `backend/services/adme.py`, updated the attribution and citation of `predict_pgp_substrate` to `"Bindora heuristic, inspired by Didziapetris et al. 2003"` (J. Drug Target. 2003, 11, 391-406), eliminating misleading primary citations to Broccatelli et al. 2011 (which studied P-gp inhibition rather than substrate efflux). In `pharmacokinetics.bbb_permeation`, decoupled passive blood-brain barrier permeability from active transporter efflux by returning distinct fields: `passive_bbb` (boolean indicating intrinsic BOILED-Egg physicochemical partitioning) and `pgp_efflux_risk` (boolean indicating active P-gp recognition), while maintaining `is_permeant` strictly as a deprecated alias to `passive_bbb`.
+- **Why:** Conflating passive membrane partitioning with active transporter efflux caused true positive CNS-penetrant compounds to be falsely categorized or lost in downstream filtering. Furthermore, citing an inhibition paper for substrate classification violated chemical informatics attribution standards.
+- **Test Added:** `tests/test_audit_fixes.py::test_c7_pgp_attribution_didziapetris`, `test_c7_bbb_passive_and_pgp_separation`.

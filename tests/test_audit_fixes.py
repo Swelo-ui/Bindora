@@ -323,5 +323,46 @@ def test_c6_pains_and_bindora_extended_alerts_separation():
     assert any("maleimide" in a.lower() or "thiol-reactive" in a.lower() for a in ext_mal)
 
 
+# =========================================================================
+# Fix C7: P-gp / BBB Separation and Honest Attribution
+# =========================================================================
+
+def test_c7_pgp_attribution_didziapetris():
+    """
+    C7: predict_pgp_substrate must attribute to 'Bindora heuristic, inspired by Didziapetris et al. 2003'
+    and cite Didziapetris et al. 2003 instead of Broccatelli 2011 (which studied inhibition).
+    """
+    from backend.services.adme import predict_pgp_substrate
+    from rdkit import Chem
+    # Test on Diazepam (non-substrate) from PubChem CID 3016 (InChIKey: AAOVKJBEBIDNHE-UHFFFAOYSA-N)
+    mol = Chem.MolFromSmiles("CN1C(=O)CN=C(C2=C1C=CC(=C2)Cl)C3=CC=CC=C3")
+    res = predict_pgp_substrate(mol)
+    assert "Didziapetris" in res["model"]
+    assert "Didziapetris" in res["citation"]
+    assert "Broccatelli" not in res["citation"]
+
+def test_c7_bbb_passive_and_pgp_separation():
+    """
+    C7: bbb_permeation must report passive_bbb (bool) and pgp_efflux_risk (bool) separately.
+    is_permeant must remain as a deprecated alias pointing directly to passive_bbb.
+    P-gp efflux status must never overwrite intrinsic passive permeability.
+    Tested on WANG2011_052 (InChIKey: FGXWKSZFVQUSTL-UHFFFAOYSA-N).
+    """
+    from backend.services.adme import ADMEProfiler
+    # WANG2011_052: O=c1[nH]c2ccccc2n1CCCN1CCC(n2c(=O)[nH]c3cc(Cl)ccc32)CC1
+    smi = "O=c1[nH]c2ccccc2n1CCCN1CCC(n2c(=O)[nH]c3cc(Cl)ccc32)CC1"
+    adme = ADMEProfiler.calculate_adme(smi)
+    bbb = adme["pharmacokinetics"]["bbb_permeation"]
+    pgp = adme["pharmacokinetics"]["p_glycoprotein"]
+
+    # Verify both fields exist separately
+    assert "passive_bbb" in bbb, "passive_bbb field missing from bbb_permeation"
+    assert "pgp_efflux_risk" in bbb, "pgp_efflux_risk field missing from bbb_permeation"
+    assert bbb["passive_bbb"] is True, "WANG2011_052 must be passive_bbb True (inside yolk)"
+    assert bbb["pgp_efflux_risk"] is True, "WANG2011_052 must have pgp_efflux_risk True"
+    assert bbb["is_permeant"] == bbb["passive_bbb"], "is_permeant must alias passive_bbb"
+    assert "Didziapetris" in bbb["citation"]
+
+
 
 

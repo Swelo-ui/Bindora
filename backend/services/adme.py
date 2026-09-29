@@ -116,16 +116,18 @@ _BINDORA_EXTENDED_ALERTS = [
 
 def predict_pgp_substrate(mol: Chem.Mol) -> Dict[str, Any]:
     """
-    Research-grade classification of P-glycoprotein (P-gp / ABCB1 / MDR1) substrate status.
-    Based on Broccatelli et al., J. Med. Chem. 2011, 54, 1740-1751 and Didziapetris et al., J. Drug Target. 2003.
+    Predict P-glycoprotein (P-gp / ABCB1 / MDR1) active efflux substrate propensity.
+    Attribution: Bindora heuristic, inspired by Didziapetris et al., J. Drug Target. 2003, 11, 391-406.
     P-gp is a major efflux transporter at the blood-brain barrier that actively pumps substrates out
     of brain capillary endothelial cells, restricting central nervous system (CNS) exposure.
+    Note: Broccatelli et al. 2011 investigated P-gp inhibition; substrate efflux rules derive
+    from Didziapetris et al. 2003 physicochemical rules.
     """
     mw = Descriptors.MolWt(mol)
     logp = Descriptors.MolLogP(mol)
     rotb = Lipinski.NumRotatableBonds(mol)
 
-    # Substructure motifs characteristic of high-affinity P-gp substrates (Broccatelli et al. 2011)
+    # Substructure motifs characteristic of high-affinity P-gp substrates (Didziapetris et al. 2003)
     motifs = []
     # 1. Gem-diphenyl / diphenylmethyl group (e.g. Loperamide, Terfenadine, Fendiline)
     p_diphenyl = Chem.MolFromSmarts("[#6](c1ccccc1)(c2ccccc2)")
@@ -151,28 +153,28 @@ def predict_pgp_substrate(mol: Chem.Mol) -> Dict[str, Any]:
     if is_macrocycle:
         motifs.append("High molecular weight macrocycle / peptide scaffold")
 
-    # Broccatelli Classification Gating:
+    # Didziapetris-inspired Classification Gating:
     # Rule 1: High MW (> 400 Da) + Lipophilic (LogP > 2.8) + Basic Nitrogen / Diphenyl motif
     is_substrate = False
     reason = "Does not satisfy P-gp pharmacophoric criteria (MW, LogP, basic nitrogen, or bulky hydrophobic anchor)."
 
     if is_macrocycle:
         is_substrate = True
-        reason = "Large macrocyclic scaffold recognized by P-gp efflux pump (Broccatelli et al. 2011)."
+        reason = "Large macrocyclic scaffold recognized by P-gp efflux pump (Didziapetris et al. 2003 heuristic)."
     elif mw > 400.0 and logp > 2.8 and (has_basic_n or len(motifs) >= 2):
         is_substrate = True
         reason = f"High lipophilicity (LogP {logp:.1f} > 2.8), MW ({mw:.1f} > 400 Da), and presence of {', '.join(motifs)}."
     elif len(motifs) >= 2 and mw > 350.0 and logp > 2.5:
         is_substrate = True
-        reason = f"Satisfies P-gp substrate structural alert: {', '.join(motifs)} (Broccatelli et al. 2011)."
+        reason = f"Satisfies P-gp substrate structural alert: {', '.join(motifs)} (Didziapetris et al. 2003 heuristic)."
 
     return {
         "is_substrate": is_substrate,
         "status": "Substrate (PGP+)" if is_substrate else "Non-substrate (PGP-)",
         "motifs_identified": motifs,
         "reason": reason,
-        "model": "Broccatelli et al. / Didziapetris P-gp Efflux Substrate Classifier",
-        "citation": "Broccatelli et al., J. Med. Chem. 2011, 54, 1740-1751"
+        "model": "Bindora heuristic, inspired by Didziapetris et al. 2003",
+        "citation": "Didziapetris et al., J. Drug Target. 2003, 11, 391-406"
     }
 
 class ADMEProfiler:
@@ -242,15 +244,17 @@ class ADMEProfiler:
         gi_high = _point_in_polygon(tpsa_sandp, wlogp, _GIA_COORDS)
         gi_absorption = "High" if gi_high else "Moderate / Low"
 
-        # P-glycoprotein (P-gp / ABCB1 / MDR1) active efflux prediction (Broccatelli et al. 2011)
+        # P-glycoprotein (P-gp / ABCB1 / MDR1) active efflux prediction (Didziapetris et al. 2003 heuristic)
         pgp_data = predict_pgp_substrate(mol)
         is_pgp = pgp_data["is_substrate"]
 
         inside_bbb_yolk = _point_in_polygon(tpsa_sandp, wlogp, _BBB_COORDS)
-        bbb_permeant = bool(inside_bbb_yolk)
-        if inside_bbb_yolk and not is_pgp:
+        passive_bbb = bool(inside_bbb_yolk)
+        pgp_efflux_risk = bool(is_pgp)
+
+        if passive_bbb and not is_pgp:
             bbb_status = "Permeant (High passive permeability — Non-substrate for P-gp)"
-        elif inside_bbb_yolk and is_pgp:
+        elif passive_bbb and is_pgp:
             bbb_status = "Passive Permeant (High intrinsic permeability, but subject to active P-gp / ABCB1 efflux)"
         else:
             bbb_status = "Non-permeant (Low passive CNS penetration likelihood)"
@@ -391,10 +395,13 @@ class ADMEProfiler:
                 },
                 "bbb_permeation": {
                     "status": bbb_status,
-                    "is_permeant": bbb_permeant,
+                    "passive_bbb": passive_bbb,
+                    "pgp_efflux_risk": pgp_efflux_risk,
+                    "pgp_efflux_risk_description": "Subject to active P-gp efflux (may restrict CNS accumulation)" if pgp_efflux_risk else "Low risk of P-gp efflux restriction",
+                    "is_permeant": passive_bbb,  # Deprecated alias pointing directly to passive_bbb
                     "inside_egg_yolk": inside_bbb_yolk,
-                    "model": "BOILED-Egg coupled with P-gp active efflux model (WLogP, TPSA, P-gp)",
-                    "citation": "Daina & Zoete, ChemMedChem 2016; Broccatelli et al., J. Med. Chem. 2011"
+                    "model": "BOILED-Egg (Daina & Zoete 2016) with orthogonal P-gp efflux assessment",
+                    "citation": "Daina & Zoete, ChemMedChem 2016, 11, 1117-1121; Didziapetris et al., J. Drug Target. 2003, 11, 391-406"
                 },
                 "p_glycoprotein": pgp_data,
                 "plasma_protein_binding": {
