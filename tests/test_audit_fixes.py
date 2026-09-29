@@ -472,5 +472,65 @@ def test_c8_no_disconnected_pseudo_cycles():
         assert is_simple, f"Tacrolimus returned non-simple cycle: {reason}"
 
 
+# =========================================================================
+# Fix C9: Large Ligands, Asynchronous Sampling Fallback & Macrocycle Strategy
+# =========================================================================
+
+def test_c9_macrocycle_sampling_dynamic_seed_and_reporting():
+    """
+    C9: MacrocycleConformerEngine.sample_macrocycle_conformers must generate dynamic non-deterministic
+    integer seeds when random_seed=None and report seed_used in the response.
+    """
+    import json
+    from backend.services.macrocycle import MacrocycleConformerEngine
+
+    with open("benchmarks/heldout/results/macrocycle_cycle_breakdown.json") as f:
+        compounds = json.load(f)
+
+    lor_smi = compounds["Lorlatinib"]["smiles"]
+
+    # 1. Test None generates dynamic integer seed > 0
+    res1 = MacrocycleConformerEngine.sample_macrocycle_conformers(lor_smi, num_confs=2, random_seed=None)
+    assert "seed_used" in res1, "seed_used missing from macrocycle sampling response"
+    assert isinstance(res1["seed_used"], int)
+    assert res1["seed_used"] > 0
+
+    # 2. Test explicit seed reproducibility
+    res2 = MacrocycleConformerEngine.sample_macrocycle_conformers(lor_smi, num_confs=2, random_seed=777)
+    assert res2["seed_used"] == 777
+
+
+def test_c9_docking_prepare_ligand_macrocycle_strategy_and_fallback():
+    """
+    C9: DockingEngine.prepare_ligand must transparently report macrocycle_strategy,
+    seed_used, and sampling_method in prep_log.
+    - Macrocycles (e.g. Lorlatinib) get semi_rigid_macrocycle strategy.
+    - Standard ligands (e.g. Diazepam) get standard_flexible strategy.
+    """
+    import json
+    from backend.services.docking import DockingEngine
+
+    with open("benchmarks/heldout/results/macrocycle_cycle_breakdown.json") as f:
+        compounds = json.load(f)
+
+    # 1. Macrocycle (Lorlatinib)
+    lor_smi = compounds["Lorlatinib"]["smiles"]
+    prep_macro = DockingEngine.prepare_ligand(lor_smi)
+    log_macro = prep_macro["prep_log"]
+    assert log_macro["is_macrocycle"] is True
+    assert log_macro["macrocycle_strategy"] == "semi_rigid_macrocycle"
+    assert "seed_used" in log_macro and isinstance(log_macro["seed_used"], int)
+    assert log_macro["conformer_count_sampled"] >= 1
+    assert "sampling_method" in log_macro
+
+    # 2. Standard flexible ligand (Diazepam: PubChem CID 3016)
+    diaz_smi = "CN1C(=O)CN=C(C2=C1C=CC(=C2)Cl)C3=CC=CC=C3"
+    prep_std = DockingEngine.prepare_ligand(diaz_smi)
+    log_std = prep_std["prep_log"]
+    assert log_std["is_macrocycle"] is False
+    assert log_std["macrocycle_strategy"] == "standard_flexible"
+    assert "seed_used" in log_std and isinstance(log_std["seed_used"], int)
+
+
 
 

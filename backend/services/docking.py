@@ -600,10 +600,16 @@ class DockingEngine:
         }
 
     @staticmethod
-    def prepare_ligand(input_data: str, is_sdf: bool = False) -> Dict[str, Any]:
+    def prepare_ligand(input_data: str, is_sdf: bool = False, random_seed: Optional[int] = None) -> Dict[str, Any]:
         """Convert ligand SMILES, InChI, SDF, MOL, MOL2, PDB, CIF, or PDBQT into 3D conformer and produce PDBQT."""
         trimmed = input_data.strip()
         mol = None
+
+        if random_seed is None:
+            import secrets
+            seed_used = int(secrets.randbelow(2147483647) + 1)
+        else:
+            seed_used = int(random_seed)
 
         # 1. Check if input is already an AutoDock PDBQT format file
         # Valid ligand PDBQT MUST contain ROOT and ENDROOT keywords defining the torsion tree
@@ -634,7 +640,13 @@ class DockingEngine:
                 "prep_log": {
                     "input_format": "PDBQT (Pre-configured Torsion Tree)",
                     "heavy_atom_count": heavy_atoms,
-                    "torsions_configured": f"Preserved existing PDBQT torsion setup ({rotb} rotatable bonds)"
+                    "torsions_configured": f"Preserved existing PDBQT torsion setup ({rotb} rotatable bonds)",
+                    "is_macrocycle": False,
+                    "macrocycle_ring_sizes": [],
+                    "macrocycle_strategy": "preconfigured_pdbqt",
+                    "conformer_count_sampled": 1,
+                    "sampling_method": "Input PDBQT torsion tree",
+                    "seed_used": seed_used
                 }
             }
 
@@ -702,29 +714,53 @@ class DockingEngine:
             minimization_desc = "Input 3D coordinates retained; partial charges assigned"
             is_macro = False
             macro_sizes = []
+            macrocycle_strategy = "standard_flexible"
+            conformer_count_sampled = 1
         else:
             from backend.services.macrocycle import MacrocycleConformerEngine
             is_macro, macro_sizes, _ = MacrocycleConformerEngine.is_macrocycle(mol)
             if is_macro:
-                macro_res = MacrocycleConformerEngine.sample_macrocycle_conformers(
-                    mol, num_confs=5, energy_window=15.0, rmsd_threshold=0.5, random_seed=42
-                )
-                mol_h = macro_res["best_mol"]
-                conformer_desc = f"RDKit Macrocycle Distance Geometry ({macro_res.get('sampling_engine', 'srETKDGv3')}, max ring size {max(macro_sizes)})"
-                minimization_desc = f"{macro_res.get('force_field', 'MMFF94')} global energy minimum conformer ({macro_res.get('global_min_energy_kcal')} kcal/mol)"
+                heavy_count = mol.GetNumHeavyAtoms()
+                eff_confs = 3 if heavy_count > 50 else 5
+                try:
+                    macro_res = MacrocycleConformerEngine.sample_macrocycle_conformers(
+                        mol, num_confs=eff_confs, energy_window=15.0, rmsd_threshold=0.5, random_seed=seed_used
+                    )
+                    mol_h = macro_res["best_mol"]
+                    conformer_desc = f"RDKit Macrocycle Distance Geometry ({macro_res.get('sampling_engine', 'srETKDGv3')}, max ring size {max(macro_sizes)})"
+                    minimization_desc = f"{macro_res.get('force_field', 'MMFF94')} global energy minimum conformer ({macro_res.get('global_min_energy_kcal')} kcal/mol)"
+                    conformer_count_sampled = macro_res.get("initial_conformers_sampled", eff_confs)
+                except Exception:
+                    # Fallback to standard ETKDGv3
+                    mol_h = Chem.AddHs(mol)
+                    params = AllChem.ETKDGv3()
+                    params.randomSeed = seed_used
+                    embed_result = AllChem.EmbedMolecule(mol_h, params)
+                    if embed_result != 0:
+                        AllChem.EmbedMolecule(mol_h, useRandomCoords=True, randomSeed=seed_used)
+                    try:
+                        AllChem.MMFFOptimizeMolecule(mol_h, maxIters=500)
+                    except Exception:
+                        pass
+                    conformer_desc = "RDKit ETKDGv3 Fallback (macrocycle sampling exception fallback)"
+                    minimization_desc = "MMFF94 gradient optimization (500 max iterations)"
+                    conformer_count_sampled = 1
+                macrocycle_strategy = "semi_rigid_macrocycle"
             else:
                 mol_h = Chem.AddHs(mol)
                 params = AllChem.ETKDGv3()
-                params.randomSeed = 42
+                params.randomSeed = seed_used
                 embed_result = AllChem.EmbedMolecule(mol_h, params)
                 if embed_result != 0:
-                    AllChem.EmbedMolecule(mol_h, useRandomCoords=True)
+                    AllChem.EmbedMolecule(mol_h, useRandomCoords=True, randomSeed=seed_used)
                 try:
                     AllChem.MMFFOptimizeMolecule(mol_h, maxIters=500)
                 except Exception:
                     pass
                 conformer_desc = "RDKit ETKDGv3 (Experimental Torsion Knowledge Distance Geometry)"
                 minimization_desc = "MMFF94 (Merck Molecular Force Field) gradient optimization (500 max iterations)"
+                macrocycle_strategy = "standard_flexible"
+                conformer_count_sampled = 1
 
         # Prepare PDBQT using Meeko with robust sanitized charges & semi-rigid macrocycle strategy
         pdbqt_str = DockingEngine._convert_mol_to_meeko_pdbqt(mol_h, rigid_macrocycles=is_macro)
@@ -745,7 +781,11 @@ class DockingEngine:
             "torsions_configured": f"Meeko flexible torsions enabled ({rotb_count} active rotatable bonds)",
             "partial_charges": "Meeko Gasteiger-PEPE charge distribution model",
             "is_macrocycle": is_macro,
-            "macrocycle_ring_sizes": macro_sizes if is_macro else []
+            "macrocycle_ring_sizes": macro_sizes if is_macro else [],
+            "macrocycle_strategy": macrocycle_strategy,
+            "conformer_count_sampled": conformer_count_sampled,
+            "sampling_method": conformer_desc,
+            "seed_used": seed_used
         }
 
         return {

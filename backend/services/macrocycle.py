@@ -140,7 +140,7 @@ class MacrocycleConformerEngine:
         num_confs: int = 25,
         energy_window: float = 15.0,
         rmsd_threshold: float = 0.5,
-        random_seed: int = 42
+        random_seed: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Sample low-strain conformational ensemble for macrocyclic molecule.
@@ -150,7 +150,7 @@ class MacrocycleConformerEngine:
             num_confs: Number of initial conformers to sample via Distance Geometry
             energy_window: Energy cutoff (kcal/mol) relative to global minimum
             rmsd_threshold: Minimum RMSD (Angstroms) to consider conformers distinct
-            random_seed: Reproducible random seed
+            random_seed: Reproducible random seed (if None, dynamic random seed is generated)
 
         Returns:
             Dictionary containing best conformer mol, energies, and sampling metadata.
@@ -163,10 +163,23 @@ class MacrocycleConformerEngine:
         if mol is None:
             raise ValueError("Invalid molecule provided for macrocycle sampling.")
 
+        # Ensure dynamic random seed when None is provided
+        if random_seed is None:
+            import secrets
+            random_seed = int(secrets.randbelow(2147483647) + 1)
+        else:
+            random_seed = int(random_seed)
+
+        # Scale conformer count for large/complex macrocycles (> 50 heavy atoms, e.g. CsA)
+        # to prevent process lockups while guaranteeing conformational sampling
+        heavy_count = mol.GetNumHeavyAtoms()
+        if heavy_count > 50 and num_confs > 3:
+            num_confs = 3
+
         is_macro, ring_sizes, ring_rings = cls.is_macrocycle(mol)
         mol_h = Chem.AddHs(mol)
 
-        # 1. Setup Distance Geometry Parameters
+        # 1. Setup Distance Geometry Parameters (Tier 1: srETKDGv3 macrocycle parameters)
         params = None
         engine_name = "srETKDGv3"
         try:
@@ -191,24 +204,46 @@ class MacrocycleConformerEngine:
         params.clearConfs = True
         params.numThreads = 0
 
-        # 2. Embed multiple conformers
-        conf_ids = AllChem.EmbedMultipleConfs(mol_h, numConfs=num_confs, params=params)
+        # 2. Embed multiple conformers with multi-tier fallback
+        conf_ids = []
+        try:
+            conf_ids = list(AllChem.EmbedMultipleConfs(mol_h, numConfs=num_confs, params=params))
+        except Exception:
+            conf_ids = []
 
-        # Fallback if srETKDGv3 failed to embed
+        # Tier 2 fallback: standard ETKDGv3 without specialized macrocycle torsion constraints
+        if len(conf_ids) == 0:
+            engine_name = "ETKDGv3_Fallback"
+            try:
+                fb_v3 = AllChem.ETKDGv3()
+                fb_v3.randomSeed = random_seed
+                fb_v3.useRandomCoords = True
+                fb_v3.numThreads = 0
+                conf_ids = list(AllChem.EmbedMultipleConfs(mol_h, numConfs=num_confs, params=fb_v3))
+            except Exception:
+                conf_ids = []
+
+        # Tier 3 fallback: basic ETKDG with random coordinates
         if len(conf_ids) == 0:
             engine_name = "ETKDG_Random_Fallback"
-            fb_params = AllChem.ETKDG()
-            fb_params.randomSeed = random_seed
-            fb_params.useRandomCoords = True
-            fb_params.useExpTorsionAnglePrefs = False
-            fb_params.useBasicKnowledge = False
-            fb_params.numThreads = 0
-            conf_ids = AllChem.EmbedMultipleConfs(mol_h, numConfs=num_confs, params=fb_params)
+            try:
+                fb_params = AllChem.ETKDG()
+                fb_params.randomSeed = random_seed
+                fb_params.useRandomCoords = True
+                fb_params.useExpTorsionAnglePrefs = False
+                fb_params.useBasicKnowledge = False
+                fb_params.numThreads = 0
+                conf_ids = list(AllChem.EmbedMultipleConfs(mol_h, numConfs=num_confs, params=fb_params))
+            except Exception:
+                conf_ids = []
 
+        # Tier 4 fallback: single standard embedding
         if len(conf_ids) == 0:
-            # Last-resort fallback: single standard embedding
-            AllChem.EmbedMolecule(mol_h, useRandomCoords=True)
-            conf_ids = [0] if mol_h.GetNumConformers() > 0 else []
+            try:
+                res_embed = AllChem.EmbedMolecule(mol_h, useRandomCoords=True, randomSeed=random_seed)
+                conf_ids = [0] if res_embed == 0 and mol_h.GetNumConformers() > 0 else []
+            except Exception:
+                conf_ids = []
 
         if len(conf_ids) == 0:
             raise RuntimeError("Distance geometry failed to generate 3D coordinates for macrocycle.")
@@ -298,7 +333,8 @@ class MacrocycleConformerEngine:
             "rmsd_pruning_cutoff_angstroms": rmsd_threshold,
             "relative_energies_kcal": [round(x[2], 2) for x in retained_confs],
             "best_mol": best_mol,
-            "ensemble_mols": ensemble_mols
+            "ensemble_mols": ensemble_mols,
+            "seed_used": random_seed
         }
 
     @classmethod
