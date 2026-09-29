@@ -212,3 +212,66 @@ def test_c4_real_qa_targets_sampling():
     assert len(m17_sampling["conformations"]) == 3
 
 
+# =========================================================================
+# Fix C5: Consensus Scoring and Decoy Gating Overhaul
+# =========================================================================
+
+def test_c5_insufficient_data_when_poses_less_than_3():
+    """C5: Reject consensus rank aggregation when n_poses < 3 (must flag INSUFFICIENT_DATA)."""
+    from backend.services.consensus import ConsensusScoringService
+    # 2 poses
+    poses = [
+        {"affinity_kcal": -8.5, "heavy_atoms": 25},
+        {"affinity_kcal": -7.2, "heavy_atoms": 25}
+    ]
+    res = ConsensusScoringService.compute_pose_consensus(poses)
+    assert len(res) == 2
+    for p in res:
+        assert p["consensus_confidence"] == "INSUFFICIENT_DATA"
+        assert "at least 3" in p["consensus_confidence_description"].lower()
+
+def test_c5_insufficient_data_when_engines_less_than_2():
+    """C5: Reject consensus when < 2 independent scoring engines available."""
+    from backend.services.consensus import ConsensusScoringService
+    # 3 poses, but only Vina empirical scores (no distinct MM-GBSA and no GNINA CNN)
+    poses = [
+        {"affinity_kcal": -8.5, "heavy_atoms": 25},
+        {"affinity_kcal": -8.0, "heavy_atoms": 25},
+        {"affinity_kcal": -7.5, "heavy_atoms": 25}
+    ]
+    res = ConsensusScoringService.compute_pose_consensus(poses)
+    assert len(res) == 3
+    for p in res:
+        assert p["consensus_confidence"] == "INSUFFICIENT_DATA"
+        assert "independent" in p["consensus_confidence_description"].lower()
+
+def test_c5_ligand_efficiency_aware_gating():
+    """
+    C5: Replace flat -6.0 kcal/mol gate with ligand efficiency-aware threshold.
+    - Small fragment (10 HA, -5.2 kcal/mol, LE = 0.52): Valid binder, NOT sub-threshold.
+    - Large ligand (40 HA, -5.8 kcal/mol, LE = 0.145): Sub-threshold binder.
+    """
+    from backend.services.consensus import ConsensusScoringService
+    # Small fragment poses with 2 independent engines (Vina + MM-GBSA)
+    frag_poses = [
+        {"affinity_kcal": -5.5, "mmgbsa_delta_g_kcal": -6.2, "heavy_atoms": 10, "ligand_strain_kcal": 1.0},
+        {"affinity_kcal": -5.2, "mmgbsa_delta_g_kcal": -5.8, "heavy_atoms": 10, "ligand_strain_kcal": 1.2},
+        {"affinity_kcal": -4.8, "mmgbsa_delta_g_kcal": -5.1, "heavy_atoms": 10, "ligand_strain_kcal": 1.1}
+    ]
+    res_frag = ConsensusScoringService.compute_pose_consensus(frag_poses)
+    # The top fragment pose with LE 0.55 should NOT be flagged as SUB_THRESHOLD_AFFINITY
+    assert res_frag[0]["consensus_confidence"] != "SUB_THRESHOLD_AFFINITY", (
+        f"Potent fragment (LE=0.55) falsely flagged as SUB_THRESHOLD_AFFINITY: {res_frag[0]['consensus_confidence_description']}"
+    )
+
+    # Large ligand poses with poor affinity (-5.8 kcal/mol for 40 heavy atoms)
+    large_poses = [
+        {"affinity_kcal": -5.8, "mmgbsa_delta_g_kcal": -6.0, "heavy_atoms": 40, "ligand_strain_kcal": 1.0},
+        {"affinity_kcal": -5.5, "mmgbsa_delta_g_kcal": -5.7, "heavy_atoms": 40, "ligand_strain_kcal": 1.2},
+        {"affinity_kcal": -5.2, "mmgbsa_delta_g_kcal": -5.3, "heavy_atoms": 40, "ligand_strain_kcal": 1.1}
+    ]
+    res_large = ConsensusScoringService.compute_pose_consensus(large_poses)
+    assert res_large[0]["consensus_confidence"] == "SUB_THRESHOLD_AFFINITY"
+
+
+
