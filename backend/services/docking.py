@@ -831,11 +831,17 @@ class DockingEngine:
             except Exception as fe:
                 print(f"[DOCKING ENGINE] Flexible residue preparation warning: {fe}")
 
-        # Determine seeds to run
+        # Determine seeds to run (never silently default to 42; generate random seed if absent)
+        import secrets
         if replicates > 1:
-            seeds = [42, 101, 2024, 777, 9999][:replicates]
+            if seed is not None:
+                seeds = [seed + i * 100 for i in range(replicates)]
+            else:
+                seeds = [secrets.randbelow(2147483647) + 1 for _ in range(replicates)]
         else:
-            seeds = [seed] if seed is not None else [None]
+            if seed is None:
+                seed = secrets.randbelow(2147483647) + 1
+            seeds = [seed]
 
         t_overall_start = time.time()
         all_runs_top_affinities = []
@@ -1215,14 +1221,17 @@ class DockingEngine:
         pocket_center: Dict[str, float],
         pocket_size: Dict[str, float],
         exhaustiveness: int = 8,
-        seed: Optional[int] = 42,
+        seed: Optional[int] = None,
         cpu: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Redock native co-crystallized ligand into its binding pocket and compute heavy-atom RMSD for protocol validation.
         Passes the native ligand through the rigorous 4-step preparation pipeline (PDB -> SDF -> AddHs -> Meeko PDBQT).
-        Uses a fixed reproducible random seed (default 42) for deterministic academic benchmarking.
+        Never silently defaults to 42; generates a random seed if absent and reports it in the response.
         """
+        import secrets
+        if seed is None:
+            seed = secrets.randbelow(2147483647) + 1
         # 1. Parse original crystallographic heavy-atom coordinates
         cryst_atoms = []
         for line in native_ligand_pdb.splitlines():

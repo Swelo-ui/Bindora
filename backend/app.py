@@ -309,9 +309,9 @@ def run_docking():
         try:
             seed = int(seed)
         except (ValueError, TypeError):
-            seed = 42
+            seed = None
     else:
-        seed = 42  # Standard default seed for research reproducibility
+        seed = None
 
     num_modes = int(data.get("num_modes", 9))
     replicates = int(data.get("replicates", 1))
@@ -532,7 +532,8 @@ def redock_validate():
     if not receptor_pdbqt or not native_ligand_pdb or not center or not size:
         return jsonify({"error": "Missing required parameters for redocking validation (receptor_pdbqt, native_ligand_pdb, center, size)"}), 400
 
-    seed = int(data.get("seed", 42))
+    raw_seed = data.get("seed")
+    seed = int(raw_seed) if raw_seed is not None else None
 
     global _is_docking_active
     _is_docking_active = True
@@ -909,7 +910,8 @@ def run_induced_fit():
     exhaustiveness = int(data.get("exhaustiveness", 8))
     loop_radius = float(data.get("loop_radius", 8.5))
     num_iterations = int(data.get("num_iterations", 5))
-    seed = int(data.get("seed", 42))
+    raw_seed = data.get("seed")
+    seed = int(raw_seed) if raw_seed is not None else None
 
     if not receptor_pdb or not ligand_sdf_or_pdbqt or not pocket_center or not pocket_size:
         return jsonify({"error": "Missing required fields (receptor_pdb, ligand, center, size)"}), 400
