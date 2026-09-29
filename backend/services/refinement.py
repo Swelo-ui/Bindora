@@ -1,5 +1,6 @@
 import io
 import math
+import secrets
 import tempfile
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
@@ -78,6 +79,9 @@ class ComplexRefinementService:
             "mmgbsa_delta_g_kcal": mmgbsa_res.get("mmgbsa_delta_g_kcal"),
             "complex_relaxation_delta_kcal": openmm_res.get("complex_relaxation_delta_kcal") if openmm_res and "error" not in openmm_res else None,
             "openmm_status": openmm_res.get("status", "Not available") if openmm_res else "Skipped",
+            "backbone_restraint_applied": openmm_res.get("backbone_restraint_applied", False) if openmm_res else False,
+            "backbone_restraint_k_kcal_mol_A2": openmm_res.get("backbone_restraint_k_kcal_mol_A2") if openmm_res else None,
+            "backbone_rmsd_angstroms": openmm_res.get("backbone_rmsd_angstroms") if openmm_res else None,
             "method_note": (
                 "Reports true ligand intramolecular strain (E_docked - E_free) via MMFF94 force field "
                 "and physics-based MM-GBSA implicit solvent binding energy with directional metal coordination."
@@ -149,7 +153,8 @@ class ComplexRefinementService:
                     m_smi = Chem.MolFromSmiles(smiles)
                     if m_smi:
                         mol_3d = Chem.AddHs(m_smi)
-                        AllChem.EmbedMolecule(mol_3d, randomSeed=42)
+                        embed_seed = secrets.randbelow(1_000_000) + 1
+                        AllChem.EmbedMolecule(mol_3d, randomSeed=embed_seed)
                 if not mol_3d:
                     return {
                         "method": "RDKit MMFF94 Ligand Strain Relaxation",
@@ -722,7 +727,8 @@ class ComplexRefinementService:
     @classmethod
     def _refine_openmm(cls, receptor_pdb: str, docked_pdb: str) -> Optional[Dict[str, Any]]:
         """
-        Run OpenMM GBn2 implicit solvent minimization on standard amino-acid protein atoms.
+        Run OpenMM GBn2 implicit solvent minimization on standard amino-acid protein atoms
+        with harmonic backbone position restraints (k = 10.0 kcal/mol/A^2).
         """
         try:
             import openmm as mm
@@ -741,15 +747,45 @@ class ComplexRefinementService:
             pdb = app.PDBFile(pdb_io)
 
             forcefield = app.ForceField("amber14-all.xml", "implicit/gbn2.xml")
+
+            # Try to add missing hydrogens via Modeller if needed
+            try:
+                modeller = app.Modeller(pdb.topology, pdb.positions)
+                modeller.addHydrogens(forcefield)
+                active_topology = modeller.topology
+                active_positions = modeller.positions
+            except Exception:
+                active_topology = pdb.topology
+                active_positions = pdb.positions
+
             system = forcefield.createSystem(
-                pdb.topology,
+                active_topology,
                 nonbondedMethod=app.NoCutoff,
                 constraints=app.HBonds
             )
 
+            # Implement harmonic backbone restraints (k = 10.0 kcal/mol/A^2 = 4184.0 kJ/mol/nm^2)
+            # on backbone atoms ("CA", "C", "N", "O")
+            k_val = 4184.0 * unit.kilojoules_per_mole / (unit.nanometer ** 2)
+            restraint = mm.CustomExternalForce("0.5 * k * ((x-x0)^2 + (y-y0)^2 + (z-z0)^2)")
+            restraint.addGlobalParameter("k", k_val)
+            restraint.addPerParticleParameter("x0")
+            restraint.addPerParticleParameter("y0")
+            restraint.addPerParticleParameter("z0")
+
+            bb_atom_indices = []
+            for atom in active_topology.atoms():
+                if atom.name in ("CA", "C", "N", "O"):
+                    pos = active_positions[atom.index]
+                    restraint.addParticle(atom.index, [pos[0], pos[1], pos[2]])
+                    bb_atom_indices.append(atom.index)
+
+            if bb_atom_indices:
+                system.addForce(restraint)
+
             integrator = mm.LangevinMiddleIntegrator(300 * unit.kelvin, 1 / unit.picosecond, 0.002 * unit.picoseconds)
-            simulation = app.Simulation(pdb.topology, system, integrator)
-            simulation.context.setPositions(pdb.positions)
+            simulation = app.Simulation(active_topology, system, integrator)
+            simulation.context.setPositions(active_positions)
 
             # Initial potential energy
             state_initial = simulation.context.getState(getEnergy=True)
@@ -762,20 +798,42 @@ class ComplexRefinementService:
             e_min = state_min.getPotentialEnergy().value_in_unit(unit.kilocalories_per_mole)
             delta_e = e_min - e_init
 
+            # Calculate backbone RMSD
+            bb_rmsd = 0.0
+            min_positions = state_min.getPositions()
+            if bb_atom_indices:
+                sq_sum = 0.0
+                for idx in bb_atom_indices:
+                    p0 = active_positions[idx]
+                    p1 = min_positions[idx]
+                    diff = (p1 - p0).value_in_unit(unit.angstrom)
+                    sq_sum += (diff[0] ** 2 + diff[1] ** 2 + diff[2] ** 2)
+                bb_rmsd = round(math.sqrt(sq_sum / len(bb_atom_indices)), 4)
+
             return {
                 "method": "OpenMM 8.x GBn2 Implicit Solvent — Pocket Structural Relaxation",
                 "method_note": (
-                    "Receptor pocket geometry minimized in continuous GBn2 dielectric. "
-                    "Reports potential energy relaxation delta."
+                    "Receptor pocket geometry minimized in continuous GBn2 dielectric with harmonic backbone restraints. "
+                    "Reports potential energy relaxation delta and backbone RMSD."
                 ),
                 "initial_energy_kcal": round(e_init, 2),
                 "minimized_energy_kcal": round(e_min, 2),
                 "complex_relaxation_delta_kcal": round(delta_e, 2),
                 "status": "Minimized & Solvated",
-                "relaxation_steps": 150
+                "relaxation_steps": 150,
+                "backbone_restraint_applied": True,
+                "backbone_restraint_k_kcal_mol_A2": 10.0,
+                "backbone_rmsd_angstroms": bb_rmsd
             }
         except Exception as e:
-            return {"error": str(e)}
+            return {
+                "method": "OpenMM 8.x GBn2 Implicit Solvent — Pocket Structural Relaxation",
+                "status": f"OpenMM minimization notice: {e}",
+                "backbone_restraint_applied": False,
+                "backbone_restraint_k_kcal_mol_A2": 10.0,
+                "backbone_rmsd_angstroms": None,
+                "error": str(e)
+            }
 
     @classmethod
     def export_openmm_md_package(

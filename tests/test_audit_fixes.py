@@ -609,5 +609,73 @@ def test_c10_hbond_angular_cutoff_120_degrees():
     assert len(res_acute["hydrogen_bonds"]) == 0
 
 
+# =========================================================================
+# Fix C11: Complex Refinement Physics & Pocket Backbone Restraints
+# =========================================================================
+
+_SAMPLE_PEPTIDE_PDB = (
+    "ATOM      1  N   ALA A   1       3.555   3.970   0.000  1.00  0.00           N\n"
+    "ATOM      2  CA  ALA A   1       4.853   4.614   0.000  1.00  0.00           C\n"
+    "ATOM      3  CB  ALA A   1       5.661   4.221   1.232  1.00  0.00           C\n"
+    "ATOM      4  C   ALA A   1       4.713   6.129   0.000  1.00  0.00           C\n"
+    "ATOM      5  O   ALA A   1       3.601   6.665   0.000  1.00  0.00           O\n"
+    "ATOM      6  N   ALA A   2       5.846   6.835   0.000  1.00  0.00           N\n"
+    "ATOM      7  CA  ALA A   2       5.846   8.284   0.000  1.00  0.00           C\n"
+    "ATOM      8  CB  ALA A   2       7.123   8.800   0.500  1.00  0.00           C\n"
+    "ATOM      9  C   ALA A   2       4.713   9.000   0.000  1.00  0.00           C\n"
+    "ATOM     10  O   ALA A   2       3.601   9.500   0.000  1.00  0.00           O\n"
+    "ATOM     11  OXT ALA A   2       5.500   9.800   0.000  1.00  0.00           O\n"
+    "TER\n"
+    "END\n"
+)
+
+def test_c11_openmm_backbone_harmonic_restraints_and_rmsd():
+    """
+    C11: ComplexRefinementService._refine_openmm must apply harmonic backbone
+    restraints (k = 10.0 kcal/mol/A^2) on CA, C, N, O atoms, report
+    backbone_restraint_applied=True, backbone_restraint_k_kcal_mol_A2=10.0,
+    and compute backbone_rmsd_angstroms.
+    """
+    from backend.services.refinement import ComplexRefinementService
+
+    res = ComplexRefinementService._refine_openmm(_SAMPLE_PEPTIDE_PDB, "")
+    assert res is not None
+    assert "error" not in res, f"OpenMM refinement errored: {res.get('error')}"
+    assert res.get("backbone_restraint_applied") is True
+    assert res.get("backbone_restraint_k_kcal_mol_A2") == 10.0
+    assert "backbone_rmsd_angstroms" in res
+    assert isinstance(res["backbone_rmsd_angstroms"], float)
+    assert res["backbone_rmsd_angstroms"] >= 0.0
+    assert res["backbone_rmsd_angstroms"] < 1.0
+    assert res["complex_relaxation_delta_kcal"] < 0.0
+
+def test_c11_refine_pose_pipeline_carries_backbone_restraint_data():
+    """
+    C11: ComplexRefinementService.refine_pose must forward backbone restraint
+    metrics into the top-level returned refinement schema.
+    """
+    from backend.services.refinement import ComplexRefinementService
+
+    ligand_pdbqt = (
+        "ATOM      1  C1  LIG     1       5.000   5.000   3.000  0.00  0.00           C\n"
+    )
+    res = ComplexRefinementService.refine_pose(_SAMPLE_PEPTIDE_PDB, ligand_pdbqt, smiles="C")
+    assert "backbone_restraint_applied" in res
+    assert res["backbone_restraint_applied"] is True
+    assert res["backbone_restraint_k_kcal_mol_A2"] == 10.0
+    assert "backbone_rmsd_angstroms" in res
+
+def test_c11_refinement_dynamic_seed_no_hardcoded_42():
+    """
+    C11: Inspect backend/services/refinement.py to ensure randomSeed=42
+    is eliminated in favor of dynamic integer generation.
+    """
+    with open("backend/services/refinement.py", "r", encoding="utf-8") as f:
+        code = f.read()
+    assert "randomSeed=42" not in code, "Hardcoded randomSeed=42 found in refinement.py"
+
+
+
+
 
 
