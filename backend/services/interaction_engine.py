@@ -53,7 +53,7 @@ class InteractionEngine:
         for hb in hbonds:
             contact_residues.add(hb["residue"])
 
-        salt_bridges = cls._find_salt_bridges(rec_atoms, lig_atoms, max_dist=4.2)
+        salt_bridges = cls._find_salt_bridges(rec_atoms, lig_atoms, max_dist=4.0)
         for sb in salt_bridges:
             contact_residues.add(sb["residue"])
 
@@ -61,7 +61,7 @@ class InteractionEngine:
         for ps in pi_stacks:
             contact_residues.add(ps["residue"])
 
-        pi_cations = cls._find_pi_cation(rec_atoms, lig_atoms, ligand_mol, max_dist=4.5)
+        pi_cations = cls._find_pi_cation(rec_atoms, lig_atoms, ligand_mol, max_dist=6.0)
         for pc in pi_cations:
             contact_residues.add(pc["residue"])
 
@@ -133,32 +133,33 @@ class InteractionEngine:
             "hydrogen_bond": {
                 "max_distance_angstroms": hbond_cutoff,
                 "distance_max_angstroms": hbond_cutoff,
-                "min_angle_degrees": 115.0,
-                "geometry": "Directional donor-H...acceptor angle >= 115°, distance <= 3.5 Å",
+                "min_angle_degrees": 120.0,
+                "geometry": "Directional donor-H...acceptor angle >= 120°, distance <= 3.5 Å",
                 "donor_acceptor_elements": ["O", "N", "S"]
             },
             "salt_bridges": {
-                "max_distance_angstroms": 4.2,
-                "distance_max_angstroms": 4.2,
-                "geometry": "Centroid distance between cationic center (Lys NZ, Arg guanidinium) and anionic center (Asp/Glu carboxylate) <= 4.2 Å"
+                "max_distance_angstroms": 4.0,
+                "distance_max_angstroms": 4.0,
+                "geometry": "Centroid distance between cationic center (Lys NZ, Arg guanidinium, His) and anionic center (Asp/Glu carboxylate) <= 4.0 Å"
             },
             "pi_stacking": {
                 "max_distance_angstroms": 5.5,
                 "distance_max_angstroms": 5.5,
-                "max_angle_parallel_deg": 35.0,
-                "geometry": "Centroid-centroid distance <= 5.5 Å; parallel (θ < 35°) vs T-shaped (θ >= 35°)"
+                "max_angle_parallel_deg": 30.0,
+                "min_angle_t_shaped_deg": 50.0,
+                "geometry": "Centroid-centroid distance <= 5.5 Å; parallel (θ < 30°) vs T-shaped (θ >= 50°)"
             },
             "pi_cation": {
-                "max_distance_angstroms": 4.5,
-                "distance_max_angstroms": 4.5,
-                "geometry": "Cationic group to aromatic centroid distance <= 4.5 Å"
+                "max_distance_angstroms": 6.0,
+                "distance_max_angstroms": 6.0,
+                "geometry": "Cationic group to aromatic centroid distance <= 6.0 Å"
             },
             "halogen_bond_sigma_hole": {
                 "max_distance_angstroms": 3.8,
                 "distance_max_angstroms": 3.8,
-                "min_c_x_acceptor_angle_deg": 130.0,
+                "min_c_x_acceptor_angle_deg": 140.0,
                 "classical_halogens": ["Cl", "Br", "I"],
-                "mechanism": "Directional electrophilic sigma-hole along C-X bond axis (theta >= 130 deg)"
+                "mechanism": "Directional electrophilic sigma-hole along C-X bond axis (theta >= 140 deg)"
             },
             "fluorine_polar_contact": {
                 "max_distance_angstroms": 3.5,
@@ -167,10 +168,10 @@ class InteractionEngine:
             },
             "halogen_bonds": {
                 "max_distance_angstroms": 3.8,
-                "min_angle_degrees": 130.0,
+                "min_angle_degrees": 140.0,
                 "classical_halogens": ["Cl", "Br", "I"],
                 "f_contacts": ["F"],
-                "geometry": "C-X...[O/N/S] distance <= 3.8 Å with angle >= 130° for Cl/Br/I; F evaluated as polar/multipolar contact"
+                "geometry": "C-X...[O/N/S] distance <= 3.8 Å with angle >= 140° for Cl/Br/I; F evaluated as polar/multipolar contact"
             },
             "hydrophobic_contacts": {
                 "max_distance_angstroms": hydrophobic_cutoff,
@@ -187,6 +188,29 @@ class InteractionEngine:
         }
 
     @classmethod
+    def _normalize_element(cls, raw_elem: str, atom_name: str) -> str:
+        """Normalize PDBQT AutoDock atom types (OA, NA, SA, HD, A) and PDB names to IUPAC elements."""
+        raw = raw_elem.strip().upper()
+        if raw in ("OA", "O"):
+            return "O"
+        if raw in ("NA", "N"):
+            return "N"
+        if raw in ("SA", "S"):
+            return "S"
+        if raw in ("HD", "H"):
+            return "H"
+        if raw in ("A", "C"):
+            return "C"
+        if raw in ("CL", "BR", "I", "F", "P", "ZN", "MG", "MN", "FE", "CA", "NI", "CU", "CO"):
+            return raw
+        if len(raw) == 2 and raw[0] in ("C", "N", "O", "S", "H") and raw[1] in ("A", "D"):
+            return raw[0]
+        an = atom_name.strip().upper()
+        if an.startswith(("CL", "BR", "ZN", "MG", "MN", "FE", "CA", "NI", "CU", "CO")):
+            return an[:2]
+        return an[0] if an else "C"
+
+    @classmethod
     def _parse_receptor_atoms(cls, pdb_str: str) -> List[Dict[str, Any]]:
         atoms = []
         lines = pdb_str.splitlines()
@@ -197,7 +221,8 @@ class InteractionEngine:
                     res_num = int(line[22:26].strip())
                     chain = line[21:22].strip()
                     atom_name = line[12:16].strip()
-                    elem = line[76:78].strip() or atom_name[0]
+                    raw_elem = line[76:78].strip() if len(line) > 76 else ""
+                    elem = cls._normalize_element(raw_elem, atom_name)
                     x = float(line[30:38])
                     y = float(line[38:46])
                     z = float(line[46:54])
@@ -237,9 +262,8 @@ class InteractionEngine:
                 try:
                     serial = int(line[6:11].strip()) if len(line) >= 11 and line[6:11].strip().isdigit() else (atom_idx + 1)
                     atom_name = line[12:16].strip()
-                    elem = line[76:78].strip() if len(line) > 76 else ""
-                    if not elem:
-                        elem = atom_name[0]
+                    raw_elem = line[76:78].strip() if len(line) > 76 else ""
+                    elem = cls._normalize_element(raw_elem, atom_name)
                     x = float(line[30:38])
                     y = float(line[38:46])
                     z = float(line[46:54])
@@ -347,7 +371,7 @@ class InteractionEngine:
                     # We have explicit polar hydrogen on receptor donor
                     for bh in bonded_hs:
                         ang = cls._calc_angle(rcoord, bh["coord"], lcoord)  # RecDonor - H ... LigAcceptor
-                        if ang >= 115.0:  # PLIP angle cutoff
+                        if ang >= 120.0:  # PLIP angle cutoff >= 120°
                             is_hbond = True
                             donor_angle = ang
                             h_coord = bh["coord"]
@@ -362,7 +386,7 @@ class InteractionEngine:
                 if lig_hs:
                     for lh in lig_hs:
                         ang = cls._calc_angle(lcoord, lh["coord"], rcoord)  # LigDonor - H ... RecAcceptor
-                        if ang >= 115.0:
+                        if ang >= 120.0:
                             is_hbond = True
                             donor_angle = ang
                             h_coord = lh["coord"]
@@ -409,9 +433,9 @@ class InteractionEngine:
         cls,
         rec_atoms: List[Dict[str, Any]],
         lig_atoms: List[Dict[str, Any]],
-        max_dist: float = 4.2
+        max_dist: float = 4.0
     ) -> List[Dict[str, Any]]:
-        """Detect salt bridges between cationic and anionic centers (<= 4.2 A)."""
+        """Detect salt bridges between cationic and anionic centers (<= 4.0 A)."""
         salt_bridges = []
 
         # Group receptor residues
@@ -652,9 +676,9 @@ class InteractionEngine:
         rec_atoms: List[Dict[str, Any]],
         lig_atoms: List[Dict[str, Any]],
         mol: Optional[Chem.Mol],
-        max_dist: float = 4.5
+        max_dist: float = 6.0
     ) -> List[Dict[str, Any]]:
-        """PLIP criteria for pi-cation interactions (<= 4.5 A)."""
+        """PLIP criteria for pi-cation interactions (<= 6.0 A)."""
         pi_cations = []
 
         # 1. Receptor cations (LYS NZ, ARG guanidinium)
@@ -830,7 +854,7 @@ class InteractionEngine:
                             })
                     else:
                         # Classical σ-hole halogen bond (Cl, Br, I)
-                        if angle >= 130.0:
+                        if angle >= 140.0:
                             res_id = f"{ratom['res_name']} {ratom['res_num']}:{ratom['chain']}"
                             halogens.append({
                                 "type": "Halogen Bond",

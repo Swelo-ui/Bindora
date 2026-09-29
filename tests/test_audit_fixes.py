@@ -532,5 +532,82 @@ def test_c9_docking_prepare_ligand_macrocycle_strategy_and_fallback():
     assert "seed_used" in log_std and isinstance(log_std["seed_used"], int)
 
 
+# =========================================================================
+# Fix C10: Interaction Detector Physics & Geometry Criteria
+# =========================================================================
+
+def test_c10_criteria_definitions():
+    """
+    C10: InteractionEngine criteria must enforce biophysically calibrated thresholds:
+    - Hydrogen bond: min angle >= 120.0 deg, max dist <= 3.5 A
+    - Salt bridge: max dist <= 4.0 A
+    - Halogen bond: min angle >= 140.0 deg for classical sigma-hole
+    - Pi-cation: max dist up to 6.0 A
+    """
+    from backend.services.interaction_engine import InteractionEngine
+    crit = InteractionEngine.get_criteria()
+    assert crit["hydrogen_bond"]["min_angle_degrees"] >= 120.0
+    assert crit["salt_bridges"]["max_distance_angstroms"] <= 4.0
+    assert crit["halogen_bonds"]["min_angle_degrees"] >= 140.0
+
+def test_c10_salt_bridge_distance_boundary():
+    """
+    C10: Salt bridge detection must strictly enforce distance <= 4.0 A.
+    - Anionic O at 3.8 A from Lys NZ: ACCEPTED as Salt Bridge.
+    - Anionic O at 4.15 A from Lys NZ: REJECTED (exceeds 4.0 A).
+    """
+    from backend.services.interaction_engine import InteractionEngine
+
+    rec_pdb = (
+        "ATOM      1  NZ  LYS A  10      10.000  10.000  10.000  1.00 20.00           N\n"
+    )
+
+    # Within 4.0 A (dist = 3.8 A along X)
+    lig_pdbqt_in = (
+        "ATOM      1  O1  LIG     1      13.800  10.000  10.000  0.00  0.00          -0.80 OA\n"
+    )
+    res_in = InteractionEngine.analyze(rec_pdb, lig_pdbqt_in)
+    assert len(res_in["salt_bridges"]) == 1
+    assert res_in["salt_bridges"][0]["distance"] == 3.8
+
+    # Beyond 4.0 A (dist = 4.15 A along X)
+    lig_pdbqt_out = (
+        "ATOM      1  O1  LIG     1      14.150  10.000  10.000  0.00  0.00          -0.80 OA\n"
+    )
+    res_out = InteractionEngine.analyze(rec_pdb, lig_pdbqt_out)
+    assert len(res_out["salt_bridges"]) == 0
+
+def test_c10_hbond_angular_cutoff_120_degrees():
+    """
+    C10: Hydrogen bond detection must enforce D-H...A angle >= 120.0 deg.
+    Receptor donor N at (10, 10, 10), H at (10, 10, 11).
+    - Ligand acceptor O at (10, 10, 13.8): angle = 180.0 deg -> ACCEPTED
+    - Ligand acceptor O with angle 105 deg -> REJECTED
+    """
+    import numpy as np
+    from backend.services.interaction_engine import InteractionEngine
+
+    rec_pdb = (
+        "ATOM      1  NE2 HIS A  50      10.000  10.000  10.000  1.00 20.00           N\n"
+        "ATOM      2  HD2 HIS A  50      10.000  10.000  11.000  1.00 20.00           H\n"
+    )
+
+    # 1. Linear H-bond (angle ~ 180 deg, dist D...A = 2.8 A)
+    lig_pdbqt_linear = (
+        "ATOM      1  O1  LIG     1      10.000  10.000  12.800  0.00  0.00          -0.50 OA\n"
+    )
+    res_lin = InteractionEngine.analyze(rec_pdb, lig_pdbqt_linear)
+    assert len(res_lin["hydrogen_bonds"]) == 1
+    assert res_lin["hydrogen_bonds"][0]["angle_deg"] >= 120.0
+
+    # 2. Acute angle H-bond (angle < 120 deg, say 90-100 deg)
+    # Placing Acceptor at (10.0, 12.5, 10.0) -> dist to D is 2.5 A, but vector D-H is (0, 0, 1) and H-A is (0, 2.5, -1)
+    lig_pdbqt_acute = (
+        "ATOM      1  O1  LIG     1      10.000  12.400  10.000  0.00  0.00          -0.50 OA\n"
+    )
+    res_acute = InteractionEngine.analyze(rec_pdb, lig_pdbqt_acute)
+    assert len(res_acute["hydrogen_bonds"]) == 0
+
+
 
 
