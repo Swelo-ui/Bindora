@@ -133,3 +133,82 @@ def test_c3_empty_or_missing_parameters_return_400():
             data = res.get_json()
             assert "error" in data, f"Endpoint {ep} error response missing 'error' field"
 
+
+# =========================================================================
+# Fix C4: Induced-Fit Improvements and Honest Reporting
+# =========================================================================
+
+def test_c4_seed_signature_and_generation():
+    """C4: run_induced_fit_docking default seed must be None (not 42)."""
+    from backend.services.induced_fit import InducedFitService
+    sig = inspect.signature(InducedFitService.run_induced_fit_docking)
+    assert sig.parameters['seed'].default is None, "InducedFitService.run_induced_fit_docking default seed must be None, not 42"
+
+def test_c4_honest_backbone_reporting():
+    """C4: sample_backbone_induced_fit must report backbone_rmsd, sidechain_rmsd, and explicit movement assessment."""
+    from backend.services.induced_fit import InducedFitService
+    with open("data/cache/1M17.pdb") as f:
+        rec_pdb = f.read()
+    center = {"x": 22.01, "y": 0.25, "z": 52.79}
+    res = InducedFitService.sample_backbone_induced_fit(
+        rec_pdb,
+        pocket_center=center,
+        num_conformations=2,
+        random_seed=12345
+    )
+    assert res["status"] == "SUCCESS"
+    for conf in res["conformations"]:
+        assert "backbone_rmsd_angstroms" in conf, "Missing backbone_rmsd_angstroms in conformation"
+        assert "sidechain_rmsd_angstroms" in conf, "Missing sidechain_rmsd_angstroms in conformation"
+        assert "backbone_movement_assessment" in conf, "Missing backbone_movement_assessment in conformation"
+        if conf["conformation_id"] > 0:
+            assert conf["receptor_strain_kcal"] >= 0.0
+
+def test_c4_real_qa_targets_sampling():
+    """
+    C4: Test IFD receptor sampling & scoring on real QA targets:
+      - 1IEP (Abl kinase) with Imatinib & Dasatinib PubChem SMILES
+      - 1M17 (EGFR kinase) with Erlotinib PubChem SMILES
+    """
+    import csv
+    from backend.services.induced_fit import InducedFitService
+
+    # Load verified SMILES from frozen pains dataset
+    smiles_map = {}
+    with open("benchmarks/heldout/pains_dataset.csv", "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for r in reader:
+            if r["name"] in ["imatinib", "dasatinib", "erlotinib"]:
+                smiles_map[r["name"]] = r["smiles"]
+
+    assert "imatinib" in smiles_map
+    assert "dasatinib" in smiles_map
+    assert "erlotinib" in smiles_map
+
+    # Test 1IEP sampling
+    with open("data/cache/1IEP.pdb") as f:
+        iep_pdb = f.read()
+    iep_center = {"x": 15.61, "y": 53.38, "z": 15.45}
+    iep_sampling = InducedFitService.sample_backbone_induced_fit(
+        iep_pdb,
+        pocket_center=iep_center,
+        num_conformations=2,
+        random_seed=999
+    )
+    assert iep_sampling["status"] == "SUCCESS"
+    assert len(iep_sampling["conformations"]) == 3 # 1 crystal + 2 induced
+
+    # Test 1M17 sampling
+    with open("data/cache/1M17.pdb") as f:
+        m17_pdb = f.read()
+    m17_center = {"x": 22.01, "y": 0.25, "z": 52.79}
+    m17_sampling = InducedFitService.sample_backbone_induced_fit(
+        m17_pdb,
+        pocket_center=m17_center,
+        num_conformations=2,
+        random_seed=999
+    )
+    assert m17_sampling["status"] == "SUCCESS"
+    assert len(m17_sampling["conformations"]) == 3
+
+

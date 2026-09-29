@@ -73,7 +73,7 @@ class InducedFitService:
         radius: float = 8.5,
         max_dihedral_perturbation_deg: float = 12.0,
         num_conformations: int = 3,
-        random_seed: int = 42,
+        random_seed: Optional[int] = None,
         cutoff_radius: Optional[float] = None,
         **kwargs
     ) -> Dict[str, Any]:
@@ -86,6 +86,9 @@ class InducedFitService:
         """
         if cutoff_radius is not None:
             radius = cutoff_radius
+        if random_seed is None:
+            import secrets
+            random_seed = secrets.randbelow(2147483647) + 1
         rng = random.Random(random_seed)
         pocket_res = cls.extract_pocket_residues(receptor_pdb, pocket_center, radius=radius)
 
@@ -107,7 +110,10 @@ class InducedFitService:
             "type": "Crystallographic Rigid Reference",
             "pdb_block": receptor_pdb,
             "pocket_rmsd_angstroms": 0.0,
+            "backbone_rmsd_angstroms": 0.0,
+            "sidechain_rmsd_angstroms": 0.0,
             "receptor_strain_kcal": 0.0,
+            "backbone_movement_assessment": "Ground state crystallographic coordinates (unperturbed reference).",
             "status": "CRYSTAL_GROUND_STATE"
         })
 
@@ -115,6 +121,10 @@ class InducedFitService:
             perturbed_lines = []
             moved_coords_crystal = []
             moved_coords_perturbed = []
+            bb_coords_crystal = []
+            bb_coords_perturbed = []
+            sc_coords_crystal = []
+            sc_coords_perturbed = []
 
             # Magnitude of random perturbation scaled by conf_idx
             perturb_scale = (conf_idx / num_conformations) * (max_dihedral_perturbation_deg / 180.0) * math.pi
@@ -136,7 +146,8 @@ class InducedFitService:
                         x = float(line[30:38])
                         y = float(line[38:46])
                         z = float(line[46:54])
-                        moved_coords_crystal.append(np.array([x, y, z]))
+                        c_pt = np.array([x, y, z])
+                        moved_coords_crystal.append(c_pt)
 
                         # Apply harmonic torsional displacement:
                         # CA and backbone atoms move less (~0.15 - 0.4 A), sidechain atoms move more (~0.5 - 1.2 A)
@@ -150,7 +161,15 @@ class InducedFitService:
                         new_x = x + dx
                         new_y = y + dy
                         new_z = z + dz
-                        moved_coords_perturbed.append(np.array([new_x, new_y, new_z]))
+                        p_pt = np.array([new_x, new_y, new_z])
+                        moved_coords_perturbed.append(p_pt)
+
+                        if is_backbone:
+                            bb_coords_crystal.append(c_pt)
+                            bb_coords_perturbed.append(p_pt)
+                        else:
+                            sc_coords_crystal.append(c_pt)
+                            sc_coords_perturbed.append(p_pt)
 
                         updated_line = f"{line[:30]}{new_x:8.3f}{new_y:8.3f}{new_z:8.3f}{line[54:]}"
                         perturbed_lines.append(updated_line)
@@ -166,6 +185,24 @@ class InducedFitService:
             else:
                 pocket_rmsd = 0.0
 
+            if bb_coords_crystal and bb_coords_perturbed:
+                bb_diffs = [np.linalg.norm(c - p) for c, p in zip(bb_coords_crystal, bb_coords_perturbed)]
+                bb_rmsd = math.sqrt(sum(d**2 for d in bb_diffs) / len(bb_diffs))
+            else:
+                bb_rmsd = 0.0
+
+            if sc_coords_crystal and sc_coords_perturbed:
+                sc_diffs = [np.linalg.norm(c - p) for c, p in zip(sc_coords_crystal, sc_coords_perturbed)]
+                sc_rmsd = math.sqrt(sum(d**2 for d in sc_diffs) / len(sc_diffs))
+            else:
+                sc_rmsd = 0.0
+
+            # Honest scientific assessment of movement
+            if bb_rmsd < 0.25:
+                movement_note = f"Backbone movement is minimal ({bb_rmsd:.2f} Å); receptor adaptation is primarily sidechain breathing ({sc_rmsd:.2f} Å)."
+            else:
+                movement_note = f"Backbone dihedral displacement detected ({bb_rmsd:.2f} Å); coupled with sidechain breathing ({sc_rmsd:.2f} Å)."
+
             # Harmonic receptor adaptation strain: E = 0.5 * k * rmsd^2 (calibrated k = 3.5 kcal/mol/A^2)
             receptor_strain = round(0.5 * 3.5 * (pocket_rmsd**2), 2)
 
@@ -173,8 +210,11 @@ class InducedFitService:
                 "conformation_id": conf_idx,
                 "type": f"Induced-Fit Conformation #{conf_idx} (Backbone Breathing)",
                 "pdb_block": "\n".join(perturbed_lines) + "\nEND\n",
-                "pocket_rmsd_angstroms": round(pocket_rmsd, 2),
+                "pocket_rmsd_angstroms": round(pocket_rmsd, 3),
+                "backbone_rmsd_angstroms": round(bb_rmsd, 3),
+                "sidechain_rmsd_angstroms": round(sc_rmsd, 3),
                 "receptor_strain_kcal": receptor_strain,
+                "backbone_movement_assessment": movement_note,
                 "status": "INDUCED_FIT_RELAXED"
             })
 
@@ -182,6 +222,7 @@ class InducedFitService:
             "status": "SUCCESS",
             "pocket_residues_targeted": len(target_keys),
             "conformations_generated": len(conformations),
+            "seed_used": random_seed,
             "conformations": conformations
         }
 
@@ -196,7 +237,7 @@ class InducedFitService:
         exhaustiveness: int = 4,
         loop_radius: float = 6.0,
         num_iterations: Optional[int] = None,
-        seed: Optional[int] = 42,
+        seed: Optional[int] = None,
         ligand_sdf_or_pdbqt: Optional[str] = None,
         ligand_smiles_or_pdbqt: Optional[str] = None,
         **kwargs
@@ -215,6 +256,10 @@ class InducedFitService:
         if num_iterations is not None:
             num_conformations = int(num_iterations)
 
+        if seed is None:
+            import secrets
+            seed = secrets.randbelow(2147483647) + 1
+
         # 1. Prepare ligand (polymorphic detection: PDBQT vs SDF vs SMILES)
         is_pdbqt = ("ROOT" in raw_ligand and "ENDROOT" in raw_ligand) or ("ATOM  " in raw_ligand and "TORSDOF" in raw_ligand)
         if is_pdbqt:
@@ -232,7 +277,7 @@ class InducedFitService:
             pocket_center=pocket_center,
             radius=loop_radius,
             num_conformations=num_conformations,
-            random_seed=seed or 42
+            random_seed=seed
         )
 
         confs = ensemble_data.get("conformations", [])
@@ -266,7 +311,10 @@ class InducedFitService:
                         "receptor_conformation_id": conf["conformation_id"],
                         "receptor_type": conf["type"],
                         "pocket_rmsd_angstroms": conf["pocket_rmsd_angstroms"],
+                        "backbone_rmsd_angstroms": conf.get("backbone_rmsd_angstroms", 0.0),
+                        "sidechain_rmsd_angstroms": conf.get("sidechain_rmsd_angstroms", 0.0),
                         "receptor_strain_kcal": r_strain,
+                        "backbone_movement_assessment": conf.get("backbone_movement_assessment", ""),
                         "docking_vina_affinity_kcal": v_aff,
                         "composite_ifd_score": ifd_score,
                         "consensus_confidence": top_pose.get("consensus_confidence", "MODERATE_CONFIDENCE"),
@@ -287,11 +335,15 @@ class InducedFitService:
             "status": "SUCCESS",
             "method": "Monte Carlo Active-Site Backbone Dihedral Induced-Fit Docking (IFD)",
             "ensemble_size": len(evaluated_modes),
+            "seed_used": seed,
             "best_receptor_conformation_id": best_ifd["receptor_conformation_id"],
             "best_composite_ifd_score": best_ifd["composite_ifd_score"],
             "best_vina_affinity_kcal": best_ifd["docking_vina_affinity_kcal"],
             "best_receptor_strain_kcal": best_ifd["receptor_strain_kcal"],
             "best_pocket_rmsd_angstroms": best_ifd["pocket_rmsd_angstroms"],
+            "best_backbone_rmsd_angstroms": best_ifd.get("backbone_rmsd_angstroms", 0.0),
+            "best_sidechain_rmsd_angstroms": best_ifd.get("sidechain_rmsd_angstroms", 0.0),
+            "backbone_movement_assessment": best_ifd.get("backbone_movement_assessment", ""),
             "best_pose": best_ifd["top_pose"],
             "best_receptor_pdb": best_ifd["receptor_pdb"],
             "all_evaluated_conformations": evaluated_modes
