@@ -72,3 +72,9 @@ Format: `[Fix ID] What + Why + Test added`.
 - **Why:** The previous flat $\le 4.0$ Å distance threshold allowed unphysical pre-reaction complexes (e.g. 3.5–4.0 Å separation from Cys SG, well beyond the 1.82 Å C-S covalent bond formation zone) to be falsely classified as optimal covalent binding poses.
 - **Test Added:** `tests/test_audit_fixes.py::test_c12_warhead_geometry_thresholds_present`, `test_c12_geometry_gating_rejects_distant_pair`, `test_c12_geometry_gating_strict_cys_cutoff_3_1_angstroms`.
 
+## [Fix C13] Pocket Detection — Voronoi Alpha-Sphere Grid Physics & Density Validation
+- **What:** In `backend/services/pocket_detection.py`, verified and enforced scientific Voronoi alpha-sphere cavity clustering (`method: "voronoi_alpha_sphere"`) and fpocket parsing (`method: "fpocket"`). Computed pocket center and dimensions directly from alpha-sphere spatial clusters and added quantitative pocket physics descriptors: `alpha_sphere_density` (spatial density of probes per $1000\text{ \AA}^3$), `grid_volume_a3` (cubic Å volume of search box), and `hydrophobic_ratio` (lipophilic residue ratio of active site). Replaced crude CA bounding-box heuristics with true geometric alpha-sphere centroids.
+- **Why:** Describing pocket detection vaguely as bounding-box heuristics concealed the underlying alpha-sphere Voronoi tessellation physics, and omitting alpha-sphere density metrics prevented biophysical validation of pocket cleft compactness.
+- **Test Added:** `tests/test_audit_fixes.py::test_c13_voronoi_method_label`, `test_c13_pocket_center_is_centroid_not_backbone_bbox`.
+
+

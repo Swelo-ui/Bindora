@@ -257,13 +257,20 @@ class PocketDetectionService:
             size_norm = min(1.0, len(comp) / 60.0)
             drug_score = min(0.98, max(0.15, 0.45 * size_norm + 0.55 * hydro_ratio))
 
+            # Alpha-sphere spatial density (spheres per 1000 A^3) and grid volume
+            grid_vol = float(sx * sy * sz)
+            sphere_density = round(float(len(comp) / max(0.1, vol / 1000.0)), 2)
+
             scored_pockets.append({
                 "pocket_id": idx + 1,
                 "center": {"x": round(float(cx), 2), "y": round(float(cy), 2), "z": round(float(cz), 2)},
                 "size": {"x": round(sx, 1), "y": round(sy, 1), "z": round(sz, 1)},
                 "druggability_score": round(float(drug_score), 3),
                 "alpha_spheres": len(comp),
+                "alpha_sphere_density": sphere_density,
                 "volume_a3": round(vol, 1),
+                "grid_volume_a3": round(grid_vol, 1),
+                "hydrophobic_ratio": round(float(hydro_ratio), 3),
                 "method": "voronoi_alpha_sphere"
             })
 

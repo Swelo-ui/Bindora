@@ -794,6 +794,11 @@ def test_c13_voronoi_method_label():
         assert "size" in p
         assert "druggability_score" in p
         assert "alpha_spheres" in p
+        if p.get("method") == "voronoi_alpha_sphere":
+            assert "alpha_sphere_density" in p
+            assert "grid_volume_a3" in p
+            assert p["grid_volume_a3"] > 0
+            assert p["alpha_sphere_density"] > 0
 
 
 def test_c13_pocket_center_is_centroid_not_backbone_bbox():
