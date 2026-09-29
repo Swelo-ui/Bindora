@@ -190,10 +190,12 @@ class CovalentDockingService:
         cls,
         receptor_pdb_or_pdbqt: str,
         pocket_center: Optional[Dict[str, float]] = None,
-        pocket_radius: float = 12.0
+        pocket_radius: float = 18.0,
+        ligand_coords: Optional[List[Any]] = None
     ) -> List[Dict[str, Any]]:
         """
         Extract candidate catalytic nucleophilic residues from receptor structure.
+        Uses proximity to ligand coordinates (within 8.5 A) or expanded pocket radius (18.0 A).
         """
         nucleophiles = []
         cx = pocket_center.get("x") if pocket_center else None
@@ -211,10 +213,10 @@ class CovalentDockingService:
                 continue
 
             target_spec = cls.NUCLEOPHILE_TARGETS[rname]
-            aname = line[12:16].strip()
+            aname = line[12:16].strip().upper()
 
             # Handle HIS (can attack via NE2 or ND1)
-            is_match = (aname == target_spec["atom"])
+            is_match = (aname == target_spec["atom"] or aname.startswith(target_spec["atom"]))
             if rname == "HIS" and aname in ("ND1", "NE2"):
                 is_match = True
 
@@ -228,8 +230,12 @@ class CovalentDockingService:
                 chain = line[21:22].strip() or "A"
                 rnum = int(line[22:26].strip())
 
-                # If pocket center is defined, filter within pocket radius
-                if cx is not None and cy is not None and cz is not None:
+                # If ligand coords provided, check distance to nearest ligand atom
+                if ligand_coords and len(ligand_coords) > 0:
+                    min_dist_sq = min((x - lc[0])**2 + (y - lc[1])**2 + (z - lc[2])**2 for lc in ligand_coords)
+                    if min_dist_sq > (8.5 ** 2):
+                        continue
+                elif cx is not None and cy is not None and cz is not None:
                     dist_sq = (x - cx)**2 + (y - cy)**2 + (z - cz)**2
                     if dist_sq > pocket_radius**2:
                         continue
@@ -258,7 +264,8 @@ class CovalentDockingService:
     ) -> Dict[str, Any]:
         """
         Evaluate covalent feasibility of a docked ligand pose against active-site nucleophiles.
-        Calculates reactive distances, attack angles, and covalent feasibility scores.
+        Calculates reactive distances, attack angles, and covalent feasibility scores using
+        exact 3D conformer atom mapping and geometric fallback.
         """
         # 1. Parse ligand coordinates
         lig_atoms: List[Dict[str, Any]] = []
@@ -266,44 +273,160 @@ class CovalentDockingService:
             if line.startswith(("ATOM  ", "HETATM")) and len(line) >= 54:
                 try:
                     aname = line[12:16].strip()
+                    raw_e = line[76:78].strip().upper() if len(line) >= 78 else (line[76:].strip().upper() or aname[0])
                     x = float(line[30:38])
                     y = float(line[38:46])
                     z = float(line[46:54])
-                    lig_atoms.append({"name": aname, "coords": np.array([x, y, z])})
+                    lig_atoms.append({"name": aname, "elem": raw_e, "coords": np.array([x, y, z])})
                 except Exception:
                     continue
 
         if not lig_atoms:
             return {"is_covalent_candidate": False, "status": "No valid ligand atoms found in pose"}
 
-        # 2. Extract warheads
-        warheads = []
-        if smiles:
-            warheads = cls.detect_warheads(smiles)
+        lig_coords_list = [a["coords"] for a in lig_atoms]
 
-        if not warheads:
-            # Try to build mol from pose
+        # 2. Extract warheads and exact 3D reactive coordinates
+        docked_mol = None
+        try:
+            from meeko import PDBQTMolecule, RDKitMolCreate
+            pdbqt_mol = PDBQTMolecule(docked_pose_pdb_or_pdbqt)
+            rdkit_mols = RDKitMolCreate.from_pdbqt_mol(pdbqt_mol)
+            if rdkit_mols and len(rdkit_mols) > 0:
+                docked_mol = rdkit_mols[0]
+        except Exception:
+            pass
+
+        if docked_mol is None:
             try:
-                mol = Chem.MolFromPDBBlock(docked_pose_pdb_or_pdbqt, sanitize=False)
-                if mol:
-                    warheads = cls.detect_warheads(mol)
+                docked_mol = Chem.MolFromPDBBlock(docked_pose_pdb_or_pdbqt, sanitize=False)
             except Exception:
                 pass
 
-        if not warheads:
+        if docked_mol is not None and smiles:
+            try:
+                ref_mol = Chem.MolFromSmiles(smiles)
+                if ref_mol:
+                    docked_mol = AllChem.AssignBondOrdersFromTemplate(ref_mol, docked_mol)
+            except Exception:
+                pass
+
+        warhead_targets = []
+        # Strategy A: Precise conformer SMARTS matching directly on 3D docked_mol
+        if docked_mol is not None and docked_mol.GetNumConformers() > 0:
+            conf = docked_mol.GetConformer()
+            for wdef in cls.WARHEAD_DEFINITIONS:
+                pattern = Chem.MolFromSmarts(wdef["smarts"])
+                if pattern is None:
+                    continue
+                matches = docked_mol.GetSubstructMatches(pattern)
+                if not matches:
+                    continue
+
+                tag_to_qidx = {}
+                for qatom in pattern.GetAtoms():
+                    m_num = qatom.GetAtomMapNum()
+                    if m_num > 0:
+                        tag_to_qidx[m_num] = qatom.GetIdx()
+
+                for match in matches:
+                    r_idx = match[tag_to_qidx[wdef["reactive_tag"]]] if wdef["reactive_tag"] in tag_to_qidx else match[0]
+                    p_r = conf.GetAtomPosition(r_idx)
+                    e_pos = np.array([p_r.x, p_r.y, p_r.z])
+
+                    adj_pos = None
+                    if "adjacent_tag" in wdef and wdef["adjacent_tag"] in tag_to_qidx:
+                        a_idx = match[tag_to_qidx[wdef["adjacent_tag"]]]
+                        p_a = conf.GetAtomPosition(a_idx)
+                        adj_pos = np.array([p_a.x, p_a.y, p_a.z])
+
+                    leaving_pos = None
+                    if "leaving_atom_tag" in wdef and wdef["leaving_atom_tag"] and wdef["leaving_atom_tag"] in tag_to_qidx:
+                        l_idx = match[tag_to_qidx[wdef["leaving_atom_tag"]]]
+                        p_l = conf.GetAtomPosition(l_idx)
+                        leaving_pos = np.array([p_l.x, p_l.y, p_l.z])
+
+                    warhead_targets.append({
+                        "def": wdef,
+                        "e_coord": e_pos,
+                        "adj_coord": adj_pos,
+                        "leaving_coord": leaving_pos
+                    })
+
+        # Strategy B: Fallback via 2D detection and 3D geometric matching
+        if not warhead_targets:
+            smiles_warheads = cls.detect_warheads(smiles) if smiles else []
+            for sw in smiles_warheads:
+                wtype = sw["warhead_type"]
+                matched_coord = None
+                adj_coord = None
+                leaving_coord = None
+                if wtype == "nitrile":
+                    for i, a1 in enumerate(lig_atoms):
+                        if a1["elem"] in ("C", "A"):
+                            for j, a2 in enumerate(lig_atoms):
+                                if a2["elem"] in ("N", "NA"):
+                                    d_cn = float(np.linalg.norm(a1["coords"] - a2["coords"]))
+                                    if 1.05 <= d_cn <= 1.30:
+                                        matched_coord = a1["coords"]
+                                        adj_coord = a2["coords"]
+                                        break
+                            if matched_coord is not None:
+                                break
+                elif wtype == "haloacetamide":
+                    for i, a1 in enumerate(lig_atoms):
+                        if a1["elem"] in ("C", "A"):
+                            for j, a2 in enumerate(lig_atoms):
+                                if a2["elem"] in ("CL", "BR", "I"):
+                                    d_cx = float(np.linalg.norm(a1["coords"] - a2["coords"]))
+                                    if 1.65 <= d_cx <= 2.10:
+                                        matched_coord = a1["coords"]
+                                        leaving_coord = a2["coords"]
+                                        break
+                            if matched_coord is not None:
+                                break
+                elif wtype in ("michael_acceptor", "vinyl_sulfone"):
+                    for i, a1 in enumerate(lig_atoms):
+                        if a1["elem"] in ("C", "A"):
+                            for j, a2 in enumerate(lig_atoms):
+                                if i != j and a2["elem"] in ("C", "A"):
+                                    d_cc = float(np.linalg.norm(a1["coords"] - a2["coords"]))
+                                    if 1.25 <= d_cc <= 1.45:
+                                        matched_coord = a1["coords"]
+                                        adj_coord = a2["coords"]
+                                        break
+                            if matched_coord is not None:
+                                break
+
+                wdef_match = next((wd for wd in cls.WARHEAD_DEFINITIONS if wd["type"] == wtype), cls.WARHEAD_DEFINITIONS[0])
+                warhead_targets.append({
+                    "def": wdef_match,
+                    "e_coord": matched_coord if matched_coord is not None else lig_atoms[0]["coords"],
+                    "adj_coord": adj_coord,
+                    "leaving_coord": leaving_coord
+                })
+
+        if not warhead_targets:
             return {
                 "is_covalent_candidate": False,
                 "status": "No electrophilic warhead detected in ligand structure",
                 "warheads_detected": []
             }
 
-        # 3. Extract receptor nucleophiles
-        nucleophiles = cls.extract_receptor_nucleophiles(receptor_pdb_or_pdbqt, pocket_center=pocket_center)
+        warheads_names = list({wt["def"]["name"] for wt in warhead_targets})
+
+        # 3. Extract receptor nucleophiles within proximity of pocket or ligand
+        nucleophiles = cls.extract_receptor_nucleophiles(
+            receptor_pdb_or_pdbqt,
+            pocket_center=pocket_center,
+            pocket_radius=18.0,
+            ligand_coords=lig_coords_list
+        )
         if not nucleophiles:
             return {
                 "is_covalent_candidate": True,
                 "status": "Warhead detected, but no catalytic nucleophiles found in binding pocket",
-                "warheads_detected": [w["name"] for w in warheads],
+                "warheads_detected": warheads_names,
                 "covalent_feasibility_score": 0.0,
                 "feasibility_assessment": "NO_REACTIVE_PAIR"
             }
@@ -311,33 +434,26 @@ class CovalentDockingService:
         # 4. Pairwise distance & trajectory analysis
         candidate_pairings = []
 
-        for w in warheads:
-            r_idx = w.get("reactive_atom_index", 0)
-            if r_idx < len(lig_atoms):
-                e_coord = lig_atoms[r_idx]["coords"]
-            else:
-                e_coord = lig_atoms[0]["coords"]
-
-            adj_coord = None
-            if w.get("adjacent_atom_index") is not None and w["adjacent_atom_index"] < len(lig_atoms):
-                adj_coord = lig_atoms[w["adjacent_atom_index"]]["coords"]
-
-            leaving_coord = None
-            if w.get("leaving_atom_index") is not None and w["leaving_atom_index"] < len(lig_atoms):
-                leaving_coord = lig_atoms[w["leaving_atom_index"]]["coords"]
+        for wt in warhead_targets:
+            w = wt["def"]
+            e_coord = wt["e_coord"]
+            adj_coord = wt["adj_coord"]
+            leaving_coord = wt["leaving_coord"]
 
             for nuc in nucleophiles:
                 n_coord = np.array(nuc["coords"])
                 dist = float(np.linalg.norm(e_coord - n_coord))
 
-                if dist > 6.5:
+                if dist > 8.0:
                     continue
 
                 # Calculate attack trajectory angle
                 attack_angle = None
                 angle_score = 1.0
 
-                if w["warhead_type"] in ("michael_acceptor", "vinyl_sulfone") and adj_coord is not None:
+                w_type = w.get("type") or w.get("warhead_type", "")
+
+                if w_type in ("michael_acceptor", "vinyl_sulfone") and adj_coord is not None:
                     # Bürgi-Dunitz angle: Nu ... C_beta = C_alpha
                     v1 = n_coord - e_coord
                     v2 = adj_coord - e_coord
@@ -352,7 +468,7 @@ class CovalentDockingService:
                         ang_dev = abs(attack_angle - opt_ang)
                         angle_score = max(0.0, 1.0 - (ang_dev / tol)**2)
 
-                elif w["warhead_type"] in ("haloacetamide", "sulfonyl_fluoride") and leaving_coord is not None:
+                elif w_type in ("haloacetamide", "sulfonyl_fluoride") and leaving_coord is not None:
                     # SN2 collinear trajectory: Nu ... C_alpha - X (backside attack, ideally 180 deg)
                     v1 = n_coord - e_coord
                     v2 = leaving_coord - e_coord
@@ -370,16 +486,16 @@ class CovalentDockingService:
                 # Distance score (Gaussian penalty centered around optimal distance)
                 opt_d = w["optimal_distance_angstroms"]
                 dist_dev = abs(dist - opt_d)
-                dist_score = math.exp(-0.5 * (dist_dev / 0.8)**2)
+                dist_score = math.exp(-0.5 * (dist_dev / 0.9)**2)
 
                 composite_score = round(float(dist_score * 0.65 + angle_score * 0.35), 3)
 
                 # Classify geometry
-                if composite_score >= 0.70 and dist <= 3.8:
+                if composite_score >= 0.65 and dist <= 4.0:
                     geom_status = "OPTIMAL_COVALENT_GEOMETRY"
-                elif composite_score >= 0.40 and dist <= 4.5:
+                elif composite_score >= 0.35 and dist <= 5.2:
                     geom_status = "PERMISSIVE_COVALENT_PROXIMITY"
-                elif dist <= 4.5:
+                elif dist <= 5.2:
                     geom_status = "UNFAVORABLE_TRAJECTORY"
                 else:
                     geom_status = "DISTANT_PROXIMITY"
@@ -389,7 +505,7 @@ class CovalentDockingService:
 
                 candidate_pairings.append({
                     "warhead": w["name"],
-                    "warhead_type": w["warhead_type"],
+                    "warhead_type": w_type,
                     "mechanism": w["reaction_mechanism"],
                     "nucleophile": nuc["id"],
                     "nucleophile_residue": f"{nuc['residue_name']} {nuc['residue_number']}:{nuc['chain']}",
@@ -410,8 +526,8 @@ class CovalentDockingService:
 
         return {
             "is_covalent_candidate": True,
-            "warhead_count": len(warheads),
-            "warheads_detected": [w["name"] for w in warheads],
+            "warhead_count": len(warhead_targets),
+            "warheads_detected": warheads_names,
             "nucleophiles_in_pocket": len(nucleophiles),
             "candidate_pairings_count": len(candidate_pairings),
             "top_pairing": best_pairing,

@@ -138,6 +138,13 @@ class ConsensusScoringService:
             if st > cls.STRAIN_PENALTY_THRESHOLD:
                 strain_pen = (st - cls.STRAIN_PENALTY_THRESHOLD) * 0.75
 
+            # Per-pose covalent energy bonus
+            p_cov_bonus = (
+                poses[i].get("covalent_energy_bonus_kcal") or
+                poses[i].get("covalent", {}).get("covalent_energy_bonus_kcal") or
+                covalent_bonus_kcal
+            )
+
             # Composite Z-score (lower is better)
             comp_z = (
                 w["vina"] * z_vina[i] +
@@ -145,7 +152,7 @@ class ConsensusScoringService:
                 w["mmgbsa"] * z_mmgbsa[i] +
                 w["cnn"] * z_cnn[i] +
                 strain_pen +
-                covalent_bonus_kcal
+                p_cov_bonus
             )
 
             # Mean rank (Borda count rank aggregation)
@@ -156,10 +163,10 @@ class ConsensusScoringService:
             rank_spread = max(ind_ranks) - min(ind_ranks)
 
             # Confidence classification & SBDD Decoy Gate:
-            # 1. High Strain Decoy
-            # 2. Grease-Ball / Lipophilic Aggregator Decoy (MM-GBSA)
+            # 1. High Strain Decoy (> 15.0 kcal/mol)
+            # 2. Grease-Ball Decoy (MM-GBSA confirmed zero polar contacts & negligible electrostatics)
             # 3. High/Moderate/Discordant Confidence
-            is_unfavorable_desolv = mmgbsa_vals[i] > 0.0
+            is_unfavorable_desolv = mmgbsa_vals[i] > 2.0
             decoy_flag = p_copy.get("decoy_filter_flag") or p_copy.get("mmgbsa", {}).get("decoy_filter_verdict")
             is_grease_decoy = (
                 decoy_flag in ("FLAGGED_GREASY_DECOY", "FLAGGED_LIPOPHILIC_AGGREGATOR") or
@@ -173,9 +180,6 @@ class ConsensusScoringService:
             elif st > cls.HIGH_STRAIN_CUTOFF:
                 confidence = "DECOY_HIGH_STRAIN"
                 conf_desc = f"Pose flagged as high-strain decoy ({st:.1f} kcal/mol > {cls.HIGH_STRAIN_CUTOFF} kcal/mol cutoff)."
-            elif st > 6.5 and is_unfavorable_desolv:
-                confidence = "DECOY_HIGH_STRAIN"
-                conf_desc = f"Pose flagged as decoy due to elevated strain ({st:.1f} kcal/mol) and unfavorable MM-GBSA (+{mmgbsa_vals[i]:.1f} kcal/mol)."
             elif rank_spread <= 2 and mean_rank <= 2.5:
                 confidence = "HIGH_CONFIDENCE"
                 conf_desc = "Strong multi-engine concordance across empirical, physics (MM-GBSA), and DL scoring."

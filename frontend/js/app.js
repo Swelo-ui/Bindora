@@ -2794,7 +2794,7 @@ class BindoraApp {
         const warheadName = topP?.warhead || cov?.warheads_detected?.[0] || 'Active Warhead';
 
         if (cov && cov.is_covalent_candidate) {
-          if (topP && (score >= 0.25 || topP.distance_angstroms <= 5.8)) {
+          if (topP && (score >= 0.20 || topP.distance_angstroms <= 6.0)) {
             elCov.textContent = `${topP.nucleophile_residue} (${topP.distance_angstroms} Å • ${warheadName.split('/')[0].trim()})`;
             elCov.className = "text-purple-300 font-bold text-[11px]";
             elCov.title = `Covalent pairing candidate: ${topP.nucleophile_residue} with ${warheadName} (Distance: ${topP.distance_angstroms} Å, Feasibility: ${(score * 100).toFixed(0)}%)`;
@@ -2803,9 +2803,9 @@ class BindoraApp {
             elCov.className = "text-purple-300/80 font-medium text-[11px]";
             elCov.title = `Warhead detected (${warheadName}), but nucleophile is distant (${topP.distance_angstroms} Å)`;
           } else {
-            elCov.textContent = `${warheadName.split('/')[0].trim()} (No Nu in 6.5 Å)`;
-            elCov.className = "text-purple-300/80 font-medium text-[11px]";
-            elCov.title = `Electrophilic warhead detected (${warheadName}), but no catalytic nucleophiles within 6.5 Å in this pose`;
+            elCov.textContent = `${warheadName.split('/')[0].trim()} (Active Warhead)`;
+            elCov.className = "text-purple-300 font-medium text-[11px]";
+            elCov.title = `Electrophilic warhead detected (${warheadName})`;
           }
         } else {
           elCov.textContent = "None (Reversible)";
@@ -2848,9 +2848,9 @@ class BindoraApp {
         const topP = p.covalent?.top_pairing;
         const covScore = topP?.feasibility_score ?? p.covalent?.covalent_feasibility_score ?? 0;
         const hasCovWarhead = p.covalent?.is_covalent_candidate;
-        const covBadge = (hasCovWarhead && (covScore >= 0.25 || (topP && topP.distance_angstroms <= 5.8)))
+        const covBadge = (hasCovWarhead && (covScore >= 0.20 || (topP && topP.distance_angstroms <= 6.0)))
           ? `<span class="px-1 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 text-[9px] font-mono font-medium" title="Covalent Warhead: ${topP ? topP.nucleophile_residue + ' (' + topP.distance_angstroms + ' Å)' : (p.covalent?.feasibility_assessment || 'Active')}">Cov</span>`
-          : '';
+          : (hasCovWarhead ? `<span class="px-1 py-0.5 rounded bg-purple-950/60 text-purple-400/80 border border-purple-900/60 text-[9px] font-mono" title="Electrophilic Warhead Detected: ${p.covalent?.warheads_detected?.[0] || 'Active'}">Cov</span>` : '');
 
         const mmgbsaVal = p.mmgbsa_delta_g_kcal;
         let mmgbsaHtml = '<span class="text-neutral-500">—</span>';

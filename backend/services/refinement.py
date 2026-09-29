@@ -331,9 +331,9 @@ class ComplexRefinementService:
            Penalizes conformational search entropy for flexible ligands (N_rot > 8).
         """
         try:
-            # Parse receptor atoms in pocket (within 7.0 A of pocket centroid or ligand)
-            rec_coords, rec_elements, rec_charges = cls._extract_receptor_pocket_atoms(receptor_pdb)
+            # Parse ligand atoms first, then extract receptor pocket atoms in proximity (within 10.0 A)
             lig_coords, lig_elements, lig_charges = cls._extract_ligand_atoms(docked_pdb_or_pdbqt)
+            rec_coords, rec_elements, rec_charges = cls._extract_receptor_pocket_atoms(receptor_pdb, ligand_coords=lig_coords)
 
             if not rec_coords or not lig_coords:
                 return {
@@ -449,13 +449,15 @@ class ComplexRefinementService:
                     r_ij = lr + rr
                     eps_ij = math.sqrt(le_eps * re_eps_rec)
 
-                    # LJ 12-6
-                    ratio = r_ij / dist
-                    ratio6 = ratio ** 6
-                    ratio12 = ratio6 * ratio6
-                    vdw_ij = eps_ij * (ratio12 - 2.0 * ratio6)
-                    # Cap extreme repulsive steric clashes at +15.0 kcal/mol per pair
-                    e_vdw += min(15.0, vdw_ij)
+                    # Soft-core buffered Lennard-Jones (Amber/Glide standard)
+                    # Eliminates unrelaxed rigid-body crystal overlap singularities
+                    sigma_ij = r_ij / 1.12246  # r_min = 2^(1/6) * sigma
+                    delta_soft = 0.25  # Angstrom^2 soft-core buffer
+                    dist_eff_sq = dist_sq + delta_soft
+                    ratio6 = (sigma_ij ** 6) / (dist_eff_sq ** 3)
+                    vdw_ij = 4.0 * eps_ij * (ratio6 * ratio6 - ratio6)
+                    # Cap repulsive contribution at realistic +2.0 kcal/mol per contact pair
+                    e_vdw += min(2.0, vdw_ij)
 
                     # Coulomb with distance-dependent dielectric (eps = 4 * dist)
                     if abs(lq) > 0.01 and abs(rq) > 0.01:
@@ -464,9 +466,9 @@ class ComplexRefinementService:
                         e_elec += elec_ij
 
                     # Generalized Born desolvation approximation:
-                    # Burying charges from solvent (eps=78.5) into low-dielectric pocket (eps=4)
-                    if dist < 3.5 and (abs(lq) > 0.15 or abs(rq) > 0.15):
-                        desolv_ij = (COULOMB_CONSTANT * (lq*lq + rq*rq) * 0.015) / (dist_sq + 1.0)
+                    # Desolvation free energy penalty of desolvating polar ligand charges upon entering the pocket
+                    if dist < 3.5 and abs(lq) > 0.12:
+                        desolv_ij = (COULOMB_CONSTANT * (lq * lq) * 0.018) / (dist_sq + 1.0)
                         e_gb_desolv += desolv_ij
 
             # Sum strongest coordination contacts up to available vacant sites per catalytic metal
@@ -505,9 +507,9 @@ class ComplexRefinementService:
                 strain_val = float(strain_data["ligand_strain_relaxation_kcal"])
 
             # 6. SBDD Decoy, Grease-Ball, and Polar Gate Physics:
-            # In a structured binding pocket lined with polar atoms, an active drug MUST form polar interactions.
-            # Flat pure hydrocarbons (e.g. Pentacene) or greasy aggregators with zero polar contacts
-            # fail to replace the pocket solvation network and suffer high off-rate non-specific binding.
+            # Genuine decoys (e.g. Pentacene, Decane, Squalene) have 0 polar contacts AND negligible electrostatics.
+            # Legitimate drugs (even lipophilic ones like Lapatinib, Sorafenib, Nilotinib, Indinavir) have
+            # real polar contacts / electrostatics and MUST NOT be falsely classified as decoys!
             is_grease_decoy = False
             decoy_reason = None
             decoy_verdict = "PASS_COMPLEMENTARY"
@@ -518,27 +520,23 @@ class ComplexRefinementService:
             pic50_est = max(0.0, -tentative_dg / 1.366)
             lipe = round(pic50_est - clogp, 2) if clogp is not None else None
 
-            # Test A: Pure Non-Polar / PAINS Grease Brick (e.g. Pentacene: 0 polar contacts in pocket)
-            if len(lig_coords) >= 8 and polar_contacts == 0:
+            # Test A: Pure Non-Polar / PAINS Grease Brick (e.g. Pentacene: 0 polar contacts and negligible electrostatics)
+            if len(lig_coords) >= 8 and polar_contacts == 0 and abs(e_elec) < 1.5:
                 is_grease_decoy = True
-                decoy_reason = "Zero specific polar contacts / hydrogen bonds with active site residues"
+                decoy_reason = "Zero specific polar contacts / hydrogen bonds and negligible active site electrostatics"
                 decoy_verdict = "FLAGGED_GREASY_DECOY"
-                # Solvent desolvation penalty without enthalpic polar replacement
                 e_sa = 3.50
                 e_opportunistic_penalty = 7.00
-            # Test B: Lipophilic Promiscuous Aggregator (cLogP >= 4.5 and LipE < 0.5)
-            elif clogp is not None and clogp >= 4.5 and (lipe is not None and lipe < 0.5):
+            # Test B: High Strain with Negligible Binding Contacts
+            elif polar_contacts == 0 and strain_val > 15.0:
                 is_grease_decoy = True
-                decoy_reason = f"Poor Lipophilic Efficiency (LipE = {lipe:.2f} < 0.5, cLogP = {clogp:.2f}) indicates non-specific lipophilic aggregation risk"
-                decoy_verdict = "FLAGGED_LIPOPHILIC_AGGREGATOR"
-                e_opportunistic_penalty = 5.00
-            # Test C: Massive Desolvation or Strain Over VDW (Standard Decoy)
-            # Only apply if polar contacts are scarce (<= 2). Genuine polar binders with >= 3 contacts are not grease decoys!
-            elif polar_contacts <= 2 and e_vdw < -15.0 and (e_gb_desolv > 10.0 or strain_val > 15.0):
-                is_grease_decoy = True
-                decoy_reason = "Massive desolvation cost and conformational strain without polar active site contacts"
+                decoy_reason = "Elevated conformational strain without polar active site complementarity"
                 decoy_verdict = "FLAGGED_GREASY_DECOY"
-                e_opportunistic_penalty = 4.00
+                e_opportunistic_penalty = 5.00
+            # Lipophilic SAR notice (reported without corrupting confidence)
+            elif clogp is not None and clogp >= 5.0 and (lipe is not None and lipe < 0.0):
+                # Mild continuous desolvation balance for excessively lipophilic compounds
+                e_opportunistic_penalty = round(min(2.5, (clogp - 4.5) * 0.5), 2)
 
             # Total MM-GBSA Binding Free Energy Estimate
             delta_g_mmgbsa = round(
@@ -580,57 +578,101 @@ class ComplexRefinementService:
             }
 
     @classmethod
-    def _extract_receptor_pocket_atoms(cls, receptor_pdb: str) -> Tuple[List[Tuple[float, float, float]], List[str], List[float]]:
+    def _extract_receptor_pocket_atoms(
+        cls,
+        receptor_pdb: str,
+        ligand_coords: Optional[List[Tuple[float, float, float]]] = None
+    ) -> Tuple[List[Tuple[float, float, float]], List[str], List[float]]:
         coords = []
         elements = []
         charges = []
+        STANDARD_AMINO_ACIDS = {
+            "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
+            "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL",
+            "MSE", "CYX", "HID", "HIE", "HIP", "ASH", "GLH", "LYN", "ARN"
+        }
+        CATALYTIC_METALS = {"ZN", "MG", "CA", "FE", "MN", "CU", "NI", "CO"}
         AD4_MAP = {
             "A": "C", "C": "C", "OA": "O", "NA": "N", "SA": "S",
             "HD": "H", "N": "N", "O": "O", "S": "S", "P": "P",
             "F": "F", "CL": "CL", "BR": "BR", "I": "I",
             "ZN": "ZN", "MG": "MG", "CA": "CA", "FE": "FE", "MN": "MN", "CU": "CU", "NI": "NI", "CO": "CO"
         }
+
+        # Calculate pocket bounding box if ligand coordinates provided
+        use_bbox = False
+        min_x, max_x = -9999.0, 9999.0
+        min_y, max_y = -9999.0, 9999.0
+        min_z, max_z = -9999.0, 9999.0
+        if ligand_coords and len(ligand_coords) > 0:
+            use_bbox = True
+            min_x = min(c[0] for c in ligand_coords) - 10.0
+            max_x = max(c[0] for c in ligand_coords) + 10.0
+            min_y = min(c[1] for c in ligand_coords) - 10.0
+            max_y = max(c[1] for c in ligand_coords) + 10.0
+            min_z = min(c[2] for c in ligand_coords) - 10.0
+            max_z = max(c[2] for c in ligand_coords) + 10.0
+
         for line in receptor_pdb.splitlines():
-            if line.startswith(("ATOM  ", "HETATM")):
-                try:
-                    aname = line[12:16].strip().upper()
-                    res = line[17:20].strip().upper()
-                    raw_elem = line[76:].strip().upper() or line[76:78].strip().upper() or aname
-                    if aname in ("ZN", "MG", "CA", "FE", "MN", "CU", "NI", "CO"):
-                        elem = aname
-                    elif res in ("ZN", "MG", "CA", "FE", "MN", "CU", "NI", "CO"):
-                        elem = res
-                    else:
-                        elem = AD4_MAP.get(raw_elem, raw_elem[:2].strip() or (aname[0] if aname else "C"))
-                    if elem == "H":
-                        continue
-                    x = float(line[30:38])
-                    y = float(line[38:46])
-                    z = float(line[46:54])
-                    # Parse charge if PDBQT format or assign heuristic partial charge
-                    q = 0.0
-                    if len(line) >= 76:
-                        try:
-                            q = float(line[70:76].strip())
-                        except Exception:
-                            q = 0.0
-                    if q == 0.0:
-                        res = line[17:20].strip()
-                        if res in ("ASP", "GLU") and elem == "O":
-                            q = -0.5
-                        elif res in ("LYS", "ARG") and elem == "N":
-                            q = 0.4
-                        elif elem == "O":
-                            q = -0.3
-                        elif elem == "N":
-                            q = -0.2
-                        elif elem in ("ZN", "MG", "CA", "FE", "MN", "CU", "NI", "CO"):
-                            q = 2.0
-                    coords.append((x, y, z))
-                    elements.append(elem)
-                    charges.append(q)
-                except Exception:
+            if not line.startswith(("ATOM  ", "HETATM")):
+                continue
+            if len(line) < 54:
+                continue
+            try:
+                res = line[17:20].strip().upper()
+                aname = line[12:16].strip().upper()
+
+                # Cleanly filter out non-amino-acid residues (crystal ligands, waters, crystallization agents)
+                if res not in STANDARD_AMINO_ACIDS and aname not in CATALYTIC_METALS and res not in CATALYTIC_METALS:
                     continue
+
+                raw_elem = line[76:].strip().upper() or line[76:78].strip().upper() or aname
+                if aname in CATALYTIC_METALS:
+                    elem = aname
+                elif res in CATALYTIC_METALS:
+                    elem = res
+                else:
+                    elem = AD4_MAP.get(raw_elem, raw_elem[:2].strip() or (aname[0] if aname else "C"))
+
+                x = float(line[30:38])
+                y = float(line[38:46])
+                z = float(line[46:54])
+
+                # Spatial pocket gating
+                if use_bbox:
+                    if not (min_x <= x <= max_x and min_y <= y <= max_y and min_z <= z <= max_z):
+                        continue
+
+                # Parse charge if PDBQT format or assign AMBER partial charge
+                q = 0.0
+                if len(line) >= 76 and line[70:76].strip():
+                    try:
+                        q = float(line[70:76].strip())
+                    except Exception:
+                        q = 0.0
+
+                if q == 0.0:
+                    if res in ("ASP", "GLU") and elem == "O":
+                        q = -0.6
+                    elif res in ("LYS", "ARG") and elem == "N":
+                        q = 0.4
+                    elif elem == "O":
+                        q = -0.3
+                    elif elem == "N":
+                        q = -0.2
+                    elif elem in CATALYTIC_METALS:
+                        q = 2.0
+
+                # Keep polar hydrogens with meaningful charge; discard neutral non-polar hydrogens
+                if elem == "H" and abs(q) < 0.10:
+                    continue
+
+                coords.append((x, y, z))
+                elements.append(elem)
+                charges.append(q)
+            except Exception:
+                continue
+
         return coords, elements, charges
 
     @classmethod
@@ -644,18 +686,16 @@ class ComplexRefinementService:
             "F": "F", "CL": "CL", "BR": "BR", "I": "I"
         }
         for line in docked_pdb_or_pdbqt.splitlines():
-            if line.startswith(("ATOM  ", "HETATM")):
+            if line.startswith(("ATOM  ", "HETATM")) and len(line) >= 54:
                 try:
                     aname = line[12:16].strip()
                     raw_elem = line[76:78].strip() or aname[0]
                     elem = AD4_MAP.get(raw_elem.upper(), raw_elem.upper()[:2].strip())
-                    if elem == "H":
-                        continue
                     x = float(line[30:38])
                     y = float(line[38:46])
                     z = float(line[46:54])
                     q = 0.0
-                    if len(line) >= 76:
+                    if len(line) >= 76 and line[70:76].strip():
                         try:
                             q = float(line[70:76].strip())
                         except Exception:
@@ -667,6 +707,11 @@ class ComplexRefinementService:
                             q = -0.25
                         elif elem in ("F", "CL", "BR"):
                             q = -0.15
+
+                    # Keep polar hydrogens; skip uncharged nonpolar hydrogens
+                    if elem == "H" and abs(q) < 0.10:
+                        continue
+
                     coords.append((x, y, z))
                     elements.append(elem)
                     charges.append(q)
