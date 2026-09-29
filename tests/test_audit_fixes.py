@@ -364,5 +364,113 @@ def test_c7_bbb_passive_and_pgp_separation():
     assert "Didziapetris" in bbb["citation"]
 
 
+# =========================================================================
+# Fix C8: Macrocycle Perception & Simple Cycle Graph Verification
+# =========================================================================
+
+def _verify_simple_cycle(mol, atom_indices):
+    """Verify that a set of atom indices forms a 2-connected, simple cycle with deg=2 and 1 component."""
+    sub_atoms = set(atom_indices)
+    bonds = []
+    deg = {a: 0 for a in sub_atoms}
+    adj = {a: [] for a in sub_atoms}
+    for b in mol.GetBonds():
+        u = b.GetBeginAtomIdx()
+        v = b.GetEndAtomIdx()
+        if u in sub_atoms and v in sub_atoms:
+            deg[u] += 1
+            deg[v] += 1
+            adj[u].append(v)
+            adj[v].append(u)
+            bonds.append(b.GetIdx())
+    if len(sub_atoms) < 3 or len(bonds) != len(sub_atoms):
+        return False, "Bond count does not match atom count"
+    if not all(d == 2 for d in deg.values()):
+        return False, f"Non-2 degree vertices found: {[d for d in deg.values() if d != 2]}"
+    # Verify single connected component (not two disjoint rings)
+    start = next(iter(sub_atoms))
+    visited = set()
+    curr = start
+    prev = None
+    while curr not in visited:
+        visited.add(curr)
+        nbrs = adj[curr]
+        next_node = nbrs[0] if nbrs[0] != prev else nbrs[1]
+        prev = curr
+        curr = next_node
+    if visited != sub_atoms or curr != start:
+        return False, "Cycle is disconnected or contains multiple sub-components"
+    return True, "Valid connected simple cycle"
+
+
+def test_c8_macrocycle_perception_and_simple_cycle_verification():
+    """
+    C8: Macrocycles must be perceived as true simple cycles with 2-connected cycle graph vertices.
+    Assert cycle sizes for:
+    - Cyclosporine A: size 33 (11-residue peptide cyclic backbone)
+    - Tacrolimus: size 21 (SymmSSSR) AND size 23 (23-membered macrolide lactone)
+    - Rapamycin: size 29 (SymmSSSR) AND size 31 (31-membered macrolide lactone)
+    - Lorlatinib: size 12 (12-membered bridged kinase macrocycle)
+    - Vancomycin: sizes 16 and 12 (crosslinked heptapeptide core)
+    All returned cycles must be connected simple cycles (no disconnected combinations).
+    """
+    import json
+    from rdkit import Chem
+    from backend.services.macrocycle import MacrocycleConformerEngine
+
+    with open("benchmarks/heldout/results/macrocycle_cycle_breakdown.json") as f:
+        compounds = json.load(f)
+
+    expected_sizes = {
+        "Cyclosporine A": {33},
+        "Tacrolimus": {21, 23},
+        "Rapamycin": {29, 31},
+        "Lorlatinib": {12},
+        "Vancomycin": {16, 12}
+    }
+
+    for name, req_sizes in expected_sizes.items():
+        data = compounds[name]
+        mol = Chem.MolFromSmiles(data["smiles"])
+        assert mol is not None, f"Failed to parse SMILES for {name}"
+        is_macro, macro_sizes, macro_rings = MacrocycleConformerEngine.is_macrocycle(mol)
+        assert is_macro is True, f"{name} must be detected as a macrocycle"
+
+        # Verify every returned cycle is a valid, connected simple cycle
+        for ring in macro_rings:
+            is_simple, reason = _verify_simple_cycle(mol, ring)
+            assert is_simple, f"{name} produced invalid cycle of size {len(ring)}: {reason}"
+
+        # Check required sizes are present
+        size_set = set(macro_sizes)
+        for req_sz in req_sizes:
+            assert req_sz in size_set, (
+                f"{name} missing required macrocycle size {req_sz}. Detected sizes: {macro_sizes}"
+            )
+
+
+def test_c8_no_disconnected_pseudo_cycles():
+    """
+    C8: Algebraic cycle combinations must strictly exclude disconnected ring unions.
+    For Tacrolimus, disconnected unions (e.g. size 12 from two 6-rings, size 27 from 21+6 disjoint)
+    must NOT be reported as macrocycles.
+    """
+    import json
+    from rdkit import Chem
+    from backend.services.macrocycle import MacrocycleConformerEngine
+
+    with open("benchmarks/heldout/results/macrocycle_cycle_breakdown.json") as f:
+        compounds = json.load(f)
+
+    # Tacrolimus
+    tac_mol = Chem.MolFromSmiles(compounds["Tacrolimus"]["smiles"])
+    _, tac_sizes, tac_rings = MacrocycleConformerEngine.is_macrocycle(tac_mol)
+    assert 12 not in tac_sizes, "Tacrolimus falsely reported disconnected size 12 ring"
+    assert 27 not in tac_sizes, "Tacrolimus falsely reported disconnected size 27 ring"
+    for r in tac_rings:
+        is_simple, reason = _verify_simple_cycle(tac_mol, r)
+        assert is_simple, f"Tacrolimus returned non-simple cycle: {reason}"
+
+
 
 

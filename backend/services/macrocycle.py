@@ -35,7 +35,10 @@ class MacrocycleConformerEngine:
         min_ring_size: int = DEFAULT_MIN_RING_SIZE
     ) -> Tuple[bool, List[int], List[List[int]]]:
         """
-        Check if a molecule contains any ring of size >= min_ring_size.
+        Check if a molecule contains any simple macrocyclic ring of size >= min_ring_size.
+        Uses symmetrized SSSR (Chem.GetSymmSSSR) with rigorous 2-connected cycle graph verification,
+        plus topological perimeter combination for fused macrocyclic lactones (e.g. Tacrolimus, Rapamycin).
+        Strictly excludes disconnected ring unions and multi-component pseudo-cycles.
 
         Returns:
             (is_macro, ring_sizes, ring_atom_indices)
@@ -49,38 +52,86 @@ class MacrocycleConformerEngine:
         if mol is None:
             return False, [], []
 
-        Chem.FastFindRings(mol)
-        ring_info = mol.GetRingInfo()
-        atom_rings = ring_info.AtomRings()
-        bond_rings = ring_info.BondRings()
+        # 1. Symmetrized SSSR (Chem.GetSymmSSSR)
+        symm_rings = [list(r) for r in Chem.GetSymmSSSR(mol)]
+        
+        # Edge sets for each basis ring
+        ring_edges = []
+        for r in symm_rings:
+            atoms = set(r)
+            bonds = {
+                b.GetIdx() for b in mol.GetBonds()
+                if b.GetBeginAtomIdx() in atoms and b.GetEndAtomIdx() in atoms
+            }
+            ring_edges.append(bonds)
 
-        # 1. Collect basis rings
-        all_cycles = [set(r) for r in atom_rings]
+        # 2. Candidate edge sets: SymmSSSR rings + fused ring symmetric difference
+        candidate_edge_sets = list(ring_edges)
+        for i in range(len(ring_edges)):
+            for j in range(i + 1, len(ring_edges)):
+                shared = ring_edges[i] & ring_edges[j]
+                # Rings must share at least one bond (fused/bridged)
+                if shared:
+                    candidate_edge_sets.append(ring_edges[i] ^ ring_edges[j])
 
-        # 2. Algebraic cycle combination for fused/bridged macrocycles (e.g. Tacrolimus, Rapamycin)
-        # where standard SSSR splits the large macrolide perimeter into smaller sub-rings
-        edge_basis = [set(r) for r in bond_rings]
-        for i in range(len(edge_basis)):
-            for j in range(i + 1, len(edge_basis)):
-                comb_edges = edge_basis[i] ^ edge_basis[j]
-                deg = {}
-                for b_idx in comb_edges:
-                    b = mol.GetBondWithIdx(b_idx)
-                    deg[b.GetBeginAtomIdx()] = deg.get(b.GetBeginAtomIdx(), 0) + 1
-                    deg[b.GetEndAtomIdx()] = deg.get(b.GetEndAtomIdx(), 0) + 1
-                if deg and all(d == 2 for d in deg.values()):
-                    all_cycles.append(set(deg.keys()))
+        valid_cycles = []
+        seen_atom_tuples = set()
 
-        macro_sizes = []
-        macro_rings = []
-        for r in all_cycles:
-            sz = len(r)
-            if sz >= min_ring_size and sz not in macro_sizes:
-                macro_sizes.append(sz)
-                macro_rings.append(list(r))
+        for edges in candidate_edge_sets:
+            adj = {}
+            for b_idx in edges:
+                b = mol.GetBondWithIdx(b_idx)
+                u, v = b.GetBeginAtomIdx(), b.GetEndAtomIdx()
+                adj.setdefault(u, []).append(v)
+                adj.setdefault(v, []).append(u)
 
-        macro_sizes.sort(reverse=True)
-        return len(macro_sizes) > 0, macro_sizes, macro_rings
+            atoms = set(adj.keys())
+            if len(atoms) < min_ring_size:
+                continue
+            if len(edges) != len(atoms):
+                continue
+
+            # Rigorous simple cycle check: the induced subgraph in the full molecule
+            # must contain exactly len(atoms) bonds (no cross-ring internal chords).
+            induced_bonds = [
+                b.GetIdx() for b in mol.GetBonds()
+                if b.GetBeginAtomIdx() in atoms and b.GetEndAtomIdx() in atoms
+            ]
+            if len(induced_bonds) != len(atoms):
+                continue
+
+            # Every vertex in a simple cycle must have degree exactly 2
+            if not all(len(neighbors) == 2 for neighbors in adj.values()):
+                continue
+
+            # Verify single 2-connected simple cycle traversal (no disconnected components)
+            start = next(iter(atoms))
+            visited = set()
+            curr = start
+            prev = None
+            while curr not in visited:
+                visited.add(curr)
+                nbrs = adj[curr]
+                next_node = nbrs[0] if nbrs[0] != prev else nbrs[1]
+                prev = curr
+                curr = next_node
+
+            if visited == atoms and curr == start:
+                atom_tuple = tuple(sorted(atoms))
+                if atom_tuple not in seen_atom_tuples:
+                    seen_atom_tuples.add(atom_tuple)
+                    valid_cycles.append(list(atoms))
+
+        # Sort cycles descending by size
+        valid_cycles.sort(key=lambda c: len(c), reverse=True)
+        macro_sizes = [len(c) for c in valid_cycles]
+        # Unique sizes preserving descending order
+        unique_sizes = []
+        for s in macro_sizes:
+            if s not in unique_sizes:
+                unique_sizes.append(s)
+
+        return len(unique_sizes) > 0, unique_sizes, valid_cycles
 
     @classmethod
     def sample_macrocycle_conformers(

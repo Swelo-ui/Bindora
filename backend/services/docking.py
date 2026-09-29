@@ -494,14 +494,9 @@ class DockingEngine:
         # Detect macrocycle status if not explicitly specified
         if rigid_macrocycles is None:
             try:
-                Chem.FastFindRings(mol_h)
-                ring_info = mol_h.GetRingInfo()
-                if any(len(r) >= 12 for r in ring_info.AtomRings()):
-                    rigid_macrocycles = True
-                elif mol_h.GetNumHeavyAtoms() > 50 and Lipinski.NumRotatableBonds(mol_h) > 15:
-                    rigid_macrocycles = True
-                else:
-                    rigid_macrocycles = False
+                from backend.services.macrocycle import MacrocycleConformerEngine
+                is_macro, _, _ = MacrocycleConformerEngine.is_macrocycle(mol_h)
+                rigid_macrocycles = is_macro
             except Exception:
                 rigid_macrocycles = False
 
