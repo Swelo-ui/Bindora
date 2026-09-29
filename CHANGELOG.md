@@ -30,5 +30,11 @@ Format: `[Fix ID] What + Why + Test added`.
 - **Why:** Re-ranking on single-engine data or identical pose rescorings manufactured false consensus; the flat -6.0 threshold caused false-positive rejections of high-affinity fragments and false-positive acceptances of greasy high-MW decoys.
 - **Test Added:** `tests/test_audit_fixes.py::test_c5_insufficient_data_when_poses_less_than_3`, `test_c5_insufficient_data_when_engines_less_than_2`, `test_c5_ligand_efficiency_aware_gating`.
 
+## [Fix C6] PAINS Clarification, Bindora Extended Alerts Separation, and Mannich SMARTS Fix
+- **What:** In `backend/services/adme.py`, strictly separated authentic Baell & Holloway 2010 PAINS (`pains_alerts` from RDKit FilterCatalog `PAINS_A/B/C`) from heuristic custom patterns, which are now clearly labeled as `bindora_extended_alerts` (eliminating false attribution to Baell & Walters 2014). Fixed the Phenol-Mannich base SMARTS from primary-only (`c1cc(O)c(CN)cc1`) to `c1c([OH,O-])c(C[N;!$(N[C,S]=O)])ccc1`, properly capturing real-world tertiary amines (e.g. dimethylaminomethyl, morpholinomethyl) without false-positiving on amides or ethylphenols. Clarified maleimide as a covalent thiol-reactive electrophile / Michael acceptor warhead and 1,4-benzoquinone as a redox-cycling quinone.
+- **Why:** Misattributing custom patterns as authentic Baell PAINS corrupted scientific reporting; the overly restrictive Mannich SMARTS failed to detect tertiary amine Mannich bases that undergo latent ortho-quinone methide elimination.
+- **Test Added:** `tests/test_audit_fixes.py::test_c6_mannich_tertiary_and_primary_amine_detection`, `test_c6_pains_and_bindora_extended_alerts_separation`.
+
+
 
 

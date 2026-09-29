@@ -73,33 +73,44 @@ _CYP_ALERTS = {
     }
 }
 
-# Extended PAINS and pan-assay interference patterns (Baell & Holloway 2010, Baell & Walters 2014)
-# Captures problematic chemotypes missed by default RDKit FilterCatalog collections
-_EXTENDED_PAINS_PATTERNS = [
+# Bindora extended structural alerts (heuristic screening filters)
+# Captures problematic chemotypes (curcuminoid bis-enones, latent Mannich quinone methides, Michael acceptors)
+# NOTE: These are heuristic alerts designed for early lead triaging, distinct from authentic Baell & Holloway 2010 PAINS.
+_BINDORA_EXTENDED_ALERTS = [
     {
         "name": "curcuminoid_diferuloylmethane_keto",
         "smarts": "[#6]=[#6]-[#6](=[O,S])-[#6]-[#6](=[O,S])-[#6]=[#6]",
-        "description": "Curcuminoid / 1,7-diarylheptanoid conjugated bis-enone (canonical PAINS / chemical aggregator; Baell & Walters 2014)"
+        "description": "Curcuminoid / 1,7-diarylheptanoid conjugated bis-enone (pan-assay colloidal aggregator alert; inspired by Baell & Walters 2014)"
     },
     {
         "name": "curcuminoid_diferuloylmethane_enol",
         "smarts": "[#6]=[#6]-[#6](=[O,S])-[#6]=[#6](-[OH,SH,O-])-[#6]=[#6]",
-        "description": "Curcuminoid / enol tautomer conjugated system (canonical PAINS / chemical aggregator; Baell & Walters 2014)"
+        "description": "Curcuminoid / enol tautomer conjugated system (pan-assay colloidal aggregator alert; inspired by Baell & Walters 2014)"
     },
     {
         "name": "rhodanine_expanded",
         "smarts": "O=C1CSC(=[S,O])N1",
-        "description": "Rhodanine / thiazolidinedione core (promiscuous covalent/metal-binding PAINS alert)"
+        "description": "Rhodanine / thiazolidinedione core (promiscuous covalent/metal-binding alert)"
+    },
+    {
+        "name": "maleimide_covalent_electrophile",
+        "smarts": "O=C1C=CC(=O)N1",
+        "description": "Maleimide core (covalent thiol-reactive electrophile / Michael acceptor warhead alert)"
     },
     {
         "name": "ene_one_ene_linear",
         "smarts": "C(=O)-C=C-C(=O)",
-        "description": "Linear ene-dione / bis-enone Michael acceptor (covalent reactive PAINS alert)"
+        "description": "Linear ene-dione / bis-enone Michael acceptor (reactive electrophile alert)"
     },
     {
         "name": "mannich_base_quinone_methide",
-        "smarts": "c1cc(O)c(CN)cc1",
-        "description": "Phenol-Mannich base (latent ortho-quinone methide precursor)"
+        "smarts": "c1c([OH,O-])c(C[N;!$(N[C,S]=O)])ccc1",
+        "description": "Phenol-Mannich base (latent ortho-quinone methide precursor: reactive elimination alert)"
+    },
+    {
+        "name": "1_4_benzoquinone_redox",
+        "smarts": "O=C1C=CC(=O)C=C1",
+        "description": "1,4-Benzoquinone (redox-cycling quinone / electrophilic Michael acceptor alert)"
     }
 ]
 
@@ -279,11 +290,11 @@ class ADMEProfiler:
                     "status": "Potential Inhibitor"
                 })
 
-        # Toxicity & Screening Alerts: PAINS (Pan-Assay Interference Compounds)
+        # Toxicity & Screening Alerts: Authentic PAINS (Pan-Assay Interference Compounds - Baell & Holloway 2010)
         pains_matches = _pains_catalog.GetMatches(mol)
         pains_list = [entry.GetDescription() for entry in pains_matches]
 
-        # Scan extended PAINS patterns (curcuminoids, linear bis-enones, rhodanines)
+        # Scan Bindora extended alerts (curcuminoids, maleimides, linear bis-enones, Mannich bases)
         # Check both input mol and canonical tautomer
         from rdkit.Chem.MolStandardize import rdMolStandardize
         try:
@@ -292,12 +303,13 @@ class ADMEProfiler:
         except Exception:
             canonical_mol = mol
 
-        for ep in _EXTENDED_PAINS_PATTERNS:
+        bindora_extended_list = []
+        for ep in _BINDORA_EXTENDED_ALERTS:
             patt = Chem.MolFromSmarts(ep["smarts"])
             if patt and (mol.HasSubstructMatch(patt) or canonical_mol.HasSubstructMatch(patt)):
                 desc = ep["description"]
-                if desc not in pains_list:
-                    pains_list.append(desc)
+                if desc not in bindora_extended_list:
+                    bindora_extended_list.append(desc)
 
         # Brenk structural alerts (reactive / unstable / toxicophores)
         brenk_matches = _brenk_catalog.GetMatches(mol)
@@ -311,7 +323,7 @@ class ADMEProfiler:
         zinc_matches = _zinc_catalog.GetMatches(mol)
         zinc_list = [entry.GetDescription() for entry in zinc_matches]
 
-        total_alerts = len(pains_list) + len(brenk_list) + len(nih_list) + len(zinc_list)
+        total_alerts = len(pains_list) + len(bindora_extended_list) + len(brenk_list) + len(nih_list) + len(zinc_list)
 
         return {
             "physicochemical": {
@@ -400,12 +412,18 @@ class ADMEProfiler:
             },
             "medicinal_chemistry_safety": {
                 "total_alerts_count": total_alerts,
-                "overall_status": "Clean (No alerts)" if total_alerts == 0 else f"{total_alerts} alert(s) across 4 catalogs",
+                "overall_status": "Clean (No alerts)" if total_alerts == 0 else f"{total_alerts} alert(s) across 5 catalogs",
                 "pains_alerts": {
                     "count": len(pains_list),
                     "alerts": pains_list,
                     "status": "Clear" if len(pains_list) == 0 else f"{len(pains_list)} PAINS alert(s) detected",
-                    "citation": "Baell & Holloway, J. Med. Chem. 2010"
+                    "citation": "Baell & Holloway, J. Med. Chem. 2010 (RDKit FilterCatalog PAINS_A/B/C)"
+                },
+                "bindora_extended_alerts": {
+                    "count": len(bindora_extended_list),
+                    "alerts": bindora_extended_list,
+                    "status": "Clear" if len(bindora_extended_list) == 0 else f"{len(bindora_extended_list)} extended alert(s) detected",
+                    "attribution": "Bindora Extended Alerts (heuristic triaging for curcuminoids, Mannich latent quinone methides, and reactive Michael acceptors)"
                 },
                 "brenk_alerts": {
                     "count": len(brenk_list),

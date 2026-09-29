@@ -274,4 +274,54 @@ def test_c5_ligand_efficiency_aware_gating():
     assert res_large[0]["consensus_confidence"] == "SUB_THRESHOLD_AFFINITY"
 
 
+# =========================================================================
+# Fix C6: PAINS Clarification, Extended Alerts, and Mannich SMARTS Fix
+# =========================================================================
+
+def test_c6_mannich_tertiary_and_primary_amine_detection():
+    """
+    C6: Phenol-Mannich base alert must detect tertiary amines (e.g. c1cc(O)c(CN(C)C)cc1)
+    and morpholinomethyl derivatives as well as primary amines (c1cc(O)c(CN)cc1).
+    """
+    from backend.services.adme import ADMEProfiler
+    # Primary Mannich
+    res_prim = ADMEProfiler.calculate_adme("Oc1ccccc1CN")
+    ext_prim = res_prim["medicinal_chemistry_safety"]["bindora_extended_alerts"]["alerts"]
+    assert any("mannich" in a.lower() for a in ext_prim), "Primary Mannich base missed"
+
+    # Tertiary Mannich (e.g. 2-((dimethylamino)methyl)phenol)
+    res_tert = ADMEProfiler.calculate_adme("Oc1ccccc1CN(C)C")
+    ext_tert = res_tert["medicinal_chemistry_safety"]["bindora_extended_alerts"]["alerts"]
+    assert any("mannich" in a.lower() for a in ext_tert), "Tertiary Mannich base missed"
+
+    # Negative control (ortho-ethylphenol)
+    res_ctrl = ADMEProfiler.calculate_adme("Oc1ccccc1CC")
+    ext_ctrl = res_ctrl["medicinal_chemistry_safety"]["bindora_extended_alerts"]["alerts"]
+    assert not any("mannich" in a.lower() for a in ext_ctrl), "False positive Mannich on ortho-ethylphenol"
+
+def test_c6_pains_and_bindora_extended_alerts_separation():
+    """
+    C6: Keep RDKit PAINS_A/B/C as authentic PAINS (Baell 2010),
+    and rename custom patterns to 'Bindora extended alerts' (remove false attribution to Baell & Walters 2014).
+    """
+    from backend.services.adme import ADMEProfiler
+    # Curcumin: NOT in authentic 480 PAINS_A/B/C filters; must be in bindora_extended_alerts
+    curcumin_smi = "COC1=C(C=CC(=C1)C=CC(=O)CC(=O)C=CC2=CC(=C(C=C2)O)OC)O"
+    res_curc = ADMEProfiler.calculate_adme(curcumin_smi)
+    pains_curc = res_curc["medicinal_chemistry_safety"]["pains_alerts"]
+    ext_curc = res_curc["medicinal_chemistry_safety"]["bindora_extended_alerts"]
+
+    # Must be in extended alerts
+    assert ext_curc["count"] >= 1
+    assert any("curcuminoid" in a.lower() for a in ext_curc["alerts"])
+    assert "bindora extended" in ext_curc["attribution"].lower()
+
+    # Maleimide: clarified as covalent thiol-reactive electrophile
+    maleimide_smi = "C1=CC(=O)NC1=O"
+    res_mal = ADMEProfiler.calculate_adme(maleimide_smi)
+    ext_mal = res_mal["medicinal_chemistry_safety"]["bindora_extended_alerts"]["alerts"]
+    assert any("maleimide" in a.lower() or "thiol-reactive" in a.lower() for a in ext_mal)
+
+
+
 
