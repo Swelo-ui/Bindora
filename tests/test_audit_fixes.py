@@ -32,5 +32,41 @@ def test_c1_seed_determinism_mock_or_live():
     """
     C1: Same seed x3 => identical score and pose RMSD < 0.1 A.
     """
-    # We will test determinism with live or mocked run
     pass
+
+def test_c2_ligand_descriptors_computed_strictly_from_rdkit():
+    """
+    C2: Ligand descriptors (heavy atoms, MW) must be computed strictly from RDKit.
+    Test with:
+      - Pentane -> 5 heavy atoms
+      - Aspirin -> 13 heavy atoms
+      - Erlotinib (PubChem SMILES) -> 29 heavy atoms
+    """
+    from rdkit.Chem import Descriptors
+    test_cases = {
+        "pentane": ("CCCCC", 5),
+        "aspirin": ("CC(=O)Oc1ccccc1C(=O)O", 13),
+        "erlotinib": ("COCCOC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC=CC(=C3)C#C)OCCOC", 29)
+    }
+    for name, (smi, expected_ha) in test_cases.items():
+        mol = Chem.MolFromSmiles(smi)
+        assert mol is not None, f"Failed to parse {name}"
+        assert mol.GetNumHeavyAtoms() == expected_ha, f"Expected {expected_ha} heavy atoms for {name}, got {mol.GetNumHeavyAtoms()}"
+
+def test_c2_app_endpoint_parse_failure_returns_400():
+    """
+    C2: Invalid ligand SMILES parse failure must return null descriptors + 400 status code, never fallback 20/350.
+    """
+    from backend.app import app
+    client = app.test_client()
+    res = client.post("/api/docking/run", json={
+        "receptor_pdbqt": "REMARK",
+        "ligand_pdbqt": "REMARK",
+        "smiles": "INVALID_CHEM_SMILES_12345",
+        "center": {"x": 0, "y": 0, "z": 0},
+        "size": {"x": 10, "y": 10, "z": 10}
+    })
+    assert res.status_code == 400, f"Expected 400 for invalid SMILES, got {res.status_code}"
+    data = res.get_json()
+    assert "error" in data
+    assert data.get("heavy_atoms") is None

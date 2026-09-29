@@ -316,18 +316,23 @@ def run_docking():
     num_modes = int(data.get("num_modes", 9))
     replicates = int(data.get("replicates", 1))
     smiles = data.get("smiles", "")
-    lig_mol = Chem.MolFromSmiles(smiles) if smiles else None
+    lig_mol = None
+    if smiles:
+        lig_mol = Chem.MolFromSmiles(smiles)
+        if lig_mol is None:
+            return jsonify({
+                "error": f"Invalid ligand SMILES '{smiles}': unable to parse into valid chemical structure",
+                "heavy_atoms": None,
+                "mw": None
+            }), 400
 
-    # Derive dynamic heavy atoms and MW from sanitized molecule to eliminate hardcoded defaults
+    # Derive dynamic heavy atoms and MW strictly from sanitized RDKit molecule (never hardcoded 20 / 300.0)
     if lig_mol is not None:
-        actual_heavy_atoms = int(lig_mol.GetNumHeavyAtoms())
-        actual_mw = round(float(Descriptors.MolWt(lig_mol)), 2)
+        heavy_atoms = int(lig_mol.GetNumHeavyAtoms())
+        mw = round(float(Descriptors.MolWt(lig_mol)), 2)
     else:
-        actual_heavy_atoms = 20
-        actual_mw = 300.0
-
-    heavy_atoms = int(data.get("heavy_atoms")) if data.get("heavy_atoms") is not None else actual_heavy_atoms
-    mw = float(data.get("molecular_weight")) if data.get("molecular_weight") is not None else actual_mw
+        heavy_atoms = None
+        mw = None
 
     flexible_residues = data.get("flexible_residues")
     cpu = data.get("cpu")
