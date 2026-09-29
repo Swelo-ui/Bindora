@@ -77,4 +77,13 @@ Format: `[Fix ID] What + Why + Test added`.
 - **Why:** Describing pocket detection vaguely as bounding-box heuristics concealed the underlying alpha-sphere Voronoi tessellation physics, and omitting alpha-sphere density metrics prevented biophysical validation of pocket cleft compactness.
 - **Test Added:** `tests/test_audit_fixes.py::test_c13_voronoi_method_label`, `test_c13_pocket_center_is_centroid_not_backbone_bbox`.
 
+## [Fix C14] AI Narrative — Disambiguated Mode Contract, Prompt Guardrails & Claim Validation
+- **What:** In `backend/services/narrative.py`:
+  (1) Restructured the payload schema passed to LLM reasoning endpoints to strictly isolate `top_ranked_pose_mode_1` from alternative modes and remove the raw `poses` array, preventing cross-mode metric conflation (e.g. attributing Mode 9 strain to Mode 1).
+  (2) Added explicit system prompt negative constraints forbidding the attribution of alternative mode metrics to Mode 1 and strictly distinguishing internal Vina cluster dispersion (`rmsd_lb`/`rmsd_ub`) from crystallographic native RMSD.
+  (3) Added `validate_narrative_claims(narrative_text, report_data)` method that automatically scans generated narratives for hallucinated crystallographic RMSD claims (when no crystal reference is present), conflated Mode 1 strain claims, or 0-based indexing ('Mode 0'), falling back to deterministic pharmacology narrative when severe hallucinations are detected.
+- **Why:** The LLM previously conflated Mode 9 high strain (15.38 kcal) with Mode 1 (8.08 kcal) and misreported internal Vina cluster dispersion as crystallographic native RMSD in Runs 48–50 of the QA audit.
+- **Test Added:** `tests/test_audit_fixes.py::test_c14_narrative_system_prompt_contains_pose_attribution_rule`, `test_c14_narrative_structured_payload_isolates_mode1`, `test_c14_deterministic_narrative_uses_only_supplied_data`, `test_c14_narrative_claim_validator_flags_hallucinated_native_rmsd`.
+
+
 

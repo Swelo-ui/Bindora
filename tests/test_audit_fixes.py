@@ -896,6 +896,29 @@ def test_c14_deterministic_narrative_uses_only_supplied_data():
     assert "3200" in narrative or "3,200" in narrative
 
 
+def test_c14_narrative_claim_validator_flags_hallucinated_native_rmsd():
+    """
+    C14: NarrativeExplainer.validate_narrative_claims must detect when a narrative
+    falsely claims an RMSD to native crystal structure when no crystallographic
+    reference was provided (crystallographic_native_rmsd is None).
+    """
+    from backend.services.narrative import NarrativeExplainer
+
+    report_data = {
+        "crystallographic_native_rmsd": None,
+        "thermodynamics": {"binding_affinity_kcal": -7.17},
+        "top_ranked_pose_mode_1": {"ligand_strain_kcal": 8.08}
+    }
+    bad_narrative = (
+        "The docking mode 1 showed an RMSD to native crystal structure of 1.2 A, "
+        "demonstrating excellent crystallographic validation."
+    )
+    val = NarrativeExplainer.validate_narrative_claims(bad_narrative, report_data)
+    assert val["valid"] is False
+    assert val["conflated_rmsd_detected"] is True
+
+
+
 # =========================================================================
 # Fix C15: Benchmark Harness — PubChem CID-only inputs
 # =========================================================================

@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import requests
 from typing import Dict, Any, Optional
@@ -55,6 +56,79 @@ class NarrativeExplainer:
         return True
 
     @staticmethod
+    def validate_narrative_claims(narrative_text: str, report_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Validate narrative claims against real calculated metrics to prevent hallucinations.
+        Checks:
+        1. Hallucinated crystallographic native RMSD: if crystallographic_native_rmsd is None or missing,
+           flags claims stating RMSD to native/crystal structure.
+        2. Conflated mode strain: flags claims attributing higher alternative mode strain to Mode 1.
+        3. Strict 1-based pose indexing: flags zero-based indexing ("Mode 0" / "Pose 0").
+        """
+        warnings = []
+        conflated_rmsd = False
+        conflated_strain = False
+        zero_index_found = False
+
+        if not narrative_text or not isinstance(narrative_text, str):
+            return {"valid": False, "warnings": ["Empty narrative text"], "conflated_rmsd_detected": False, "conflated_strain_detected": False}
+
+        lower_text = narrative_text.lower()
+
+        # 1. Native RMSD hallucination check
+        native_rmsd = (
+            report_data.get("crystallographic_native_rmsd")
+            or report_data.get("native_rmsd")
+            or report_data.get("pose_ensemble_dispersion", {}).get("crystallographic_native_rmsd")
+        )
+        if native_rmsd is None:
+            forbidden_rmsd_patterns = [
+                r"rmsd to native",
+                r"rmsd to crystal",
+                r"crystallographic rmsd",
+                r"rmsd relative to the native",
+                r"rmsd relative to crystal",
+                r"native ligand rmsd"
+            ]
+            for pat in forbidden_rmsd_patterns:
+                if re.search(pat, lower_text):
+                    conflated_rmsd = True
+                    warnings.append(f"Forbidden native RMSD claim detected without crystallographic reference ('{pat}')")
+                    break
+
+        # 2. Conflated pose strain check
+        top_pose = (
+            report_data.get("top_ranked_pose_mode_1")
+            or (report_data.get("poses", [{}])[0] if report_data.get("poses") else {})
+        )
+        top_strain = top_pose.get("ligand_strain_kcal")
+        if top_strain is not None and isinstance(top_strain, (int, float)):
+            strain_matches = re.findall(r"(?:mode 1|top pose|pose 1)[^.]*?strain[^.]*?([\d.]+)\s*kcal", lower_text)
+            for sm in strain_matches:
+                try:
+                    val = float(sm)
+                    if val > (float(top_strain) + 3.0):
+                        conflated_strain = True
+                        warnings.append(f"Mode 1 strain conflation detected: narrative claims {val} kcal/mol vs calculated {top_strain} kcal/mol")
+                except ValueError:
+                    pass
+
+        # 3. Zero-based indexing check ("Mode 0" or "Pose 0")
+        if re.search(r"\b(mode|pose)\s+0\b", lower_text):
+            zero_index_found = True
+            warnings.append("Zero-based pose indexing detected ('Mode 0' / 'Pose 0'). Scientific standard requires 1-based indexing.")
+
+        is_valid = not (conflated_rmsd or conflated_strain or zero_index_found)
+
+        return {
+            "valid": is_valid,
+            "conflated_rmsd_detected": conflated_rmsd,
+            "conflated_strain_detected": conflated_strain,
+            "zero_index_detected": zero_index_found,
+            "warnings": warnings
+        }
+
+    @staticmethod
     def generate_explanation(report_data: Dict[str, Any], api_key: Optional[str] = None, provider: str = "auto") -> Dict[str, Any]:
         """Generate structured narrative explanation with strict grounding on real calculated data."""
         model_to_use = os.environ.get("OPENROUTER_MODEL", OPENROUTER_MODEL)
@@ -87,18 +161,24 @@ class NarrativeExplainer:
                 llm_result = NarrativeExplainer._call_llm(report_data, effective_key, provider, model_to_use)
                 if llm_result:
                     llm_response, actual_model = llm_result
-                    result = {
-                        "narrative": llm_response,
-                        "source": f"Bindora AI Explainer ({actual_model} via OpenRouter)",
-                        "is_fallback": False,
-                        "cached": False
-                    }
-                    try:
-                        with open(cache_file, "w", encoding="utf-8") as f:
-                            json.dump(result, f, indent=2)
-                    except Exception:
-                        pass
-                    return result
+                    # Validate claims against calculated metrics
+                    val_res = NarrativeExplainer.validate_narrative_claims(llm_response, report_data)
+                    if val_res["valid"]:
+                        result = {
+                            "narrative": llm_response,
+                            "source": f"Bindora AI Explainer ({actual_model} via OpenRouter)",
+                            "is_fallback": False,
+                            "cached": False,
+                            "validation": val_res
+                        }
+                        try:
+                            with open(cache_file, "w", encoding="utf-8") as f:
+                                json.dump(result, f, indent=2)
+                        except Exception:
+                            pass
+                        return result
+                    else:
+                        print(f"[NARRATIVE] LLM claims validation warnings: {val_res['warnings']}. Falling back to deterministic narrative.")
             except Exception as e:
                 print(f"[NARRATIVE] OpenRouter API notice: {e}. Gracefully falling back to deterministic reasoning engine.")
 
