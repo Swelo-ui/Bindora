@@ -1003,10 +1003,18 @@ class DockingEngine:
                     p["decoy_filter_flag"] = strain_data.get("decoy_filter_flag", "PASS")
 
                     mmgbsa_data = ComplexRefinementService.calculate_mmgbsa_rescore(
-                        receptor_pdb or receptor_pdbqt, p_pdbqt, strain_data
+                        receptor_pdb or receptor_pdbqt, p_pdbqt, strain_data, smiles=ligand_smiles
                     )
                     p["mmgbsa"] = mmgbsa_data
                     p["mmgbsa_delta_g_kcal"] = mmgbsa_data.get("mmgbsa_delta_g_kcal")
+                    p["lipe"] = mmgbsa_data.get("lipe")
+                    p["polar_contacts_count"] = mmgbsa_data.get("polar_contacts_count")
+                    p["metal_coordination_bonus_kcal"] = mmgbsa_data.get("components", {}).get("metal_coordination_bonus_kcal", 0.0)
+
+                    # Update decoy filter flag if MM-GBSA flagged a greasy decoy or lipophilic aggregator
+                    if mmgbsa_data.get("is_grease_ball_decoy") or mmgbsa_data.get("decoy_filter_verdict") in ("FLAGGED_GREASY_DECOY", "FLAGGED_LIPOPHILIC_AGGREGATOR"):
+                        p["decoy_filter_flag"] = mmgbsa_data.get("decoy_filter_verdict")
+                        p["strain_warning"] = (p.get("strain_warning") or "") + f" [Decoy Filter: {mmgbsa_data.get('decoy_reason')}]"
                 except Exception as refine_err:
                     p["refinement_notice"] = str(refine_err)
 
@@ -1230,7 +1238,9 @@ class DockingEngine:
             exhaustiveness=exhaustiveness,
             num_modes=5,
             seed=seed,
-            cpu=cpu
+            cpu=cpu,
+            receptor_pdb=receptor_pdbqt,
+            ligand_smiles=lig_prep.get("canonical_smiles")
         )
 
         if not poses:
@@ -1263,11 +1273,21 @@ class DockingEngine:
                 best_pose = p
 
         top_pose_rmsd = top_pose.get("rmsd_to_cryst", min_rmsd)
-        is_validated = min_rmsd <= validation_threshold
+
+        # Evaluate consensus rank 1 pose (incorporating physics MM-GBSA, metal coordination, and strain)
+        consensus_top_pose = min(poses, key=lambda p: p.get("consensus_rank", p.get("mode", 1)))
+        consensus_top_rmsd = consensus_top_pose.get("rmsd_to_cryst", top_pose_rmsd)
+
+        is_validated = (top_pose_rmsd <= validation_threshold) or (consensus_top_rmsd <= validation_threshold) or (min_rmsd <= validation_threshold)
 
         if top_pose_rmsd <= validation_threshold:
             badge = f"Redocking validation: PASS (RMSD: {top_pose_rmsd:.2f} Å ≤ {validation_threshold:.2f} Å)"
             status = "PASS"
+            best_pose = top_pose
+        elif consensus_top_rmsd <= validation_threshold:
+            badge = f"Consensus Rank 1 Validated (RMSD: {consensus_top_rmsd:.2f} Å ≤ {validation_threshold:.2f} Å)"
+            status = f"PASS (Consensus Rank 1: {consensus_top_rmsd:.2f} Å; Mode {best_mode}: {min_rmsd:.2f} Å)"
+            best_pose = consensus_top_pose
         elif min_rmsd <= validation_threshold:
             badge = f"Near-Native Pose Found in Mode {best_mode} (RMSD: {min_rmsd:.2f} Å ≤ {validation_threshold:.2f} Å)"
             status = f"PASS (Mode {best_mode}: {min_rmsd:.2f} Å; Rank 1: {top_pose_rmsd:.2f} Å)"

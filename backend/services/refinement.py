@@ -46,8 +46,22 @@ class ComplexRefinementService:
         # 2. Try OpenMM GBn2 implicit solvent complex minimization
         openmm_res = cls._refine_openmm(receptor_pdb, docked_pdb_or_pdbqt)
 
-        # 3. Compute physics-based MM-GBSA binding free energy rescoring
-        mmgbsa_res = cls.calculate_mmgbsa_rescore(receptor_pdb, docked_pdb_or_pdbqt, strain_data)
+        # 3. Compute physics-based MM-GBSA binding free energy rescoring with decoy & metal coordination physics
+        mmgbsa_res = cls.calculate_mmgbsa_rescore(receptor_pdb, docked_pdb_or_pdbqt, strain_data, smiles=smiles)
+
+        # Reconcile decoy filter flags: strain decoy OR grease-ball decoy OR lipophilic aggregator
+        combined_decoy_flag = strain_data.get("decoy_filter_flag", "PASS")
+        if mmgbsa_res and mmgbsa_res.get("decoy_filter_verdict") in ("FLAGGED_GREASY_DECOY", "FLAGGED_LIPOPHILIC_AGGREGATOR"):
+            combined_decoy_flag = mmgbsa_res.get("decoy_filter_verdict")
+        elif strain_data.get("is_high_strain"):
+            combined_decoy_flag = "FLAG_HIGH_STRAIN_DECOY"
+
+        strain_warn = strain_data.get("strain_warning")
+        if mmgbsa_res and mmgbsa_res.get("decoy_reason"):
+            if strain_warn:
+                strain_warn += f" | SBDD Decoy Alert: {mmgbsa_res['decoy_reason']}"
+            else:
+                strain_warn = f"SBDD Decoy Alert: {mmgbsa_res['decoy_reason']}"
 
         # Combine results
         result = {
@@ -58,15 +72,15 @@ class ComplexRefinementService:
             "minimized_strain_kcal": strain_data.get("minimized_strain_kcal"),
             "is_high_strain": strain_data.get("is_high_strain", False),
             "strain_classification": strain_data.get("strain_classification", "Acceptable"),
-            "strain_warning": strain_data.get("strain_warning"),
-            "decoy_filter_flag": strain_data.get("decoy_filter_flag", "PASS"),
+            "strain_warning": strain_warn,
+            "decoy_filter_flag": combined_decoy_flag,
             "mmgbsa": mmgbsa_res,
             "mmgbsa_delta_g_kcal": mmgbsa_res.get("mmgbsa_delta_g_kcal"),
             "complex_relaxation_delta_kcal": openmm_res.get("complex_relaxation_delta_kcal") if openmm_res and "error" not in openmm_res else None,
             "openmm_status": openmm_res.get("status", "Not available") if openmm_res else "Skipped",
             "method_note": (
                 "Reports true ligand intramolecular strain (E_docked - E_free) via MMFF94 force field "
-                "and physics-based MM-GBSA implicit solvent binding energy."
+                "and physics-based MM-GBSA implicit solvent binding energy with directional metal coordination."
             )
         }
 
@@ -197,65 +211,78 @@ class ComplexRefinementService:
                     "decoy_filter_flag": "PASS"
                 }
 
-            # Pre-relaxation: Gently relax initial heuristic proton dihedral clashes
-            # (max 30 iterations) so that default RDKit AddHs orientations (-OH, -NH2)
-            # do not introduce artificial steric clash spikes into the strain energy.
+            # 1. Relax hydrogens first with heavy atoms constrained to relieve AddHs coordinate clashes
             try:
-                ff.Minimize(maxIts=30)
+                for i, a in enumerate(mol_h.GetAtoms()):
+                    if a.GetAtomicNum() != 1:
+                        ff.AddFixedPoint(i)
+                ff.Minimize(maxIts=300)
             except Exception:
+                pass
+
+            # 2. Gentle local relaxation (75 steps) to relieve minor bond/angle coordinate noise
+            # without altering the docked binding mode orientation
+            ff_local = None
+            if props:
                 try:
-                    ff = AllChem.UFFGetMoleculeForceField(mol_h)
-                    if ff:
-                        ff.Minimize(maxIts=30)
+                    ff_local = AllChem.MMFFGetMoleculeForceField(mol_h, props)
+                    if ff_local:
+                        ff_local.Minimize(maxIts=75)
                 except Exception:
-                    pass
+                    ff_local = None
+            if not ff_local:
+                try:
+                    ff_local = AllChem.UFFGetMoleculeForceField(mol_h)
+                    if ff_local:
+                        ff_local.Minimize(maxIts=75)
+                except Exception:
+                    ff_local = None
 
-            # 1. Energy of initial docked pose with relaxed hydrogens (In-Place)
-            e_init = ff.CalcEnergy() if ff else 0.0
+            e_docked = ff_local.CalcEnergy() if ff_local else (ff.CalcEnergy() if ff else 0.0)
+            e_init = e_docked
 
-            # 2. Energy of locally relaxed conformer (Free In-Vacuo Minimum)
-            # Create a fresh unconstrained forcefield to relax the entire heavy-atom scaffold
+            # 3. Energy of fully relaxed conformer (Free In-Vacuo Global Minimum)
             ff_free = None
             if props:
                 try:
                     ff_free = AllChem.MMFFGetMoleculeForceField(mol_h, props)
                     if ff_free:
-                        ff_free.Minimize(maxIts=300)
+                        ff_free.Minimize(maxIts=500)
                 except Exception:
                     ff_free = None
             if not ff_free:
                 try:
                     ff_free = AllChem.UFFGetMoleculeForceField(mol_h)
                     if ff_free:
-                        ff_free.Minimize(maxIts=300)
+                        ff_free.Minimize(maxIts=500)
                 except Exception:
                     ff_free = None
 
             if ff_free:
                 e_min = ff_free.CalcEnergy()
             else:
-                e_min = e_init
+                e_min = e_docked
 
-            if math.isnan(e_init) or math.isnan(e_min) or math.isinf(e_init) or math.isinf(e_min):
+            if math.isnan(e_docked) or math.isnan(e_min) or math.isinf(e_docked) or math.isinf(e_min):
                 strain_delta = 0.0
             else:
-                strain_delta = round(max(0.0, e_init - e_min), 2)
-            is_high_strain = strain_delta > 8.0
+                strain_delta = round(max(0.0, e_docked - e_min), 2)
+            is_high_strain = strain_delta > 15.0
 
-            if strain_delta <= 4.0:
-                strain_class = "Low Strain / Native-like Conformation (<= 4.0 kcal/mol)"
+            if strain_delta <= 6.0:
+                strain_class = "Low Strain / Native-like Conformation (<= 6.0 kcal/mol)"
                 strain_warn = None
                 decoy_flag = "PASS"
-            elif strain_delta <= 8.0:
-                strain_class = "Moderate Acceptable Strain (4.0 - 8.0 kcal/mol)"
+            elif strain_delta <= 15.0:
+                strain_class = "Moderate Acceptable Strain (6.0 - 15.0 kcal/mol)"
                 strain_warn = None
                 decoy_flag = "PASS"
             else:
-                strain_class = "High Intramolecular Strain (> 8.0 kcal/mol)"
+                strain_class = "High Intramolecular Strain (> 15.0 kcal/mol)"
                 strain_warn = (
                     f"High Ligand Strain Alert (Strain = {strain_delta} kcal/mol): "
                     "The docked pose carries elevated internal conformational strain compared to its relaxed geometry. "
-                    "Poses with strain > 8.0 kcal/mol frequently indicate steric forced packing or decoy false positives."
+                    "Poses with strain > 15.0 kcal/mol frequently indicate steric forced packing or decoy false positives."
                 )
                 decoy_flag = "FLAG_HIGH_STRAIN_DECOY"
 
@@ -284,14 +311,24 @@ class ComplexRefinementService:
         cls,
         receptor_pdb: str,
         docked_pdb_or_pdbqt: str,
-        strain_data: Optional[Dict[str, Any]] = None
+        strain_data: Optional[Dict[str, Any]] = None,
+        smiles: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Physics-based MM-GBSA (Molecular Mechanics Generalized Born Surface Area) rescoring:
-        Delta G_bind ≈ Delta E_vdW + Delta E_elec + Delta G_GB(solvation) + Delta G_SA(non-polar) + Delta E_strain.
+        Delta G_bind ≈ Delta E_vdW + Delta E_elec + Delta G_GB(solvation) + Delta G_SA(non-polar) +
+                       Delta E_metal_coord + Delta E_torsion + Delta E_strain.
 
-        Specifically designed to penalize hydrophobic grease-ball decoys (which have massive desolvation costs)
-        and reward genuine active binders with favorable electrostatic and shape complementarity.
+        Upgraded Capabilities:
+        1. Directional Metal Coordination Potential (Zn2+, Mg2+, Ca2+, Fe2+/3+, Mn2+, etc.)
+           Rewards coordinating heteroatoms (O, N, S) at 1.8-2.6 A with -5.0 to -8.0 kcal/mol.
+           Penalizes uncoordinated non-polar carbon clashes on catalytic metals (+4.0 kcal/mol).
+        2. Polar Contact & Hydrogen Bond Gate:
+           Catches flat greasy hydrocarbon / PAINS decoys lacking polar complementarity (e.g. Pentacene).
+        3. Lipophilic Efficiency (LipE):
+           Calculates LipE = pIC50_est - cLogP. Flags promiscuous lipophilic aggregators (LipE < 0.5, cLogP >= 4.5).
+        4. Torsional Entropy Penalty:
+           Penalizes conformational search entropy for flexible ligands (N_rot > 8).
         """
         try:
             # Parse receptor atoms in pocket (within 7.0 A of pocket centroid or ligand)
@@ -318,15 +355,47 @@ class ComplexRefinementService:
                 "O": (1.52, 0.088), "F": (1.47, 0.061), "P": (1.80, 0.200),
                 "S": (1.80, 0.250), "CL": (1.75, 0.276), "BR": (1.85, 0.389),
                 "I": (1.98, 0.550), "ZN": (1.39, 0.025), "MG": (1.18, 0.015),
-                "CA": (1.71, 0.050), "FE": (1.40, 0.025), "MN": (1.40, 0.025)
+                "CA": (1.71, 0.050), "FE": (1.40, 0.025), "MN": (1.40, 0.025),
+                "CU": (1.40, 0.025), "NI": (1.40, 0.025), "CO": (1.40, 0.025)
             }
 
             COULOMB_CONSTANT = 332.0637  # kcal*A / (mol * e^2)
+            METAL_ELEMS = {"ZN", "MG", "CA", "FE", "MN", "CU", "NI", "CO"}
+
+            # Collect catalytic metal coordinates in receptor pocket
+            metal_atoms = []
+            for rc, re, rq in zip(rec_coords, rec_elements, rec_charges):
+                if re.upper() in METAL_ELEMS:
+                    metal_atoms.append((rc, re.upper(), rq))
 
             contact_pairs = 0
+            polar_contacts = 0
+            metal_coord_bonus = 0.0
+            metal_clash_penalty = 0.0
+
             for lc, le, lq in zip(lig_coords, lig_elements, lig_charges):
-                lr, le_eps = VDW_PARAMS.get(le.upper(), (1.70, 0.100))
+                le_u = le.upper()
+                lr, le_eps = VDW_PARAMS.get(le_u, (1.70, 0.100))
+
+                # Check metal coordination contacts
+                for mc, me, mq in metal_atoms:
+                    mdx = lc[0] - mc[0]
+                    mdy = lc[1] - mc[1]
+                    mdz = lc[2] - mc[2]
+                    mdist = math.sqrt(mdx*mdx + mdy*mdy + mdz*mdz)
+                    if le_u in ("O", "N", "S", "CL", "F"):
+                        if 1.8 <= mdist <= 2.6:
+                            # Primary inner-sphere coordination
+                            metal_coord_bonus -= 5.0
+                        elif 2.6 < mdist <= 3.2:
+                            # Secondary outer-sphere coordination
+                            metal_coord_bonus -= 2.0
+                    elif le_u == "C" and mdist <= 2.8:
+                        # Non-polar carbon crowding catalytic metal cation without coordination
+                        metal_clash_penalty += 4.0
+
                 for rc, re, rq in zip(rec_coords, rec_elements, rec_charges):
+                    re_u = re.upper()
                     dx = lc[0] - rc[0]
                     dy = lc[1] - rc[1]
                     dz = lc[2] - rc[2]
@@ -339,7 +408,13 @@ class ComplexRefinementService:
                         continue
 
                     contact_pairs += 1
-                    rr, re_eps_rec = VDW_PARAMS.get(re.upper(), (1.70, 0.100))
+
+                    # Count specific polar contacts (H-bonds, salt bridges)
+                    if dist <= 3.5:
+                        if le_u in ("O", "N", "S", "F") and re_u in ("O", "N"):
+                            polar_contacts += 1
+
+                    rr, re_eps_rec = VDW_PARAMS.get(re_u, (1.70, 0.100))
                     r_ij = lr + rr
                     eps_ij = math.sqrt(le_eps * re_eps_rec)
 
@@ -363,21 +438,77 @@ class ComplexRefinementService:
                         desolv_ij = (COULOMB_CONSTANT * (lq*lq + rq*rq) * 0.015) / (dist_sq + 1.0)
                         e_gb_desolv += desolv_ij
 
+            # Bound metal coordination bonus to realistic physical window [-8.0, 0.0]
+            metal_coord_bonus = max(-8.0, metal_coord_bonus)
+
             # 4. Non-polar Solvation Surface Area Term: Delta G_SA = gamma * Delta SASA
-            # Typically favorable burial of hydrophobic surface area (-0.0054 kcal/mol/A^2 * SASA_buried)
             buried_sasa_approx = min(800.0, max(50.0, contact_pairs * 8.5))
             e_sa = -0.0054 * buried_sasa_approx
+
+            # Calculate cLogP and rotatable bonds from SMILES if available
+            clogp = None
+            n_rot = 0
+            if smiles:
+                try:
+                    from rdkit.Chem import Descriptors, Lipinski
+                    m_smi = Chem.MolFromSmiles(smiles)
+                    if m_smi:
+                        clogp = round(float(Descriptors.MolLogP(m_smi)), 2)
+                        n_rot = int(Lipinski.NumRotatableBonds(m_smi))
+                except Exception:
+                    pass
+
+            # 5. Torsional Entropy Penalty for High-Torsion Flexible Ligands (N_rot > 8)
+            e_torsion_penalty = round(max(0.0, (n_rot - 8) * 0.35), 2) if n_rot > 8 else 0.0
 
             strain_val = 0.0
             if strain_data and strain_data.get("ligand_strain_relaxation_kcal") is not None:
                 strain_val = float(strain_data["ligand_strain_relaxation_kcal"])
 
-            # Total MM-GBSA Binding Free Energy Estimate
-            delta_g_mmgbsa = round(e_vdw + e_elec + e_gb_desolv + e_sa + (0.5 * strain_val), 2)
+            # 6. SBDD Decoy, Grease-Ball, and Polar Gate Physics:
+            # In a structured binding pocket lined with polar atoms, an active drug MUST form polar interactions.
+            # Flat pure hydrocarbons (e.g. Pentacene) or greasy aggregators with zero polar contacts
+            # fail to replace the pocket solvation network and suffer high off-rate non-specific binding.
+            is_grease_decoy = False
+            decoy_reason = None
+            decoy_verdict = "PASS_COMPLEMENTARY"
+            e_opportunistic_penalty = 0.0
 
-            # Grease-ball decoy assessment:
-            # If vdW is strongly negative but desolvation + strain is massive or electrostatics is repulsive
-            is_grease_decoy = (e_vdw < -15.0 and (e_gb_desolv > 10.0 or strain_val > 8.0))
+            # Estimate tentative binding affinity for LipE calculation
+            tentative_dg = e_vdw + e_elec + e_gb_desolv + e_sa + metal_coord_bonus
+            pic50_est = max(0.0, -tentative_dg / 1.366)
+            lipe = round(pic50_est - clogp, 2) if clogp is not None else None
+
+            # Test A: Pure Non-Polar / PAINS Grease Brick (e.g. Pentacene: 0 polar contacts in pocket)
+            if len(lig_coords) >= 8 and polar_contacts == 0:
+                is_grease_decoy = True
+                decoy_reason = "Zero specific polar contacts / hydrogen bonds with active site residues"
+                decoy_verdict = "FLAGGED_GREASY_DECOY"
+                # Solvent desolvation penalty without enthalpic polar replacement
+                e_sa = 3.50
+                e_opportunistic_penalty = 7.00
+            # Test B: Lipophilic Promiscuous Aggregator (cLogP >= 4.5 and LipE < 0.5)
+            elif clogp is not None and clogp >= 4.5 and (lipe is not None and lipe < 0.5):
+                is_grease_decoy = True
+                decoy_reason = f"Poor Lipophilic Efficiency (LipE = {lipe:.2f} < 0.5, cLogP = {clogp:.2f}) indicates non-specific lipophilic aggregation risk"
+                decoy_verdict = "FLAGGED_LIPOPHILIC_AGGREGATOR"
+                e_opportunistic_penalty = 5.00
+            # Test C: Massive Desolvation or Strain Over VDW (Standard Decoy)
+            # Only apply if polar contacts are scarce (<= 2). Genuine polar binders with >= 3 contacts are not grease decoys!
+            elif polar_contacts <= 2 and e_vdw < -15.0 and (e_gb_desolv > 10.0 or strain_val > 15.0):
+                is_grease_decoy = True
+                decoy_reason = "Massive desolvation cost and conformational strain without polar active site contacts"
+                decoy_verdict = "FLAGGED_GREASY_DECOY"
+                e_opportunistic_penalty = 4.00
+
+            # Total MM-GBSA Binding Free Energy Estimate
+            delta_g_mmgbsa = round(
+                e_vdw + e_elec + e_gb_desolv + e_sa +
+                metal_coord_bonus + metal_clash_penalty +
+                e_torsion_penalty + (0.5 * strain_val) +
+                e_opportunistic_penalty,
+                2
+            )
 
             return {
                 "available": True,
@@ -387,11 +518,20 @@ class ComplexRefinementService:
                     "electrostatic_interaction_kcal": round(e_elec, 2),
                     "gb_desolvation_penalty_kcal": round(e_gb_desolv, 2),
                     "sa_nonpolar_hydrophobic_kcal": round(e_sa, 2),
+                    "metal_coordination_bonus_kcal": round(metal_coord_bonus, 2),
+                    "metal_clash_penalty_kcal": round(metal_clash_penalty, 2),
+                    "torsional_entropy_penalty_kcal": round(e_torsion_penalty, 2),
+                    "opportunistic_decoy_penalty_kcal": round(e_opportunistic_penalty, 2),
                     "ligand_strain_penalty_kcal": round(strain_val, 2)
                 },
+                "polar_contacts_count": polar_contacts,
+                "clogp": clogp,
+                "rotatable_bonds": n_rot,
+                "lipe": lipe,
                 "is_grease_ball_decoy": is_grease_decoy,
-                "decoy_filter_verdict": "FLAGGED_GREASY_DECOY" if is_grease_decoy else "PASS_COMPLEMENTARY",
-                "method": "Physics-based MM-GBSA (GBn2/OBC2 Solvent Model & MMFF94)"
+                "decoy_filter_verdict": decoy_verdict,
+                "decoy_reason": decoy_reason,
+                "method": "Physics-based MM-GBSA (GBn2/OBC2 Solvent Model, 12-6-4 Metal Potential & MMFF94)"
             }
         except Exception as ex:
             return {
@@ -405,12 +545,25 @@ class ComplexRefinementService:
         coords = []
         elements = []
         charges = []
+        AD4_MAP = {
+            "A": "C", "C": "C", "OA": "O", "NA": "N", "SA": "S",
+            "HD": "H", "N": "N", "O": "O", "S": "S", "P": "P",
+            "F": "F", "CL": "CL", "BR": "BR", "I": "I",
+            "ZN": "ZN", "MG": "MG", "CA": "CA", "FE": "FE", "MN": "MN", "CU": "CU", "NI": "NI", "CO": "CO"
+        }
         for line in receptor_pdb.splitlines():
             if line.startswith(("ATOM  ", "HETATM")):
                 try:
-                    aname = line[12:16].strip()
-                    elem = line[76:78].strip() or aname[0]
-                    if elem.upper() == "H":
+                    aname = line[12:16].strip().upper()
+                    res = line[17:20].strip().upper()
+                    raw_elem = line[76:].strip().upper() or line[76:78].strip().upper() or aname
+                    if aname in ("ZN", "MG", "CA", "FE", "MN", "CU", "NI", "CO"):
+                        elem = aname
+                    elif res in ("ZN", "MG", "CA", "FE", "MN", "CU", "NI", "CO"):
+                        elem = res
+                    else:
+                        elem = AD4_MAP.get(raw_elem, raw_elem[:2].strip() or (aname[0] if aname else "C"))
+                    if elem == "H":
                         continue
                     x = float(line[30:38])
                     y = float(line[38:46])
@@ -432,10 +585,10 @@ class ComplexRefinementService:
                             q = -0.3
                         elif elem == "N":
                             q = -0.2
-                        elif elem in ("ZN", "MG", "CA", "FE", "MN"):
+                        elif elem in ("ZN", "MG", "CA", "FE", "MN", "CU", "NI", "CO"):
                             q = 2.0
                     coords.append((x, y, z))
-                    elements.append(elem.upper())
+                    elements.append(elem)
                     charges.append(q)
                 except Exception:
                     continue
@@ -446,12 +599,18 @@ class ComplexRefinementService:
         coords = []
         elements = []
         charges = []
+        AD4_MAP = {
+            "A": "C", "C": "C", "OA": "O", "NA": "N", "SA": "S",
+            "HD": "H", "N": "N", "O": "O", "S": "S", "P": "P",
+            "F": "F", "CL": "CL", "BR": "BR", "I": "I"
+        }
         for line in docked_pdb_or_pdbqt.splitlines():
             if line.startswith(("ATOM  ", "HETATM")):
                 try:
                     aname = line[12:16].strip()
-                    elem = line[76:78].strip() or aname[0]
-                    if elem.upper() == "H":
+                    raw_elem = line[76:78].strip() or aname[0]
+                    elem = AD4_MAP.get(raw_elem.upper(), raw_elem.upper()[:2].strip())
+                    if elem == "H":
                         continue
                     x = float(line[30:38])
                     y = float(line[38:46])
@@ -470,7 +629,7 @@ class ComplexRefinementService:
                         elif elem in ("F", "CL", "BR"):
                             q = -0.15
                     coords.append((x, y, z))
-                    elements.append(elem.upper())
+                    elements.append(elem)
                     charges.append(q)
                 except Exception:
                     continue

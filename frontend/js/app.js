@@ -2763,8 +2763,11 @@ class BindoraApp {
       if (elCons) {
         const cRank = currentPose.consensus_rank || currentPose.mode || 1;
         const cConf = currentPose.consensus_confidence || "MODERATE_CONFIDENCE";
-        const cLabel = cConf === "HIGH_CONFIDENCE" ? "High" : (cConf === "DECOY_HIGH_STRAIN" ? "Decoy!" : "Mod");
-        const cClass = cConf === "HIGH_CONFIDENCE" ? "bg-emerald-950 text-emerald-300 border-emerald-800" : (cConf === "DECOY_HIGH_STRAIN" ? "bg-rose-950 text-rose-300 border-rose-800" : "bg-amber-950 text-amber-300 border-amber-800");
+        const isDecoy = cConf.startsWith("DECOY") || currentPose.decoy_filter_flag?.startsWith("FLAG");
+        const cLabel = cConf === "HIGH_CONFIDENCE" ? "High" : (isDecoy ? "Decoy!" : (cConf === "DISCORDANT_SCORING" ? "Disc" : "Mod"));
+        const cClass = cConf === "HIGH_CONFIDENCE"
+          ? "bg-emerald-950 text-emerald-300 border-emerald-800"
+          : (isDecoy ? "bg-rose-950 text-rose-300 border-rose-800" : "bg-amber-950 text-amber-300 border-amber-800");
         elCons.className = `px-2 py-0.5 rounded font-bold text-[11px] border ${cClass}`;
         elCons.textContent = `Rank #${cRank} (${cLabel})`;
       }
@@ -2836,8 +2839,8 @@ class BindoraApp {
           ? '<span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[9px] font-mono font-medium">High</span>'
           : conf === 'MODERATE_CONFIDENCE'
           ? '<span class="px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 text-[9px] font-mono font-medium">Mod</span>'
-          : conf === 'DECOY_HIGH_STRAIN'
-          ? '<span class="px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 text-[9px] font-mono font-bold" title="High strain / unphysical pose flagged as decoy">Decoy</span>'
+          : (conf.startsWith('DECOY') || p.decoy_filter_flag?.startsWith('FLAG'))
+          ? `<span class="px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 text-[9px] font-mono font-bold" title="${p.strain_warning || 'Flagged as false-positive decoy'}">Decoy</span>`
           : conf === 'DISCORDANT_SCORING'
           ? '<span class="px-1.5 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-800 text-[9px] font-mono font-medium" title="Scoring discordance across empirical and physics engines">Disc</span>'
           : '<span class="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 text-[9px] font-mono font-medium">Mod</span>';

@@ -28,8 +28,8 @@ class ConsensusScoringService:
         "cnn": 0.20
     }
 
-    STRAIN_PENALTY_THRESHOLD = 5.0   # kcal/mol: strain above this begins penalty
-    HIGH_STRAIN_CUTOFF = 8.0         # kcal/mol: flags decoy (> 8.0 kcal/mol)
+    STRAIN_PENALTY_THRESHOLD = 8.0   # kcal/mol: strain above this begins penalty
+    HIGH_STRAIN_CUTOFF = 15.0        # kcal/mol: flags high-strain decoy (> 15.0 kcal/mol)
 
     @classmethod
     def compute_pose_consensus(
@@ -155,11 +155,22 @@ class ConsensusScoringService:
             ind_ranks = [ranks_vina[i], ranks_vinardo[i], ranks_mmgbsa[i], ranks_cnn[i]]
             rank_spread = max(ind_ranks) - min(ind_ranks)
 
-            # Confidence classification:
-            # Poses are only flagged as high-strain decoys if internal strain exceeds 8.0 kcal/mol cutoff,
-            # or if strain is elevated (>6.5 kcal/mol) with net unfavorable MM-GBSA (ΔG > 0.0).
+            # Confidence classification & SBDD Decoy Gate:
+            # 1. High Strain Decoy
+            # 2. Grease-Ball / Lipophilic Aggregator Decoy (MM-GBSA)
+            # 3. High/Moderate/Discordant Confidence
             is_unfavorable_desolv = mmgbsa_vals[i] > 0.0
-            if st > cls.HIGH_STRAIN_CUTOFF:
+            decoy_flag = p_copy.get("decoy_filter_flag") or p_copy.get("mmgbsa", {}).get("decoy_filter_verdict")
+            is_grease_decoy = (
+                decoy_flag in ("FLAGGED_GREASY_DECOY", "FLAGGED_LIPOPHILIC_AGGREGATOR") or
+                bool(p_copy.get("mmgbsa", {}).get("is_grease_ball_decoy", False))
+            )
+
+            if is_grease_decoy:
+                confidence = "DECOY_GREASE_BALL"
+                decoy_why = p_copy.get("mmgbsa", {}).get("decoy_reason") or "Lacks polar active site complementarity (opportunistic grease)"
+                conf_desc = f"Pose flagged as false-positive decoy: {decoy_why}"
+            elif st > cls.HIGH_STRAIN_CUTOFF:
                 confidence = "DECOY_HIGH_STRAIN"
                 conf_desc = f"Pose flagged as high-strain decoy ({st:.1f} kcal/mol > {cls.HIGH_STRAIN_CUTOFF} kcal/mol cutoff)."
             elif st > 6.5 and is_unfavorable_desolv:
@@ -197,8 +208,11 @@ class ConsensusScoringService:
 
             augmented_poses.append(p_copy)
 
-        # 5. Sort by consensus score (ascending: lower score is more favorable)
-        augmented_poses.sort(key=lambda x: (x["consensus_confidence"] == "DECOY_HIGH_STRAIN", x["consensus_score"]))
+        # 5. Sort by consensus score: decoys automatically relegated to bottom
+        augmented_poses.sort(key=lambda x: (
+            x["consensus_confidence"] in ("DECOY_HIGH_STRAIN", "DECOY_GREASE_BALL"),
+            x["consensus_score"]
+        ))
 
         # Assign final consensus ranks
         for final_rank, p in enumerate(augmented_poses, 1):
