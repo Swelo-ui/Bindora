@@ -73,6 +73,97 @@ _CYP_ALERTS = {
     }
 }
 
+# Extended PAINS and pan-assay interference patterns (Baell & Holloway 2010, Baell & Walters 2014)
+# Captures problematic chemotypes missed by default RDKit FilterCatalog collections
+_EXTENDED_PAINS_PATTERNS = [
+    {
+        "name": "curcuminoid_diferuloylmethane_keto",
+        "smarts": "[#6]=[#6]-[#6](=[O,S])-[#6]-[#6](=[O,S])-[#6]=[#6]",
+        "description": "Curcuminoid / 1,7-diarylheptanoid conjugated bis-enone (canonical PAINS / chemical aggregator; Baell & Walters 2014)"
+    },
+    {
+        "name": "curcuminoid_diferuloylmethane_enol",
+        "smarts": "[#6]=[#6]-[#6](=[O,S])-[#6]=[#6](-[OH,SH,O-])-[#6]=[#6]",
+        "description": "Curcuminoid / enol tautomer conjugated system (canonical PAINS / chemical aggregator; Baell & Walters 2014)"
+    },
+    {
+        "name": "rhodanine_expanded",
+        "smarts": "O=C1CSC(=[S,O])N1",
+        "description": "Rhodanine / thiazolidinedione core (promiscuous covalent/metal-binding PAINS alert)"
+    },
+    {
+        "name": "ene_one_ene_linear",
+        "smarts": "C(=O)-C=C-C(=O)",
+        "description": "Linear ene-dione / bis-enone Michael acceptor (covalent reactive PAINS alert)"
+    },
+    {
+        "name": "mannich_base_quinone_methide",
+        "smarts": "c1cc(O)c(CN)cc1",
+        "description": "Phenol-Mannich base (latent ortho-quinone methide precursor)"
+    }
+]
+
+def predict_pgp_substrate(mol: Chem.Mol) -> Dict[str, Any]:
+    """
+    Research-grade classification of P-glycoprotein (P-gp / ABCB1 / MDR1) substrate status.
+    Based on Broccatelli et al., J. Med. Chem. 2011, 54, 1740-1751 and Didziapetris et al., J. Drug Target. 2003.
+    P-gp is a major efflux transporter at the blood-brain barrier that actively pumps substrates out
+    of brain capillary endothelial cells, restricting central nervous system (CNS) exposure.
+    """
+    mw = Descriptors.MolWt(mol)
+    logp = Descriptors.MolLogP(mol)
+    rotb = Lipinski.NumRotatableBonds(mol)
+
+    # Substructure motifs characteristic of high-affinity P-gp substrates (Broccatelli et al. 2011)
+    motifs = []
+    # 1. Gem-diphenyl / diphenylmethyl group (e.g. Loperamide, Terfenadine, Fendiline)
+    p_diphenyl = Chem.MolFromSmarts("[#6](c1ccccc1)(c2ccccc2)")
+    if p_diphenyl and mol.HasSubstructMatch(p_diphenyl):
+        motifs.append("Diphenylmethyl / bis-aryl lipophilic core")
+
+    # 2. 4-Arylpiperidine / piperazine basic system (e.g. Loperamide, Haloperidol)
+    p_aryl_pip = Chem.MolFromSmarts("c1ccccc1-C1CCNCC1")
+    p_pip_ring = Chem.MolFromSmarts("N1CCC(CC1)")
+    if p_aryl_pip and mol.HasSubstructMatch(p_aryl_pip):
+        motifs.append("4-Arylpiperidine basic pharmacophore")
+    elif p_pip_ring and mol.HasSubstructMatch(p_pip_ring):
+        motifs.append("Piperidine basic heterocycle")
+
+    # 3. Basic nitrogen center (tertiary aliphatic amine, basic alkylamine)
+    p_basic_n = Chem.MolFromSmarts("[NX3;H0,H1;!$(NC=O)]")
+    has_basic_n = bool(p_basic_n and mol.HasSubstructMatch(p_basic_n))
+    if has_basic_n:
+        motifs.append("Basic aliphatic nitrogen center")
+
+    # 4. Large macrocyclic polyketide / cyclic peptide (e.g. Cyclosporine, Ivermectin, Tacrolimus)
+    is_macrocycle = mw > 700 and (mol.GetRingInfo().NumRings() >= 2 or rotb > 12)
+    if is_macrocycle:
+        motifs.append("High molecular weight macrocycle / peptide scaffold")
+
+    # Broccatelli Classification Gating:
+    # Rule 1: High MW (> 400 Da) + Lipophilic (LogP > 2.8) + Basic Nitrogen / Diphenyl motif
+    is_substrate = False
+    reason = "Does not satisfy P-gp pharmacophoric criteria (MW, LogP, basic nitrogen, or bulky hydrophobic anchor)."
+
+    if is_macrocycle:
+        is_substrate = True
+        reason = "Large macrocyclic scaffold recognized by P-gp efflux pump (Broccatelli et al. 2011)."
+    elif mw > 400.0 and logp > 2.8 and (has_basic_n or len(motifs) >= 2):
+        is_substrate = True
+        reason = f"High lipophilicity (LogP {logp:.1f} > 2.8), MW ({mw:.1f} > 400 Da), and presence of {', '.join(motifs)}."
+    elif len(motifs) >= 2 and mw > 350.0 and logp > 2.5:
+        is_substrate = True
+        reason = f"Satisfies P-gp substrate structural alert: {', '.join(motifs)} (Broccatelli et al. 2011)."
+
+    return {
+        "is_substrate": is_substrate,
+        "status": "Substrate (PGP+)" if is_substrate else "Non-substrate (PGP-)",
+        "motifs_identified": motifs,
+        "reason": reason,
+        "model": "Broccatelli et al. / Didziapetris P-gp Efflux Substrate Classifier",
+        "citation": "Broccatelli et al., J. Med. Chem. 2011, 54, 1740-1751"
+    }
+
 class ADMEProfiler:
     """Service for deterministic, calculated physicochemical and pharmacokinetic (ADME) profiling."""
 
@@ -140,8 +231,18 @@ class ADMEProfiler:
         gi_high = _point_in_polygon(tpsa_sandp, wlogp, _GIA_COORDS)
         gi_absorption = "High" if gi_high else "Moderate / Low"
 
-        bbb_permeant = _point_in_polygon(tpsa_sandp, wlogp, _BBB_COORDS)
-        bbb_status = "Permeant (Likely crosses BBB)" if bbb_permeant else "Non-permeant (Low CNS penetration likelihood)"
+        # P-glycoprotein (P-gp / ABCB1 / MDR1) active efflux prediction (Broccatelli et al. 2011)
+        pgp_data = predict_pgp_substrate(mol)
+        is_pgp = pgp_data["is_substrate"]
+
+        inside_bbb_yolk = _point_in_polygon(tpsa_sandp, wlogp, _BBB_COORDS)
+        bbb_permeant = bool(inside_bbb_yolk)
+        if inside_bbb_yolk and not is_pgp:
+            bbb_status = "Permeant (High passive permeability — Non-substrate for P-gp)"
+        elif inside_bbb_yolk and is_pgp:
+            bbb_status = "Passive Permeant (High intrinsic permeability, but subject to active P-gp / ABCB1 efflux)"
+        else:
+            bbb_status = "Non-permeant (Low passive CNS penetration likelihood)"
 
         # 5. Synthetic Accessibility Score (SAScore: 1.0 easy to 10.0 difficult)
         sa_score_raw = sascorer.calculateScore(mol)
@@ -181,6 +282,22 @@ class ADMEProfiler:
         # Toxicity & Screening Alerts: PAINS (Pan-Assay Interference Compounds)
         pains_matches = _pains_catalog.GetMatches(mol)
         pains_list = [entry.GetDescription() for entry in pains_matches]
+
+        # Scan extended PAINS patterns (curcuminoids, linear bis-enones, rhodanines)
+        # Check both input mol and canonical tautomer
+        from rdkit.Chem.MolStandardize import rdMolStandardize
+        try:
+            taut_enumerator = rdMolStandardize.TautomerEnumerator()
+            canonical_mol = taut_enumerator.Canonicalize(mol)
+        except Exception:
+            canonical_mol = mol
+
+        for ep in _EXTENDED_PAINS_PATTERNS:
+            patt = Chem.MolFromSmarts(ep["smarts"])
+            if patt and (mol.HasSubstructMatch(patt) or canonical_mol.HasSubstructMatch(patt)):
+                desc = ep["description"]
+                if desc not in pains_list:
+                    pains_list.append(desc)
 
         # Brenk structural alerts (reactive / unstable / toxicophores)
         brenk_matches = _brenk_catalog.GetMatches(mol)
@@ -262,9 +379,12 @@ class ADMEProfiler:
                 },
                 "bbb_permeation": {
                     "status": bbb_status,
-                    "model": "BOILED-Egg yolk ellipse model (WLogP & TPSA)",
-                    "citation": "Daina & Zoete, ChemMedChem 2016, 11, 1117-1121"
+                    "is_permeant": bbb_permeant,
+                    "inside_egg_yolk": inside_bbb_yolk,
+                    "model": "BOILED-Egg coupled with P-gp active efflux model (WLogP, TPSA, P-gp)",
+                    "citation": "Daina & Zoete, ChemMedChem 2016; Broccatelli et al., J. Med. Chem. 2011"
                 },
+                "p_glycoprotein": pgp_data,
                 "plasma_protein_binding": {
                     "tier": ppb_tier,
                     "rationale": ppb_note

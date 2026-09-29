@@ -29,6 +29,7 @@ from backend.services.pharmacophore import PharmacophoreService
 from backend.services.hardware_profiler import HardwareTelemetrySampler
 from backend.utils.vina_setup import ensure_vina
 from rdkit import Chem
+from rdkit.Chem import Descriptors
 
 app = Flask(__name__, static_folder=str(FRONTEND_DIR), static_url_path="")
 _is_docking_active = False
@@ -303,11 +304,31 @@ def run_docking():
             exhaustiveness = 8
     except (ValueError, TypeError):
         exhaustiveness = 8
+    seed = data.get("seed")
+    if seed is not None:
+        try:
+            seed = int(seed)
+        except (ValueError, TypeError):
+            seed = 42
+    else:
+        seed = 42  # Standard default seed for research reproducibility
+
     num_modes = int(data.get("num_modes", 9))
     replicates = int(data.get("replicates", 1))
-    heavy_atoms = int(data.get("heavy_atoms", 20))
-    mw = float(data.get("molecular_weight", 300.0))
     smiles = data.get("smiles", "")
+    lig_mol = Chem.MolFromSmiles(smiles) if smiles else None
+
+    # Derive dynamic heavy atoms and MW from sanitized molecule to eliminate hardcoded defaults
+    if lig_mol is not None:
+        actual_heavy_atoms = int(lig_mol.GetNumHeavyAtoms())
+        actual_mw = round(float(Descriptors.MolWt(lig_mol)), 2)
+    else:
+        actual_heavy_atoms = 20
+        actual_mw = 300.0
+
+    heavy_atoms = int(data.get("heavy_atoms")) if data.get("heavy_atoms") is not None else actual_heavy_atoms
+    mw = float(data.get("molecular_weight")) if data.get("molecular_weight") is not None else actual_mw
+
     flexible_residues = data.get("flexible_residues")
     cpu = data.get("cpu")
     if cpu is not None:
@@ -336,6 +357,7 @@ def run_docking():
             exhaustiveness=exhaustiveness,
             num_modes=num_modes,
             replicates=replicates,
+            seed=seed,
             flexible_residues=flexible_residues,
             receptor_pdb=receptor_pdb,
             cpu=cpu,
@@ -881,12 +903,13 @@ def run_induced_fit():
     """Execute Monte Carlo loop and backbone phi/psi induced-fit docking (IFD)."""
     data = request.get_json() or {}
     receptor_pdb = data.get("receptor_pdb", "")
-    ligand_sdf_or_pdbqt = data.get("ligand", "")
+    ligand_sdf_or_pdbqt = data.get("ligand", "") or data.get("ligand_sdf_or_pdbqt", "") or data.get("ligand_smiles", "")
     pocket_center = data.get("center", {})
     pocket_size = data.get("size", {})
     exhaustiveness = int(data.get("exhaustiveness", 8))
     loop_radius = float(data.get("loop_radius", 8.5))
     num_iterations = int(data.get("num_iterations", 5))
+    seed = int(data.get("seed", 42))
 
     if not receptor_pdb or not ligand_sdf_or_pdbqt or not pocket_center or not pocket_size:
         return jsonify({"error": "Missing required fields (receptor_pdb, ligand, center, size)"}), 400
@@ -895,12 +918,13 @@ def run_induced_fit():
     try:
         result = InducedFitService.run_induced_fit_docking(
             receptor_pdb=receptor_pdb,
-            ligand_sdf_or_pdbqt=ligand_sdf_or_pdbqt,
+            ligand_input=ligand_sdf_or_pdbqt,
             pocket_center=pocket_center,
             pocket_size=pocket_size,
             loop_radius=loop_radius,
-            num_iterations=num_iterations,
-            exhaustiveness=exhaustiveness
+            num_conformations=num_iterations,
+            exhaustiveness=exhaustiveness,
+            seed=seed
         )
         return jsonify(result)
     except Exception as e:

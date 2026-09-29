@@ -1,0 +1,76 @@
+{
+  "run_number": 37,
+  "category": "ChEMBL_Crosscheck",
+  "compound": "Aspirin",
+  "target": "PTGS1",
+  "exhaustiveness": 0,
+  "seed": null,
+  "wall_clock_seconds": 3.374,
+  "error": null,
+  "raw_response": {
+    "chembl_compound_url": "https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL25/",
+    "chembl_target_url": "https://www.ebi.ac.uk/chembl/target_report_card/CHEMBL221/",
+    "data_category": "Experimental Bioactivity Cross-Reference (Wet-lab Literature)",
+    "drug_searched": "Aspirin",
+    "experimental_records": [
+      {
+        "assay_description": "Inhibition of COX1 by radioimmunoassay method",
+        "assay_type": "B",
+        "pubmed_id": "CHEMBL1139892",
+        "relation": "=",
+        "source": "ChEMBL Curated Database",
+        "type": "IC50",
+        "units": "nM",
+        "value": 11400.0
+      },
+      {
+        "assay_description": "Inhibition of COX1",
+        "assay_type": "B",
+        "pubmed_id": "CHEMBL1144769",
+        "relation": "=",
+        "source": "ChEMBL Curated Database",
+        "type": "IC50",
+        "units": "nM",
+        "value": 100000.0
+      },
+      {
+        "assay_description": "Inhibition of COX1 by scintillation proximity assay",
+        "assay_type": "B",
+        "pubmed_id": "CHEMBL1150665",
+        "relation": "=",
+        "source": "ChEMBL Curated Database",
+        "type": "IC50",
+        "units": "nM",
+        "value": 780000.0
+      },
+      {
+        "assay_description": "Inhibition of PGHS1 assessed as conversion of arachidonic acid to prostaglandin",
+        "assay_type": "B",
+        "pubmed_id": "CHEMBL1158018",
+        "relation": "=",
+        "source": "ChEMBL Curated Database",
+        "type": "IC50",
+        "units": "nM",
+        "value": 1050000.0
+      },
+      {
+        "assay_description": "Inhibition of COX1",
+        "assay_type": "B",
+        "pubmed_id": "CHEMBL1240434",
+        "relation": "=",
+        "source": "ChEMBL Curated Database",
+        "type": "IC50",
+        "units": "nM",
+        "value": 750410.0
+      }
+    ],
+    "is_cross_checked": true,
+    "molecule_chembl_id": "CHEMBL25",
+    "status_badge": "ChEMBL Bioactivity Records Available",
+    "status_color": "emerald",
+    "summary_note": "Curated bioactivity records found in ChEMBL (5 assay entry/entries) for ASPIRIN against Prostaglandin G/H synthase 1 (Homo sapiens). Note: These represent wet-lab in vitro measurements; they provide pharmacological context and are reported separately from the Vina docking prediction.",
+    "target_chembl_id": "CHEMBL221",
+    "target_organism": "Homo sapiens",
+    "target_searched": "PTGS1"
+  }
+}

@@ -136,12 +136,39 @@ class NarrativeExplainer:
             "### 1. 3D Binding Mechanism & Active Site Interactions\n"
             "### 2. Pharmacokinetics (ADME) & Drug-Likeness Profile\n"
             "### 3. Bioactivity & Experimental Cross-Validation\n"
-            "### 4. Physiological Implications & Target Context"
+            "### 4. Physiological Implications & Target Context\n"
+            "9. POSE ATTRIBUTION INTEGRITY:\n"
+            "   - Discuss ONLY the top-ranked pose (Mode 1) when describing active site interactions, binding scores, and ligand strain.\n"
+            "   - NEVER attribute strain energy or metrics from alternative modes (such as highest strain in the pose ensemble) to the top pose.\n"
+            "10. RMSD DISAMBIGUATION:\n"
+            "   - Internal Vina mode dispersion (rmsd_lb and rmsd_ub) represents geometric distance from Mode 1 within the generated pose cluster. It is NOT distance to a crystallographic reference ligand.\n"
+            "   - Unless 'crystallographic_native_rmsd' or explicit native reference RMSD is provided and non-null, you are strictly FORBIDDEN from reporting an RMSD to native or crystal ligand.\n"
+            "11. DESCRIPTOR INTEGRITY:\n"
+            "   - Use only the heavy atom count and molecular weight supplied under 'physicochemical' or 'ligand_descriptors'. Never assume or hardcode default values (e.g. 20 heavy atoms or 300 Da)."
         )
+
+        # Sanitize and structure payload to prevent cross-mode metric conflation
+        structured_payload = dict(data)
+        if "poses" in data and isinstance(data["poses"], list) and len(data["poses"]) > 0:
+            top_pose = data["poses"][0]
+            structured_payload["top_ranked_pose_mode_1"] = {
+                "vina_affinity_kcal": top_pose.get("affinity_kcal"),
+                "ligand_strain_kcal": top_pose.get("ligand_strain_kcal"),
+                "consensus_confidence": top_pose.get("consensus_confidence"),
+                "consensus_score": top_pose.get("consensus_score"),
+                "interactions": top_pose.get("interactions", {})
+            }
+            structured_payload["pose_ensemble_dispersion"] = {
+                "total_modes_generated": len(data["poses"]),
+                "vina_mode_internal_rmsd_bounds": f"{top_pose.get('rmsd_lower_bound', 0.0)} to {data['poses'][-1].get('rmsd_upper_bound', 0.0)} A (intra-cluster dispersion relative to Mode 1)",
+                "crystallographic_native_rmsd": data.get("crystallographic_native_rmsd") or data.get("native_rmsd") or None
+            }
+            # Remove raw array of alternative modes so LLM cannot conflate Mode 9 with Mode 1
+            structured_payload.pop("poses", None)
 
         user_content = (
             f"Here is the verified experimental and computational payload for the drug-target docking run:\n"
-            f"```json\n{json.dumps(data, indent=2)}\n```\n"
+            f"```json\n{json.dumps(structured_payload, indent=2)}\n```\n"
             f"Provide a concise, publication-grade pharmacological evaluation in 350-500 words. Begin directly with the report."
         )
 

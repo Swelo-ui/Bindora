@@ -1,0 +1,53 @@
+=== PATTERN SCAN REPORT ===
+Scanned files/patch for drug names: ['curcumin', 'loperamide', 'pentane', 'gefitinib', 'erlotinib', 'haloperidol', 'terfenadine', 'nicotine', 'metformin', 'tacrolimus', 'rapamycin', 'cyclosporin', 'lorlatinib', 'vancomycin', 'chalcone', 'maleimide', 'aspirin', 'caffeine', 'diazepam', 'morphine', 'isobutane']
+
+Total findings: 12
+
+[SMILES_LITERAL] backend/services/adme.py:96 (in logic)
+  Match: C(=O)-C=C-C(=O)
+  Line:  "smarts": "C(=O)-C=C-C(=O)",
+
+[SMILES_LITERAL] backend/services/adme.py:101 (in logic)
+  Match: c1cc(O)c(CN)cc1
+  Line:  "smarts": "c1cc(O)c(CN)cc1",
+
+[DRUG_NAME] backend/services/adme.py:119 (comment/description)
+  Match: loperamide
+  Line:  # 1. Gem-diphenyl / diphenylmethyl group (e.g. Loperamide, Terfenadine, Fendiline)
+
+[DRUG_NAME] backend/services/adme.py:119 (comment/description)
+  Match: terfenadine
+  Line:  # 1. Gem-diphenyl / diphenylmethyl group (e.g. Loperamide, Terfenadine, Fendiline)
+
+[SMILES_LITERAL] backend/services/adme.py:120 (in logic)
+  Match: [#6](c1ccccc1)(c2ccccc2)
+  Line:  p_diphenyl = Chem.MolFromSmarts("[#6](c1ccccc1)(c2ccccc2)")
+
+[DRUG_NAME] backend/services/adme.py:124 (comment/description)
+  Match: loperamide
+  Line:  # 2. 4-Arylpiperidine / piperazine basic system (e.g. Loperamide, Haloperidol)
+
+[DRUG_NAME] backend/services/adme.py:124 (comment/description)
+  Match: haloperidol
+  Line:  # 2. 4-Arylpiperidine / piperazine basic system (e.g. Loperamide, Haloperidol)
+
+[SMILES_LITERAL] backend/services/adme.py:125 (in logic)
+  Match: c1ccccc1-C1CCNCC1
+  Line:  p_aryl_pip = Chem.MolFromSmarts("c1ccccc1-C1CCNCC1")
+
+[SMILES_LITERAL] backend/services/adme.py:126 (in logic)
+  Match: N1CCC(CC1)
+  Line:  p_pip_ring = Chem.MolFromSmarts("N1CCC(CC1)")
+
+[DRUG_NAME] backend/services/adme.py:138 (comment/description)
+  Match: tacrolimus
+  Line:  # 4. Large macrocyclic polyketide / cyclic peptide (e.g. Cyclosporine, Ivermectin, Tacrolimus)
+
+[DRUG_NAME] backend/services/macrocycle.py:60 (comment/description)
+  Match: tacrolimus
+  Line:  # 2. Algebraic cycle combination for fused/bridged macrocycles (e.g. Tacrolimus, Rapamycin)
+
+[DRUG_NAME] backend/services/macrocycle.py:60 (comment/description)
+  Match: rapamycin
+  Line:  # 2. Algebraic cycle combination for fused/bridged macrocycles (e.g. Tacrolimus, Rapamycin)
+

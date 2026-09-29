@@ -1,0 +1,56 @@
+{
+  "RDKit_PAINS_ABC_Alone": {
+    "TP": 11,
+    "FP": 0,
+    "TN": 35,
+    "FN": 21,
+    "Sensitivity": 0.3438,
+    "Sensitivity_95CI": [
+      0.2041,
+      0.5169
+    ],
+    "Specificity": 1.0,
+    "Specificity_95CI": [
+      0.9011,
+      1.0
+    ],
+    "Balanced_Accuracy": 0.6719,
+    "MCC": 0.4635
+  },
+  "Bindora_Full": {
+    "TP": 14,
+    "FP": 0,
+    "TN": 35,
+    "FN": 18,
+    "Sensitivity": 0.4375,
+    "Sensitivity_95CI": [
+      0.2817,
+      0.6067
+    ],
+    "Specificity": 1.0,
+    "Specificity_95CI": [
+      0.9011,
+      1.0
+    ],
+    "Balanced_Accuracy": 0.7188,
+    "MCC": 0.5375
+  },
+  "Bindora_Extended_Only": {
+    "TP": 8,
+    "FP": 0,
+    "TN": 35,
+    "FN": 24,
+    "Sensitivity": 0.25,
+    "Sensitivity_95CI": [
+      0.1325,
+      0.4211
+    ],
+    "Specificity": 1.0,
+    "Specificity_95CI": [
+      0.9011,
+      1.0
+    ],
+    "Balanced_Accuracy": 0.625,
+    "MCC": 0.3851
+  }
+}

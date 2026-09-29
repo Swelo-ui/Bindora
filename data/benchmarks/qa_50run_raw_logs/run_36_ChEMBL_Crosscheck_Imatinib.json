@@ -1,0 +1,55 @@
+{
+  "run_number": 36,
+  "category": "ChEMBL_Crosscheck",
+  "compound": "Imatinib",
+  "target": "ABL1",
+  "exhaustiveness": 0,
+  "seed": null,
+  "wall_clock_seconds": 0.058,
+  "error": null,
+  "raw_response": {
+    "chembl_compound_url": "https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL941/",
+    "chembl_target_url": "https://www.ebi.ac.uk/chembl/target_report_card/CHEMBL3099/",
+    "drug_searched": "imatinib",
+    "experimental_records": [
+      {
+        "assay_description": "Inhibition of mouse recombinant N-terminal His6-tagged Abl by radiometric kinase assay",
+        "assay_type": "B",
+        "pubmed_id": "CHEMBL1212849",
+        "relation": "=",
+        "source": "ChEMBL Curated Database",
+        "type": "IC50",
+        "units": "nM",
+        "value": 10.8
+      },
+      {
+        "assay_description": "Inhibition of ABL in mouse BAF3 cells assessed as reduction in cell viability after 72 hrs by MTT assay",
+        "assay_type": "B",
+        "pubmed_id": "CHEMBL4177590",
+        "relation": "=",
+        "source": "ChEMBL Curated Database",
+        "type": "IC50",
+        "units": "nM",
+        "value": 730.0
+      },
+      {
+        "assay_description": "Inhibition of ABL T315I mutant in mouse BAF3 cells assessed as reduction in cell viability after 72 hrs by MTT assay",
+        "assay_type": "B",
+        "pubmed_id": "CHEMBL4177590",
+        "relation": "=",
+        "source": "ChEMBL Curated Database",
+        "type": "IC50",
+        "units": "nM",
+        "value": 20030.0
+      }
+    ],
+    "is_cross_checked": true,
+    "molecule_chembl_id": "CHEMBL941",
+    "status_badge": "Experimentally Corroborated",
+    "status_color": "emerald",
+    "summary_note": "Cross-checked with ChEMBL. Found 3 experimental record(s) for IMATINIB against Tyrosine-protein kinase ABL1 (Mus musculus).",
+    "target_chembl_id": "CHEMBL3099",
+    "target_organism": "Mus musculus",
+    "target_searched": "abl1"
+  }
+}

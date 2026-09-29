@@ -1,0 +1,503 @@
+{
+  "run_number": 30,
+  "category": "Interaction_Fingerprint",
+  "compound": "Benzamidine",
+  "target": "3PTB_Trypsin",
+  "exhaustiveness": 0,
+  "seed": null,
+  "wall_clock_seconds": 0.211,
+  "error": null,
+  "raw_response": {
+    "detection_criteria": {
+      "fluorine_polar_contact": {
+        "distance_max_angstroms": 3.5,
+        "max_distance_angstroms": 3.5,
+        "note": "Fluorine lacks a classical electrophilic sigma-hole; interactions are non-directional polar/multipolar contacts."
+      },
+      "halogen_bond_sigma_hole": {
+        "classical_halogens": [
+          "Cl",
+          "Br",
+          "I"
+        ],
+        "distance_max_angstroms": 3.8,
+        "max_distance_angstroms": 3.8,
+        "mechanism": "Directional electrophilic sigma-hole along C-X bond axis (theta >= 130 deg)",
+        "min_c_x_acceptor_angle_deg": 130.0
+      },
+      "halogen_bonds": {
+        "classical_halogens": [
+          "Cl",
+          "Br",
+          "I"
+        ],
+        "f_contacts": [
+          "F"
+        ],
+        "geometry": "C-X...[O/N/S] distance <= 3.8 Å with angle >= 130° for Cl/Br/I; F evaluated as polar/multipolar contact",
+        "max_distance_angstroms": 3.8,
+        "min_angle_degrees": 130.0
+      },
+      "hydrogen_bond": {
+        "distance_max_angstroms": 3.5,
+        "donor_acceptor_elements": [
+          "O",
+          "N",
+          "S"
+        ],
+        "geometry": "Directional donor-H...acceptor angle >= 115°, distance <= 3.5 Å",
+        "max_distance_angstroms": 3.5,
+        "min_angle_degrees": 115.0
+      },
+      "hydrophobic_contacts": {
+        "distance_max_angstroms": 4.0,
+        "geometry": "Carbon-carbon non-polar contact distance <= 4.0 Å",
+        "max_distance_angstroms": 4.0
+      },
+      "metal_coordination": {
+        "direct_distance_angstroms": 2.8,
+        "geometry": "Coordination between catalytic metal (Zn, Mg, Mn, Fe, Ca, Ni, Cu, Co) and ligand donor (O, N, S, P, halogens) <= 3.5 Å (direct <= 2.8 Å)",
+        "ligand_donors": [
+          "O",
+          "N",
+          "S",
+          "P",
+          "F",
+          "CL",
+          "BR"
+        ],
+        "max_distance_angstroms": 3.5,
+        "metals": [
+          "ZN",
+          "MG",
+          "MN",
+          "FE",
+          "CA",
+          "NI",
+          "CU",
+          "CO"
+        ]
+      },
+      "pi_cation": {
+        "distance_max_angstroms": 4.5,
+        "geometry": "Cationic group to aromatic centroid distance <= 4.5 Å",
+        "max_distance_angstroms": 4.5
+      },
+      "pi_stacking": {
+        "distance_max_angstroms": 5.5,
+        "geometry": "Centroid-centroid distance <= 5.5 Å; parallel (θ < 35°) vs T-shaped (θ >= 35°)",
+        "max_angle_parallel_deg": 35.0,
+        "max_distance_angstroms": 5.5
+      },
+      "salt_bridges": {
+        "distance_max_angstroms": 4.2,
+        "geometry": "Centroid distance between cationic center (Lys NZ, Arg guanidinium) and anionic center (Asp/Glu carboxylate) <= 4.2 Å",
+        "max_distance_angstroms": 4.2
+      }
+    },
+    "diagram_svg": "<svg class=\"bindora-svg-root\" id=\"bindora-2d-interaction-svg\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 720 540\" width=\"100%\" height=\"100%\" style=\"background-color: var(--bd-bg, #090a0f); border-radius: 8px; display: block; overflow: hidden;\">\n<defs>\n<style>\n  .bindora-svg-root {\n    --bd-bg: #090a0f;\n    --bd-bond: #e2e8f0;\n    --bd-text: #f1f5f9;\n    --bd-subtext: #cbd5e1;\n    --bd-legend-muted: #64748b;\n    --bd-legend-bg: #121319;\n    --bd-legend-border: #22242e;\n    --bd-hb-bg: #2a2004;\n    --bd-hb-border: #ca8a04;\n    --bd-hb-text: #fef08a;\n    --bd-hb-line: #facc15;\n    --bd-hp-bg: #1e293b;\n    --bd-hp-border: #475569;\n    --bd-hp-text: #e2e8f0;\n    --bd-hp-line: #94a3b8;\n  }\n  .bindora-svg-root.hide-hbond .itype-hbond { display: none !important; }\n  .bindora-svg-root.hide-salt_bridge .itype-salt_bridge { display: none !important; }\n  .bindora-svg-root.hide-pi_stack .itype-pi_stack { display: none !important; }\n  .bindora-svg-root.hide-pi_cation .itype-pi_cation { display: none !important; }\n  .bindora-svg-root.hide-halogen .itype-halogen { display: none !important; }\n  .bindora-svg-root.hide-hydrophobic .itype-hydrophobic { display: none !important; }\n  html.light .bindora-svg-root,\n  .theme-light .bindora-svg-root,\n  .bindora-svg-root.theme-light {\n    --bd-bg: #ffffff;\n    --bd-bond: #1e293b;\n    --bd-text: #0f172a;\n    --bd-subtext: #334155;\n    --bd-legend-muted: #94a3b8;\n    --bd-legend-bg: #f8fafc;\n    --bd-legend-border: #cbd5e1;\n    --bd-hb-bg: #fefce8;\n    --bd-hb-border: #ca8a04;\n    --bd-hb-text: #713f12;\n    --bd-hb-line: #ca8a04;\n    --bd-hp-bg: #f1f5f9;\n    --bd-hp-border: #94a3b8;\n    --bd-hp-text: #334155;\n    --bd-hp-line: #64748b;\n  }\n  @media print {\n    .bindora-svg-root {\n      --bd-bg: #ffffff !important;\n      --bd-bond: #1e293b !important;\n      --bd-text: #0f172a !important;\n      --bd-subtext: #334155 !important;\n      --bd-legend-muted: #94a3b8 !important;\n      --bd-legend-bg: #f8fafc !important;\n      --bd-legend-border: #cbd5e1 !important;\n      --bd-hb-bg: #fefce8 !important;\n      --bd-hb-border: #ca8a04 !important;\n      --bd-hb-text: #713f12 !important;\n      --bd-hb-line: #ca8a04 !important;\n      --bd-hp-bg: #f1f5f9 !important;\n      --bd-hp-border: #94a3b8 !important;\n      --bd-hp-text: #334155 !important;\n      --bd-hp-line: #64748b !important;\n    }\n  }\n</style>\n</defs>\n\n  <!-- Zoomable and Pannable Diagram Content -->\n  <g id=\"bindora-diagram-content\" transform=\"matrix(1 0 0 1 0 0)\">\n    <g id=\"bindora-ligand-layer\">\n<path class='bond-0 atom-0 atom-1' d='M 495.5,270.0 L 459.9,331.6' style='fill:none;fill-rule:evenodd;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path class='bond-0 atom-0 atom-1' d='M 483.2,270.0 L 453.7,321.0' style='fill:none;fill-rule:evenodd;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path class='bond-1 atom-1 atom-2' d='M 459.9,331.6 L 388.7,331.6' style='fill:none;fill-rule:evenodd;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path class='bond-2 atom-2 atom-3' d='M 388.7,331.6 L 353.1,270.0' style='fill:none;fill-rule:evenodd;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path class='bond-2 atom-2 atom-3' d='M 394.9,321.0 L 365.5,270.0' style='fill:none;fill-rule:evenodd;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path class='bond-3 atom-3 atom-4' d='M 353.1,270.0 L 388.7,208.4' style='fill:none;fill-rule:evenodd;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path class='bond-4 atom-4 atom-5' d='M 388.7,208.4 L 459.9,208.4' style='fill:none;fill-rule:evenodd;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path class='bond-4 atom-4 atom-5' d='M 394.9,219.0 L 453.7,219.0' style='fill:none;fill-rule:evenodd;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path class='bond-5 atom-3 atom-6' d='M 353.1,270.0 L 282.0,270.0' style='fill:none;fill-rule:evenodd;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path class='bond-6 atom-6 atom-7' d='M 278.9,264.7 L 262.6,292.8' style='fill:none;fill-rule:evenodd;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path class='bond-6 atom-6 atom-7' d='M 262.6,292.8 L 246.4,321.0' style='fill:none;fill-rule:evenodd;stroke:#0000FF;stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path class='bond-6 atom-6 atom-7' d='M 288.1,270.0 L 271.9,298.1' style='fill:none;fill-rule:evenodd;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path class='bond-6 atom-6 atom-7' d='M 271.9,298.1 L 255.6,326.3' style='fill:none;fill-rule:evenodd;stroke:#0000FF;stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path class='bond-7 atom-6 atom-8' d='M 282.0,270.0 L 266.5,243.2' style='fill:none;fill-rule:evenodd;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path class='bond-7 atom-6 atom-8' d='M 266.5,243.2 L 251.0,216.4' style='fill:none;fill-rule:evenodd;stroke:#0000FF;stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path class='bond-8 atom-5 atom-0' d='M 459.9,208.4 L 495.5,270.0' style='fill:none;fill-rule:evenodd;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />\n<path d='M 493.7,273.1 L 495.5,270.0 L 493.7,266.9' style='fill:none;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;' />\n<path d='M 461.7,328.6 L 459.9,331.6 L 456.3,331.6' style='fill:none;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;' />\n<path d='M 392.3,331.6 L 388.7,331.6 L 386.9,328.6' style='fill:none;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;' />\n<path d='M 386.9,211.4 L 388.7,208.4 L 392.3,208.4' style='fill:none;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;' />\n<path d='M 456.3,208.4 L 459.9,208.4 L 461.7,211.4' style='fill:none;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;' />\n<path d='M 285.5,270.0 L 282.0,270.0 L 281.2,268.7' style='fill:none;stroke:var(--bd-bond, #e2e8f0);stroke-width:2.4px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;' />\n<path class='atom-7' d='M 231.0 326.0\nL 232.5 326.0\nL 232.5 330.8\nL 238.3 330.8\nL 238.3 326.0\nL 239.9 326.0\nL 239.9 337.3\nL 238.3 337.3\nL 238.3 332.1\nL 232.5 332.1\nL 232.5 337.3\nL 231.0 337.3\nL 231.0 326.0\n' fill='#0000FF'/>\n<path class='atom-7' d='M 243.9 326.0\nL 247.6 332.0\nQ 248.0 332.6, 248.6 333.6\nQ 249.1 334.7, 249.2 334.8\nL 249.2 326.0\nL 250.7 326.0\nL 250.7 337.3\nL 249.1 337.3\nL 245.1 330.7\nQ 244.7 330.0, 244.2 329.1\nQ 243.7 328.2, 243.6 327.9\nL 243.6 337.3\nL 242.1 337.3\nL 242.1 326.0\nL 243.9 326.0\n' fill='#0000FF'/>\n<path class='atom-8' d='M 224.5 202.7\nL 226.1 202.7\nL 226.1 207.5\nL 231.8 207.5\nL 231.8 202.7\nL 233.4 202.7\nL 233.4 214.0\nL 231.8 214.0\nL 231.8 208.8\nL 226.1 208.8\nL 226.1 214.0\nL 224.5 214.0\nL 224.5 202.7\n' fill='#0000FF'/>\n<path class='atom-8' d='M 235.6 213.6\nQ 235.9 212.9, 236.5 212.5\nQ 237.2 212.1, 238.1 212.1\nQ 239.2 212.1, 239.9 212.7\nQ 240.5 213.4, 240.5 214.4\nQ 240.5 215.6, 239.7 216.6\nQ 238.9 217.6, 237.2 218.8\nL 240.6 218.8\nL 240.6 219.7\nL 235.6 219.7\nL 235.6 219.0\nQ 237.0 218.0, 237.8 217.3\nQ 238.6 216.5, 239.0 215.8\nQ 239.4 215.2, 239.4 214.5\nQ 239.4 213.8, 239.1 213.4\nQ 238.7 213.0, 238.1 213.0\nQ 237.5 213.0, 237.1 213.2\nQ 236.7 213.5, 236.4 214.0\nL 235.6 213.6\n' fill='#0000FF'/>\n<path class='atom-8' d='M 243.9 202.7\nL 247.6 208.7\nQ 248.0 209.3, 248.6 210.4\nQ 249.1 211.4, 249.2 211.5\nL 249.2 202.7\nL 250.7 202.7\nL 250.7 214.0\nL 249.1 214.0\nL 245.1 207.5\nQ 244.7 206.7, 244.2 205.8\nQ 243.7 204.9, 243.6 204.7\nL 243.6 214.0\nL 242.1 214.0\nL 242.1 202.7\nL 243.9 202.7\n' fill='#0000FF'/>\n    </g>\n    <g id=\"bindora-contacts-layer\">\n<g class=\"interaction-contact itype-hydrophobic\" data-type=\"hydrophobic\" data-res-key=\"VAL_213_A\">\n  <line class=\"interaction-line\" data-res-key=\"VAL_213_A\" data-target-x=\"246.4\" data-target-y=\"208.4\" x1=\"245.1\" y1=\"196.4\" x2=\"243.5\" y2=\"181.4\" stroke=\"#94a3b8\" stroke-width=\"1.5\" stroke-dasharray=\"2,3\" opacity=\"0.9\"><title>Hydrophobic: 3.83Å to VAL 213:A</title></line>\n  \n</g>\n<g class=\"interaction-contact itype-hydrophobic\" data-type=\"hydrophobic\" data-res-key=\"GLN_192_A\">\n  <line class=\"interaction-line\" data-res-key=\"GLN_192_A\" data-target-x=\"459.9\" data-target-y=\"208.4\" x1=\"467.5\" y1=\"199.1\" x2=\"515.7\" y2=\"139.8\" stroke=\"#94a3b8\" stroke-width=\"1.5\" stroke-dasharray=\"2,3\" opacity=\"0.9\"><title>Hydrophobic: 3.94Å to GLN 192:A</title></line>\n  \n</g>\n<g class=\"interaction-contact itype-hbond\" data-type=\"hbond\" data-res-key=\"HOH_416_A\">\n  <line class=\"interaction-line\" data-res-key=\"HOH_416_A\" data-target-x=\"495.5\" data-target-y=\"270.0\" x1=\"506.8\" y1=\"274.0\" x2=\"537.3\" y2=\"284.9\" stroke=\"#facc15\" stroke-width=\"2.0\" stroke-dasharray=\"5,4\" opacity=\"0.9\"><title>Hydrogen Bond: 2.99Å to HOH 416:A</title></line>\n  <g class=\"interaction-distance-pill\" data-dist-type=\"hbond\" data-res-key=\"HOH_416_A\" data-target-x=\"495.5\" data-target-y=\"270.0\">\n  <rect x=\"517.9\" y=\"259.6\" width=\"34\" height=\"15\" rx=\"3.5\" fill=\"var(--bd-hb-bg, #2a2004)\" stroke=\"var(--bd-hb-border, #ca8a04)\" stroke-width=\"1\"/>\n  <text x=\"534.9\" y=\"270.6\" fill=\"var(--bd-hb-text, #fde047)\" font-family=\"system-ui, monospace\" font-size=\"8.5\" font-weight=\"bold\" text-anchor=\"middle\">2.99Å</text>\n  <title>Hydrogen Bond: 2.99Å</title>\n</g>\n</g>\n<g class=\"interaction-contact itype-salt_bridge\" data-type=\"salt_bridge\" data-res-key=\"ASP_189_A\">\n  <line class=\"interaction-line\" data-res-key=\"ASP_189_A\" data-target-x=\"495.5\" data-target-y=\"270.0\" x1=\"506.3\" y1=\"264.8\" x2=\"592.6\" y2=\"223.1\" stroke=\"#ec4899\" stroke-width=\"2.0\" stroke-dasharray=\"4,4\" opacity=\"0.9\"><title>Salt Bridge: 3.26Å to ASP 189:A</title></line>\n  <g class=\"interaction-distance-pill\" data-dist-type=\"salt_bridge\" data-res-key=\"ASP_189_A\" data-target-x=\"495.5\" data-target-y=\"270.0\">\n  <rect x=\"531.4\" y=\"236.9\" width=\"34\" height=\"15\" rx=\"3.5\" fill=\"#380a24\" stroke=\"#db2777\" stroke-width=\"1\"/>\n  <text x=\"548.4\" y=\"247.9\" fill=\"#f472b6\" font-family=\"system-ui, monospace\" font-size=\"8.5\" font-weight=\"bold\" text-anchor=\"middle\">3.26Å</text>\n  <title>Salt Bridge: 3.26Å</title>\n</g>\n</g>\n<g class=\"interaction-contact itype-hbond\" data-type=\"hbond\" data-res-key=\"SER_190_A\">\n  <line class=\"interaction-line\" data-res-key=\"SER_190_A\" data-target-x=\"495.5\" data-target-y=\"270.0\" x1=\"496.4\" y1=\"282.0\" x2=\"502.3\" y2=\"356.1\" stroke=\"#facc15\" stroke-width=\"2.0\" stroke-dasharray=\"5,4\" opacity=\"0.9\"><title>Hydrogen Bond: 2.96Å to SER 190:A</title></line>\n  <g class=\"interaction-distance-pill\" data-dist-type=\"hbond\" data-res-key=\"SER_190_A\" data-target-x=\"495.5\" data-target-y=\"270.0\">\n  <rect x=\"483.4\" y=\"324.6\" width=\"34\" height=\"15\" rx=\"3.5\" fill=\"var(--bd-hb-bg, #2a2004)\" stroke=\"var(--bd-hb-border, #ca8a04)\" stroke-width=\"1\"/>\n  <text x=\"500.4\" y=\"335.6\" fill=\"var(--bd-hb-text, #fde047)\" font-family=\"system-ui, monospace\" font-size=\"8.5\" font-weight=\"bold\" text-anchor=\"middle\">2.96Å</text>\n  <title>Hydrogen Bond: 2.96Å</title>\n</g>\n</g>\n<g class=\"interaction-contact itype-hbond\" data-type=\"hbond\" data-res-key=\"SER_190_A\">\n  <line class=\"interaction-line\" data-res-key=\"SER_190_A\" data-target-x=\"388.7\" data-target-y=\"331.6\" x1=\"400.1\" y1=\"335.5\" x2=\"461.7\" y2=\"356.1\" stroke=\"#facc15\" stroke-width=\"2.0\" stroke-dasharray=\"5,4\" opacity=\"0.9\"><title>Hydrogen Bond: 2.71Å to SER 190:A</title></line>\n  <g class=\"interaction-distance-pill\" data-dist-type=\"hbond\" data-res-key=\"SER_190_A\" data-target-x=\"388.7\" data-target-y=\"331.6\">\n  <rect x=\"415.8\" y=\"322.1\" width=\"34\" height=\"15\" rx=\"3.5\" fill=\"var(--bd-hb-bg, #2a2004)\" stroke=\"var(--bd-hb-border, #ca8a04)\" stroke-width=\"1\"/>\n  <text x=\"432.8\" y=\"333.1\" fill=\"var(--bd-hb-text, #fde047)\" font-family=\"system-ui, monospace\" font-size=\"8.5\" font-weight=\"bold\" text-anchor=\"middle\">2.71Å</text>\n  <title>Hydrogen Bond: 2.71Å</title>\n</g>\n</g>\n<g class=\"interaction-contact itype-hydrophobic\" data-type=\"hydrophobic\" data-res-key=\"CYS_191_A\">\n  <line class=\"interaction-line\" data-res-key=\"CYS_191_A\" data-target-x=\"353.1\" data-target-y=\"270.0\" x1=\"341.1\" y1=\"270.0\" x2=\"134.4\" y2=\"270.0\" stroke=\"#94a3b8\" stroke-width=\"1.5\" stroke-dasharray=\"2,3\" opacity=\"0.9\"><title>Hydrophobic: 3.97Å to CYS 191:A</title></line>\n  \n</g>\n<g class=\"interaction-contact itype-hydrophobic\" data-type=\"hydrophobic\" data-res-key=\"TRP_215_A\">\n  <line class=\"interaction-line\" data-res-key=\"TRP_215_A\" data-target-x=\"353.1\" data-target-y=\"270.0\" x1=\"341.5\" y1=\"272.8\" x2=\"227.6\" y2=\"299.8\" stroke=\"#94a3b8\" stroke-width=\"1.5\" stroke-dasharray=\"2,3\" opacity=\"0.9\"><title>Hydrophobic: 3.85Å to TRP 215:A</title></line>\n  \n</g>\n    </g>\n    <g id=\"bindora-badges-layer\">\n<g class=\"interaction-badge-node itype-hydrophobic\" data-res-key=\"VAL_213_A\" data-types=\"hydrophobic\" data-primary-type=\"hydrophobic\" transform=\"translate(242.1,167.4)\" style=\"cursor: grab;\">\n  <rect class=\"badge-bg\" x=\"-56.4\" y=\"-12\" width=\"112.8\" height=\"24\" rx=\"6\" fill=\"#1e293b\" stroke=\"#64748b\" stroke-width=\"1.4\"/>\n  <circle class=\"badge-dot\" data-dot-type=\"hydrophobic\" cx=\"-44.4\" cy=\"0\" r=\"3.2\" fill=\"#94a3b8\"/>\n  <text class=\"badge-text\" x=\"-31.2\" y=\"3.8\" fill=\"#cbd5e1\" font-family=\"system-ui, -apple-system, sans-serif\" font-size=\"9.5\" font-weight=\"bold\" text-anchor=\"start\">VAL 213:A</text>\n  <title>VAL 213:A (hydrophobic)</title>\n</g>\n<g class=\"interaction-badge-node itype-hydrophobic\" data-res-key=\"GLN_192_A\" data-types=\"hydrophobic\" data-primary-type=\"hydrophobic\" transform=\"translate(527.1,125.8)\" style=\"cursor: grab;\">\n  <rect class=\"badge-bg\" x=\"-56.4\" y=\"-12\" width=\"112.8\" height=\"24\" rx=\"6\" fill=\"#1e293b\" stroke=\"#64748b\" stroke-width=\"1.4\"/>\n  <circle class=\"badge-dot\" data-dot-type=\"hydrophobic\" cx=\"-44.4\" cy=\"0\" r=\"3.2\" fill=\"#94a3b8\"/>\n  <text class=\"badge-text\" x=\"-31.2\" y=\"3.8\" fill=\"#cbd5e1\" font-family=\"system-ui, -apple-system, sans-serif\" font-size=\"9.5\" font-weight=\"bold\" text-anchor=\"start\">GLN 192:A</text>\n  <title>GLN 192:A (hydrophobic)</title>\n</g>\n<g class=\"interaction-badge-node itype-hbond\" data-res-key=\"HOH_416_A\" data-types=\"hbond\" data-primary-type=\"hbond\" transform=\"translate(576.5,298.9)\" style=\"cursor: grab;\">\n  <rect class=\"badge-bg\" x=\"-56.4\" y=\"-12\" width=\"112.8\" height=\"24\" rx=\"6\" fill=\"var(--bd-hb-bg, #2a2004)\" stroke=\"#ca8a04\" stroke-width=\"1.4\"/>\n  <circle class=\"badge-dot\" data-dot-type=\"hbond\" cx=\"-44.4\" cy=\"0\" r=\"3.2\" fill=\"#facc15\"/>\n  <text class=\"badge-text\" x=\"-31.2\" y=\"3.8\" fill=\"var(--bd-hb-text, #fde047)\" font-family=\"system-ui, -apple-system, sans-serif\" font-size=\"9.5\" font-weight=\"bold\" text-anchor=\"start\">HOH 416:A</text>\n  <title>HOH 416:A (hbond)</title>\n</g>\n<g class=\"interaction-badge-node itype-salt_bridge\" data-res-key=\"ASP_189_A\" data-types=\"salt_bridge\" data-primary-type=\"salt_bridge\" transform=\"translate(621.5,209.1)\" style=\"cursor: grab;\">\n  <rect class=\"badge-bg\" x=\"-56.4\" y=\"-12\" width=\"112.8\" height=\"24\" rx=\"6\" fill=\"#380a24\" stroke=\"#db2777\" stroke-width=\"1.4\"/>\n  <circle class=\"badge-dot\" data-dot-type=\"salt_bridge\" cx=\"-44.4\" cy=\"0\" r=\"3.2\" fill=\"#ec4899\"/>\n  <text class=\"badge-text\" x=\"-31.2\" y=\"3.8\" fill=\"#f472b6\" font-family=\"system-ui, -apple-system, sans-serif\" font-size=\"9.5\" font-weight=\"bold\" text-anchor=\"start\">ASP 189:A</text>\n  <title>ASP 189:A (salt_bridge)</title>\n</g>\n<g class=\"interaction-badge-node itype-hbond\" data-res-key=\"SER_190_A\" data-types=\"hbond\" data-primary-type=\"hbond\" transform=\"translate(503.5,370.1)\" style=\"cursor: grab;\">\n  <rect class=\"badge-bg\" x=\"-56.4\" y=\"-12\" width=\"112.8\" height=\"24\" rx=\"6\" fill=\"var(--bd-hb-bg, #2a2004)\" stroke=\"#ca8a04\" stroke-width=\"1.4\"/>\n  <circle class=\"badge-dot\" data-dot-type=\"hbond\" cx=\"-44.4\" cy=\"0\" r=\"3.2\" fill=\"#facc15\"/>\n  <text class=\"badge-text\" x=\"-31.2\" y=\"3.8\" fill=\"var(--bd-hb-text, #fde047)\" font-family=\"system-ui, -apple-system, sans-serif\" font-size=\"9.5\" font-weight=\"bold\" text-anchor=\"start\">SER 190:A</text>\n  <title>SER 190:A (hbond)</title>\n</g>\n<g class=\"interaction-badge-node itype-hydrophobic\" data-res-key=\"CYS_191_A\" data-types=\"hydrophobic\" data-primary-type=\"hydrophobic\" transform=\"translate(134.4,270.0)\" style=\"cursor: grab;\">\n  <rect class=\"badge-bg\" x=\"-56.4\" y=\"-12\" width=\"112.8\" height=\"24\" rx=\"6\" fill=\"#1e293b\" stroke=\"#64748b\" stroke-width=\"1.4\"/>\n  <circle class=\"badge-dot\" data-dot-type=\"hydrophobic\" cx=\"-44.4\" cy=\"0\" r=\"3.2\" fill=\"#94a3b8\"/>\n  <text class=\"badge-text\" x=\"-31.2\" y=\"3.8\" fill=\"#cbd5e1\" font-family=\"system-ui, -apple-system, sans-serif\" font-size=\"9.5\" font-weight=\"bold\" text-anchor=\"start\">CYS 191:A</text>\n  <title>CYS 191:A (hydrophobic)</title>\n</g>\n<g class=\"interaction-badge-node itype-hydrophobic\" data-res-key=\"TRP_215_A\" data-types=\"hydrophobic\" data-primary-type=\"hydrophobic\" transform=\"translate(169.2,313.6)\" style=\"cursor: grab;\">\n  <rect class=\"badge-bg\" x=\"-56.4\" y=\"-12\" width=\"112.8\" height=\"24\" rx=\"6\" fill=\"#1e293b\" stroke=\"#64748b\" stroke-width=\"1.4\"/>\n  <circle class=\"badge-dot\" data-dot-type=\"hydrophobic\" cx=\"-44.4\" cy=\"0\" r=\"3.2\" fill=\"#94a3b8\"/>\n  <text class=\"badge-text\" x=\"-31.2\" y=\"3.8\" fill=\"#cbd5e1\" font-family=\"system-ui, -apple-system, sans-serif\" font-size=\"9.5\" font-weight=\"bold\" text-anchor=\"start\">TRP 215:A</text>\n  <title>TRP 215:A (hydrophobic)</title>\n</g>\n    </g>\n  </g>\n  <!-- Pinned Legend Bar (Always in fixed position) -->\n  <g id=\"bindora-diagram-legend\" transform=\"translate(15, 520)\"><rect x=\"-5\" y=\"-13\" width=\"700\" height=\"26\" rx=\"5\" fill=\"var(--bd-legend-bg, #121319)\" stroke=\"var(--bd-legend-border, #22242e)\" stroke-width=\"1\"/><line x1=\"8\" y1=\"0\" x2=\"22\" y2=\"0\" stroke=\"#facc15\" stroke-width=\"2\" stroke-dasharray=\"4,3\"/><text x=\"26\" y=\"3.5\" fill=\"#cbd5e1\" font-family=\"system-ui, sans-serif\" font-size=\"9\"><title>Hydrogen Bond</title>H-Bond</text><line x1=\"82\" y1=\"0\" x2=\"96\" y2=\"0\" stroke=\"#ec4899\" stroke-width=\"2\" stroke-dasharray=\"4,3\"/><text x=\"100\" y=\"3.5\" fill=\"#cbd5e1\" font-family=\"system-ui, sans-serif\" font-size=\"9\">Salt Bridge</text><line x1=\"168\" y1=\"0\" x2=\"182\" y2=\"0\" stroke=\"#10b981\" stroke-width=\"2\" stroke-dasharray=\"4,3\"/><text x=\"186\" y=\"3.5\" fill=\"#cbd5e1\" font-family=\"system-ui, sans-serif\" font-size=\"9\">π-π Stack</text><line x1=\"250\" y1=\"0\" x2=\"264\" y2=\"0\" stroke=\"#f97316\" stroke-width=\"1.8\" stroke-dasharray=\"4,3\"/><text x=\"268\" y=\"3.5\" fill=\"#cbd5e1\" font-family=\"system-ui, sans-serif\" font-size=\"9\">π-Cation</text><line x1=\"324\" y1=\"0\" x2=\"338\" y2=\"0\" stroke=\"#a855f7\" stroke-width=\"1.8\" stroke-dasharray=\"4,3\"/><text x=\"342\" y=\"3.5\" fill=\"#cbd5e1\" font-family=\"system-ui, sans-serif\" font-size=\"9\">Halogen</text><line x1=\"398\" y1=\"0\" x2=\"412\" y2=\"0\" stroke=\"#94a3b8\" stroke-width=\"1.5\" stroke-dasharray=\"2,3\"/><text x=\"416\" y=\"3.5\" fill=\"#cbd5e1\" font-family=\"system-ui, sans-serif\" font-size=\"9\">Hydrophobic (Slate)</text><text x=\"688\" y=\"3.5\" fill=\"var(--bd-legend-muted, #64748b)\" font-family=\"system-ui, sans-serif\" font-size=\"9\" text-anchor=\"end\">LigPlot-style 2D Map</text></g>\n</svg>",
+    "flexible_candidates": [
+      {
+        "chain": "A",
+        "id": "A:189",
+        "label": "ASP 189:A",
+        "res_name": "ASP",
+        "res_num": 189,
+        "rotatable_bonds": 2
+      },
+      {
+        "chain": "A",
+        "id": "A:191",
+        "label": "CYS 191:A",
+        "res_name": "CYS",
+        "res_num": 191,
+        "rotatable_bonds": 1
+      },
+      {
+        "chain": "A",
+        "id": "A:192",
+        "label": "GLN 192:A",
+        "res_name": "GLN",
+        "res_num": 192,
+        "rotatable_bonds": 3
+      },
+      {
+        "chain": "A",
+        "id": "A:190",
+        "label": "SER 190:A",
+        "res_name": "SER",
+        "res_num": 190,
+        "rotatable_bonds": 1
+      },
+      {
+        "chain": "A",
+        "id": "A:214",
+        "label": "SER 214:A",
+        "res_name": "SER",
+        "res_num": 214,
+        "rotatable_bonds": 1
+      },
+      {
+        "chain": "A",
+        "id": "A:215",
+        "label": "TRP 215:A",
+        "res_name": "TRP",
+        "res_num": 215,
+        "rotatable_bonds": 2
+      },
+      {
+        "chain": "A",
+        "id": "A:213",
+        "label": "VAL 213:A",
+        "res_name": "VAL",
+        "res_num": 213,
+        "rotatable_bonds": 1
+      }
+    ],
+    "halogen_bonds": [],
+    "hydrogen_bonds": [
+      {
+        "angle_deg": 122.7,
+        "chain": "A",
+        "distance": 2.96,
+        "end_coord": [
+          -1.972,
+          10.002,
+          17.18
+        ],
+        "ligand_atom": "N",
+        "ligand_atom_idx": 0,
+        "receptor_atom": "OG",
+        "res_name": "SER",
+        "res_num": 190,
+        "residue": "SER 190:A",
+        "start_coord": [
+          -1.674,
+          12.443,
+          15.541
+        ],
+        "type": "Hydrogen Bond"
+      },
+      {
+        "angle_deg": 150.5,
+        "chain": "A",
+        "distance": 2.99,
+        "end_coord": [
+          0.95,
+          11.375,
+          16.494
+        ],
+        "ligand_atom": "N",
+        "ligand_atom_idx": 0,
+        "receptor_atom": "O",
+        "res_name": "HOH",
+        "res_num": 416,
+        "residue": "HOH 416:A",
+        "start_coord": [
+          -1.674,
+          12.443,
+          15.541
+        ],
+        "type": "Hydrogen Bond"
+      },
+      {
+        "angle_deg": 144.9,
+        "chain": "A",
+        "distance": 2.71,
+        "end_coord": [
+          -1.972,
+          10.002,
+          17.18
+        ],
+        "ligand_atom": "H",
+        "ligand_atom_idx": 9,
+        "receptor_atom": "OG",
+        "res_name": "SER",
+        "res_num": 190,
+        "residue": "SER 190:A",
+        "start_coord": [
+          -0.871,
+          12.252,
+          16.158
+        ],
+        "type": "Hydrogen Bond"
+      }
+    ],
+    "hydrophobic_contacts": [
+      {
+        "chain": "A",
+        "distance": 3.8,
+        "end_coord": [
+          -4.689,
+          11.403,
+          17.229
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 1,
+        "receptor_atom": "C",
+        "res_name": "SER",
+        "res_num": 190,
+        "residue": "SER 190:A",
+        "start_coord": [
+          -2.071,
+          13.691,
+          15.708
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.97,
+        "end_coord": [
+          -5.214,
+          13.339,
+          18.583
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 3,
+        "receptor_atom": "CA",
+        "res_name": "CYS",
+        "res_num": 191,
+        "residue": "CYS 191:A",
+        "start_coord": [
+          -1.785,
+          14.393,
+          16.875
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.85,
+        "end_coord": [
+          1.654,
+          15.202,
+          15.337
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 3,
+        "receptor_atom": "C",
+        "res_name": "TRP",
+        "res_num": 215,
+        "residue": "TRP 215:A",
+        "start_coord": [
+          -1.785,
+          14.393,
+          16.875
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.85,
+        "end_coord": [
+          -5.214,
+          13.339,
+          18.583
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 4,
+        "receptor_atom": "CA",
+        "res_name": "CYS",
+        "res_num": 191,
+        "residue": "CYS 191:A",
+        "start_coord": [
+          -2.434,
+          15.569,
+          17.139
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.83,
+        "end_coord": [
+          0.075,
+          10.897,
+          19.95
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 8,
+        "receptor_atom": "CG1",
+        "res_name": "VAL",
+        "res_num": 213,
+        "residue": "VAL 213:A",
+        "start_coord": [
+          -0.844,
+          13.901,
+          17.763
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.72,
+        "end_coord": [
+          1.654,
+          15.202,
+          15.337
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 8,
+        "receptor_atom": "C",
+        "res_name": "TRP",
+        "res_num": 215,
+        "residue": "TRP 215:A",
+        "start_coord": [
+          -0.844,
+          13.901,
+          17.763
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.83,
+        "end_coord": [
+          -4.77,
+          13.973,
+          19.911
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 5,
+        "receptor_atom": "C",
+        "res_name": "CYS",
+        "res_num": 191,
+        "residue": "CYS 191:A",
+        "start_coord": [
+          -2.154,
+          16.272,
+          18.318
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.94,
+        "end_coord": [
+          -4.914,
+          18.282,
+          20.277
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 5,
+        "receptor_atom": "CG",
+        "res_name": "GLN",
+        "res_num": 192,
+        "residue": "GLN 192:A",
+        "start_coord": [
+          -2.154,
+          16.272,
+          18.318
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.87,
+        "end_coord": [
+          0.075,
+          10.897,
+          19.95
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 7,
+        "receptor_atom": "CG1",
+        "res_name": "VAL",
+        "res_num": 213,
+        "residue": "VAL 213:A",
+        "start_coord": [
+          -0.546,
+          14.58,
+          18.941
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.9,
+        "end_coord": [
+          3.338,
+          14.413,
+          18.578
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 7,
+        "receptor_atom": "C",
+        "res_name": "SER",
+        "res_num": 214,
+        "residue": "SER 214:A",
+        "start_coord": [
+          -0.546,
+          14.58,
+          18.941
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.79,
+        "end_coord": [
+          2.329,
+          15.539,
+          16.669
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 7,
+        "receptor_atom": "CA",
+        "res_name": "TRP",
+        "res_num": 215,
+        "residue": "TRP 215:A",
+        "start_coord": [
+          -0.546,
+          14.58,
+          18.941
+        ],
+        "type": "Hydrophobic Contact"
+      }
+    ],
+    "interacting_residues": [
+      "ASP 189:A",
+      "CYS 191:A",
+      "GLN 192:A",
+      "HOH 416:A",
+      "SER 190:A",
+      "SER 214:A",
+      "TRP 215:A",
+      "VAL 213:A"
+    ],
+    "metal_coordinations": [],
+    "pi_cation": [],
+    "pi_stacking": [],
+    "salt_bridges": [
+      {
+        "chain": "A",
+        "distance": 3.26,
+        "end_coord": [
+          -3.6525,
+          11.464500000000001,
+          13.1465
+        ],
+        "ligand_atom": "N",
+        "ligand_atom_idx": 0,
+        "res_name": "ASP",
+        "res_num": 189,
+        "residue": "ASP 189:A",
+        "start_coord": [
+          -1.674,
+          12.443,
+          15.541
+        ],
+        "subtype": "Ligand Cation - Protein Anion",
+        "type": "Salt Bridge"
+      }
+    ],
+    "total_halogen_count": 0,
+    "total_hbond_count": 3,
+    "total_hydrophobic_count": 11,
+    "total_metal_coordination_count": 0,
+    "total_pi_cation_count": 0,
+    "total_pi_stacking_count": 0,
+    "total_salt_bridge_count": 1
+  }
+}

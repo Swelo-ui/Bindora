@@ -1,0 +1,11 @@
+{
+  "run_number": 44,
+  "category": "Macrocycle_Handling",
+  "compound": "Vancomycin",
+  "target": "1M17_Massive glycopeptide macrocycle (limit test)",
+  "exhaustiveness": 8,
+  "seed": 42,
+  "wall_clock_seconds": 528.607,
+  "error": "Traceback (most recent call last):\n  File \"h:\\AnuDock\\scratch\\execute_qa_protocol.py\", line 750, in run_category_14\n    dock_res = post(\"/api/docking/run\", dock_payload, timeout=300)\n  File \"h:\\AnuDock\\scratch\\execute_qa_protocol.py\", line 25, in post\n    with urllib.request.urlopen(req, timeout=timeout) as resp:\n         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Program Files\\Python313\\Lib\\urllib\\request.py\", line 189, in urlopen\n    return opener.open(url, data, timeout)\n           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Program Files\\Python313\\Lib\\urllib\\request.py\", line 489, in open\n    response = self._open(req, data)\n  File \"C:\\Program Files\\Python313\\Lib\\urllib\\request.py\", line 506, in _open\n    result = self._call_chain(self.handle_open, protocol, protocol +\n                              '_open', req)\n  File \"C:\\Program Files\\Python313\\Lib\\urllib\\request.py\", line 466, in _call_chain\n    result = func(*args)\n  File \"C:\\Program Files\\Python313\\Lib\\urllib\\request.py\", line 1348, in http_open\n    return self.do_open(http.client.HTTPConnection, req)\n           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Program Files\\Python313\\Lib\\urllib\\request.py\", line 1323, in do_open\n    r = h.getresponse()\n  File \"C:\\Program Files\\Python313\\Lib\\http\\client.py\", line 1428, in getresponse\n    response.begin()\n    ~~~~~~~~~~~~~~^^\n  File \"C:\\Program Files\\Python313\\Lib\\http\\client.py\", line 331, in begin\n    version, status, reason = self._read_status()\n                              ~~~~~~~~~~~~~~~~~^^\n  File \"C:\\Program Files\\Python313\\Lib\\http\\client.py\", line 292, in _read_status\n    line = str(self.fp.readline(_MAXLINE + 1), \"iso-8859-1\")\n               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^\n  File \"C:\\Program Files\\Python313\\Lib\\socket.py\", line 719, in readinto\n    return self._sock.recv_into(b)\n           ~~~~~~~~~~~~~~~~~~~~^^^\nTimeoutError: timed out\n",
+  "raw_response": null
+}

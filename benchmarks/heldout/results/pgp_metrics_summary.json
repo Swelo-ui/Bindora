@@ -1,0 +1,200 @@
+{
+  "Overall_Test_Set": {
+    "Majority_Class": {
+      "TP": 152,
+      "FP": 92,
+      "TN": 0,
+      "FN": 0,
+      "Sensitivity": 1.0,
+      "Sensitivity_95CI": [
+        0.9754,
+        1.0
+      ],
+      "Specificity": 0.0,
+      "Specificity_95CI": [
+        0.0,
+        0.0401
+      ],
+      "Balanced_Accuracy": 0.5,
+      "MCC": 0.0,
+      "ROC_AUC": 0.5
+    },
+    "Heuristic_MW_LogP": {
+      "TP": 74,
+      "FP": 2,
+      "TN": 90,
+      "FN": 78,
+      "Sensitivity": 0.4868,
+      "Sensitivity_95CI": [
+        0.4087,
+        0.5656
+      ],
+      "Specificity": 0.9783,
+      "Specificity_95CI": [
+        0.9242,
+        0.994
+      ],
+      "Balanced_Accuracy": 0.7326,
+      "MCC": 0.4867,
+      "ROC_AUC": 0.7326
+    },
+    "Logistic_Regression_MorganFP": {
+      "TP": 131,
+      "FP": 26,
+      "TN": 66,
+      "FN": 21,
+      "Sensitivity": 0.8618,
+      "Sensitivity_95CI": [
+        0.798,
+        0.9078
+      ],
+      "Specificity": 0.7174,
+      "Specificity_95CI": [
+        0.6181,
+        0.7992
+      ],
+      "Balanced_Accuracy": 0.7896,
+      "MCC": 0.5861,
+      "ROC_AUC": 0.8942
+    },
+    "Bindora_Rule_Based": {
+      "TP": 58,
+      "FP": 3,
+      "TN": 89,
+      "FN": 94,
+      "Sensitivity": 0.3816,
+      "Sensitivity_95CI": [
+        0.3082,
+        0.4608
+      ],
+      "Specificity": 0.9674,
+      "Specificity_95CI": [
+        0.9085,
+        0.9888
+      ],
+      "Balanced_Accuracy": 0.6745,
+      "MCC": 0.3906,
+      "ROC_AUC": 0.6745
+    }
+  },
+  "Subgroup_Diphenylmethyl_Piperidine": {
+    "Count": 41,
+    "Heuristic_MW_LogP": {
+      "TP": 11,
+      "FP": 1,
+      "TN": 18,
+      "FN": 11,
+      "Sensitivity": 0.5,
+      "Sensitivity_95CI": [
+        0.3072,
+        0.6928
+      ],
+      "Specificity": 0.9474,
+      "Specificity_95CI": [
+        0.7536,
+        0.9906
+      ],
+      "Balanced_Accuracy": 0.7237,
+      "MCC": 0.4903,
+      "ROC_AUC": 0.7237
+    },
+    "Logistic_Regression_MorganFP": {
+      "TP": 16,
+      "FP": 9,
+      "TN": 10,
+      "FN": 6,
+      "Sensitivity": 0.7273,
+      "Sensitivity_95CI": [
+        0.5185,
+        0.8685
+      ],
+      "Specificity": 0.5263,
+      "Specificity_95CI": [
+        0.3171,
+        0.7267
+      ],
+      "Balanced_Accuracy": 0.6268,
+      "MCC": 0.2592,
+      "ROC_AUC": 0.8325
+    },
+    "Bindora_Rule_Based": {
+      "TP": 17,
+      "FP": 2,
+      "TN": 17,
+      "FN": 5,
+      "Sensitivity": 0.7727,
+      "Sensitivity_95CI": [
+        0.5656,
+        0.8988
+      ],
+      "Specificity": 0.8947,
+      "Specificity_95CI": [
+        0.6861,
+        0.9706
+      ],
+      "Balanced_Accuracy": 0.8337,
+      "MCC": 0.6675,
+      "ROC_AUC": 0.8337
+    }
+  },
+  "Subgroup_Other_Scaffolds": {
+    "Count": 203,
+    "Heuristic_MW_LogP": {
+      "TP": 63,
+      "FP": 1,
+      "TN": 72,
+      "FN": 67,
+      "Sensitivity": 0.4846,
+      "Sensitivity_95CI": [
+        0.4004,
+        0.5697
+      ],
+      "Specificity": 0.9863,
+      "Specificity_95CI": [
+        0.9264,
+        0.9976
+      ],
+      "Balanced_Accuracy": 0.7355,
+      "MCC": 0.4864,
+      "ROC_AUC": 0.7355
+    },
+    "Logistic_Regression_MorganFP": {
+      "TP": 115,
+      "FP": 17,
+      "TN": 56,
+      "FN": 15,
+      "Sensitivity": 0.8846,
+      "Sensitivity_95CI": [
+        0.8183,
+        0.9288
+      ],
+      "Specificity": 0.7671,
+      "Specificity_95CI": [
+        0.6583,
+        0.8492
+      ],
+      "Balanced_Accuracy": 0.8259,
+      "MCC": 0.6558,
+      "ROC_AUC": 0.9089
+    },
+    "Bindora_Rule_Based": {
+      "TP": 41,
+      "FP": 1,
+      "TN": 72,
+      "FN": 89,
+      "Sensitivity": 0.3154,
+      "Sensitivity_95CI": [
+        0.2418,
+        0.3996
+      ],
+      "Specificity": 0.9863,
+      "Specificity_95CI": [
+        0.9264,
+        0.9976
+      ],
+      "Balanced_Accuracy": 0.6508,
+      "MCC": 0.3574,
+      "ROC_AUC": 0.6508
+    }
+  }
+}

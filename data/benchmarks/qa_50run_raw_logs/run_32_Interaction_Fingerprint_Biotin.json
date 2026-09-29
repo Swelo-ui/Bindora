@@ -1,0 +1,766 @@
+{
+  "run_number": 32,
+  "category": "Interaction_Fingerprint",
+  "compound": "Biotin",
+  "target": "1STP_Streptavidin",
+  "exhaustiveness": 0,
+  "seed": null,
+  "wall_clock_seconds": 0.104,
+  "error": null,
+  "raw_response": {
+    "detection_criteria": {
+      "fluorine_polar_contact": {
+        "distance_max_angstroms": 3.5,
+        "max_distance_angstroms": 3.5,
+        "note": "Fluorine lacks a classical electrophilic sigma-hole; interactions are non-directional polar/multipolar contacts."
+      },
+      "halogen_bond_sigma_hole": {
+        "classical_halogens": [
+          "Cl",
+          "Br",
+          "I"
+        ],
+        "distance_max_angstroms": 3.8,
+        "max_distance_angstroms": 3.8,
+        "mechanism": "Directional electrophilic sigma-hole along C-X bond axis (theta >= 130 deg)",
+        "min_c_x_acceptor_angle_deg": 130.0
+      },
+      "halogen_bonds": {
+        "classical_halogens": [
+          "Cl",
+          "Br",
+          "I"
+        ],
+        "f_contacts": [
+          "F"
+        ],
+        "geometry": "C-X...[O/N/S] distance <= 3.8 Å with angle >= 130° for Cl/Br/I; F evaluated as polar/multipolar contact",
+        "max_distance_angstroms": 3.8,
+        "min_angle_degrees": 130.0
+      },
+      "hydrogen_bond": {
+        "distance_max_angstroms": 3.5,
+        "donor_acceptor_elements": [
+          "O",
+          "N",
+          "S"
+        ],
+        "geometry": "Directional donor-H...acceptor angle >= 115°, distance <= 3.5 Å",
+        "max_distance_angstroms": 3.5,
+        "min_angle_degrees": 115.0
+      },
+      "hydrophobic_contacts": {
+        "distance_max_angstroms": 4.0,
+        "geometry": "Carbon-carbon non-polar contact distance <= 4.0 Å",
+        "max_distance_angstroms": 4.0
+      },
+      "metal_coordination": {
+        "direct_distance_angstroms": 2.8,
+        "geometry": "Coordination between catalytic metal (Zn, Mg, Mn, Fe, Ca, Ni, Cu, Co) and ligand donor (O, N, S, P, halogens) <= 3.5 Å (direct <= 2.8 Å)",
+        "ligand_donors": [
+          "O",
+          "N",
+          "S",
+          "P",
+          "F",
+          "CL",
+          "BR"
+        ],
+        "max_distance_angstroms": 3.5,
+        "metals": [
+          "ZN",
+          "MG",
+          "MN",
+          "FE",
+          "CA",
+          "NI",
+          "CU",
+          "CO"
+        ]
+      },
+      "pi_cation": {
+        "distance_max_angstroms": 4.5,
+        "geometry": "Cationic group to aromatic centroid distance <= 4.5 Å",
+        "max_distance_angstroms": 4.5
+      },
+      "pi_stacking": {
+        "distance_max_angstroms": 5.5,
+        "geometry": "Centroid-centroid distance <= 5.5 Å; parallel (θ < 35°) vs T-shaped (θ >= 35°)",
+        "max_angle_parallel_deg": 35.0,
+        "max_distance_angstroms": 5.5
+      },
+      "salt_bridges": {
+        "distance_max_angstroms": 4.2,
+        "geometry": "Centroid distance between cationic center (Lys NZ, Arg guanidinium) and anionic center (Asp/Glu carboxylate) <= 4.2 Å",
+        "max_distance_angstroms": 4.2
+      }
+    },
+    "flexible_candidates": [
+      {
+        "chain": "A",
+        "id": "A:23",
+        "label": "ASN 23:A",
+        "res_name": "ASN",
+        "res_num": 23,
+        "rotatable_bonds": 2
+      },
+      {
+        "chain": "A",
+        "id": "A:49",
+        "label": "ASN 49:A",
+        "res_name": "ASN",
+        "res_num": 49,
+        "rotatable_bonds": 2
+      },
+      {
+        "chain": "A",
+        "id": "A:128",
+        "label": "ASP 128:A",
+        "res_name": "ASP",
+        "res_num": 128,
+        "rotatable_bonds": 2
+      },
+      {
+        "chain": "A",
+        "id": "A:25",
+        "label": "LEU 25:A",
+        "res_name": "LEU",
+        "res_num": 25,
+        "rotatable_bonds": 2
+      },
+      {
+        "chain": "A",
+        "id": "A:27",
+        "label": "SER 27:A",
+        "res_name": "SER",
+        "res_num": 27,
+        "rotatable_bonds": 1
+      },
+      {
+        "chain": "A",
+        "id": "A:45",
+        "label": "SER 45:A",
+        "res_name": "SER",
+        "res_num": 45,
+        "rotatable_bonds": 1
+      },
+      {
+        "chain": "A",
+        "id": "A:88",
+        "label": "SER 88:A",
+        "res_name": "SER",
+        "res_num": 88,
+        "rotatable_bonds": 1
+      },
+      {
+        "chain": "A",
+        "id": "A:90",
+        "label": "THR 90:A",
+        "res_name": "THR",
+        "res_num": 90,
+        "rotatable_bonds": 1
+      },
+      {
+        "chain": "A",
+        "id": "A:108",
+        "label": "TRP 108:A",
+        "res_name": "TRP",
+        "res_num": 108,
+        "rotatable_bonds": 2
+      },
+      {
+        "chain": "A",
+        "id": "A:79",
+        "label": "TRP 79:A",
+        "res_name": "TRP",
+        "res_num": 79,
+        "rotatable_bonds": 2
+      },
+      {
+        "chain": "A",
+        "id": "A:92",
+        "label": "TRP 92:A",
+        "res_name": "TRP",
+        "res_num": 92,
+        "rotatable_bonds": 2
+      },
+      {
+        "chain": "A",
+        "id": "A:47",
+        "label": "VAL 47:A",
+        "res_name": "VAL",
+        "res_num": 47,
+        "rotatable_bonds": 1
+      }
+    ],
+    "halogen_bonds": [],
+    "hydrogen_bonds": [
+      {
+        "angle_deg": 116.9,
+        "chain": "A",
+        "distance": 2.78,
+        "end_coord": [
+          7.736,
+          7.828,
+          -13.16
+        ],
+        "ligand_atom": "O",
+        "ligand_atom_idx": 0,
+        "receptor_atom": "OG",
+        "res_name": "SER",
+        "res_num": 88,
+        "residue": "SER 88:A",
+        "start_coord": [
+          8.793,
+          5.253,
+          -13.183
+        ],
+        "type": "Hydrogen Bond"
+      },
+      {
+        "angle_deg": 136.7,
+        "chain": "A",
+        "distance": 3.06,
+        "end_coord": [
+          10.714,
+          2.649,
+          -17.113
+        ],
+        "ligand_atom": "O",
+        "ligand_atom_idx": 2,
+        "receptor_atom": "N",
+        "res_name": "ASN",
+        "res_num": 49,
+        "residue": "ASN 49:A",
+        "start_coord": [
+          9.035,
+          3.996,
+          -14.944
+        ],
+        "type": "Hydrogen Bond"
+      },
+      {
+        "angle_deg": 136.0,
+        "chain": "A",
+        "distance": 3.44,
+        "end_coord": [
+          10.714,
+          2.649,
+          -17.113
+        ],
+        "ligand_atom": "H",
+        "ligand_atom_idx": 6,
+        "receptor_atom": "N",
+        "res_name": "ASN",
+        "res_num": 49,
+        "residue": "ASN 49:A",
+        "start_coord": [
+          8.346,
+          4.5,
+          -15.445
+        ],
+        "type": "Hydrogen Bond"
+      },
+      {
+        "angle_deg": 132.6,
+        "chain": "A",
+        "distance": 3.15,
+        "end_coord": [
+          14.544,
+          0.813,
+          -12.082
+        ],
+        "ligand_atom": "N",
+        "ligand_atom_idx": 14,
+        "receptor_atom": "OG",
+        "res_name": "SER",
+        "res_num": 45,
+        "residue": "SER 45:A",
+        "start_coord": [
+          12.668,
+          -0.307,
+          -9.815
+        ],
+        "type": "Hydrogen Bond"
+      },
+      {
+        "angle_deg": 126.0,
+        "chain": "A",
+        "distance": 2.36,
+        "end_coord": [
+          14.544,
+          0.813,
+          -12.082
+        ],
+        "ligand_atom": "H",
+        "ligand_atom_idx": 17,
+        "receptor_atom": "OG",
+        "res_name": "SER",
+        "res_num": 45,
+        "residue": "SER 45:A",
+        "start_coord": [
+          13.02,
+          0.528,
+          -10.304
+        ],
+        "type": "Hydrogen Bond"
+      },
+      {
+        "angle_deg": 115.9,
+        "chain": "A",
+        "distance": 3.39,
+        "end_coord": [
+          12.64,
+          1.37,
+          -3.782
+        ],
+        "ligand_atom": "H",
+        "ligand_atom_idx": 18,
+        "receptor_atom": "NE1",
+        "res_name": "TRP",
+        "res_num": 92,
+        "residue": "TRP 92:A",
+        "start_coord": [
+          12.465,
+          0.442,
+          -7.042
+        ],
+        "type": "Hydrogen Bond"
+      },
+      {
+        "angle_deg": 157.4,
+        "chain": "A",
+        "distance": 3.24,
+        "end_coord": [
+          15.526,
+          -2.277,
+          -5.99
+        ],
+        "ligand_atom": "O",
+        "ligand_atom_idx": 13,
+        "receptor_atom": "ND2",
+        "res_name": "ASN",
+        "res_num": 23,
+        "residue": "ASN 23:A",
+        "start_coord": [
+          14.496,
+          -0.451,
+          -8.454
+        ],
+        "type": "Hydrogen Bond"
+      },
+      {
+        "angle_deg": 128.3,
+        "chain": "A",
+        "distance": 2.79,
+        "end_coord": [
+          16.76,
+          -1.313,
+          -9.833
+        ],
+        "ligand_atom": "O",
+        "ligand_atom_idx": 13,
+        "receptor_atom": "OG",
+        "res_name": "SER",
+        "res_num": 27,
+        "residue": "SER 27:A",
+        "start_coord": [
+          14.496,
+          -0.451,
+          -8.454
+        ],
+        "type": "Hydrogen Bond"
+      },
+      {
+        "angle_deg": 166.7,
+        "chain": "A",
+        "distance": 3.33,
+        "end_coord": [
+          15.526,
+          -2.277,
+          -5.99
+        ],
+        "ligand_atom": "H",
+        "ligand_atom_idx": 20,
+        "receptor_atom": "ND2",
+        "res_name": "ASN",
+        "res_num": 23,
+        "residue": "ASN 23:A",
+        "start_coord": [
+          14.858,
+          -1.155,
+          -9.048
+        ],
+        "type": "Hydrogen Bond"
+      }
+    ],
+    "hydrophobic_contacts": [
+      {
+        "chain": "A",
+        "distance": 3.61,
+        "end_coord": [
+          11.032,
+          0.5,
+          -16.128
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 4,
+        "receptor_atom": "CA",
+        "res_name": "GLY",
+        "res_num": 48,
+        "residue": "GLY 48:A",
+        "start_coord": [
+          11.312,
+          3.016,
+          -13.552
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.91,
+        "end_coord": [
+          14.527,
+          4.349,
+          -15.33
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 4,
+        "receptor_atom": "CB",
+        "res_name": "ALA",
+        "res_num": 50,
+        "residue": "ALA 50:A",
+        "start_coord": [
+          11.312,
+          3.016,
+          -13.552
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.71,
+        "end_coord": [
+          12.072,
+          4.664,
+          -17.369
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 3,
+        "receptor_atom": "C",
+        "res_name": "ASN",
+        "res_num": 49,
+        "residue": "ASN 49:A",
+        "start_coord": [
+          11.02,
+          4.535,
+          -13.81
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.83,
+        "end_coord": [
+          14.527,
+          4.349,
+          -15.33
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 3,
+        "receptor_atom": "CB",
+        "res_name": "ALA",
+        "res_num": 50,
+        "residue": "ALA 50:A",
+        "start_coord": [
+          11.02,
+          4.535,
+          -13.81
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.58,
+        "end_coord": [
+          12.478,
+          6.839,
+          -11.487
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 3,
+        "receptor_atom": "CD2",
+        "res_name": "TRP",
+        "res_num": 79,
+        "residue": "TRP 79:A",
+        "start_coord": [
+          11.02,
+          4.535,
+          -13.81
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.89,
+        "end_coord": [
+          15.482,
+          1.865,
+          -12.268
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 5,
+        "receptor_atom": "CB",
+        "res_name": "SER",
+        "res_num": 45,
+        "residue": "SER 45:A",
+        "start_coord": [
+          11.695,
+          2.727,
+          -12.157
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.64,
+        "end_coord": [
+          12.815,
+          5.175,
+          -9.707
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 5,
+        "receptor_atom": "CZ2",
+        "res_name": "TRP",
+        "res_num": 79,
+        "residue": "TRP 79:A",
+        "start_coord": [
+          11.695,
+          2.727,
+          -12.157
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 4.0,
+        "end_coord": [
+          12.436,
+          -2.297,
+          -12.854
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 6,
+        "receptor_atom": "CG2",
+        "res_name": "VAL",
+        "res_num": 47,
+        "residue": "VAL 47:A",
+        "start_coord": [
+          11.3,
+          1.341,
+          -11.649
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.95,
+        "end_coord": [
+          12.436,
+          -2.297,
+          -12.854
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 15,
+        "receptor_atom": "CG2",
+        "res_name": "VAL",
+        "res_num": 47,
+        "residue": "VAL 47:A",
+        "start_coord": [
+          11.212,
+          -0.217,
+          -9.724
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.84,
+        "end_coord": [
+          9.717,
+          4.302,
+          -5.875
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 9,
+        "receptor_atom": "CG2",
+        "res_name": "THR",
+        "res_num": 90,
+        "residue": "THR 90:A",
+        "start_coord": [
+          10.249,
+          1.029,
+          -7.815
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.99,
+        "end_coord": [
+          13.121,
+          2.852,
+          -5.733
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 9,
+        "receptor_atom": "CZ2",
+        "res_name": "TRP",
+        "res_num": 92,
+        "residue": "TRP 92:A",
+        "start_coord": [
+          10.249,
+          1.029,
+          -7.815
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.5,
+        "end_coord": [
+          8.413,
+          -1.051,
+          -5.682
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 9,
+        "receptor_atom": "CE2",
+        "res_name": "TRP",
+        "res_num": 108,
+        "residue": "TRP 108:A",
+        "start_coord": [
+          10.249,
+          1.029,
+          -7.815
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.68,
+        "end_coord": [
+          8.413,
+          -1.051,
+          -5.682
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 10,
+        "receptor_atom": "CE2",
+        "res_name": "TRP",
+        "res_num": 108,
+        "residue": "TRP 108:A",
+        "start_coord": [
+          10.957,
+          -0.26,
+          -8.221
+        ],
+        "type": "Hydrophobic Contact"
+      },
+      {
+        "chain": "A",
+        "distance": 3.96,
+        "end_coord": [
+          12.904,
+          -4.28,
+          -9.164
+        ],
+        "ligand_atom": "C",
+        "ligand_atom_idx": 12,
+        "receptor_atom": "CD1",
+        "res_name": "LEU",
+        "res_num": 25,
+        "residue": "LEU 25:A",
+        "start_coord": [
+          13.257,
+          -0.38,
+          -8.6
+        ],
+        "type": "Hydrophobic Contact"
+      }
+    ],
+    "interacting_residues": [
+      "ALA 50:A",
+      "ASN 23:A",
+      "ASN 49:A",
+      "ASP 128:A",
+      "GLY 48:A",
+      "LEU 25:A",
+      "SER 27:A",
+      "SER 45:A",
+      "SER 88:A",
+      "THR 90:A",
+      "TRP 108:A",
+      "TRP 79:A",
+      "TRP 92:A",
+      "VAL 47:A"
+    ],
+    "metal_coordinations": [],
+    "pi_cation": [],
+    "pi_stacking": [
+      {
+        "angle_deg": 62.2,
+        "chain": "A",
+        "distance": 5.3,
+        "end_coord": [
+          7.3995,
+          -0.37716666666666665,
+          -6.325166666666667
+        ],
+        "ligand_atom": "Ring (5 atoms)",
+        "ligand_atom_idx": 15,
+        "res_name": "TRP",
+        "res_num": 108,
+        "residue": "TRP 108:A",
+        "start_coord": [
+          12.0794,
+          -0.3056,
+          -8.8044
+        ],
+        "subtype": "T-shaped π-π",
+        "type": "π-π Stacking"
+      }
+    ],
+    "salt_bridges": [
+      {
+        "chain": "A",
+        "distance": 3.27,
+        "end_coord": [
+          12.429,
+          -2.279,
+          -5.0135000000000005
+        ],
+        "ligand_atom": "N",
+        "ligand_atom_idx": 11,
+        "res_name": "ASP",
+        "res_num": 128,
+        "residue": "ASP 128:A",
+        "start_coord": [
+          12.303,
+          -0.364,
+          -7.662
+        ],
+        "subtype": "Ligand Cation - Protein Anion",
+        "type": "Salt Bridge"
+      }
+    ],
+    "total_halogen_count": 0,
+    "total_hbond_count": 9,
+    "total_hydrophobic_count": 14,
+    "total_metal_coordination_count": 0,
+    "total_pi_cation_count": 0,
+    "total_pi_stacking_count": 1,
+    "total_salt_bridge_count": 1
+  }
+}

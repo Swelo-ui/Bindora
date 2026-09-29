@@ -1,0 +1,16 @@
+{
+  "run_number": 49,
+  "category": "AI_Narrative_Consistency",
+  "compound": "Run_1_Indinavir_1HSG",
+  "target": "Indinavir / HIV-1 Protease",
+  "exhaustiveness": 0,
+  "seed": null,
+  "wall_clock_seconds": 0.034,
+  "error": null,
+  "raw_response": {
+    "cached": true,
+    "is_fallback": false,
+    "narrative": "### 1. Binding Mechanism & Active Site Interactions\n\nNo structural or interaction data were provided in the payload for this drug-target docking run. Consequently, a detailed assessment of binding mode, key hydrogen-bonding contacts, hydrophobic packing, or electrostatic complementarity within the active site cannot be made. Without atomic coordinates, residue-level interaction maps, or docking scores, any statement regarding specific amino acid contacts or conformational stabilization would be speculative and is therefore omitted.\n\n### 2. ADME & Oral Bioavailability Profile\n\nThe payload contains no physicochemical descriptors, permeability data, solubility measurements, or metabolic stability parameters. As such, no quantitative assessment of absorption, distribution, metabolism, or excretion is possible. Similarly, no predictions regarding Lipinski's rule-of-five compliance, efflux transporter liability, or cytochrome P450 inhibition potential can be derived. A tabulated ADME summary is not presented because no values were supplied for any endpoint.\n\n### 3. Experimental Validation & Confidence Tier\n\nThe payload is empty, meaning no experimental cross-check status was provided. Accordingly, this compound cannot be assigned to any confidence tier. There is no evidence of deposited wet-lab binding assays in ChEMBL, nor any indication of computational prediction-only status. The absence of both experimental and in silico data precludes any statement on validation level, reproducibility, or assay concordance.\n\n### 4. Physiological Implications & Clinical Context\n\nGiven the complete lack of target identity, potency values, selectivity data, or pharmacokinetic information, no physiological or clinical implications can be inferred. Any discussion of therapeutic potential, on-target versus off-target effects, or translational relevance would be unfounded. The evaluation is therefore indeterminate, and the compound cannot be positioned within any pharmacological context until the requisite data are supplied.\n\nIn summary, the provided JSON payload is empty, and no pharmacological evaluation can be conducted. All sections above reflect the absence of data rather than a negative result. A meaningful assessment requires at minimum the docking pose, interaction fingerprints, ADME descriptors, and an experimental validation flag.",
+    "source": "Bindora AI Explainer (deepseek/deepseek-v4-flash-0731 via OpenRouter)"
+  }
+}

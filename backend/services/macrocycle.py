@@ -52,15 +52,34 @@ class MacrocycleConformerEngine:
         Chem.FastFindRings(mol)
         ring_info = mol.GetRingInfo()
         atom_rings = ring_info.AtomRings()
+        bond_rings = ring_info.BondRings()
+
+        # 1. Collect basis rings
+        all_cycles = [set(r) for r in atom_rings]
+
+        # 2. Algebraic cycle combination for fused/bridged macrocycles (e.g. Tacrolimus, Rapamycin)
+        # where standard SSSR splits the large macrolide perimeter into smaller sub-rings
+        edge_basis = [set(r) for r in bond_rings]
+        for i in range(len(edge_basis)):
+            for j in range(i + 1, len(edge_basis)):
+                comb_edges = edge_basis[i] ^ edge_basis[j]
+                deg = {}
+                for b_idx in comb_edges:
+                    b = mol.GetBondWithIdx(b_idx)
+                    deg[b.GetBeginAtomIdx()] = deg.get(b.GetBeginAtomIdx(), 0) + 1
+                    deg[b.GetEndAtomIdx()] = deg.get(b.GetEndAtomIdx(), 0) + 1
+                if deg and all(d == 2 for d in deg.values()):
+                    all_cycles.append(set(deg.keys()))
 
         macro_sizes = []
         macro_rings = []
-        for r in atom_rings:
+        for r in all_cycles:
             sz = len(r)
-            if sz >= min_ring_size:
+            if sz >= min_ring_size and sz not in macro_sizes:
                 macro_sizes.append(sz)
                 macro_rings.append(list(r))
 
+        macro_sizes.sort(reverse=True)
         return len(macro_sizes) > 0, macro_sizes, macro_rings
 
     @classmethod
@@ -119,7 +138,7 @@ class MacrocycleConformerEngine:
         if hasattr(params, "boundsMatForceScaling"):
             params.boundsMatForceScaling = 1.0
         params.clearConfs = True
-        params.numThreads = 1
+        params.numThreads = 0
 
         # 2. Embed multiple conformers
         conf_ids = AllChem.EmbedMultipleConfs(mol_h, numConfs=num_confs, params=params)
@@ -132,6 +151,7 @@ class MacrocycleConformerEngine:
             fb_params.useRandomCoords = True
             fb_params.useExpTorsionAnglePrefs = False
             fb_params.useBasicKnowledge = False
+            fb_params.numThreads = 0
             conf_ids = AllChem.EmbedMultipleConfs(mol_h, numConfs=num_confs, params=fb_params)
 
         if len(conf_ids) == 0:
@@ -149,12 +169,12 @@ class MacrocycleConformerEngine:
         # Check if MMFF parameters exist
         mmff_props = AllChem.MMFFGetMoleculeProperties(mol_h)
         if mmff_props is not None:
-            results = AllChem.MMFFOptimizeMoleculeConfs(mol_h, maxIters=500, numThreads=1)
+            results = AllChem.MMFFOptimizeMoleculeConfs(mol_h, maxIters=300, numThreads=0)
             for cid, (converged, energy) in zip(conf_ids, results):
                 raw_energies.append((cid, energy))
         else:
             ff_type = "UFF"
-            results = AllChem.UFFOptimizeMoleculeConfs(mol_h, maxIters=500, numThreads=1)
+            results = AllChem.UFFOptimizeMoleculeConfs(mol_h, maxIters=300, numThreads=0)
             for cid, (converged, energy) in zip(conf_ids, results):
                 raw_energies.append((cid, energy))
 

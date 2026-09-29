@@ -477,17 +477,33 @@ class DockingEngine:
         return None
 
     @staticmethod
-    def _convert_mol_to_meeko_pdbqt(mol_h) -> str:
+    def _convert_mol_to_meeko_pdbqt(mol_h, rigid_macrocycles: Optional[bool] = None) -> str:
         """
         Convert protonated RDKit 3D Mol into PDBQT text using Meeko.
         Guarantees finite partial charges by computing Gasteiger charges with
         automatic formal-charge / zero-charge fallback for challenging chemotypes
         (e.g., hypervalent phosphorus, phosphate groups, nucleotides, transition metals, boron).
+        Applies semi-rigid macrocycle strategy when macrocyclic rings (size >= 12) or
+        large flexible cyclic scaffolds are detected.
         """
         try:
             AllChem.ComputeGasteigerCharges(mol_h)
         except Exception:
             pass
+
+        # Detect macrocycle status if not explicitly specified
+        if rigid_macrocycles is None:
+            try:
+                Chem.FastFindRings(mol_h)
+                ring_info = mol_h.GetRingInfo()
+                if any(len(r) >= 12 for r in ring_info.AtomRings()):
+                    rigid_macrocycles = True
+                elif mol_h.GetNumHeavyAtoms() > 50 and Lipinski.NumRotatableBonds(mol_h) > 15:
+                    rigid_macrocycles = True
+                else:
+                    rigid_macrocycles = False
+            except Exception:
+                rigid_macrocycles = False
 
         # Sanitize non-finite (NaN / Inf) or missing charges
         for atom in mol_h.GetAtoms():
@@ -508,14 +524,18 @@ class DockingEngine:
         # Primary route: use sanitized charge model
         mol_setups = None
         try:
-            preparator = MoleculePreparation(charge_model="read", charge_atom_prop="_BindoraCharge")
+            preparator = MoleculePreparation(
+                charge_model="read",
+                charge_atom_prop="_BindoraCharge",
+                rigid_macrocycles=bool(rigid_macrocycles)
+            )
             mol_setups = preparator.prepare(mol_h)
         except Exception:
             mol_setups = None
 
         if not mol_setups:
             # Fallback route: zero charge model
-            preparator = MoleculePreparation(charge_model="zero")
+            preparator = MoleculePreparation(charge_model="zero", rigid_macrocycles=bool(rigid_macrocycles))
             mol_setups = preparator.prepare(mol_h)
 
         if not mol_setups:
@@ -524,7 +544,7 @@ class DockingEngine:
         pdbqt_str, is_ok, err_msg = PDBQTWriterLegacy.write_string(mol_setups[0])
         if not is_ok:
             # Robust fallback to charge_model="zero"
-            preparator = MoleculePreparation(charge_model="zero")
+            preparator = MoleculePreparation(charge_model="zero", rigid_macrocycles=bool(rigid_macrocycles))
             mol_setups = preparator.prepare(mol_h)
             if mol_setups:
                 pdbqt_str, is_ok, err_msg = PDBQTWriterLegacy.write_string(mol_setups[0])
@@ -692,7 +712,7 @@ class DockingEngine:
             is_macro, macro_sizes, _ = MacrocycleConformerEngine.is_macrocycle(mol)
             if is_macro:
                 macro_res = MacrocycleConformerEngine.sample_macrocycle_conformers(
-                    mol, num_confs=20, energy_window=15.0, rmsd_threshold=0.5, random_seed=42
+                    mol, num_confs=5, energy_window=15.0, rmsd_threshold=0.5, random_seed=42
                 )
                 mol_h = macro_res["best_mol"]
                 conformer_desc = f"RDKit Macrocycle Distance Geometry ({macro_res.get('sampling_engine', 'srETKDGv3')}, max ring size {max(macro_sizes)})"
@@ -711,8 +731,8 @@ class DockingEngine:
                 conformer_desc = "RDKit ETKDGv3 (Experimental Torsion Knowledge Distance Geometry)"
                 minimization_desc = "MMFF94 (Merck Molecular Force Field) gradient optimization (500 max iterations)"
 
-        # Prepare PDBQT using Meeko with robust sanitized charges
-        pdbqt_str = DockingEngine._convert_mol_to_meeko_pdbqt(mol_h)
+        # Prepare PDBQT using Meeko with robust sanitized charges & semi-rigid macrocycle strategy
+        pdbqt_str = DockingEngine._convert_mol_to_meeko_pdbqt(mol_h, rigid_macrocycles=is_macro)
 
         # Also prepare PDB block for 3Dmol.js viewer
         pdb_block = Chem.MolToPDBBlock(mol_h)

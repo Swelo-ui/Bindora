@@ -1,0 +1,14 @@
+{
+  "run_number": 22,
+  "category": "Induced_Fit",
+  "compound": "Dasatinib",
+  "target": "1IEP_Abl Kinase (second chemotype)",
+  "exhaustiveness": 8,
+  "seed": 42,
+  "wall_clock_seconds": 0.245,
+  "error": null,
+  "raw_response": {
+    "error": "InducedFitService.run_induced_fit_docking() got an unexpected keyword argument 'ligand_sdf_or_pdbqt'. Did you mean 'ligand_smiles_or_pdbqt'?",
+    "http_status": 500
+  }
+}

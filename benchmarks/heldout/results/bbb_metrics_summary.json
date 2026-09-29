@@ -1,0 +1,184 @@
+{
+  "Total_Molecules_Evaluated": 7782,
+  "Ground_Truth_BBB_Positive": 4942,
+  "Ground_Truth_BBB_Negative": 2840,
+  "Bindora_Current_Decoupled": {
+    "TP": 3009,
+    "FP": 486,
+    "TN": 2354,
+    "FN": 1933,
+    "Sensitivity": 0.6089,
+    "Sensitivity_95CI": [
+      0.5952,
+      0.6224
+    ],
+    "Specificity": 0.8289,
+    "Specificity_95CI": [
+      0.8146,
+      0.8423
+    ],
+    "Balanced_Accuracy": 0.7189,
+    "MCC": 0.4237
+  },
+  "Old_Coupled_Rule": {
+    "TP": 2543,
+    "FP": 437,
+    "TN": 2403,
+    "FN": 2399,
+    "Sensitivity": 0.5146,
+    "Sensitivity_95CI": [
+      0.5006,
+      0.5285
+    ],
+    "Specificity": 0.8461,
+    "Specificity_95CI": [
+      0.8324,
+      0.8589
+    ],
+    "Balanced_Accuracy": 0.6803,
+    "MCC": 0.3572
+  },
+  "Extra_False_Negatives_From_Coupling": 466,
+  "Sample_Falsely_Excluded_CNS_Drugs": [
+    {
+      "compound_name": "proc-19m",
+      "inchikey": "RLJKFXRSANDEJS-UHFFFAOYSA-N",
+      "tpsa": 53.09,
+      "wlogp": 4.73,
+      "pgp_reason": "High lipophilicity (LogP 4.7 > 2.8), MW (477.6 > 400 Da), and presence of Piperidine basic heterocycle, Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "-",
+      "inchikey": "LIVAIIMPQYHZOR-UHFFFAOYSA-N",
+      "tpsa": 70.26,
+      "wlogp": 4.01,
+      "pgp_reason": "High lipophilicity (LogP 4.0 > 2.8), MW (517.7 > 400 Da), and presence of Diphenylmethyl / bis-aryl lipophilic core, Piperidine basic heterocycle, Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "chembl1185227",
+      "inchikey": "XMKPWAJOBWNRGY-UHFFFAOYSA-N",
+      "tpsa": 73.4,
+      "wlogp": 3.42,
+      "pgp_reason": "High lipophilicity (LogP 3.4 > 2.8), MW (516.6 > 400 Da), and presence of Piperidine basic heterocycle, Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "161105-56-2",
+      "inchikey": "FBOIFJGFNUAMIT-UHFFFAOYSA-N",
+      "tpsa": 44.73,
+      "wlogp": 5.31,
+      "pgp_reason": "High lipophilicity (LogP 5.3 > 2.8), MW (470.7 > 400 Da), and presence of Diphenylmethyl / bis-aryl lipophilic core, Piperidine basic heterocycle, Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "domperidone",
+      "inchikey": "FGXWKSZFVQUSTL-UHFFFAOYSA-N",
+      "tpsa": 78.82,
+      "wlogp": 3.35,
+      "pgp_reason": "High lipophilicity (LogP 3.4 > 2.8), MW (425.9 > 400 Da), and presence of Piperidine basic heterocycle, Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "risperidone-9-oh",
+      "inchikey": "PNKSVGFMOKGXFK-UHFFFAOYSA-N",
+      "tpsa": 71.5,
+      "wlogp": 3.69,
+      "pgp_reason": "High lipophilicity (LogP 3.7 > 2.8), MW (425.5 > 400 Da), and presence of Piperidine basic heterocycle, Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "levocabastine hydrochloride",
+      "inchikey": "ZCGOMHNNNFPNMX-UHFFFAOYSA-N",
+      "tpsa": 64.33,
+      "wlogp": 4.89,
+      "pgp_reason": "High lipophilicity (LogP 4.9 > 2.8), MW (420.5 > 400 Da), and presence of 4-Arylpiperidine basic pharmacophore, Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "dexverapamil",
+      "inchikey": "SGTNSNPWRIOYBX-HHHXNRCGSA-N",
+      "tpsa": 63.95,
+      "wlogp": 5.09,
+      "pgp_reason": "High lipophilicity (LogP 5.1 > 2.8), MW (454.6 > 400 Da), and presence of Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "chembl239099",
+      "inchikey": "IFFOAHBQMKKYRJ-UHFFFAOYSA-N",
+      "tpsa": 76.88,
+      "wlogp": 3.44,
+      "pgp_reason": "High lipophilicity (LogP 3.4 > 2.8), MW (458.6 > 400 Da), and presence of Piperidine basic heterocycle, Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "ketoconazole",
+      "inchikey": "XMAYWYJOQHXEEK-ANWICMFUSA-N",
+      "tpsa": 69.06,
+      "wlogp": 4.21,
+      "pgp_reason": "High lipophilicity (LogP 4.2 > 2.8), MW (531.4 > 400 Da), and presence of Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "jnj-5207787",
+      "inchikey": "NBKUEHKOWOUYIC-FMIVXFBMSA-N",
+      "tpsa": 70.89,
+      "wlogp": 4.63,
+      "pgp_reason": "High lipophilicity (LogP 4.6 > 2.8), MW (511.7 > 400 Da), and presence of Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "darifenacin",
+      "inchikey": "HXGBXQDTNZMWGS-UHFFFAOYSA-N",
+      "tpsa": 55.56,
+      "wlogp": 3.96,
+      "pgp_reason": "High lipophilicity (LogP 4.0 > 2.8), MW (426.6 > 400 Da), and presence of Diphenylmethyl / bis-aryl lipophilic core, Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "darifenacin",
+      "inchikey": "HXGBXQDTNZMWGS-RUZDIDTESA-N",
+      "tpsa": 55.56,
+      "wlogp": 3.96,
+      "pgp_reason": "High lipophilicity (LogP 4.0 > 2.8), MW (426.6 > 400 Da), and presence of Diphenylmethyl / bis-aryl lipophilic core, Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "chembl239299",
+      "inchikey": "LAQGPQNMQRFDIM-GOSISDBHSA-N",
+      "tpsa": 53.09,
+      "wlogp": 3.71,
+      "pgp_reason": "High lipophilicity (LogP 3.7 > 2.8), MW (457.5 > 400 Da), and presence of Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "chembl2096766",
+      "inchikey": "WRKOZRHIFLAIFZ-UHFFFAOYSA-N",
+      "tpsa": 46.5,
+      "wlogp": 5.5,
+      "pgp_reason": "High lipophilicity (LogP 5.5 > 2.8), MW (453.6 > 400 Da), and presence of Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "bmsp",
+      "inchikey": "DDONALUZYSSOQA-UHFFFAOYSA-N",
+      "tpsa": 43.86,
+      "wlogp": 4.32,
+      "pgp_reason": "High lipophilicity (LogP 4.3 > 2.8), MW (488.4 > 400 Da), and presence of Piperidine basic heterocycle, Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "besonprodil",
+      "inchikey": "FCBQJNCAKZSIAH-UHFFFAOYSA-N",
+      "tpsa": 72.3,
+      "wlogp": 3.32,
+      "pgp_reason": "High lipophilicity (LogP 3.3 > 2.8), MW (402.5 > 400 Da), and presence of Piperidine basic heterocycle, Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "schembl8717354",
+      "inchikey": "JHLHNYVMZCADTC-UHFFFAOYSA-N",
+      "tpsa": 43.78,
+      "wlogp": 4.08,
+      "pgp_reason": "High lipophilicity (LogP 4.1 > 2.8), MW (414.5 > 400 Da), and presence of Diphenylmethyl / bis-aryl lipophilic core, Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "chembl239975",
+      "inchikey": "GXILWBIQFGWJQN-UHFFFAOYSA-N",
+      "tpsa": 53.09,
+      "wlogp": 3.57,
+      "pgp_reason": "High lipophilicity (LogP 3.6 > 2.8), MW (439.5 > 400 Da), and presence of Piperidine basic heterocycle, Basic aliphatic nitrogen center."
+    },
+    {
+      "compound_name": "besp",
+      "inchikey": "PVFKZEOMFHZRPE-UHFFFAOYSA-N",
+      "tpsa": 43.86,
+      "wlogp": 4.71,
+      "pgp_reason": "High lipophilicity (LogP 4.7 > 2.8), MW (502.4 > 400 Da), and presence of Piperidine basic heterocycle, Basic aliphatic nitrogen center."
+    }
+  ]
+}

@@ -73,7 +73,9 @@ class InducedFitService:
         radius: float = 8.5,
         max_dihedral_perturbation_deg: float = 12.0,
         num_conformations: int = 3,
-        random_seed: int = 42
+        random_seed: int = 42,
+        cutoff_radius: Optional[float] = None,
+        **kwargs
     ) -> Dict[str, Any]:
         """
         Sample receptor loop conformations by introducing physically bounded dihedral perturbations
@@ -82,6 +84,8 @@ class InducedFitService:
         Returns:
             Dictionary with crystal PDB, ensemble of induced conformations, and RMSD/strain metrics.
         """
+        if cutoff_radius is not None:
+            radius = cutoff_radius
         rng = random.Random(random_seed)
         pocket_res = cls.extract_pocket_residues(receptor_pdb, pocket_center, radius=radius)
 
@@ -185,25 +189,40 @@ class InducedFitService:
     def run_induced_fit_docking(
         cls,
         receptor_pdb: str,
-        ligand_smiles_or_pdbqt: str,
-        pocket_center: Dict[str, float],
-        pocket_size: Dict[str, float],
+        ligand_input: Optional[str] = None,
+        pocket_center: Dict[str, float] = None,
+        pocket_size: Dict[str, float] = None,
         num_conformations: int = 3,
-        exhaustiveness: int = 4
+        exhaustiveness: int = 4,
+        loop_radius: float = 6.0,
+        num_iterations: Optional[int] = None,
+        seed: Optional[int] = 42,
+        ligand_sdf_or_pdbqt: Optional[str] = None,
+        ligand_smiles_or_pdbqt: Optional[str] = None,
+        **kwargs
     ) -> Dict[str, Any]:
         """
         Execute Induced-Fit Docking across crystal and induced receptor ensemble,
         ranking poses with composite IFD score = Vina ΔG + 0.35 * Receptor_Strain.
+        Supports polymorphic ligand input (SMILES, SDF, PDBQT).
         """
         from backend.services.docking import DockingEngine
 
-        # 1. Prepare ligand
-        is_pdbqt = "ROOT" in ligand_smiles_or_pdbqt and "ENDROOT" in ligand_smiles_or_pdbqt
+        raw_ligand = ligand_input or ligand_sdf_or_pdbqt or ligand_smiles_or_pdbqt or ""
+        if not raw_ligand:
+            raise ValueError("No ligand input provided for induced-fit docking.")
+
+        if num_iterations is not None:
+            num_conformations = int(num_iterations)
+
+        # 1. Prepare ligand (polymorphic detection: PDBQT vs SDF vs SMILES)
+        is_pdbqt = ("ROOT" in raw_ligand and "ENDROOT" in raw_ligand) or ("ATOM  " in raw_ligand and "TORSDOF" in raw_ligand)
         if is_pdbqt:
-            lig_pdbqt = ligand_smiles_or_pdbqt
+            lig_pdbqt = raw_ligand
             lig_smiles = None
         else:
-            lig_prep = DockingEngine.prepare_ligand(ligand_smiles_or_pdbqt)
+            is_sdf = "$$$$" in raw_ligand or "M  END" in raw_ligand
+            lig_prep = DockingEngine.prepare_ligand(raw_ligand, is_sdf=is_sdf)
             lig_pdbqt = lig_prep["pdbqt_text"]
             lig_smiles = lig_prep.get("canonical_smiles")
 
@@ -211,7 +230,9 @@ class InducedFitService:
         ensemble_data = cls.sample_backbone_induced_fit(
             receptor_pdb=receptor_pdb,
             pocket_center=pocket_center,
-            num_conformations=num_conformations
+            radius=loop_radius,
+            num_conformations=num_conformations,
+            random_seed=seed or 42
         )
 
         confs = ensemble_data.get("conformations", [])
@@ -231,6 +252,7 @@ class InducedFitService:
                     size=pocket_size,
                     exhaustiveness=exhaustiveness,
                     num_modes=3,
+                    seed=seed,
                     ligand_smiles=lig_smiles
                 )
                 if poses:

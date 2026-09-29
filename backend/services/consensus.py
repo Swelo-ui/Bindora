@@ -165,13 +165,19 @@ class ConsensusScoringService:
             # Confidence classification & SBDD Decoy Gate:
             # 1. High Strain Decoy (> 15.0 kcal/mol)
             # 2. Grease-Ball Decoy (MM-GBSA confirmed zero polar contacts & negligible electrostatics)
-            # 3. High/Moderate/Discordant Confidence
+            # 3. Sub-threshold Affinity Gate (Vina > -6.0 kcal/mol or MM-GBSA > -10.0 kcal/mol)
+            # 4. Multi-engine concordance: High / Moderate / Discordant Confidence
             is_unfavorable_desolv = mmgbsa_vals[i] > 2.0
             decoy_flag = p_copy.get("decoy_filter_flag") or p_copy.get("mmgbsa", {}).get("decoy_filter_verdict")
             is_grease_decoy = (
                 decoy_flag in ("FLAGGED_GREASY_DECOY", "FLAGGED_LIPOPHILIC_AGGREGATOR") or
                 bool(p_copy.get("mmgbsa", {}).get("is_grease_ball_decoy", False))
             )
+            v_val = vina_vals[i]
+            m_val = mmgbsa_vals[i]
+            # Absolute thermodynamic gating: scores weaker than -6.0 kcal/mol indicate non-specific adhesion
+            # or shallow surface binding rather than true high-affinity nanomolar/micromolar inhibition
+            is_sub_threshold = (v_val > -6.0) or (m_val is not None and m_val > -10.0)
 
             if is_grease_decoy:
                 confidence = "DECOY_GREASE_BALL"
@@ -180,6 +186,9 @@ class ConsensusScoringService:
             elif st > cls.HIGH_STRAIN_CUTOFF:
                 confidence = "DECOY_HIGH_STRAIN"
                 conf_desc = f"Pose flagged as high-strain decoy ({st:.1f} kcal/mol > {cls.HIGH_STRAIN_CUTOFF} kcal/mol cutoff)."
+            elif is_sub_threshold:
+                confidence = "SUB_THRESHOLD_AFFINITY"
+                conf_desc = f"Predicted binding energy ({v_val:.2f} kcal/mol) falls above the -6.0 kcal/mol threshold; indicates weak or non-specific surface adhesion."
             elif rank_spread <= 2 and mean_rank <= 2.5:
                 confidence = "HIGH_CONFIDENCE"
                 conf_desc = "Strong multi-engine concordance across empirical, physics (MM-GBSA), and DL scoring."
@@ -212,9 +221,9 @@ class ConsensusScoringService:
 
             augmented_poses.append(p_copy)
 
-        # 5. Sort by consensus score: decoys automatically relegated to bottom
+        # 5. Sort by consensus score: decoys and sub-threshold poses automatically relegated to bottom
         augmented_poses.sort(key=lambda x: (
-            x["consensus_confidence"] in ("DECOY_HIGH_STRAIN", "DECOY_GREASE_BALL"),
+            x["consensus_confidence"] in ("DECOY_HIGH_STRAIN", "DECOY_GREASE_BALL", "SUB_THRESHOLD_AFFINITY"),
             x["consensus_score"]
         ))
 

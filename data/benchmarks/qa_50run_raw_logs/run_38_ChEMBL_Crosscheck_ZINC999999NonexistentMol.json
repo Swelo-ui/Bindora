@@ -1,0 +1,25 @@
+{
+  "run_number": 38,
+  "category": "ChEMBL_Crosscheck",
+  "compound": "ZINC999999NonexistentMol",
+  "target": "ABL1",
+  "exhaustiveness": 0,
+  "seed": null,
+  "wall_clock_seconds": 3.057,
+  "error": null,
+  "raw_response": {
+    "chembl_compound_url": null,
+    "chembl_target_url": "https://www.ebi.ac.uk/chembl/target_report_card/CHEMBL3099/",
+    "data_category": "Experimental Bioactivity Cross-Reference (Wet-lab Literature)",
+    "drug_searched": "ZINC999999NonexistentMol",
+    "experimental_records": [],
+    "is_cross_checked": false,
+    "molecule_chembl_id": null,
+    "status_badge": "No ChEMBL Bioactivity Records",
+    "status_color": "amber",
+    "summary_note": "No direct wet-lab assay records identified in ChEMBL for ZINC999999NonexistentMol + ABL1. Docking scores and derived Kd values are strictly in silico computational predictions.",
+    "target_chembl_id": "CHEMBL3099",
+    "target_organism": "Mus musculus",
+    "target_searched": "ABL1"
+  }
+}

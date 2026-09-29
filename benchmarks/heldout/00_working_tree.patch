@@ -1,0 +1,595 @@
+diff --git a/backend/app.py b/backend/app.py
+index d2a6399..00fa721 100644
+--- a/backend/app.py
++++ b/backend/app.py
+@@ -29,6 +29,7 @@ from backend.services.pharmacophore import PharmacophoreService
+ from backend.services.hardware_profiler import HardwareTelemetrySampler
+ from backend.utils.vina_setup import ensure_vina
+ from rdkit import Chem
++from rdkit.Chem import Descriptors
+ 
+ app = Flask(__name__, static_folder=str(FRONTEND_DIR), static_url_path="")
+ _is_docking_active = False
+@@ -303,11 +304,31 @@ def run_docking():
+             exhaustiveness = 8
+     except (ValueError, TypeError):
+         exhaustiveness = 8
++    seed = data.get("seed")
++    if seed is not None:
++        try:
++            seed = int(seed)
++        except (ValueError, TypeError):
++            seed = 42
++    else:
++        seed = 42  # Standard default seed for research reproducibility
++
+     num_modes = int(data.get("num_modes", 9))
+     replicates = int(data.get("replicates", 1))
+-    heavy_atoms = int(data.get("heavy_atoms", 20))
+-    mw = float(data.get("molecular_weight", 300.0))
+     smiles = data.get("smiles", "")
++    lig_mol = Chem.MolFromSmiles(smiles) if smiles else None
++
++    # Derive dynamic heavy atoms and MW from sanitized molecule to eliminate hardcoded defaults
++    if lig_mol is not None:
++        actual_heavy_atoms = int(lig_mol.GetNumHeavyAtoms())
++        actual_mw = round(float(Descriptors.MolWt(lig_mol)), 2)
++    else:
++        actual_heavy_atoms = 20
++        actual_mw = 300.0
++
++    heavy_atoms = int(data.get("heavy_atoms")) if data.get("heavy_atoms") is not None else actual_heavy_atoms
++    mw = float(data.get("molecular_weight")) if data.get("molecular_weight") is not None else actual_mw
++
+     flexible_residues = data.get("flexible_residues")
+     cpu = data.get("cpu")
+     if cpu is not None:
+@@ -336,6 +357,7 @@ def run_docking():
+             exhaustiveness=exhaustiveness,
+             num_modes=num_modes,
+             replicates=replicates,
++            seed=seed,
+             flexible_residues=flexible_residues,
+             receptor_pdb=receptor_pdb,
+             cpu=cpu,
+@@ -881,12 +903,13 @@ def run_induced_fit():
+     """Execute Monte Carlo loop and backbone phi/psi induced-fit docking (IFD)."""
+     data = request.get_json() or {}
+     receptor_pdb = data.get("receptor_pdb", "")
+-    ligand_sdf_or_pdbqt = data.get("ligand", "")
++    ligand_sdf_or_pdbqt = data.get("ligand", "") or data.get("ligand_sdf_or_pdbqt", "") or data.get("ligand_smiles", "")
+     pocket_center = data.get("center", {})
+     pocket_size = data.get("size", {})
+     exhaustiveness = int(data.get("exhaustiveness", 8))
+     loop_radius = float(data.get("loop_radius", 8.5))
+     num_iterations = int(data.get("num_iterations", 5))
++    seed = int(data.get("seed", 42))
+ 
+     if not receptor_pdb or not ligand_sdf_or_pdbqt or not pocket_center or not pocket_size:
+         return jsonify({"error": "Missing required fields (receptor_pdb, ligand, center, size)"}), 400
+@@ -895,12 +918,13 @@ def run_induced_fit():
+     try:
+         result = InducedFitService.run_induced_fit_docking(
+             receptor_pdb=receptor_pdb,
+-            ligand_sdf_or_pdbqt=ligand_sdf_or_pdbqt,
++            ligand_input=ligand_sdf_or_pdbqt,
+             pocket_center=pocket_center,
+             pocket_size=pocket_size,
+             loop_radius=loop_radius,
+-            num_iterations=num_iterations,
+-            exhaustiveness=exhaustiveness
++            num_conformations=num_iterations,
++            exhaustiveness=exhaustiveness,
++            seed=seed
+         )
+         return jsonify(result)
+     except Exception as e:
+diff --git a/backend/services/adme.py b/backend/services/adme.py
+index 3c818b5..36c3d15 100644
+--- a/backend/services/adme.py
++++ b/backend/services/adme.py
+@@ -73,6 +73,97 @@ _CYP_ALERTS = {
+     }
+ }
+ 
++# Extended PAINS and pan-assay interference patterns (Baell & Holloway 2010, Baell & Walters 2014)
++# Captures problematic chemotypes missed by default RDKit FilterCatalog collections
++_EXTENDED_PAINS_PATTERNS = [
++    {
++        "name": "curcuminoid_diferuloylmethane_keto",
++        "smarts": "[#6]=[#6]-[#6](=[O,S])-[#6]-[#6](=[O,S])-[#6]=[#6]",
++        "description": "Curcuminoid / 1,7-diarylheptanoid conjugated bis-enone (canonical PAINS / chemical aggregator; Baell & Walters 2014)"
++    },
++    {
++        "name": "curcuminoid_diferuloylmethane_enol",
++        "smarts": "[#6]=[#6]-[#6](=[O,S])-[#6]=[#6](-[OH,SH,O-])-[#6]=[#6]",
++        "description": "Curcuminoid / enol tautomer conjugated system (canonical PAINS / chemical aggregator; Baell & Walters 2014)"
++    },
++    {
++        "name": "rhodanine_expanded",
++        "smarts": "O=C1CSC(=[S,O])N1",
++        "description": "Rhodanine / thiazolidinedione core (promiscuous covalent/metal-binding PAINS alert)"
++    },
++    {
++        "name": "ene_one_ene_linear",
++        "smarts": "C(=O)-C=C-C(=O)",
++        "description": "Linear ene-dione / bis-enone Michael acceptor (covalent reactive PAINS alert)"
++    },
++    {
++        "name": "mannich_base_quinone_methide",
++        "smarts": "c1cc(O)c(CN)cc1",
++        "description": "Phenol-Mannich base (latent ortho-quinone methide precursor)"
++    }
++]
++
++def predict_pgp_substrate(mol: Chem.Mol) -> Dict[str, Any]:
++    """
++    Research-grade classification of P-glycoprotein (P-gp / ABCB1 / MDR1) substrate status.
++    Based on Broccatelli et al., J. Med. Chem. 2011, 54, 1740-1751 and Didziapetris et al., J. Drug Target. 2003.
++    P-gp is a major efflux transporter at the blood-brain barrier that actively pumps substrates out
++    of brain capillary endothelial cells, restricting central nervous system (CNS) exposure.
++    """
++    mw = Descriptors.MolWt(mol)
++    logp = Descriptors.MolLogP(mol)
++    rotb = Lipinski.NumRotatableBonds(mol)
++
++    # Substructure motifs characteristic of high-affinity P-gp substrates (Broccatelli et al. 2011)
++    motifs = []
++    # 1. Gem-diphenyl / diphenylmethyl group (e.g. Loperamide, Terfenadine, Fendiline)
++    p_diphenyl = Chem.MolFromSmarts("[#6](c1ccccc1)(c2ccccc2)")
++    if p_diphenyl and mol.HasSubstructMatch(p_diphenyl):
++        motifs.append("Diphenylmethyl / bis-aryl lipophilic core")
++
++    # 2. 4-Arylpiperidine / piperazine basic system (e.g. Loperamide, Haloperidol)
++    p_aryl_pip = Chem.MolFromSmarts("c1ccccc1-C1CCNCC1")
++    p_pip_ring = Chem.MolFromSmarts("N1CCC(CC1)")
++    if p_aryl_pip and mol.HasSubstructMatch(p_aryl_pip):
++        motifs.append("4-Arylpiperidine basic pharmacophore")
++    elif p_pip_ring and mol.HasSubstructMatch(p_pip_ring):
++        motifs.append("Piperidine basic heterocycle")
++
++    # 3. Basic nitrogen center (tertiary aliphatic amine, basic alkylamine)
++    p_basic_n = Chem.MolFromSmarts("[NX3;H0,H1;!$(NC=O)]")
++    has_basic_n = bool(p_basic_n and mol.HasSubstructMatch(p_basic_n))
++    if has_basic_n:
++        motifs.append("Basic aliphatic nitrogen center")
++
++    # 4. Large macrocyclic polyketide / cyclic peptide (e.g. Cyclosporine, Ivermectin, Tacrolimus)
++    is_macrocycle = mw > 700 and (mol.GetRingInfo().NumRings() >= 2 or rotb > 12)
++    if is_macrocycle:
++        motifs.append("High molecular weight macrocycle / peptide scaffold")
++
++    # Broccatelli Classification Gating:
++    # Rule 1: High MW (> 400 Da) + Lipophilic (LogP > 2.8) + Basic Nitrogen / Diphenyl motif
++    is_substrate = False
++    reason = "Does not satisfy P-gp pharmacophoric criteria (MW, LogP, basic nitrogen, or bulky hydrophobic anchor)."
++
++    if is_macrocycle:
++        is_substrate = True
++        reason = "Large macrocyclic scaffold recognized by P-gp efflux pump (Broccatelli et al. 2011)."
++    elif mw > 400.0 and logp > 2.8 and (has_basic_n or len(motifs) >= 2):
++        is_substrate = True
++        reason = f"High lipophilicity (LogP {logp:.1f} > 2.8), MW ({mw:.1f} > 400 Da), and presence of {', '.join(motifs)}."
++    elif len(motifs) >= 2 and mw > 350.0 and logp > 2.5:
++        is_substrate = True
++        reason = f"Satisfies P-gp substrate structural alert: {', '.join(motifs)} (Broccatelli et al. 2011)."
++
++    return {
++        "is_substrate": is_substrate,
++        "status": "Substrate (PGP+)" if is_substrate else "Non-substrate (PGP-)",
++        "motifs_identified": motifs,
++        "reason": reason,
++        "model": "Broccatelli et al. / Didziapetris P-gp Efflux Substrate Classifier",
++        "citation": "Broccatelli et al., J. Med. Chem. 2011, 54, 1740-1751"
++    }
++
+ class ADMEProfiler:
+     """Service for deterministic, calculated physicochemical and pharmacokinetic (ADME) profiling."""
+ 
+@@ -140,8 +231,18 @@ class ADMEProfiler:
+         gi_high = _point_in_polygon(tpsa_sandp, wlogp, _GIA_COORDS)
+         gi_absorption = "High" if gi_high else "Moderate / Low"
+ 
+-        bbb_permeant = _point_in_polygon(tpsa_sandp, wlogp, _BBB_COORDS)
+-        bbb_status = "Permeant (Likely crosses BBB)" if bbb_permeant else "Non-permeant (Low CNS penetration likelihood)"
++        # P-glycoprotein (P-gp / ABCB1 / MDR1) active efflux prediction (Broccatelli et al. 2011)
++        pgp_data = predict_pgp_substrate(mol)
++        is_pgp = pgp_data["is_substrate"]
++
++        inside_bbb_yolk = _point_in_polygon(tpsa_sandp, wlogp, _BBB_COORDS)
++        bbb_permeant = bool(inside_bbb_yolk)
++        if inside_bbb_yolk and not is_pgp:
++            bbb_status = "Permeant (High passive permeability â€” Non-substrate for P-gp)"
++        elif inside_bbb_yolk and is_pgp:
++            bbb_status = "Passive Permeant (High intrinsic permeability, but subject to active P-gp / ABCB1 efflux)"
++        else:
++            bbb_status = "Non-permeant (Low passive CNS penetration likelihood)"
+ 
+         # 5. Synthetic Accessibility Score (SAScore: 1.0 easy to 10.0 difficult)
+         sa_score_raw = sascorer.calculateScore(mol)
+@@ -182,6 +283,22 @@ class ADMEProfiler:
+         pains_matches = _pains_catalog.GetMatches(mol)
+         pains_list = [entry.GetDescription() for entry in pains_matches]
+ 
++        # Scan extended PAINS patterns (curcuminoids, linear bis-enones, rhodanines)
++        # Check both input mol and canonical tautomer
++        from rdkit.Chem.MolStandardize import rdMolStandardize
++        try:
++            taut_enumerator = rdMolStandardize.TautomerEnumerator()
++            canonical_mol = taut_enumerator.Canonicalize(mol)
++        except Exception:
++            canonical_mol = mol
++
++        for ep in _EXTENDED_PAINS_PATTERNS:
++            patt = Chem.MolFromSmarts(ep["smarts"])
++            if patt and (mol.HasSubstructMatch(patt) or canonical_mol.HasSubstructMatch(patt)):
++                desc = ep["description"]
++                if desc not in pains_list:
++                    pains_list.append(desc)
++
+         # Brenk structural alerts (reactive / unstable / toxicophores)
+         brenk_matches = _brenk_catalog.GetMatches(mol)
+         brenk_list = [entry.GetDescription() for entry in brenk_matches]
+@@ -262,9 +379,12 @@ class ADMEProfiler:
+                 },
+                 "bbb_permeation": {
+                     "status": bbb_status,
+-                    "model": "BOILED-Egg yolk ellipse model (WLogP & TPSA)",
+-                    "citation": "Daina & Zoete, ChemMedChem 2016, 11, 1117-1121"
++                    "is_permeant": bbb_permeant,
++                    "inside_egg_yolk": inside_bbb_yolk,
++                    "model": "BOILED-Egg coupled with P-gp active efflux model (WLogP, TPSA, P-gp)",
++                    "citation": "Daina & Zoete, ChemMedChem 2016; Broccatelli et al., J. Med. Chem. 2011"
+                 },
++                "p_glycoprotein": pgp_data,
+                 "plasma_protein_binding": {
+                     "tier": ppb_tier,
+                     "rationale": ppb_note
+diff --git a/backend/services/consensus.py b/backend/services/consensus.py
+index 8c04c9d..f45a1e0 100644
+--- a/backend/services/consensus.py
++++ b/backend/services/consensus.py
+@@ -165,13 +165,19 @@ class ConsensusScoringService:
+             # Confidence classification & SBDD Decoy Gate:
+             # 1. High Strain Decoy (> 15.0 kcal/mol)
+             # 2. Grease-Ball Decoy (MM-GBSA confirmed zero polar contacts & negligible electrostatics)
+-            # 3. High/Moderate/Discordant Confidence
++            # 3. Sub-threshold Affinity Gate (Vina > -6.0 kcal/mol or MM-GBSA > -10.0 kcal/mol)
++            # 4. Multi-engine concordance: High / Moderate / Discordant Confidence
+             is_unfavorable_desolv = mmgbsa_vals[i] > 2.0
+             decoy_flag = p_copy.get("decoy_filter_flag") or p_copy.get("mmgbsa", {}).get("decoy_filter_verdict")
+             is_grease_decoy = (
+                 decoy_flag in ("FLAGGED_GREASY_DECOY", "FLAGGED_LIPOPHILIC_AGGREGATOR") or
+                 bool(p_copy.get("mmgbsa", {}).get("is_grease_ball_decoy", False))
+             )
++            v_val = vina_vals[i]
++            m_val = mmgbsa_vals[i]
++            # Absolute thermodynamic gating: scores weaker than -6.0 kcal/mol indicate non-specific adhesion
++            # or shallow surface binding rather than true high-affinity nanomolar/micromolar inhibition
++            is_sub_threshold = (v_val > -6.0) or (m_val is not None and m_val > -10.0)
+ 
+             if is_grease_decoy:
+                 confidence = "DECOY_GREASE_BALL"
+@@ -180,6 +186,9 @@ class ConsensusScoringService:
+             elif st > cls.HIGH_STRAIN_CUTOFF:
+                 confidence = "DECOY_HIGH_STRAIN"
+                 conf_desc = f"Pose flagged as high-strain decoy ({st:.1f} kcal/mol > {cls.HIGH_STRAIN_CUTOFF} kcal/mol cutoff)."
++            elif is_sub_threshold:
++                confidence = "SUB_THRESHOLD_AFFINITY"
++                conf_desc = f"Predicted binding energy ({v_val:.2f} kcal/mol) falls above the -6.0 kcal/mol threshold; indicates weak or non-specific surface adhesion."
+             elif rank_spread <= 2 and mean_rank <= 2.5:
+                 confidence = "HIGH_CONFIDENCE"
+                 conf_desc = "Strong multi-engine concordance across empirical, physics (MM-GBSA), and DL scoring."
+@@ -212,9 +221,9 @@ class ConsensusScoringService:
+ 
+             augmented_poses.append(p_copy)
+ 
+-        # 5. Sort by consensus score: decoys automatically relegated to bottom
++        # 5. Sort by consensus score: decoys and sub-threshold poses automatically relegated to bottom
+         augmented_poses.sort(key=lambda x: (
+-            x["consensus_confidence"] in ("DECOY_HIGH_STRAIN", "DECOY_GREASE_BALL"),
++            x["consensus_confidence"] in ("DECOY_HIGH_STRAIN", "DECOY_GREASE_BALL", "SUB_THRESHOLD_AFFINITY"),
+             x["consensus_score"]
+         ))
+ 
+diff --git a/backend/services/docking.py b/backend/services/docking.py
+index 467bee3..af1dab6 100644
+--- a/backend/services/docking.py
++++ b/backend/services/docking.py
+@@ -477,18 +477,34 @@ class DockingEngine:
+         return None
+ 
+     @staticmethod
+-    def _convert_mol_to_meeko_pdbqt(mol_h) -> str:
++    def _convert_mol_to_meeko_pdbqt(mol_h, rigid_macrocycles: Optional[bool] = None) -> str:
+         """
+         Convert protonated RDKit 3D Mol into PDBQT text using Meeko.
+         Guarantees finite partial charges by computing Gasteiger charges with
+         automatic formal-charge / zero-charge fallback for challenging chemotypes
+         (e.g., hypervalent phosphorus, phosphate groups, nucleotides, transition metals, boron).
++        Applies semi-rigid macrocycle strategy when macrocyclic rings (size >= 12) or
++        large flexible cyclic scaffolds are detected.
+         """
+         try:
+             AllChem.ComputeGasteigerCharges(mol_h)
+         except Exception:
+             pass
+ 
++        # Detect macrocycle status if not explicitly specified
++        if rigid_macrocycles is None:
++            try:
++                Chem.FastFindRings(mol_h)
++                ring_info = mol_h.GetRingInfo()
++                if any(len(r) >= 12 for r in ring_info.AtomRings()):
++                    rigid_macrocycles = True
++                elif mol_h.GetNumHeavyAtoms() > 50 and Lipinski.NumRotatableBonds(mol_h) > 15:
++                    rigid_macrocycles = True
++                else:
++                    rigid_macrocycles = False
++            except Exception:
++                rigid_macrocycles = False
++
+         # Sanitize non-finite (NaN / Inf) or missing charges
+         for atom in mol_h.GetAtoms():
+             charge = 0.0
+@@ -508,14 +524,18 @@ class DockingEngine:
+         # Primary route: use sanitized charge model
+         mol_setups = None
+         try:
+-            preparator = MoleculePreparation(charge_model="read", charge_atom_prop="_BindoraCharge")
++            preparator = MoleculePreparation(
++                charge_model="read",
++                charge_atom_prop="_BindoraCharge",
++                rigid_macrocycles=bool(rigid_macrocycles)
++            )
+             mol_setups = preparator.prepare(mol_h)
+         except Exception:
+             mol_setups = None
+ 
+         if not mol_setups:
+             # Fallback route: zero charge model
+-            preparator = MoleculePreparation(charge_model="zero")
++            preparator = MoleculePreparation(charge_model="zero", rigid_macrocycles=bool(rigid_macrocycles))
+             mol_setups = preparator.prepare(mol_h)
+ 
+         if not mol_setups:
+@@ -524,7 +544,7 @@ class DockingEngine:
+         pdbqt_str, is_ok, err_msg = PDBQTWriterLegacy.write_string(mol_setups[0])
+         if not is_ok:
+             # Robust fallback to charge_model="zero"
+-            preparator = MoleculePreparation(charge_model="zero")
++            preparator = MoleculePreparation(charge_model="zero", rigid_macrocycles=bool(rigid_macrocycles))
+             mol_setups = preparator.prepare(mol_h)
+             if mol_setups:
+                 pdbqt_str, is_ok, err_msg = PDBQTWriterLegacy.write_string(mol_setups[0])
+@@ -692,7 +712,7 @@ class DockingEngine:
+             is_macro, macro_sizes, _ = MacrocycleConformerEngine.is_macrocycle(mol)
+             if is_macro:
+                 macro_res = MacrocycleConformerEngine.sample_macrocycle_conformers(
+-                    mol, num_confs=20, energy_window=15.0, rmsd_threshold=0.5, random_seed=42
++                    mol, num_confs=5, energy_window=15.0, rmsd_threshold=0.5, random_seed=42
+                 )
+                 mol_h = macro_res["best_mol"]
+                 conformer_desc = f"RDKit Macrocycle Distance Geometry ({macro_res.get('sampling_engine', 'srETKDGv3')}, max ring size {max(macro_sizes)})"
+@@ -711,8 +731,8 @@ class DockingEngine:
+                 conformer_desc = "RDKit ETKDGv3 (Experimental Torsion Knowledge Distance Geometry)"
+                 minimization_desc = "MMFF94 (Merck Molecular Force Field) gradient optimization (500 max iterations)"
+ 
+-        # Prepare PDBQT using Meeko with robust sanitized charges
+-        pdbqt_str = DockingEngine._convert_mol_to_meeko_pdbqt(mol_h)
++        # Prepare PDBQT using Meeko with robust sanitized charges & semi-rigid macrocycle strategy
++        pdbqt_str = DockingEngine._convert_mol_to_meeko_pdbqt(mol_h, rigid_macrocycles=is_macro)
+ 
+         # Also prepare PDB block for 3Dmol.js viewer
+         pdb_block = Chem.MolToPDBBlock(mol_h)
+diff --git a/backend/services/induced_fit.py b/backend/services/induced_fit.py
+index d2fe530..8c1a705 100644
+--- a/backend/services/induced_fit.py
++++ b/backend/services/induced_fit.py
+@@ -73,7 +73,9 @@ class InducedFitService:
+         radius: float = 8.5,
+         max_dihedral_perturbation_deg: float = 12.0,
+         num_conformations: int = 3,
+-        random_seed: int = 42
++        random_seed: int = 42,
++        cutoff_radius: Optional[float] = None,
++        **kwargs
+     ) -> Dict[str, Any]:
+         """
+         Sample receptor loop conformations by introducing physically bounded dihedral perturbations
+@@ -82,6 +84,8 @@ class InducedFitService:
+         Returns:
+             Dictionary with crystal PDB, ensemble of induced conformations, and RMSD/strain metrics.
+         """
++        if cutoff_radius is not None:
++            radius = cutoff_radius
+         rng = random.Random(random_seed)
+         pocket_res = cls.extract_pocket_residues(receptor_pdb, pocket_center, radius=radius)
+ 
+@@ -185,25 +189,40 @@ class InducedFitService:
+     def run_induced_fit_docking(
+         cls,
+         receptor_pdb: str,
+-        ligand_smiles_or_pdbqt: str,
+-        pocket_center: Dict[str, float],
+-        pocket_size: Dict[str, float],
++        ligand_input: Optional[str] = None,
++        pocket_center: Dict[str, float] = None,
++        pocket_size: Dict[str, float] = None,
+         num_conformations: int = 3,
+-        exhaustiveness: int = 4
++        exhaustiveness: int = 4,
++        loop_radius: float = 6.0,
++        num_iterations: Optional[int] = None,
++        seed: Optional[int] = 42,
++        ligand_sdf_or_pdbqt: Optional[str] = None,
++        ligand_smiles_or_pdbqt: Optional[str] = None,
++        **kwargs
+     ) -> Dict[str, Any]:
+         """
+         Execute Induced-Fit Docking across crystal and induced receptor ensemble,
+         ranking poses with composite IFD score = Vina Î”G + 0.35 * Receptor_Strain.
++        Supports polymorphic ligand input (SMILES, SDF, PDBQT).
+         """
+         from backend.services.docking import DockingEngine
+ 
+-        # 1. Prepare ligand
+-        is_pdbqt = "ROOT" in ligand_smiles_or_pdbqt and "ENDROOT" in ligand_smiles_or_pdbqt
++        raw_ligand = ligand_input or ligand_sdf_or_pdbqt or ligand_smiles_or_pdbqt or ""
++        if not raw_ligand:
++            raise ValueError("No ligand input provided for induced-fit docking.")
++
++        if num_iterations is not None:
++            num_conformations = int(num_iterations)
++
++        # 1. Prepare ligand (polymorphic detection: PDBQT vs SDF vs SMILES)
++        is_pdbqt = ("ROOT" in raw_ligand and "ENDROOT" in raw_ligand) or ("ATOM  " in raw_ligand and "TORSDOF" in raw_ligand)
+         if is_pdbqt:
+-            lig_pdbqt = ligand_smiles_or_pdbqt
++            lig_pdbqt = raw_ligand
+             lig_smiles = None
+         else:
+-            lig_prep = DockingEngine.prepare_ligand(ligand_smiles_or_pdbqt)
++            is_sdf = "$$$$" in raw_ligand or "M  END" in raw_ligand
++            lig_prep = DockingEngine.prepare_ligand(raw_ligand, is_sdf=is_sdf)
+             lig_pdbqt = lig_prep["pdbqt_text"]
+             lig_smiles = lig_prep.get("canonical_smiles")
+ 
+@@ -211,7 +230,9 @@ class InducedFitService:
+         ensemble_data = cls.sample_backbone_induced_fit(
+             receptor_pdb=receptor_pdb,
+             pocket_center=pocket_center,
+-            num_conformations=num_conformations
++            radius=loop_radius,
++            num_conformations=num_conformations,
++            random_seed=seed or 42
+         )
+ 
+         confs = ensemble_data.get("conformations", [])
+@@ -231,6 +252,7 @@ class InducedFitService:
+                     size=pocket_size,
+                     exhaustiveness=exhaustiveness,
+                     num_modes=3,
++                    seed=seed,
+                     ligand_smiles=lig_smiles
+                 )
+                 if poses:
+diff --git a/backend/services/macrocycle.py b/backend/services/macrocycle.py
+index 6c662d6..65e5c8d 100644
+--- a/backend/services/macrocycle.py
++++ b/backend/services/macrocycle.py
+@@ -52,15 +52,34 @@ class MacrocycleConformerEngine:
+         Chem.FastFindRings(mol)
+         ring_info = mol.GetRingInfo()
+         atom_rings = ring_info.AtomRings()
++        bond_rings = ring_info.BondRings()
++
++        # 1. Collect basis rings
++        all_cycles = [set(r) for r in atom_rings]
++
++        # 2. Algebraic cycle combination for fused/bridged macrocycles (e.g. Tacrolimus, Rapamycin)
++        # where standard SSSR splits the large macrolide perimeter into smaller sub-rings
++        edge_basis = [set(r) for r in bond_rings]
++        for i in range(len(edge_basis)):
++            for j in range(i + 1, len(edge_basis)):
++                comb_edges = edge_basis[i] ^ edge_basis[j]
++                deg = {}
++                for b_idx in comb_edges:
++                    b = mol.GetBondWithIdx(b_idx)
++                    deg[b.GetBeginAtomIdx()] = deg.get(b.GetBeginAtomIdx(), 0) + 1
++                    deg[b.GetEndAtomIdx()] = deg.get(b.GetEndAtomIdx(), 0) + 1
++                if deg and all(d == 2 for d in deg.values()):
++                    all_cycles.append(set(deg.keys()))
+ 
+         macro_sizes = []
+         macro_rings = []
+-        for r in atom_rings:
++        for r in all_cycles:
+             sz = len(r)
+-            if sz >= min_ring_size:
++            if sz >= min_ring_size and sz not in macro_sizes:
+                 macro_sizes.append(sz)
+                 macro_rings.append(list(r))
+ 
++        macro_sizes.sort(reverse=True)
+         return len(macro_sizes) > 0, macro_sizes, macro_rings
+ 
+     @classmethod
+@@ -119,7 +138,7 @@ class MacrocycleConformerEngine:
+         if hasattr(params, "boundsMatForceScaling"):
+             params.boundsMatForceScaling = 1.0
+         params.clearConfs = True
+-        params.numThreads = 1
++        params.numThreads = 0
+ 
+         # 2. Embed multiple conformers
+         conf_ids = AllChem.EmbedMultipleConfs(mol_h, numConfs=num_confs, params=params)
+@@ -132,6 +151,7 @@ class MacrocycleConformerEngine:
+             fb_params.useRandomCoords = True
+             fb_params.useExpTorsionAnglePrefs = False
+             fb_params.useBasicKnowledge = False
++            fb_params.numThreads = 0
+             conf_ids = AllChem.EmbedMultipleConfs(mol_h, numConfs=num_confs, params=fb_params)
+ 
+         if len(conf_ids) == 0:
+@@ -149,12 +169,12 @@ class MacrocycleConformerEngine:
+         # Check if MMFF parameters exist
+         mmff_props = AllChem.MMFFGetMoleculeProperties(mol_h)
+         if mmff_props is not None:
+-            results = AllChem.MMFFOptimizeMoleculeConfs(mol_h, maxIters=500, numThreads=1)
++            results = AllChem.MMFFOptimizeMoleculeConfs(mol_h, maxIters=300, numThreads=0)
+             for cid, (converged, energy) in zip(conf_ids, results):
+                 raw_energies.append((cid, energy))
+         else:
+             ff_type = "UFF"
+-            results = AllChem.UFFOptimizeMoleculeConfs(mol_h, maxIters=500, numThreads=1)
++            results = AllChem.UFFOptimizeMoleculeConfs(mol_h, maxIters=300, numThreads=0)
+             for cid, (converged, energy) in zip(conf_ids, results):
+                 raw_energies.append((cid, energy))
+ 
+diff --git a/backend/services/narrative.py b/backend/services/narrative.py
+index fa08951..59e897d 100644
+--- a/backend/services/narrative.py
++++ b/backend/services/narrative.py
+@@ -136,12 +136,39 @@ class NarrativeExplainer:
+             "### 1. 3D Binding Mechanism & Active Site Interactions\n"
+             "### 2. Pharmacokinetics (ADME) & Drug-Likeness Profile\n"
+             "### 3. Bioactivity & Experimental Cross-Validation\n"
+-            "### 4. Physiological Implications & Target Context"
++            "### 4. Physiological Implications & Target Context\n"
++            "9. POSE ATTRIBUTION INTEGRITY:\n"
++            "   - Discuss ONLY the top-ranked pose (Mode 1) when describing active site interactions, binding scores, and ligand strain.\n"
++            "   - NEVER attribute strain energy or metrics from alternative modes (such as highest strain in the pose ensemble) to the top pose.\n"
++            "10. RMSD DISAMBIGUATION:\n"
++            "   - Internal Vina mode dispersion (rmsd_lb and rmsd_ub) represents geometric distance from Mode 1 within the generated pose cluster. It is NOT distance to a crystallographic reference ligand.\n"
++            "   - Unless 'crystallographic_native_rmsd' or explicit native reference RMSD is provided and non-null, you are strictly FORBIDDEN from reporting an RMSD to native or crystal ligand.\n"
++            "11. DESCRIPTOR INTEGRITY:\n"
++            "   - Use only the heavy atom count and molecular weight supplied under 'physicochemical' or 'ligand_descriptors'. Never assume or hardcode default values (e.g. 20 heavy atoms or 300 Da)."
+         )
+ 
++        # Sanitize and structure payload to prevent cross-mode metric conflation
++        structured_payload = dict(data)
++        if "poses" in data and isinstance(data["poses"], list) and len(data["poses"]) > 0:
++            top_pose = data["poses"][0]
++            structured_payload["top_ranked_pose_mode_1"] = {
++                "vina_affinity_kcal": top_pose.get("affinity_kcal"),
++                "ligand_strain_kcal": top_pose.get("ligand_strain_kcal"),
++                "consensus_confidence": top_pose.get("consensus_confidence"),
++                "consensus_score": top_pose.get("consensus_score"),
++                "interactions": top_pose.get("interactions", {})
++            }
++            structured_payload["pose_ensemble_dispersion"] = {
++                "total_modes_generated": len(data["poses"]),
++                "vina_mode_internal_rmsd_bounds": f"{top_pose.get('rmsd_lower_bound', 0.0)} to {data['poses'][-1].get('rmsd_upper_bound', 0.0)} A (intra-cluster dispersion relative to Mode 1)",
++                "crystallographic_native_rmsd": data.get("crystallographic_native_rmsd") or data.get("native_rmsd") or None
++            }
++            # Remove raw array of alternative modes so LLM cannot conflate Mode 9 with Mode 1
++            structured_payload.pop("poses", None)
++
+         user_content = (
+             f"Here is the verified experimental and computational payload for the drug-target docking run:\n"
+-            f"```json\n{json.dumps(data, indent=2)}\n```\n"
++            f"```json\n{json.dumps(structured_payload, indent=2)}\n```\n"
+             f"Provide a concise, publication-grade pharmacological evaluation in 350-500 words. Begin directly with the report."
+         )
+ 

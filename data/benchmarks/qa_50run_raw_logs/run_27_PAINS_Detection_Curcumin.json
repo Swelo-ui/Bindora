@@ -1,0 +1,189 @@
+{
+  "run_number": 27,
+  "category": "PAINS_Detection",
+  "compound": "Curcumin",
+  "target": "Filter_Integrity",
+  "exhaustiveness": 0,
+  "seed": null,
+  "wall_clock_seconds": 0.069,
+  "error": null,
+  "raw_response": {
+    "drug_likeness": {
+      "ghose": {
+        "citation": "Ghose et al., J. Comb. Chem. 1999",
+        "rule": "Ghose Drug-likeness Filter",
+        "status": "Pass",
+        "violations": [],
+        "violations_count": 0
+      },
+      "lipinski": {
+        "citation": "Lipinski et al., Adv. Drug Deliv. Rev. 1997",
+        "hba_value": 6,
+        "hbd_value": 2,
+        "logp_value": 3.37,
+        "mw_value": 368.39,
+        "rule": "Rule of Five (Pfizer)",
+        "status": "Pass",
+        "violations": [],
+        "violations_count": 0
+      },
+      "veber": {
+        "citation": "Veber et al., J. Med. Chem. 2002",
+        "rule": "Veber Oral Bioavailability (GSK)",
+        "status": "Pass",
+        "violations": [],
+        "violations_count": 0
+      }
+    },
+    "medicinal_chemistry_safety": {
+      "brenk_alerts": {
+        "alerts": [
+          "beta-keto/anhydride",
+          "Michael_acceptor_1"
+        ],
+        "citation": "Brenk et al., ChemMedChem 2008",
+        "count": 2,
+        "status": "2 structural alert(s)"
+      },
+      "nih_alerts": {
+        "alerts": [],
+        "citation": "NIH Molecular Libraries Program Clinical Alerts",
+        "count": 0,
+        "status": "Clear"
+      },
+      "overall_status": "2 alert(s) across 4 catalogs",
+      "pains_alerts": {
+        "alerts": [],
+        "citation": "Baell & Holloway, J. Med. Chem. 2010",
+        "count": 0,
+        "status": "Clear"
+      },
+      "total_alerts_count": 2,
+      "zinc_alerts": {
+        "alerts": [],
+        "citation": "Irwin & Shoichet, J. Chem. Inf. Model. 2005",
+        "count": 0,
+        "status": "Clear"
+      }
+    },
+    "pharmacokinetics": {
+      "bbb_permeation": {
+        "citation": "Daina & Zoete, ChemMedChem 2016, 11, 1117-1121",
+        "model": "BOILED-Egg yolk ellipse model (WLogP & TPSA)",
+        "status": "Non-permeant (Low CNS penetration likelihood)"
+      },
+      "cyp450_inhibition": {
+        "alerts": [],
+        "count": 0,
+        "disclaimer": "Exploratory SMARTS substructure heuristics — Not a validated quantitative predictor",
+        "methodology": "heuristic_smarts",
+        "status": "No structural alerts",
+        "validated": false
+      },
+      "gi_absorption": {
+        "citation": "Daina & Zoete, ChemMedChem 2016, 11, 1117-1121",
+        "level": "High",
+        "model": "BOILED-Egg published ellipse model (WLogP & TPSA)"
+      },
+      "plasma_protein_binding": {
+        "rationale": "Balanced free fraction available for target interaction and tissue distribution.",
+        "tier": "Moderate (50% - 90%)"
+      }
+    },
+    "physicochemical": {
+      "aromatic_rings": {
+        "description": "Aromatic ring systems",
+        "source": "RDKit v2026.03.6",
+        "unit": "count",
+        "value": 2
+      },
+      "formal_charge": {
+        "description": "Net formal charge",
+        "source": "RDKit v2026.03.6",
+        "unit": "elementary charge",
+        "value": 0
+      },
+      "fsp3": {
+        "description": "Carbon saturation index (sp3 carbons / total carbons)",
+        "source": "RDKit v2026.03.6",
+        "unit": "ratio",
+        "value": 0.14
+      },
+      "h_bond_acceptors": {
+        "description": "Hydrogen Bond Acceptors (Lipinski)",
+        "source": "RDKit v2026.03.6",
+        "unit": "count",
+        "value": 6
+      },
+      "h_bond_donors": {
+        "description": "Hydrogen Bond Donors (Lipinski)",
+        "source": "RDKit v2026.03.6",
+        "unit": "count",
+        "value": 2
+      },
+      "hba": {
+        "description": "Hydrogen Bond Acceptors (Lipinski)",
+        "source": "RDKit v2026.03.6",
+        "unit": "count",
+        "value": 6
+      },
+      "hbd": {
+        "description": "Hydrogen Bond Donors (Lipinski)",
+        "source": "RDKit v2026.03.6",
+        "unit": "count",
+        "value": 2
+      },
+      "heavy_atoms": {
+        "description": "Non-hydrogen heavy atoms",
+        "source": "RDKit v2026.03.6",
+        "unit": "count",
+        "value": 27
+      },
+      "logp": {
+        "description": "Wildman-Crippen MolLogP",
+        "source": "RDKit v2026.03.6",
+        "unit": "unitless",
+        "value": 3.37
+      },
+      "metadata": {
+        "cheminformatics_engine": "RDKit v2026.03.6",
+        "hbd_hba_definition": "Lipinski standard (O/N atoms with attached H for HBD; O/N atoms for HBA)",
+        "logp_algorithm": "Wildman-Crippen (J. Chem. Inf. Comput. Sci. 1999, 39, 868-873)",
+        "tpsa_algorithm": "Prasanna & Doerksen / Ertl et al. (J. Med. Chem. 2000, 43, 3714-3717)"
+      },
+      "molar_refractivity": {
+        "description": "Molar Refractivity",
+        "source": "RDKit v2026.03.6",
+        "unit": "cm³/mol",
+        "value": 102.02
+      },
+      "molecular_weight": {
+        "description": "Molecular Weight",
+        "source": "RDKit v2026.03.6",
+        "unit": "g/mol",
+        "value": 368.39
+      },
+      "rotatable_bonds": {
+        "description": "Rotatable single bonds",
+        "source": "RDKit v2026.03.6",
+        "unit": "count",
+        "value": 8
+      },
+      "sascore": {
+        "citation": "Ertl & Schuffenhauer, J. Cheminform. 2009",
+        "description": "Calculated Synthetic Accessibility Score (1=easy, 10=very difficult)",
+        "interpretation": "Easy synthetic accessibility",
+        "method": "Ertl & Schuffenhauer fragment-based penalty",
+        "source": "RDKit Contrib sascorer",
+        "unit": "scale 1-10",
+        "value": 2.43
+      },
+      "tpsa": {
+        "description": "Topological Polar Surface Area",
+        "source": "RDKit v2026.03.6",
+        "unit": "Å²",
+        "value": 93.06
+      }
+    }
+  }
+}

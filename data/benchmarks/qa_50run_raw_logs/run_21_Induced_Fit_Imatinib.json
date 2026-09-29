@@ -1,0 +1,14 @@
+{
+  "run_number": 21,
+  "category": "Induced_Fit",
+  "compound": "Imatinib",
+  "target": "1IEP_Abl Kinase (DFG-out textbook case)",
+  "exhaustiveness": 8,
+  "seed": 42,
+  "wall_clock_seconds": 0.552,
+  "error": null,
+  "raw_response": {
+    "error": "InducedFitService.run_induced_fit_docking() got an unexpected keyword argument 'ligand_sdf_or_pdbqt'. Did you mean 'ligand_smiles_or_pdbqt'?",
+    "http_status": 500
+  }
+}

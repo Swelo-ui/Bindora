@@ -1,0 +1,196 @@
+{
+  "run_number": 26,
+  "category": "ADME_Plausibility",
+  "compound": "Loperamide",
+  "target": "Pharmacokinetics",
+  "exhaustiveness": 0,
+  "seed": null,
+  "wall_clock_seconds": 0.023,
+  "error": null,
+  "raw_response": {
+    "drug_likeness": {
+      "ghose": {
+        "citation": "Ghose et al., J. Comb. Chem. 1999",
+        "rule": "Ghose Drug-likeness Filter",
+        "status": "Fail",
+        "violations": [
+          "MR outside 40-130 (138.0)"
+        ],
+        "violations_count": 1
+      },
+      "lipinski": {
+        "citation": "Lipinski et al., Adv. Drug Deliv. Rev. 1997",
+        "hba_value": 3,
+        "hbd_value": 1,
+        "logp_value": 5.09,
+        "mw_value": 477.05,
+        "rule": "Rule of Five (Pfizer)",
+        "status": "Pass",
+        "violations": [
+          "LogP > 5.0 (5.09)"
+        ],
+        "violations_count": 1
+      },
+      "veber": {
+        "citation": "Veber et al., J. Med. Chem. 2002",
+        "rule": "Veber Oral Bioavailability (GSK)",
+        "status": "Pass",
+        "violations": [],
+        "violations_count": 0
+      }
+    },
+    "medicinal_chemistry_safety": {
+      "brenk_alerts": {
+        "alerts": [],
+        "citation": "Brenk et al., ChemMedChem 2008",
+        "count": 0,
+        "status": "Clear"
+      },
+      "nih_alerts": {
+        "alerts": [],
+        "citation": "NIH Molecular Libraries Program Clinical Alerts",
+        "count": 0,
+        "status": "Clear"
+      },
+      "overall_status": "Clean (No alerts)",
+      "pains_alerts": {
+        "alerts": [],
+        "citation": "Baell & Holloway, J. Med. Chem. 2010",
+        "count": 0,
+        "status": "Clear"
+      },
+      "total_alerts_count": 0,
+      "zinc_alerts": {
+        "alerts": [],
+        "citation": "Irwin & Shoichet, J. Chem. Inf. Model. 2005",
+        "count": 0,
+        "status": "Clear"
+      }
+    },
+    "pharmacokinetics": {
+      "bbb_permeation": {
+        "citation": "Daina & Zoete, ChemMedChem 2016, 11, 1117-1121",
+        "model": "BOILED-Egg yolk ellipse model (WLogP & TPSA)",
+        "status": "Permeant (Likely crosses BBB)"
+      },
+      "cyp450_inhibition": {
+        "alerts": [
+          {
+            "cyp": "CYP2D6",
+            "description": "Basic nitrogen with hydrophobic aryl feature (CYP2D6 pharmacophore)",
+            "status": "Potential Inhibitor"
+          }
+        ],
+        "count": 1,
+        "disclaimer": "Exploratory SMARTS substructure heuristics — Not a validated quantitative predictor",
+        "methodology": "heuristic_smarts",
+        "status": "1 heuristic alert(s)",
+        "validated": false
+      },
+      "gi_absorption": {
+        "citation": "Daina & Zoete, ChemMedChem 2016, 11, 1117-1121",
+        "level": "High",
+        "model": "BOILED-Egg published ellipse model (WLogP & TPSA)"
+      },
+      "plasma_protein_binding": {
+        "rationale": "Extensive binding to albumin / alpha-1-acid glycoprotein driven by lipophilicity.",
+        "tier": "High (> 90%)"
+      }
+    },
+    "physicochemical": {
+      "aromatic_rings": {
+        "description": "Aromatic ring systems",
+        "source": "RDKit v2026.03.6",
+        "unit": "count",
+        "value": 3
+      },
+      "formal_charge": {
+        "description": "Net formal charge",
+        "source": "RDKit v2026.03.6",
+        "unit": "elementary charge",
+        "value": 0
+      },
+      "fsp3": {
+        "description": "Carbon saturation index (sp3 carbons / total carbons)",
+        "source": "RDKit v2026.03.6",
+        "unit": "ratio",
+        "value": 0.34
+      },
+      "h_bond_acceptors": {
+        "description": "Hydrogen Bond Acceptors (Lipinski)",
+        "source": "RDKit v2026.03.6",
+        "unit": "count",
+        "value": 3
+      },
+      "h_bond_donors": {
+        "description": "Hydrogen Bond Donors (Lipinski)",
+        "source": "RDKit v2026.03.6",
+        "unit": "count",
+        "value": 1
+      },
+      "hba": {
+        "description": "Hydrogen Bond Acceptors (Lipinski)",
+        "source": "RDKit v2026.03.6",
+        "unit": "count",
+        "value": 3
+      },
+      "hbd": {
+        "description": "Hydrogen Bond Donors (Lipinski)",
+        "source": "RDKit v2026.03.6",
+        "unit": "count",
+        "value": 1
+      },
+      "heavy_atoms": {
+        "description": "Non-hydrogen heavy atoms",
+        "source": "RDKit v2026.03.6",
+        "unit": "count",
+        "value": 34
+      },
+      "logp": {
+        "description": "Wildman-Crippen MolLogP",
+        "source": "RDKit v2026.03.6",
+        "unit": "unitless",
+        "value": 5.09
+      },
+      "metadata": {
+        "cheminformatics_engine": "RDKit v2026.03.6",
+        "hbd_hba_definition": "Lipinski standard (O/N atoms with attached H for HBD; O/N atoms for HBA)",
+        "logp_algorithm": "Wildman-Crippen (J. Chem. Inf. Comput. Sci. 1999, 39, 868-873)",
+        "tpsa_algorithm": "Prasanna & Doerksen / Ertl et al. (J. Med. Chem. 2000, 43, 3714-3717)"
+      },
+      "molar_refractivity": {
+        "description": "Molar Refractivity",
+        "source": "RDKit v2026.03.6",
+        "unit": "cm³/mol",
+        "value": 138.0
+      },
+      "molecular_weight": {
+        "description": "Molecular Weight",
+        "source": "RDKit v2026.03.6",
+        "unit": "g/mol",
+        "value": 477.05
+      },
+      "rotatable_bonds": {
+        "description": "Rotatable single bonds",
+        "source": "RDKit v2026.03.6",
+        "unit": "count",
+        "value": 7
+      },
+      "sascore": {
+        "citation": "Ertl & Schuffenhauer, J. Cheminform. 2009",
+        "description": "Calculated Synthetic Accessibility Score (1=easy, 10=very difficult)",
+        "interpretation": "Easy synthetic accessibility",
+        "method": "Ertl & Schuffenhauer fragment-based penalty",
+        "source": "RDKit Contrib sascorer",
+        "unit": "scale 1-10",
+        "value": 2.55
+      },
+      "tpsa": {
+        "description": "Topological Polar Surface Area",
+        "source": "RDKit v2026.03.6",
+        "unit": "Å²",
+        "value": 43.78
+      }
+    }
+  }
+}
