@@ -133,6 +133,73 @@ class CovalentDockingService:
     }
 
     @classmethod
+    def get_covalent_geometry_thresholds(cls) -> Dict[str, Dict[str, Any]]:
+        """
+        Return biophysically calibrated reactive trajectory and distance thresholds
+        for protein nucleophiles.
+        CYS SG thiolate: max_reactive_distance <= 3.1 A, optimal attack angle 105 deg.
+        SER OG hydroxyl: max_reactive_distance <= 3.0 A.
+        THR OG1: max_reactive_distance <= 3.0 A.
+        LYS NZ: max_reactive_distance <= 3.2 A.
+        """
+        return {
+            "CYS": {
+                "atom": "SG",
+                "element": "S",
+                "nucleophile_type": "Thiol / Thiolate",
+                "optimal_distance_angstroms": 2.8,
+                "max_reactive_distance_angstroms": 3.1,
+                "optimal_attack_angle_deg": 105.0,
+                "angle_tolerance_deg": 30.0
+            },
+            "SER": {
+                "atom": "OG",
+                "element": "O",
+                "nucleophile_type": "Hydroxyl",
+                "optimal_distance_angstroms": 2.6,
+                "max_reactive_distance_angstroms": 3.0,
+                "optimal_attack_angle_deg": 107.0,
+                "angle_tolerance_deg": 30.0
+            },
+            "THR": {
+                "atom": "OG1",
+                "element": "O",
+                "nucleophile_type": "Hydroxyl",
+                "optimal_distance_angstroms": 2.6,
+                "max_reactive_distance_angstroms": 3.0,
+                "optimal_attack_angle_deg": 107.0,
+                "angle_tolerance_deg": 30.0
+            },
+            "LYS": {
+                "atom": "NZ",
+                "element": "N",
+                "nucleophile_type": "Amine",
+                "optimal_distance_angstroms": 2.8,
+                "max_reactive_distance_angstroms": 3.2,
+                "optimal_attack_angle_deg": 110.0,
+                "angle_tolerance_deg": 30.0
+            },
+            "HIS": {
+                "atom": "NE2",
+                "element": "N",
+                "nucleophile_type": "Imidazole",
+                "optimal_distance_angstroms": 2.8,
+                "max_reactive_distance_angstroms": 3.3,
+                "optimal_attack_angle_deg": 110.0,
+                "angle_tolerance_deg": 30.0
+            },
+            "TYR": {
+                "atom": "OH",
+                "element": "O",
+                "nucleophile_type": "Phenol",
+                "optimal_distance_angstroms": 2.7,
+                "max_reactive_distance_angstroms": 3.2,
+                "optimal_attack_angle_deg": 107.0,
+                "angle_tolerance_deg": 30.0
+            }
+        }
+
+    @classmethod
     def detect_warheads(cls, mol_or_smiles: Union[Chem.Mol, str]) -> List[Dict[str, Any]]:
         """
         Scan a ligand for covalent electrophilic warheads.
@@ -490,12 +557,15 @@ class CovalentDockingService:
 
                 composite_score = round(float(dist_score * 0.65 + angle_score * 0.35), 3)
 
-                # Classify geometry
-                if composite_score >= 0.65 and dist <= 4.0:
+                # Classify geometry using nucleophile-specific calibrated thresholds
+                nuc_thresh = cls.get_covalent_geometry_thresholds().get(nuc.get("residue_name", ""), {})
+                max_reactive_d = nuc_thresh.get("max_reactive_distance_angstroms", 3.1)
+
+                if composite_score >= 0.65 and dist <= max_reactive_d:
                     geom_status = "OPTIMAL_COVALENT_GEOMETRY"
-                elif composite_score >= 0.35 and dist <= 5.2:
+                elif composite_score >= 0.35 and dist <= (max_reactive_d + 1.2):
                     geom_status = "PERMISSIVE_COVALENT_PROXIMITY"
-                elif dist <= 5.2:
+                elif dist <= (max_reactive_d + 1.2):
                     geom_status = "UNFAVORABLE_TRAJECTORY"
                 else:
                     geom_status = "DISTANT_PROXIMITY"

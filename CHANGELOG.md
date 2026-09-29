@@ -64,3 +64,11 @@ Format: `[Fix ID] What + Why + Test added`.
   (5) Added `backbone_restraint_applied: True`, `backbone_restraint_k_kcal_mol_A2: 10.0`, and `backbone_rmsd_angstroms` to both `_refine_openmm` and `refine_pose` return payloads.
 - **Why:** Absence of backbone restraints allowed GBn2 pocket minimization to distort the binding site topology, producing non-physical fold disruptions; the hardcoded seed 42 in conformer fallback violated C1/C9 determinism standards; missing hydrogen addition caused `No template found` errors on real crystal PDB inputs.
 - **Test Added:** `tests/test_audit_fixes.py::test_c11_openmm_backbone_harmonic_restraints_and_rmsd`, `test_c11_refine_pose_pipeline_carries_backbone_restraint_data`, `test_c11_refinement_dynamic_seed_no_hardcoded_42`.
+
+## [Fix C12] Covalent Warhead Geometry — Calibrated Nucleophile-Specific Trajectory Gating
+- **What:** In `backend/services/covalent.py`:
+  (1) Added `get_covalent_geometry_thresholds()` classmethod returning biophysically calibrated reactive trajectory and distance boundaries for protein nucleophiles (CYS SG thiolate $\le 3.1$ Å, SER OG hydroxyl $\le 3.0$ Å, THR OG1 $\le 3.0$ Å, LYS NZ amine $\le 3.2$ Å, HIS NE2 $\le 3.3$ Å, TYR OH $\le 3.2$ Å).
+  (2) Calibrated `evaluate_covalent_geometry` to strictly enforce nucleophile-specific `max_reactive_distance_angstroms`. Disqualified reactive pairings with pre-reaction distances exceeding this boundary (e.g. 3.5 Å for Cys SG) from being falsely labeled `OPTIMAL_COVALENT_GEOMETRY`, restricting them to `PERMISSIVE_COVALENT_PROXIMITY` or `DISTANT_PROXIMITY`.
+- **Why:** The previous flat $\le 4.0$ Å distance threshold allowed unphysical pre-reaction complexes (e.g. 3.5–4.0 Å separation from Cys SG, well beyond the 1.82 Å C-S covalent bond formation zone) to be falsely classified as optimal covalent binding poses.
+- **Test Added:** `tests/test_audit_fixes.py::test_c12_warhead_geometry_thresholds_present`, `test_c12_geometry_gating_rejects_distant_pair`, `test_c12_geometry_gating_strict_cys_cutoff_3_1_angstroms`.
+

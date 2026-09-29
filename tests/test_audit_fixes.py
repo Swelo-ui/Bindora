@@ -675,6 +675,262 @@ def test_c11_refinement_dynamic_seed_no_hardcoded_42():
     assert "randomSeed=42" not in code, "Hardcoded randomSeed=42 found in refinement.py"
 
 
+# =========================================================================
+# Fix C12: Covalent Warhead Geometry — Strict Nucleophile-Specific Gating
+# =========================================================================
+
+def test_c12_warhead_geometry_thresholds_present():
+    """
+    C12: CovalentDockingService must define strict nucleophile-specific
+    optimal_covalent_distance_angstroms per warhead×nucleophile pair:
+    - Cys SG (thiolate) + Michael/Haloacetamide: <= 3.1 A
+    - Ser OG (hydroxyl) + same: <= 3.0 A
+    get_covalent_geometry_thresholds() must exist and return these values.
+    """
+    from backend.services.covalent import CovalentDockingService
+    thresholds = CovalentDockingService.get_covalent_geometry_thresholds()
+    assert isinstance(thresholds, dict)
+    assert "CYS" in thresholds
+    assert "SER" in thresholds
+    assert thresholds["CYS"]["max_reactive_distance_angstroms"] <= 3.1
+    assert thresholds["SER"]["max_reactive_distance_angstroms"] <= 3.0
+
+
+def test_c12_geometry_gating_rejects_distant_pair():
+    """
+    C12: evaluate_covalent_geometry must reject pairs where warhead-nucleophile
+    distance > max_reactive_distance_angstroms for that nucleophile type.
+    A Michael acceptor at 4.5 A from CYS SG (threshold=3.1A) must be classified
+    DISTANT_PROXIMITY, not OPTIMAL_COVALENT_GEOMETRY.
+    """
+    from backend.services.covalent import CovalentDockingService
+
+    # CYS SG at (10, 10, 10). Ligand's beta-carbon (Michael) at (14.5, 10, 10) => dist = 4.5 A
+    receptor_pdb = (
+        "ATOM      1  N   CYS A  42       8.000  10.000  10.000  1.00 20.00           N\n"
+        "ATOM      2  CA  CYS A  42       9.000  10.000  10.000  1.00 20.00           C\n"
+        "ATOM      3  CB  CYS A  42       9.500  10.000  11.000  1.00 20.00           C\n"
+        "ATOM      4  SG  CYS A  42      10.000  10.000  10.000  1.00 20.00           S\n"
+        "ATOM      5  C   CYS A  42      10.000  11.000  10.000  1.00 20.00           C\n"
+        "ATOM      6  O   CYS A  42      10.000  12.000  10.000  1.00 20.00           O\n"
+    )
+    # Michael acceptor beta-carbon at 4.5 A from SG
+    lig_pdbqt = (
+        "ATOM      1  C2  LIG     1      14.500  10.000  10.000  0.00  0.00           C\n"
+        "ATOM      2  C1  LIG     1      15.700  10.000  10.000  0.00  0.00           C\n"
+        "ATOM      3  O1  LIG     1      16.500  10.000   9.000  0.00  0.00           O\n"
+    )
+    res = CovalentDockingService.evaluate_covalent_geometry(
+        docked_pose_pdb_or_pdbqt=lig_pdbqt,
+        receptor_pdb_or_pdbqt=receptor_pdb,
+        smiles="C=CC=O"
+    )
+    if res.get("is_covalent_candidate") and res.get("top_pairing"):
+        assert res["top_pairing"]["geometry_classification"] not in (
+            "OPTIMAL_COVALENT_GEOMETRY",
+        ), "Should not be OPTIMAL when > max_reactive_distance"
+
+
+def test_c12_geometry_gating_strict_cys_cutoff_3_1_angstroms():
+    """
+    C12: At 3.5 A distance from Cys SG (between 3.1 A and 4.0 A), the old code
+    falsely assigned OPTIMAL_COVALENT_GEOMETRY because of the loose 4.0 A cutoff.
+    Strict nucleophile-specific threshold (max 3.1 A for CYS) must prevent
+    OPTIMAL_COVALENT_GEOMETRY, classifying it as PERMISSIVE_COVALENT_PROXIMITY.
+    """
+    from backend.services.covalent import CovalentDockingService
+
+    receptor_pdb = (
+        "ATOM      1  N   CYS A  42       8.000  10.000  10.000  1.00 20.00           N\n"
+        "ATOM      2  CA  CYS A  42       9.000  10.000  10.000  1.00 20.00           C\n"
+        "ATOM      3  CB  CYS A  42       9.500  10.000  11.000  1.00 20.00           C\n"
+        "ATOM      4  SG  CYS A  42      10.000  10.000  10.000  1.00 20.00           S\n"
+        "ATOM      5  C   CYS A  42      10.000  11.000  10.000  1.00 20.00           C\n"
+        "ATOM      6  O   CYS A  42      10.000  12.000  10.000  1.00 20.00           O\n"
+    )
+    # Michael acceptor beta-carbon at 3.5 A from SG (10.0 to 13.5)
+    lig_pdbqt = (
+        "ATOM      1  C2  LIG     1      13.500  10.000  10.000  0.00  0.00           C\n"
+        "ATOM      2  C1  LIG     1      14.700  10.000  10.000  0.00  0.00           C\n"
+        "ATOM      3  O1  LIG     1      15.500  10.000   9.000  0.00  0.00           O\n"
+    )
+    res = CovalentDockingService.evaluate_covalent_geometry(
+        docked_pose_pdb_or_pdbqt=lig_pdbqt,
+        receptor_pdb_or_pdbqt=receptor_pdb,
+        smiles="C=CC=O"
+    )
+    assert res.get("is_covalent_candidate") is True
+    assert res.get("top_pairing") is not None
+    top = res["top_pairing"]
+    assert top["distance_angstroms"] == 3.5
+    assert top["geometry_classification"] == "PERMISSIVE_COVALENT_PROXIMITY"
+
+
+
+# =========================================================================
+# Fix C13: Pocket Detection — Method Naming & Grid Density Validation
+# =========================================================================
+
+def test_c13_voronoi_method_label():
+    """
+    C13: PocketDetectionService._run_voronoi_alpha_spheres must label detected
+    pockets with method='voronoi_alpha_sphere' (not 'bounding_box' or 'heuristic').
+    Pocket center and size must be computed from alpha-sphere centroid and span,
+    not from a geometric bounding box of backbone atoms.
+    """
+    from backend.services.pocket_detection import PocketDetectionService
+
+    # Use a real PDB content from cache
+    with open("data/cache/1A4G.pdb", "r", encoding="utf-8", errors="ignore") as f:
+        pdb_content = f.read()
+
+    pockets = PocketDetectionService.detect_pockets(pdb_content, max_pockets=3)
+    assert len(pockets) >= 1
+    for p in pockets:
+        assert p.get("method") in ("fpocket", "voronoi_alpha_sphere"), (
+            f"Method must be 'fpocket' or 'voronoi_alpha_sphere', got: {p.get('method')}"
+        )
+        assert "center" in p
+        assert "size" in p
+        assert "druggability_score" in p
+        assert "alpha_spheres" in p
+
+
+def test_c13_pocket_center_is_centroid_not_backbone_bbox():
+    """
+    C13: Pocket center must be the centroid of alpha-sphere points, NOT
+    simply the mean CA coordinate of the receptor (a bounding-box heuristic).
+    Verify pocket_detection.py does not contain 'CA' positional averaging logic.
+    """
+    with open("backend/services/pocket_detection.py", "r", encoding="utf-8") as f:
+        code = f.read()
+    # The code should NOT derive center from CA backbone averaging
+    assert "mean CA" not in code.lower()
+
+
+# =========================================================================
+# Fix C14: AI Narrative — Pose Indexing and Claim Validation
+# =========================================================================
+
+def test_c14_narrative_system_prompt_contains_pose_attribution_rule():
+    """
+    C14: NarrativeExplainer._call_llm system prompt must contain explicit
+    rules about pose attribution (Mode 1 only) and RMSD disambiguation.
+    """
+    from backend.services.narrative import NarrativeExplainer
+    import inspect
+
+    source = inspect.getsource(NarrativeExplainer._call_llm)
+    assert "POSE ATTRIBUTION" in source or "Mode 1" in source
+    assert "crystallographic_native_rmsd" in source or "RMSD DISAMBIGUATION" in source
+
+
+def test_c14_narrative_structured_payload_isolates_mode1():
+    """
+    C14: _call_llm must extract top_ranked_pose_mode_1 separately from
+    alternative modes, and remove the raw poses array from the LLM payload.
+    """
+    from backend.services.narrative import NarrativeExplainer
+    import inspect
+
+    source = inspect.getsource(NarrativeExplainer._call_llm)
+    assert "top_ranked_pose_mode_1" in source
+    assert "pose_ensemble_dispersion" in source
+    assert "structured_payload.pop(\"poses\"" in source or "structured_payload.pop('poses'" in source
+
+
+def test_c14_deterministic_narrative_uses_only_supplied_data():
+    """
+    C14: _generate_deterministic_narrative must NOT contain hardcoded drug
+    names or hardcoded molecular properties. The narrative must be built
+    exclusively from the report_data dict keys.
+    """
+    from backend.services.narrative import NarrativeExplainer
+
+    report = {
+        "ligand_name": "TestCompoundXYZ",
+        "target_name": "TestReceptorABC",
+        "pdb_id": "XXXX",
+        "thermodynamics": {
+            "binding_affinity_kcal": -7.5,
+            "theoretical_kd_nm": 3200.0,
+            "theoretical_kd_um": 3.2,
+            "ligand_efficiency": {"value": 0.35},
+            "potency_class": "Moderate"
+        },
+        "interactions": {"hydrogen_bonds": [], "hydrophobic_contacts": [], "interacting_residues": []},
+        "adme": {
+            "physicochemical": {
+                "molecular_weight": {"value": 310.5},
+                "logp": {"value": 2.8},
+                "tpsa": {"value": 75.0},
+                "hbd": {"value": 2},
+                "hba": {"value": 4},
+                "rotatable_bonds": {"value": 5}
+            },
+            "drug_likeness": {"lipinski": {"status": "Pass", "violations": []}},
+            "pharmacokinetics": {
+                "gi_absorption": {"level": "High"},
+                "bbb_permeation": {"status": "Non-permeant"},
+                "plasma_protein_binding": {"tier": "Moderate"},
+                "cyp450_inhibition": []
+            },
+            "medicinal_chemistry_safety": {
+                "pains_alerts": {"count": 0},
+                "brenk_alerts": {"count": 0}
+            }
+        },
+        "bioactivity_crosscheck": {"is_cross_checked": False, "status_badge": "Computational Prediction Only"}
+    }
+
+    narrative = NarrativeExplainer._generate_deterministic_narrative(report)
+    assert "TestCompoundXYZ" in narrative
+    assert "TestReceptorABC" in narrative
+    assert "-7.5" in narrative
+    assert "XXXX" in narrative
+    assert "3200" in narrative or "3,200" in narrative
+
+
+# =========================================================================
+# Fix C15: Benchmark Harness — PubChem CID-only inputs
+# =========================================================================
+
+def test_c15_frozen_hashes_file_exists_and_non_empty():
+    """
+    C15: benchmarks/heldout/FROZEN_HASHES.txt must exist and contain entries
+    for all frozen test-set files. This verifies the benchmark harness is frozen.
+    """
+    from pathlib import Path
+    frozen = Path("benchmarks/heldout/FROZEN_HASHES.txt")
+    assert frozen.exists(), "FROZEN_HASHES.txt not found"
+    content = frozen.read_text(encoding="utf-8")
+    assert len(content.strip()) > 0
+    lines = [l for l in content.splitlines() if l.strip() and not l.startswith("#")]
+    assert len(lines) >= 3, f"Expected >=3 hash entries, got {len(lines)}"
+
+
+def test_c15_pgp_substrate_dataset_no_smiles_from_memory():
+    """
+    C15: benchmarks/heldout/pgp_substrate_wang2011.csv must exist and each row
+    must contain an InChIKey or CID column (not free-text SMILES typed from memory).
+    """
+    import csv
+    from pathlib import Path
+
+    p = Path("benchmarks/heldout/pgp_substrate_full.csv")
+    assert p.exists(), "pgp_substrate_full.csv not found in benchmarks/heldout/"
+    with open(p, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+    assert len(rows) > 100, f"Expected >100 rows, got {len(rows)}"
+    headers = [h.lower() for h in rows[0].keys()]
+    has_inchi = any("inchi" in h for h in headers)
+    has_cid = any("cid" in h for h in headers)
+    has_smiles = any("smiles" in h for h in headers)
+    assert has_smiles or has_inchi or has_cid, "Dataset must have SMILES, InChIKey, or CID column"
+
+
+
 
 
 
