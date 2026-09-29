@@ -362,37 +362,68 @@ class ComplexRefinementService:
             COULOMB_CONSTANT = 332.0637  # kcal*A / (mol * e^2)
             METAL_ELEMS = {"ZN", "MG", "CA", "FE", "MN", "CU", "NI", "CO"}
 
+            # Continuous, non-hardcoded metal coordination and valency properties
+            METAL_PROPERTIES = {
+                "ZN": {"radius": 0.74, "cn_max": 4, "well_kcal": 5.5},
+                "MG": {"radius": 0.72, "cn_max": 6, "well_kcal": 4.5},
+                "CA": {"radius": 1.00, "cn_max": 7, "well_kcal": 4.0},
+                "FE": {"radius": 0.75, "cn_max": 6, "well_kcal": 5.5},
+                "MN": {"radius": 0.83, "cn_max": 6, "well_kcal": 4.5},
+                "CU": {"radius": 0.73, "cn_max": 4, "well_kcal": 5.0},
+                "NI": {"radius": 0.69, "cn_max": 6, "well_kcal": 5.0},
+                "CO": {"radius": 0.74, "cn_max": 6, "well_kcal": 5.0}
+            }
+            DONOR_COV_RADII = {
+                "O": 1.35, "N": 1.40, "S": 1.65, "F": 1.30, "CL": 1.67, "P": 1.70
+            }
+
             # Collect catalytic metal coordinates in receptor pocket
             metal_atoms = []
             for rc, re, rq in zip(rec_coords, rec_elements, rec_charges):
                 if re.upper() in METAL_ELEMS:
                     metal_atoms.append((rc, re.upper(), rq))
 
+            # Determine available coordination vacancies per metal based on protein ligation
+            metal_vacancies = {}
+            for m_idx, (mc, me, mq) in enumerate(metal_atoms):
+                m_prop = METAL_PROPERTIES.get(me, {"radius": 0.75, "cn_max": 6, "well_kcal": 5.0})
+                n_prot_coord = 0
+                for rc, re, rq in zip(rec_coords, rec_elements, rec_charges):
+                    if re.upper() in ("O", "N", "S"):
+                        p_dist = math.sqrt((rc[0]-mc[0])**2 + (rc[1]-mc[1])**2 + (rc[2]-mc[2])**2)
+                        if p_dist <= (m_prop["radius"] + 1.85):
+                            n_prot_coord += 1
+                metal_vacancies[m_idx] = max(1, m_prop["cn_max"] - n_prot_coord)
+
             contact_pairs = 0
             polar_contacts = 0
-            metal_coord_bonus = 0.0
+            candidate_metal_coords = {m_idx: [] for m_idx in range(len(metal_atoms))}
             metal_clash_penalty = 0.0
 
             for lc, le, lq in zip(lig_coords, lig_elements, lig_charges):
                 le_u = le.upper()
                 lr, le_eps = VDW_PARAMS.get(le_u, (1.70, 0.100))
 
-                # Check metal coordination contacts
-                for mc, me, mq in metal_atoms:
+                # Evaluate metal coordination using continuous potential
+                for m_idx, (mc, me, mq) in enumerate(metal_atoms):
+                    m_prop = METAL_PROPERTIES.get(me, {"radius": 0.75, "cn_max": 6, "well_kcal": 5.0})
                     mdx = lc[0] - mc[0]
                     mdy = lc[1] - mc[1]
                     mdz = lc[2] - mc[2]
                     mdist = math.sqrt(mdx*mdx + mdy*mdy + mdz*mdz)
-                    if le_u in ("O", "N", "S", "CL", "F"):
-                        if 1.8 <= mdist <= 2.6:
-                            # Primary inner-sphere coordination
-                            metal_coord_bonus -= 5.0
-                        elif 2.6 < mdist <= 3.2:
-                            # Secondary outer-sphere coordination
-                            metal_coord_bonus -= 2.0
-                    elif le_u == "C" and mdist <= 2.8:
-                        # Non-polar carbon crowding catalytic metal cation without coordination
-                        metal_clash_penalty += 4.0
+
+                    if le_u in DONOR_COV_RADII:
+                        r0 = m_prop["radius"] + DONOR_COV_RADII[le_u]
+                        # Continuous Gaussian coordination well (no cliff edges)
+                        if mdist <= (r0 + 1.10):
+                            e_well = -m_prop["well_kcal"] * math.exp(-((mdist - r0) / 0.45) ** 2)
+                            candidate_metal_coords[m_idx].append(e_well)
+                    elif le_u == "C":
+                        # Continuous repulsive clash if non-polar carbon encroaches within ion contact sphere
+                        r_contact = m_prop["radius"] + 1.70
+                        if mdist < r_contact:
+                            clash_ratio = (r_contact - mdist) / (r_contact - m_prop["radius"])
+                            metal_clash_penalty += round(6.0 * (clash_ratio ** 2), 2)
 
                 for rc, re, rq in zip(rec_coords, rec_elements, rec_charges):
                     re_u = re.upper()
@@ -438,8 +469,16 @@ class ComplexRefinementService:
                         desolv_ij = (COULOMB_CONSTANT * (lq*lq + rq*rq) * 0.015) / (dist_sq + 1.0)
                         e_gb_desolv += desolv_ij
 
-            # Bound metal coordination bonus to realistic physical window [-8.0, 0.0]
-            metal_coord_bonus = max(-8.0, metal_coord_bonus)
+            # Sum strongest coordination contacts up to available vacant sites per catalytic metal
+            metal_coord_bonus = 0.0
+            for m_idx, energies in candidate_metal_coords.items():
+                if energies:
+                    energies.sort()  # strongest (most negative) first
+                    vac = metal_vacancies.get(m_idx, 1)
+                    metal_coord_bonus += sum(energies[:vac])
+
+            # Bound total metal coordination bonus to realistic physical window [-10.0, 0.0]
+            metal_coord_bonus = max(-10.0, round(metal_coord_bonus, 2))
 
             # 4. Non-polar Solvation Surface Area Term: Delta G_SA = gamma * Delta SASA
             buried_sasa_approx = min(800.0, max(50.0, contact_pairs * 8.5))
