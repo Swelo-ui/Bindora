@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
+from werkzeug.exceptions import HTTPException, BadRequest
 
 from backend.config import (
     BASE_DIR, FRONTEND_DIR, BENCHMARKS_DIR, VINA_EXE, HOST, PORT, DEBUG,
@@ -39,13 +40,42 @@ hw_sampler = HardwareTelemetrySampler.get_instance()
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
-# Error handler for payload too large
-@app.errorhandler(413)
-def payload_too_large(e):
-    return jsonify({
-        "error": "Payload too large",
-        "message": f"Request size exceeds maximum allowed size of {MAX_CONTENT_LENGTH / (1024*1024):.0f} MB"
-    }), 413
+# Standardized structured JSON error handlers for API endpoints
+@app.errorhandler(HTTPException)
+def handle_http_exception(e):
+    if request.path.startswith("/api/"):
+        return jsonify({
+            "error": e.description,
+            "status": e.code
+        }), e.code
+    return e.get_response()
+
+@app.errorhandler(Exception)
+def handle_generic_exception(e):
+    if request.path.startswith("/api/"):
+        traceback.print_exc()
+        return jsonify({
+            "error": f"Internal server error: {str(e)}",
+            "status": 500
+        }), 500
+    raise e
+
+def get_request_json() -> dict:
+    """Safely parse request JSON body as a dictionary. Raises BadRequest (400) if malformed or non-dict."""
+    if request.content_length and request.content_length > 0:
+        try:
+            data = request.get_json(force=False, silent=False)
+        except Exception as e:
+            raise BadRequest(f"Malformed JSON payload: {str(e)}")
+    else:
+        data = request.get_json(silent=True)
+    
+    if data is None:
+        data = {}
+    if not isinstance(data, dict):
+        raise BadRequest("Request JSON payload must be a JSON object (dictionary)")
+    return data
+
 
 # Ensure Vina binary is ready on startup
 try:
@@ -237,7 +267,7 @@ def search_rcsb():
 
 @app.route("/api/structure/ligand", methods=["POST"])
 def prepare_ligand():
-    data = request.get_json() or {}
+    data = get_request_json()
     smiles_or_sdf = data.get("structure", "").strip()
     is_sdf = data.get("is_sdf", False)
     
@@ -261,7 +291,7 @@ def prepare_ligand():
 
 @app.route("/api/structure/receptor", methods=["POST"])
 def prepare_receptor():
-    data = request.get_json() or {}
+    data = get_request_json()
     pdb_content = data.get("pdb_content", "")
     pdb_id = data.get("pdb_id", "")
     target_chain = data.get("target_chain")
@@ -292,7 +322,7 @@ def prepare_receptor():
 
 @app.route("/api/docking/run", methods=["POST"])
 def run_docking():
-    data = request.get_json() or {}
+    data = get_request_json()
     receptor_pdbqt = data.get("receptor_pdbqt")
     ligand_pdbqt = data.get("ligand_pdbqt")
     receptor_pdb = data.get("receptor_pdb")
@@ -313,8 +343,20 @@ def run_docking():
     else:
         seed = None
 
-    num_modes = int(data.get("num_modes", 9))
-    replicates = int(data.get("replicates", 1))
+    try:
+        num_modes = int(data.get("num_modes", 9))
+        if num_modes < 1 or num_modes > 50:
+            num_modes = 9
+    except (ValueError, TypeError):
+        num_modes = 9
+
+    try:
+        replicates = int(data.get("replicates", 1))
+        if replicates < 1 or replicates > 10:
+            replicates = 1
+    except (ValueError, TypeError):
+        replicates = 1
+
     smiles = data.get("smiles", "")
     lig_mol = None
     if smiles:
@@ -450,10 +492,12 @@ def run_docking():
 
 @app.route("/api/docking/classify-experiment", methods=["POST"])
 def classify_experiment_endpoint():
-    data = request.get_json() or {}
+    data = get_request_json()
     smiles = data.get("smiles", "")
     native_ligand_info = data.get("native_ligand_info")
     ligand_name = data.get("ligand_name", "")
+    if not smiles and not native_ligand_info and not ligand_name:
+        return jsonify({"error": "Missing ligand SMILES, name, or native_ligand_info"}), 400
     try:
         classification = DockingEngine.classify_docking_experiment(
             docked_smiles=smiles,
@@ -462,11 +506,11 @@ def classify_experiment_endpoint():
         )
         return jsonify(classification)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Experiment classification failed: {str(e)}"}), 400
 
 @app.route("/api/docking/analyze-interactions", methods=["POST"])
 def analyze_interactions_endpoint():
-    data = request.get_json() or {}
+    data = get_request_json()
     receptor_pdb = data.get("receptor_pdb", "")
     pose_pdbqt = data.get("pose_pdbqt", "")
     smiles = data.get("smiles", "")
@@ -483,25 +527,27 @@ def analyze_interactions_endpoint():
                 pass
         return jsonify(contacts)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Interaction analysis failed: {str(e)}"}), 400
 
 @app.route("/api/docking/interaction-diagram", methods=["POST"])
 def get_interaction_diagram():
-    data = request.get_json() or {}
+    data = get_request_json()
     smiles = data.get("smiles", "")
     interactions = data.get("interactions", {})
     if not smiles or not interactions:
         return jsonify({"error": "Missing 'smiles' or 'interactions' in request body"}), 400
+    if not isinstance(interactions, dict):
+        return jsonify({"error": "'interactions' must be a dictionary"}), 400
     try:
         from backend.services.interaction_diagram import InteractionDiagramGenerator
         svg = InteractionDiagramGenerator.generate_diagram_svg(smiles, interactions)
         return jsonify({"diagram_svg": svg})
     except Exception as e:
-        return jsonify({"error": f"Failed to generate diagram: {str(e)}"}), 500
+        return jsonify({"error": f"Failed to generate diagram: {str(e)}"}), 400
 
 @app.route("/api/docking/refine", methods=["POST"])
 def refine_docked_pose():
-    data = request.get_json() or {}
+    data = get_request_json()
     receptor_pdb = data.get("receptor_pdb", "")
     docked_pdb = data.get("docked_pdb", "")
     smiles = data.get("smiles", "")
@@ -518,11 +564,11 @@ def refine_docked_pose():
         )
         return jsonify(refinement_result)
     except Exception as e:
-        return jsonify({"error": f"Pose refinement failed: {str(e)}"}), 500
+        return jsonify({"error": f"Pose refinement failed: {str(e)}"}), 400
 
 @app.route("/api/docking/redock-validate", methods=["POST"])
 def redock_validate():
-    data = request.get_json() or {}
+    data = get_request_json()
     receptor_pdbqt = data.get("receptor_pdbqt")
     native_ligand_pdb = data.get("native_ligand_pdb")
     center = data.get("center")
@@ -537,8 +583,15 @@ def redock_validate():
     if not receptor_pdbqt or not native_ligand_pdb or not center or not size:
         return jsonify({"error": "Missing required parameters for redocking validation (receptor_pdbqt, native_ligand_pdb, center, size)"}), 400
 
+    grid_val = validate_grid_box(center, size)
+    if not grid_val.valid:
+        return jsonify({"error": grid_val.error, "field": "grid_box"}), 400
+
     raw_seed = data.get("seed")
-    seed = int(raw_seed) if raw_seed is not None else None
+    try:
+        seed = int(raw_seed) if raw_seed is not None else None
+    except (ValueError, TypeError):
+        seed = None
 
     global _is_docking_active
     _is_docking_active = True
@@ -554,7 +607,7 @@ def redock_validate():
         return jsonify(validation_result)
     except Exception as e:
         traceback.print_exc()
-        return jsonify({"error": f"Redocking validation failed: {str(e)}"}), 500
+        return jsonify({"error": f"Redocking validation failed: {str(e)}"}), 400
     finally:
         _is_docking_active = False
 
@@ -585,7 +638,7 @@ def get_hardware_info():
 
 @app.route("/api/docking/interactions", methods=["POST"])
 def analyze_interactions():
-    data = request.get_json() or {}
+    data = get_request_json()
     receptor_pdb = data.get("receptor_pdb", "")
     pose_pdbqt = data.get("pose_pdbqt", "")
     
@@ -593,7 +646,11 @@ def analyze_interactions():
         return jsonify({"error": "Both receptor_pdb and pose_pdbqt are required"}), 400
 
     try:
-        smiles = data.get("smiles", "").strip()
+        smiles = data.get("smiles", "")
+        if isinstance(smiles, str):
+            smiles = smiles.strip()
+        else:
+            smiles = ""
         lig_mol = Chem.MolFromSmiles(smiles) if smiles else None
         contacts = DockingEngine.analyze_interactions(receptor_pdb, pose_pdbqt, ligand_mol=lig_mol)
         if smiles:
@@ -607,9 +664,14 @@ def analyze_interactions():
         return jsonify({"error": f"Interaction analysis failed: {str(e)}"}), 400
 
 @app.route("/api/pkpd/adme", methods=["POST"])
+@app.route("/api/adme/profile", methods=["POST"])
 def calculate_adme():
-    data = request.get_json() or {}
-    smiles = data.get("smiles", "").strip()
+    data = get_request_json()
+    smiles = data.get("smiles", "")
+    if isinstance(smiles, str):
+        smiles = smiles.strip()
+    else:
+        smiles = ""
     if not smiles:
         return jsonify({"error": "SMILES string is required"}), 400
     
@@ -633,11 +695,12 @@ def crosscheck_bioactivity():
 
 @app.route("/api/narrative/explain", methods=["POST", "GET"])
 @app.route("/api/explain/narrative", methods=["POST", "GET"])
+@app.route("/api/narrative", methods=["POST", "GET"])
 def explain_results():
     if request.method == "GET":
         data = request.args.to_dict()
     else:
-        data = request.get_json(silent=True) or {}
+        data = get_request_json()
     api_key = data.get("api_key")
     provider = data.get("provider", "auto")
     
@@ -646,13 +709,16 @@ def explain_results():
 
 @app.route("/api/batch/start", methods=["POST"])
 def start_batch_docking():
-    data = request.get_json() or {}
+    data = get_request_json()
     receptor_pdbqt = data.get("receptor_pdbqt")
     receptor_pdb = data.get("receptor_pdb")
     center = data.get("center")
     size = data.get("size")
     ligands = data.get("ligands", [])
-    exhaustiveness = int(data.get("exhaustiveness", 4))
+    try:
+        exhaustiveness = int(data.get("exhaustiveness", 4))
+    except (ValueError, TypeError):
+        exhaustiveness = 4
 
     if not receptor_pdbqt or not receptor_pdb or not center or not size or not ligands:
         return jsonify({"error": "Missing required batch parameters"}), 400
@@ -688,17 +754,30 @@ def cancel_batch_docking(job_id):
     return jsonify({"cancelled": ok, "job_id": job_id})
 
 @app.route("/api/batch/run", methods=["POST"])
+@app.route("/api/batch-screen", methods=["POST"])
 def batch_docking():
-    data = request.get_json() or {}
+    data = get_request_json()
     receptor_pdbqt = data.get("receptor_pdbqt")
     receptor_pdb = data.get("receptor_pdb")
     center = data.get("center")
     size = data.get("size")
     ligands = data.get("ligands", [])
-    exhaustiveness = int(data.get("exhaustiveness", 4))
+    try:
+        exhaustiveness = int(data.get("exhaustiveness", 4))
+        if exhaustiveness < 1 or exhaustiveness > 64:
+            exhaustiveness = 4
+    except (ValueError, TypeError):
+        exhaustiveness = 4
 
     if not receptor_pdbqt or not receptor_pdb or not center or not size or not ligands:
-        return jsonify({"error": "Missing required batch parameters"}), 400
+        return jsonify({"error": "Missing required batch parameters (receptor_pdbqt, receptor_pdb, center, size, ligands)"}), 400
+
+    if not isinstance(ligands, list) or len(ligands) == 0:
+        return jsonify({"error": "Parameter 'ligands' must be a non-empty list"}), 400
+
+    grid_val = validate_grid_box(center, size)
+    if not grid_val.valid:
+        return jsonify({"error": grid_val.error, "field": "grid_box"}), 400
 
     global _is_docking_active
     _is_docking_active = True
@@ -713,7 +792,7 @@ def batch_docking():
         )
         return jsonify({"leaderboard": leaderboard, "total_screened": len(leaderboard)})
     except Exception as e:
-        return jsonify({"error": f"Batch docking failed: {str(e)}"}), 500
+        return jsonify({"error": f"Batch docking failed: {str(e)}"}), 400
     finally:
         _is_docking_active = False
 
@@ -727,10 +806,17 @@ def get_ensemble_structures():
 
 @app.route("/api/ensemble/run", methods=["POST"])
 def run_ensemble():
-    data = request.get_json() or {}
+    data = get_request_json()
     pdb_ids = data.get("pdb_ids", [])
-    ligand_smiles = data.get("ligand_smiles", "").strip()
-    exhaustiveness = int(data.get("exhaustiveness", 4))
+    ligand_smiles = data.get("ligand_smiles", "")
+    if isinstance(ligand_smiles, str):
+        ligand_smiles = ligand_smiles.strip()
+    else:
+        ligand_smiles = ""
+    try:
+        exhaustiveness = int(data.get("exhaustiveness", 4))
+    except (ValueError, TypeError):
+        exhaustiveness = 4
 
     if not pdb_ids or not ligand_smiles:
         return jsonify({"error": "Missing 'pdb_ids' or 'ligand_smiles' in request body"}), 400
@@ -771,7 +857,7 @@ def get_pharmacophore_actives():
 
 @app.route("/api/pharmacophore/screen", methods=["POST"])
 def screen_pharmacophore():
-    data = request.get_json() or {}
+    data = get_request_json()
     candidates = data.get("candidates", [])
     consensus_profile = data.get("consensus_profile")
 
@@ -799,10 +885,14 @@ def screen_pharmacophore():
 @app.route("/api/covalent/evaluate", methods=["POST"])
 def evaluate_covalent():
     """Evaluate covalent binding feasibility for an electrophilic ligand against receptor nucleophiles."""
-    data = request.get_json() or {}
+    data = get_request_json()
     docked_pose = data.get("docked_pose_pdbqt") or data.get("docked_pose_pdb", "")
     receptor = data.get("receptor_pdbqt") or data.get("receptor_pdb", "")
-    smiles = data.get("smiles", "").strip() or None
+    smiles = data.get("smiles", "")
+    if isinstance(smiles, str):
+        smiles = smiles.strip() or None
+    else:
+        smiles = None
     pocket_center = data.get("pocket_center")
 
     if not docked_pose or not receptor:
@@ -820,11 +910,24 @@ def evaluate_covalent():
 @app.route("/api/macrocycle/sample", methods=["POST"])
 def sample_macrocycle():
     """Sample conformational ensemble for macrocycle using srETKDGv3 and MMFF94."""
-    data = request.get_json() or {}
-    smiles = data.get("smiles", "").strip()
-    num_confs = int(data.get("num_confs", 20))
-    energy_window = float(data.get("energy_window", 15.0))
-    rmsd_threshold = float(data.get("rmsd_threshold", 0.5))
+    data = get_request_json()
+    smiles = data.get("smiles", "")
+    if isinstance(smiles, str):
+        smiles = smiles.strip()
+    else:
+        smiles = ""
+    try:
+        num_confs = int(data.get("num_confs", 20))
+    except (ValueError, TypeError):
+        num_confs = 20
+    try:
+        energy_window = float(data.get("energy_window", 15.0))
+    except (ValueError, TypeError):
+        energy_window = 15.0
+    try:
+        rmsd_threshold = float(data.get("rmsd_threshold", 0.5))
+    except (ValueError, TypeError):
+        rmsd_threshold = 0.5
 
     if not smiles:
         return jsonify({"error": "Missing 'smiles' in request body"}), 400
@@ -851,18 +954,25 @@ def sample_macrocycle():
             "relative_energies_kcal": result["relative_energies_kcal"]
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}), 400
 
 @app.route("/api/openmm/export", methods=["POST"])
 def export_openmm_script():
     """Generate standalone OpenMM explicit-solvent MD simulation package & MM-PBSA script."""
-    data = request.get_json() or {}
+    data = get_request_json()
     receptor_pdb = data.get("receptor_pdb", "")
     docked_pose = data.get("docked_pose_pdbqt") or data.get("docked_pose_pdb", "")
     output_dir = data.get("output_dir", "")
-    smiles = data.get("smiles", "").strip() or None
+    smiles = data.get("smiles", "")
+    if isinstance(smiles, str):
+        smiles = smiles.strip() or None
+    else:
+        smiles = None
     job_name = data.get("job_name", "bindora_complex_md")
-    sim_time_ns = float(data.get("sim_time_ns", 1.0))
+    try:
+        sim_time_ns = float(data.get("sim_time_ns", 1.0))
+    except (ValueError, TypeError):
+        sim_time_ns = 1.0
 
     if not receptor_pdb or not docked_pose:
         return jsonify({"error": "Missing 'receptor_pdb' or 'docked_pose_pdbqt'/'docked_pose_pdb'"}), 400
@@ -897,7 +1007,7 @@ def pdbbind_benchmark():
             "complexes": ref_data
         })
     else:
-        data = request.get_json() or {}
+        data = get_request_json()
         predictions = data.get("predictions", [])
         if not predictions:
             return jsonify({"error": "Missing 'predictions' array in request body"}), 400
@@ -905,21 +1015,47 @@ def pdbbind_benchmark():
         return jsonify(result)
 
 @app.route("/api/docking/induced-fit", methods=["POST"])
+@app.route("/api/induced-fit", methods=["POST"])
 def run_induced_fit():
     """Execute Monte Carlo loop and backbone phi/psi induced-fit docking (IFD)."""
-    data = request.get_json() or {}
+    data = get_request_json()
     receptor_pdb = data.get("receptor_pdb", "")
     ligand_sdf_or_pdbqt = data.get("ligand", "") or data.get("ligand_sdf_or_pdbqt", "") or data.get("ligand_smiles", "")
     pocket_center = data.get("center", {})
     pocket_size = data.get("size", {})
-    exhaustiveness = int(data.get("exhaustiveness", 8))
-    loop_radius = float(data.get("loop_radius", 8.5))
-    num_iterations = int(data.get("num_iterations", 5))
+    try:
+        exhaustiveness = int(data.get("exhaustiveness", 8))
+        if exhaustiveness < 1 or exhaustiveness > 64:
+            exhaustiveness = 8
+    except (ValueError, TypeError):
+        exhaustiveness = 8
+
+    try:
+        loop_radius = float(data.get("loop_radius", 8.5))
+        if loop_radius <= 0 or loop_radius > 50.0:
+            loop_radius = 8.5
+    except (ValueError, TypeError):
+        loop_radius = 8.5
+
+    try:
+        num_iterations = int(data.get("num_iterations", 5))
+        if num_iterations < 1 or num_iterations > 50:
+            num_iterations = 5
+    except (ValueError, TypeError):
+        num_iterations = 5
+
     raw_seed = data.get("seed")
-    seed = int(raw_seed) if raw_seed is not None else None
+    try:
+        seed = int(raw_seed) if raw_seed is not None else None
+    except (ValueError, TypeError):
+        seed = None
 
     if not receptor_pdb or not ligand_sdf_or_pdbqt or not pocket_center or not pocket_size:
         return jsonify({"error": "Missing required fields (receptor_pdb, ligand, center, size)"}), 400
+
+    grid_val = validate_grid_box(pocket_center, pocket_size)
+    if not grid_val.valid:
+        return jsonify({"error": grid_val.error, "field": "grid_box"}), 400
 
     from backend.services.induced_fit import InducedFitService
     try:
@@ -935,12 +1071,12 @@ def run_induced_fit():
         )
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Induced-fit docking failed: {str(e)}"}), 400
 
 @app.route("/api/covalent/build-adduct", methods=["POST"])
 def build_covalent_adduct():
     """Build physical covalent adduct complex with bidirectional CONECT records."""
-    data = request.get_json() or {}
+    data = get_request_json()
     receptor_pdb = data.get("receptor_pdb", "")
     ligand_pose_pdbqt = data.get("pose_pdbqt", "")
     warhead_type = data.get("warhead_type", None)

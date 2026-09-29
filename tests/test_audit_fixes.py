@@ -70,3 +70,66 @@ def test_c2_app_endpoint_parse_failure_returns_400():
     data = res.get_json()
     assert "error" in data
     assert data.get("heavy_atoms") is None
+
+
+# =========================================================================
+# Fix C3: Endpoint Validation and Error Handling
+# =========================================================================
+
+C3_TARGET_ENDPOINTS = [
+    "/api/docking/run",
+    "/api/docking/classify-experiment",
+    "/api/docking/analyze-interactions",
+    "/api/docking/interaction-diagram",
+    "/api/docking/refine",
+    "/api/docking/redock-validate",
+    "/api/adme/profile",
+    "/api/induced-fit",
+    "/api/batch-screen",
+    "/api/narrative"
+]
+
+def test_c3_endpoint_aliases_exist():
+    """C3: Aliases for ADME, induced-fit, batch screening, and narrative must exist and accept POST."""
+    from backend.app import app
+    client = app.test_client()
+    for ep in ["/api/adme/profile", "/api/induced-fit", "/api/batch-screen", "/api/narrative"]:
+        res = client.post(ep, json={})
+        assert res.status_code in [400, 422, 200], f"Endpoint {ep} returned unexpected status {res.status_code}"
+        assert res.is_json, f"Endpoint {ep} did not return JSON"
+
+def test_c3_invalid_json_syntax_returns_400_not_500():
+    """C3: Malformed JSON syntax must return HTTP 400/422 with structured JSON error, never 500 or HTML."""
+    from backend.app import app
+    client = app.test_client()
+    for ep in C3_TARGET_ENDPOINTS:
+        res = client.post(ep, data="{invalid_json_syntax", content_type="application/json")
+        assert res.status_code in [400, 422], f"Endpoint {ep} returned {res.status_code} for invalid JSON"
+        assert res.is_json, f"Endpoint {ep} returned HTML or non-JSON for invalid JSON"
+        data = res.get_json()
+        assert "error" in data, f"Endpoint {ep} missing 'error' in response"
+
+def test_c3_non_dict_json_returns_400_not_500():
+    """C3: Non-dictionary JSON payload (e.g. array) must return HTTP 400/422 with structured JSON, never 500."""
+    from backend.app import app
+    client = app.test_client()
+    for ep in C3_TARGET_ENDPOINTS:
+        res = client.post(ep, json=[1, 2, 3])
+        assert res.status_code in [400, 422], f"Endpoint {ep} returned {res.status_code} for list JSON payload"
+        assert res.is_json, f"Endpoint {ep} returned HTML or non-JSON for list JSON payload"
+        data = res.get_json()
+        assert "error" in data, f"Endpoint {ep} missing 'error' in response"
+
+def test_c3_empty_or_missing_parameters_return_400():
+    """C3: Empty or missing required parameters must return HTTP 400/422 with structured error, never 500."""
+    from backend.app import app
+    client = app.test_client()
+    for ep in C3_TARGET_ENDPOINTS:
+        res = client.post(ep, json={})
+        # Note: /api/narrative might return 200 with default fallback or 400; all others require parameters
+        assert res.status_code in [200, 400, 422], f"Endpoint {ep} returned {res.status_code}"
+        assert res.is_json, f"Endpoint {ep} did not return JSON"
+        if res.status_code in [400, 422]:
+            data = res.get_json()
+            assert "error" in data, f"Endpoint {ep} error response missing 'error' field"
+
