@@ -1,0 +1,10 @@
+{
+  "name": "Wang_2011_Pgp_Substrate",
+  "description": "P-glycoprotein (ABCB1 / MDR1) active efflux substrate classification dataset",
+  "citation": "Wang, Z. et al. (2011), 'P-glycoprotein substrate models using support vector machines based on a comprehensive data set', J. Chem. Inf. Model. 51(6):1447-1456",
+  "doi": "10.1021/ci200057d",
+  "license": "Apache License 2.0 (datagrok-ai/admetica repository)",
+  "source_url": "https://raw.githubusercontent.com/datagrok-ai/admetica/main/ADMET/absorption/pgp-substrate/pgp-substrate.csv",
+  "label_definition": "Binary active efflux substrate status: 1 = Substrate (actively transported by ABCB1), 0 = Non-substrate",
+  "raw_file_sha256": "e91953beecc60c416d6ed4975d11e2b58179162284aeed8f49a7e4ee1fd0d9c4"
+}

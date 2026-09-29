@@ -1,0 +1,66 @@
+query_name,pubchem_cid,pubchem_title,ground_truth,family,rdkit_hit,rdkit_raw_matches,smiles,inchikey
+5-benzylidenerhodanine,1273210,5-Benzylidenerhodanine,1,ene_rhod_A,1,ene_rhod_A(235),C1=CC=C(C=C1)C=C2C(=O)NC(=S)S2,OONWCXLYKDWKOU-VURMDHGXSA-N
+4-dimethylaminobenzylidenerhodanine,1273211,4-Dimethylaminobenzylidenerhodanine,1,ene_rhod_A,1,anil_di_alk_B(251); ene_rhod_A(235),CN(C)C1=CC=C(C=C1)C=C2C(=O)NC(=S)S2,JJRVRELEASDUMY-JXMROGBWSA-N
+5-(4-chlorobenzylidene)rhodanine,1380234,5-(4-Chlorobenzylidene)rhodanine,1,ene_rhod_A,1,ene_rhod_A(235),C1=CC(=CC=C1C=C2C(=O)NC(=S)S2)Cl,HIWUQEXWRIIIKB-YVMONPNESA-N
+epalrestat,1549120,Epalrestat,1,ene_rhod_A,1,ene_rhod_A(235),CC(=CC1=CC=CC=C1)C=C2C(=O)N(C(=S)S2)CC(=O)O,CHNUOJQWGUIOLD-NFZZJPOKSA-N
+rhodanine,1201546,Rhodanine,1,rhodanine,1,rhod_sat_A(33),C1C(=O)NC(=S)S1,KIWUVOGUEXMXSV-UHFFFAOYSA-N
+pyrogallol,1057,Pyrogallol,1,catechol_A,1,catechol_A(92),C1=CC(=C(C(=C1)O)O)O,WQGWDDDVZFFDIG-UHFFFAOYSA-N
+catechol,289,Catechol,1,catechol_A,1,catechol_A(92),C1=CC=C(C(=C1)O)O,YCIMNLLNPGFGHC-UHFFFAOYSA-N
+gallic acid,370,Gallic Acid,1,catechol_A,1,catechol_A(92),C1=C(C=C(C(=C1O)O)O)C(=O)O,LNTHITQWFMADLM-UHFFFAOYSA-N
+dopamine,681,Dopamine,1,catechol_A,1,catechol_A(92),C1=CC(=C(C=C1CCN)O)O,VYFYYTLLBUKUHU-UHFFFAOYSA-N
+epinephrine,5816,Epinephrine,1,catechol_A,1,catechol_A(92),CNCC(C1=CC(=C(C=C1)O)O)O,UCTWMZQNUQWSLP-VIFPVBQESA-N
+"1,4-naphthoquinone",8530,"1,4-Naphthoquinone",1,quinone_A,1,quinone_A(370),C1=CC=C2C(=O)C=CC(=O)C2=C1,FRASJONUBLZVQX-UHFFFAOYSA-N
+menadione,4055,Menadione,1,quinone_A,1,quinone_A(370),CC1=CC(=O)C2=CC=CC=C2C1=O,MJVAVZPDRWSRRC-UHFFFAOYSA-N
+juglone,3806,Juglone,1,quinone_A,1,quinone_A(370),C1=CC2=C(C(=O)C=CC2=O)C(=C1)O,KQPYUDDGWXQXHS-UHFFFAOYSA-N
+plumbagin,10205,Plumbagin,1,quinone_A,1,quinone_A(370); ene_one_D(1),CC1=CC(=O)C2=C(C1=O)C=CC=C2O,VCMMXZQDRFWYSE-UHFFFAOYSA-N
+"1,4-benzoquinone",4650,Quinone,1,quinone_A,1,quinone_A(370),C1=CC(=O)C=CC1=O,AZQWKYJCGOJGHM-UHFFFAOYSA-N
+salicylaldehyde phenylhydrazone,135401296,Salicylaldehyde phenylhydrazone,1,hzone_phenol_A,1,hzone_phenol_A(479),C1=CC=C(C=C1)NN=CC2=CC=CC=C2O,SERARPRVBWDEBA-GXDHUFHOSA-N
+salicylaldehyde thiosemicarbazone,135423926,Salicylaldehyde Thiosemicarbazone,1,hzone_phenol_A,1,hzone_phenol_A(479),C1=CC=C(C(=C1)C=NNC(=S)N)O,OHNSRYBTSVDDKA-BJMVGYQFSA-N
+5-benzylidenebarbituric acid,241129,5-Benzylidenebarbituric acid,1,keto_barbiturate_A,1,ene_six_het_A(483),C1=CC=C(C=C1)C=C2C(=O)NC(=O)NC2=O,CMWDWOZYVQQAMI-UHFFFAOYSA-N
+5-cinnamylidenebarbituric acid,727420,5-Cinnamylidenebarbituric acid,1,keto_barbiturate_A,1,ene_six_het_A(483),C1=CC=C(C=C1)C=CC=C2C(=O)NC(=O)NC2=O,CRQHPZFBGAKYRX-QPJJXVBHSA-N
+alpha-cyano-4-hydroxycinnamic acid,2102,Alpha-Cyano-4-Hydroxycinnamic Acid,1,ene_cyano_A,0,,C1=CC(=CC=C1C=C(C#N)C(=O)O)O,AFVLVVWMAFSXCK-UHFFFAOYSA-N
+tyrphostin A23,2052,Tyrphostin 23,1,ene_cyano_A,1,catechol_A(92); ene_cyano_A(19),C1=CC(=C(C=C1C=C(C#N)C#N)O)O,VTJXFTPMFYAJJU-UHFFFAOYSA-N
+tyrphostin AG 490,5328779,AG-490,1,ene_cyano_A,1,catechol_A(92),C1=CC=C(C=C1)CNC(=O)C(=CC2=CC(=C(C=C2)O)O)C#N,TUCIOBMMDDOEMM-RIYZIHGNSA-N
+4-(dimethylamino)benzaldehyde,7479,4-(Dimethylamino)Benzaldehyde,1,anil_di_alk_B,0,,CN(C)C1=CC=C(C=C1)C=O,BGNGWHSBYQYVRX-UHFFFAOYSA-N
+crystal violet,11057,Crystal Violet,1,anil_di_alk_A,1,anil_di_alk_B(251),CN(C)C1=CC=C(C=C1)C(=C2C=CC(=[N+](C)C)C=C2)C3=CC=C(C=C3)N(C)C.[Cl-],ZXJXZNDDNMQXFV-UHFFFAOYSA-M
+methyl orange,23673835,C.I. Acid Orange 52,1,azo_A,1,anil_di_alk_A(478); azo_A(324),CN(C)C1=CC=C(C=C1)N=NC2=CC=C(C=C2)S(=O)(=O)[O-].[Na+],STZCRXQWRGQSJD-UHFFFAOYSA-M
+sudan I,13297,1-(Phenylazo)-2-naphthol,1,azo_A,1,azo_A(324),C1=CC=C(C=C1)N=NC2=C(C=CC3=CC=CC=C32)O,MRQIXHXHHPWVIL-UHFFFAOYSA-N
+phenazopyridine,4756,Phenazopyridine,1,azo_A,1,azo_A(324),C1=CC=C(C=C1)N=NC2=C(N=C(C=C2)N)N,QPFYXYFORQJZEC-UHFFFAOYSA-N
+curcumin,969516,Curcumin,1,curcuminoid,0,,COC1=C(C=CC(=C1)C=CC(=O)CC(=O)C=CC2=CC(=C(C=C2)O)OC)O,VFLDPWHFBUODDF-FCXRPNKRSA-N
+demethoxycurcumin,5469424,Demethoxycurcumin,1,curcuminoid,0,,COC1=C(C=CC(=C1)C=CC(=O)CC(=O)C=CC2=CC=C(C=C2)O)O,HJTVQHVGMGKONQ-LUZURFALSA-N
+bisdemethoxycurcumin,5315472,Bisdemethoxycurcumin,1,curcuminoid,0,,C1=CC(=CC=C1C=CC(=O)CC(=O)C=CC2=CC=C(C=C2)O)O,PREBVFJICNPEKM-YDWXAUTNSA-N
+chalcone,637760,Chalcone,0,mono_enone,0,,C1=CC=C(C=C1)C=CC(=O)C2=CC=CC=C2,DQFBYFPFKXHELB-VAWYXSNFSA-N
+cinnamamide,5273472,trans-Cinnamamide,0,cinnamic_amide,0,,C1=CC=C(C=C1)C=CC(=O)N,APEJMQOBVMLION-VOTSOKGWSA-N
+dibenzoylmethane,8433,Dibenzoylmethane,0,1_3_diketone,0,,C1=CC=C(C=C1)C(=O)CC(=O)C2=CC=CC=C2,NZZIMKJIVMHWJC-UHFFFAOYSA-N
+ferulic acid,445858,Ferulic Acid,0,cinnamic_acid,0,,COC1=C(C=CC(=C1)C=CC(=O)O)O,KSEBMYQBYZTDHS-HWKANZROSA-N
+capsaicin,1548943,Capsaicin,0,vanilloid,0,,CC(C)C=CCCCCC(=O)NCC1=CC(=C(C=C1)O)OC,YKPUWZUDDOIDPM-SOFGYWHQSA-N
+paracetamol,1983,Acetaminophen,0,phenol_approved_drug,0,,CC(=O)NC1=CC=C(C=C1)O,RZVAJINKPMORJF-UHFFFAOYSA-N
+salicylic acid,338,Salicylic Acid,0,phenol_approved_drug,0,,C1=CC=C(C(=C1)C(=O)O)O,YGSDEFSMJLZEOE-UHFFFAOYSA-N
+aspirin,2244,Aspirin,0,ester_nsaid,0,,CC(=O)OC1=CC=CC=C1C(=O)O,BSYNRYMUTXBXSQ-UHFFFAOYSA-N
+ibuprofen,3672,"Ibuprofen, (+-)-",0,propionic_nsaid,0,,CC(C)CC1=CC=C(C=C1)C(C)C(=O)O,HEFNNWSXXWATRW-UHFFFAOYSA-N
+naproxen,156391,Naproxen,0,naphthalene_nsaid,0,,CC(C1=CC2=C(C=C1)C=C(C=C2)OC)C(=O)O,CMWTZPSULFXXJA-VIFPVBQESA-N
+amoxicillin,33613,Amoxicillin,0,phenolic_beta_lactam,0,,CC1(C(N2C(S1)C(C2=O)NC(=O)C(C3=CC=C(C=C3)O)N)C(=O)O)C,LSQZJLSUYDQPKJ-NJBDSQKTSA-N
+ciprofloxacin,2764,Ciprofloxacin,0,fluoroquinolone,0,,C1CC1N2C=C(C(=O)C3=CC(=C(C=C32)N4CCNCC4)F)C(=O)O,MYSWGUAQZAJSOK-UHFFFAOYSA-N
+metformin,4091,Metformin,0,biguanide,0,,CN(C)C(=N)N=C(N)N,XZWYZXLIPXDOLR-UHFFFAOYSA-N
+nicotine,89594,Nicotine,0,alkaloid,0,,CN1CCCC1C2=CN=CC=C2,SNICXCGAKADSCV-JTQLQIEISA-N
+caffeine,2519,Caffeine,0,xanthine,0,,CN1C=NC2=C1C(=O)N(C(=O)N2C)C,RYYVLZVUVIJVGH-UHFFFAOYSA-N
+propranolol,4946,Propranolol,0,beta_blocker,0,,CC(C)NCC(COC1=CC=CC2=CC=CC=C21)O,AQHHHDLHHXJYJD-UHFFFAOYSA-N
+atenolol,2249,Atenolol,0,beta_blocker,0,,CC(C)NCC(COC1=CC=C(C=C1)CC(=O)N)O,METKIMKYRPQLGS-UHFFFAOYSA-N
+omeprazole,4594,Omeprazole,0,sulfinyl_benzimidazole,0,,CC1=CN=C(C(=C1OC)C)CS(=O)C2=NC3=C(N2)C=C(C=C3)OC,SUBDBMMJDZJVOS-UHFFFAOYSA-N
+atorvastatin,60823,Atorvastatin,0,pyrrole_statin,0,,CC(C)C1=C(C(=C(N1CCC(CC(CC(=O)O)O)O)C2=CC=C(C=C2)F)C3=CC=CC=C3)C(=O)NC4=CC=CC=C4,XUKUURHRXDUEBC-KAYWLYCHSA-N
+losartan,3961,Losartan,0,biphenyl_tetrazole,0,,CCCCC1=NC(=C(N1CC2=CC=C(C=C2)C3=CC=CC=C3C4=NNN=N4)CO)Cl,PSIFNNKUMBGKDQ-UHFFFAOYSA-N
+warfarin,54678486,Warfarin,0,coumarin_anticoagulant,0,,CC(=O)CC(C1=CC=CC=C1)C2=C(C3=CC=CC=C3OC2=O)O,PJVWKTKQMONHTI-UHFFFAOYSA-N
+diazepam,3016,Diazepam,0,benzodiazepine,0,,CN1C(=O)CN=C(C2=C1C=CC(=C2)Cl)C3=CC=CC=C3,AAOVKJBEBIDNHE-UHFFFAOYSA-N
+morphine,5288826,Morphine,0,opioid_phenol,0,,CN1CCC23C4C1CC5=C2C(=C(C=C5)O)OC3C(C=C4)O,BQJCRHHNABKAKU-KBQPJGBKSA-N
+penicillin G,5904,Penicillin G,0,beta_lactam,0,,CC1(C(N2C(S1)C(C2=O)NC(=O)CC3=CC=CC=C3)C(=O)O)C,JGSARLDLIJGVTE-MBNYWOFBSA-N
+imatinib,5291,Imatinib,0,kinase_inhibitor,0,,CC1=C(C=C(C=C1)NC(=O)C2=CC=C(C=C2)CN3CCN(CC3)C)NC4=NC=CC(=N4)C5=CN=CC=C5,KTUFNOKKBVMGRW-UHFFFAOYSA-N
+gefitinib,123631,Gefitinib,0,kinase_inhibitor,0,,COC1=C(C=C2C(=C1)N=CN=C2NC3=CC(=C(C=C3)F)Cl)OCCCN4CCOCC4,XGALLCVXEZPNRQ-UHFFFAOYSA-N
+erlotinib,176870,Erlotinib,0,kinase_inhibitor,0,,COCCOC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC=CC(=C3)C#C)OCCOC,AAKJLRGGTJKAMG-UHFFFAOYSA-N
+dasatinib,3062316,Dasatinib,0,kinase_inhibitor,0,,CC1=C(C(=CC=C1)Cl)NC(=O)C2=CN=C(S2)NC3=CC(=NC(=N3)C)N4CCN(CC4)CCO,ZBNZXTGUTAYRHI-UHFFFAOYSA-N
+sildenafil,135398744,Sildenafil,0,pde5_inhibitor,0,,CCCC1=NN(C2=C1N=C(NC2=O)C3=C(C=CC(=C3)S(=O)(=O)N4CCN(CC4)C)OCC)C,BNRNXUUZRGQAQC-UHFFFAOYSA-N
+sulfamethoxazole,5329,Sulfamethoxazole,0,sulfonamide,0,,CC1=CC(=NO1)NS(=O)(=O)C2=CC=C(C=C2)N,JLKIGFTWXXRPMT-UHFFFAOYSA-N
+trimethoprim,5578,Trimethoprim,0,diaminopyrimidine,0,,COC1=CC(=CC(=C1OC)OC)CC2=CN=C(N=C2N)N,IEDVJHCEMCRBQM-UHFFFAOYSA-N
+albuterol,2083,Salbutamol,0,phenolic_agonist,0,,CC(C)(C)NCC(C1=CC(=C(C=C1)O)CO)O,NDAUXUAQIAJITI-UHFFFAOYSA-N
+loperamide,3955,Loperamide,0,diphenylmethyl_piperidine,0,,CN(C)C(=O)C(CCN1CCC(CC1)(C2=CC=C(C=C2)Cl)O)(C3=CC=CC=C3)C4=CC=CC=C4,RDOIQAHITMMDAJ-UHFFFAOYSA-N
+haloperidol,3559,Haloperidol,0,butyrophenone,0,,C1CN(CCC1(C2=CC=C(C=C2)Cl)O)CCCC(=O)C3=CC=C(C=C3)F,LNEPOXFFQSENCJ-UHFFFAOYSA-N
+maleimide,10935,Maleimide,0,covalent_electrophile,0,,C1=CC(=O)NC1=O,PEEHTFAAVSWFBL-UHFFFAOYSA-N

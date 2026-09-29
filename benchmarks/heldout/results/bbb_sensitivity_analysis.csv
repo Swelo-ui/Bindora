@@ -1,0 +1,5 @@
+subset,sample_size,decoupled_sens,decoupled_spec,decoupled_bacc,decoupled_mcc,coupled_sens,coupled_spec,coupled_bacc,coupled_mcc,extra_false_negatives_from_coupling,fp_reduction_from_coupling
+Full_B3DB,7782,0.6089,0.8289,0.7189,0.4237,0.5146,0.8461,0.6803,0.3572,466,49
+Group_A_Only_Numerical_logBB,1042,0.6321,0.746,0.6891,0.2503,0.512,0.754,0.633,0.1736,110,1
+Non_Threshold_Groups_A_and_C,4112,0.5901,0.8175,0.7038,0.4045,0.5008,0.8343,0.6676,0.3415,219,28
+Excluding_Uncertain_Group_D,7731,0.6087,0.8342,0.7215,0.4278,0.5144,0.8514,0.6829,0.3616,466,48

@@ -1,9 +1,10 @@
-# FROZEN BENCHMARK DATASET HASHES
-# Generated: 2026-09-29T07:26:38.381674+00:00
-# Rule: Once written, no modification to these files is permitted.
+# FROZEN BENCHMARK DATASET HASHES (REBUILT & VERIFIED)
+# Generated: 2026-09-29T07:55:35.359908+00:00
+# Strict Rule: Once written, no modification to these files is permitted.
 
-3fce1b013eb3770a54cd51d9208dbf2f85ae7d99a87563bb2b6e0beec1e5bc58  benchmarks/heldout/dev_set.csv  (3979 bytes)
-3d7ad170299233164a551d33a5e6ecda43420dee97fd2f35c43c0e291904cc8d  benchmarks/heldout/train.csv  (123851 bytes)
-ed85c4c64124f9c02435de70d5506d38d689c91699cb000b11a98cbfc68a396f  benchmarks/heldout/test.csv  (32852 bytes)
-579a470255319d5203ec7dd5e97adf607507f3302c69f40f74d25dc5b0037c78  benchmarks/heldout/bbb_test.csv  (1151638 bytes)
-fdb7da68f7f187b5edb65761ec0ef8754d8e0a078568493fe8ec3c33ba6e6e47  benchmarks/heldout/pains_dataset.csv  (10085 bytes)
+3fce1b013eb3770a54cd51d9208dbf2f85ae7d99a87563bb2b6e0beec1e5bc58  benchmarks/heldout/dev_set.csv  (3979 bytes)  # 42 contaminated dev-set compounds with PubChem CIDs and InChIKeys
+490ec29339f26914beab1b89223b22aa5bd55b54d0b8142b020c47212fc70d1a  benchmarks/heldout/pains_dataset.csv  (8896 bytes)  # 65 verified PAINS compounds with PubChem title match and Baell 2010 families
+4dcfe013d64a953d5fe4d2ae5e1d8f68909538bbfb92468e19bd464b42eedb18  benchmarks/heldout/pgp_substrate_train.csv  (31708 bytes)  # 261 training compounds from Wang 2011 P-gp substrate dataset (Bemis-Murcko split)
+7f077cb3378f28377b74c118ebe29b520a3d674f2b28c27deae1047edb714d06  benchmarks/heldout/pgp_substrate_test.csv  (7485 bytes)  # 66 held-out test compounds from Wang 2011 P-gp substrate dataset (Bemis-Murcko split)
+8280e2b86dc2f0323cc5a562c3efba3fdfa278f8b8fc54e140dcb1405356bacd  benchmarks/heldout/pgp_substrate_full.csv  (39152 bytes)  # 327 total non-dev compounds from Wang 2011 P-gp substrate dataset
+579a470255319d5203ec7dd5e97adf607507f3302c69f40f74d25dc5b0037c78  benchmarks/heldout/bbb_test.csv  (1151638 bytes)  # 7782 experimental compounds from B3DB with confidence group annotations

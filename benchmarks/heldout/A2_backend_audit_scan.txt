@@ -1,0 +1,679 @@
+================================================================================
+  STAGE A2: BACKEND STATIC CODE AUDIT SCAN REPORT
+  Scanned directory: backend/ (*.py)
+================================================================================
+
+--- 1. DRUG NAME OCCURRENCES (24 findings) ---
+[COMMENT/DESCRIPTION] backend/services/adme.py:119 -> Match: 'loperamide'
+  Line: # 1. Gem-diphenyl / diphenylmethyl group (e.g. Loperamide, Terfenadine, Fendiline)
+
+[COMMENT/DESCRIPTION] backend/services/adme.py:119 -> Match: 'terfenadine'
+  Line: # 1. Gem-diphenyl / diphenylmethyl group (e.g. Loperamide, Terfenadine, Fendiline)
+
+[COMMENT/DESCRIPTION] backend/services/adme.py:119 -> Match: 'fendiline'
+  Line: # 1. Gem-diphenyl / diphenylmethyl group (e.g. Loperamide, Terfenadine, Fendiline)
+
+[COMMENT/DESCRIPTION] backend/services/adme.py:124 -> Match: 'loperamide'
+  Line: # 2. 4-Arylpiperidine / piperazine basic system (e.g. Loperamide, Haloperidol)
+
+[COMMENT/DESCRIPTION] backend/services/adme.py:124 -> Match: 'haloperidol'
+  Line: # 2. 4-Arylpiperidine / piperazine basic system (e.g. Loperamide, Haloperidol)
+
+[COMMENT/DESCRIPTION] backend/services/adme.py:138 -> Match: 'tacrolimus'
+  Line: # 4. Large macrocyclic polyketide / cyclic peptide (e.g. Cyclosporine, Ivermectin, Tacrolimus)
+
+[COMMENT/DESCRIPTION] backend/services/batch.py:16 -> Match: 'aspirin'
+  Line: ligand_list: List[Dict[str, str]], # [{"name": "Aspirin", "smiles": "CC(=O)..."}, ...]
+
+[IN LOGIC] backend/services/fetcher.py:24 -> Match: 'imatinib'
+  Line: "imatinib": 5291,
+
+[IN LOGIC] backend/services/fetcher.py:25 -> Match: 'aspirin'
+  Line: "aspirin": 2244,
+
+[IN LOGIC] backend/services/fetcher.py:28 -> Match: 'erlotinib'
+  Line: "erlotinib": 176870,
+
+[IN LOGIC] backend/services/fetcher.py:29 -> Match: 'gefitinib'
+  Line: "gefitinib": 123631,
+
+[IN LOGIC] backend/services/fetcher.py:31 -> Match: 'indinavir'
+  Line: "indinavir": 5362440,
+
+[IN LOGIC] backend/services/fetcher.py:32 -> Match: 'caffeine'
+  Line: "caffeine": 2519,
+
+[IN LOGIC] backend/services/fetcher.py:33 -> Match: 'metformin'
+  Line: "metformin": 4091,
+
+[IN LOGIC] backend/services/fetcher.py:35 -> Match: 'atorvastatin'
+  Line: "atorvastatin": 60823,
+
+[IN LOGIC] backend/services/fetcher.py:41 -> Match: 'dasatinib'
+  Line: "dasatinib": 3062316,
+
+[IN LOGIC] backend/services/macrocycle.py:5 -> Match: 'lorlatinib'
+  Line: macrolides, kinase macrocycles like Lorlatinib).
+
+[COMMENT/DESCRIPTION] backend/services/macrocycle.py:60 -> Match: 'tacrolimus'
+  Line: # 2. Algebraic cycle combination for fused/bridged macrocycles (e.g. Tacrolimus, Rapamycin)
+
+[COMMENT/DESCRIPTION] backend/services/macrocycle.py:60 -> Match: 'rapamycin'
+  Line: # 2. Algebraic cycle combination for fused/bridged macrocycles (e.g. Tacrolimus, Rapamycin)
+
+[IN LOGIC] backend/services/pdbbind_validation.py:25 -> Match: 'indinavir'
+  Line: "ligand_name": "Indinavir",
+
+[IN LOGIC] backend/services/pdbbind_validation.py:38 -> Match: 'erlotinib'
+  Line: "ligand_name": "Erlotinib",
+
+[IN LOGIC] backend/services/pdbbind_validation.py:51 -> Match: 'imatinib'
+  Line: "ligand_name": "Imatinib",
+
+[COMMENT/DESCRIPTION] backend/services/refinement.py:511 -> Match: 'indinavir'
+  Line: # Legitimate drugs (even lipophilic ones like Lapatinib, Sorafenib, Nilotinib, Indinavir) have
+
+[IN LOGIC] backend/utils/rmsd_calculator.py:24 -> Match: 'indinavir'
+  Line: carboxylates, tert-butyl methyl groups, or symmetric homodimer-binding inhibitors like Indinavir)
+
+
+--- 2. SMILES / SMARTS LITERALS (135 findings) ---
+[IN LOGIC] backend/app.py:81 -> Match: '/api/health'
+  Line: @app.route("/api/health", methods=["GET"])
+
+[IN LOGIC] backend/app.py:92 -> Match: '/api/benchmarks'
+  Line: @app.route("/api/benchmarks", methods=["GET"])
+
+[IN LOGIC] backend/app.py:101 -> Match: '/api/validation-report'
+  Line: @app.route("/api/validation-report", methods=["GET"])
+
+[IN LOGIC] backend/app.py:102 -> Match: '/api/validation-reports'
+  Line: @app.route("/api/validation-reports", methods=["GET"])
+
+[IN LOGIC] backend/app.py:172 -> Match: '/api/search/pubchem'
+  Line: @app.route("/api/search/pubchem", methods=["GET"])
+
+[IN LOGIC] backend/app.py:200 -> Match: '/api/ligand/similar'
+  Line: @app.route("/api/ligand/similar", methods=["GET"])
+
+[IN LOGIC] backend/app.py:217 -> Match: '/api/search/rcsb'
+  Line: @app.route("/api/search/rcsb", methods=["GET"])
+
+[IN LOGIC] backend/app.py:238 -> Match: '/api/structure/ligand'
+  Line: @app.route("/api/structure/ligand", methods=["POST"])
+
+[IN LOGIC] backend/app.py:262 -> Match: '/api/structure/receptor'
+  Line: @app.route("/api/structure/receptor", methods=["POST"])
+
+[IN LOGIC] backend/app.py:293 -> Match: '/api/docking/run'
+  Line: @app.route("/api/docking/run", methods=["POST"])
+
+[IN LOGIC] backend/app.py:446 -> Match: '/api/docking/classify-experiment'
+  Line: @app.route("/api/docking/classify-experiment", methods=["POST"])
+
+[IN LOGIC] backend/app.py:462 -> Match: '/api/docking/analyze-interactions'
+  Line: @app.route("/api/docking/analyze-interactions", methods=["POST"])
+
+[IN LOGIC] backend/app.py:483 -> Match: '/api/docking/interaction-diagram'
+  Line: @app.route("/api/docking/interaction-diagram", methods=["POST"])
+
+[IN LOGIC] backend/app.py:497 -> Match: '/api/docking/refine'
+  Line: @app.route("/api/docking/refine", methods=["POST"])
+
+[IN LOGIC] backend/app.py:518 -> Match: '/api/docking/redock-validate'
+  Line: @app.route("/api/docking/redock-validate", methods=["POST"])
+
+[IN LOGIC] backend/app.py:555 -> Match: '/api/reproducibility/versions'
+  Line: @app.route("/api/reproducibility/versions", methods=["GET"])
+
+[IN LOGIC] backend/app.py:573 -> Match: '/api/system/hardware'
+  Line: @app.route("/api/system/hardware", methods=["GET"])
+
+[IN LOGIC] backend/app.py:580 -> Match: '/api/docking/interactions'
+  Line: @app.route("/api/docking/interactions", methods=["POST"])
+
+[IN LOGIC] backend/app.py:603 -> Match: '/api/pkpd/adme'
+  Line: @app.route("/api/pkpd/adme", methods=["POST"])
+
+[IN LOGIC] backend/app.py:618 -> Match: '/api/pkpd/crosscheck'
+  Line: @app.route("/api/pkpd/crosscheck", methods=["GET"])
+
+[IN LOGIC] backend/app.py:628 -> Match: '/api/narrative/explain'
+  Line: @app.route("/api/narrative/explain", methods=["POST", "GET"])
+
+[IN LOGIC] backend/app.py:629 -> Match: '/api/explain/narrative'
+  Line: @app.route("/api/explain/narrative", methods=["POST", "GET"])
+
+[IN LOGIC] backend/app.py:641 -> Match: '/api/batch/start'
+  Line: @app.route("/api/batch/start", methods=["POST"])
+
+[IN LOGIC] backend/app.py:676 -> Match: 'text/event-stream'
+  Line: return Response(manager.stream_job_events(job_id), mimetype="text/event-stream")
+
+[IN LOGIC] backend/app.py:684 -> Match: '/api/batch/run'
+  Line: @app.route("/api/batch/run", methods=["POST"])
+
+[IN LOGIC] backend/app.py:714 -> Match: '/api/ensemble/structures'
+  Line: @app.route("/api/ensemble/structures", methods=["GET"])
+
+[IN LOGIC] backend/app.py:722 -> Match: '/api/ensemble/run'
+  Line: @app.route("/api/ensemble/run", methods=["POST"])
+
+[IN LOGIC] backend/app.py:740 -> Match: '/api/pharmacophore/actives'
+  Line: @app.route("/api/pharmacophore/actives", methods=["GET"])
+
+[IN LOGIC] backend/app.py:766 -> Match: '/api/pharmacophore/screen'
+  Line: @app.route("/api/pharmacophore/screen", methods=["POST"])
+
+[IN LOGIC] backend/app.py:793 -> Match: '/api/covalent/evaluate'
+  Line: @app.route("/api/covalent/evaluate", methods=["POST"])
+
+[IN LOGIC] backend/app.py:814 -> Match: '/api/macrocycle/sample'
+  Line: @app.route("/api/macrocycle/sample", methods=["POST"])
+
+[IN LOGIC] backend/app.py:850 -> Match: '/api/openmm/export'
+  Line: @app.route("/api/openmm/export", methods=["POST"])
+
+[IN LOGIC] backend/app.py:882 -> Match: '/api/benchmark/pdbbind'
+  Line: @app.route("/api/benchmark/pdbbind", methods=["GET", "POST"])
+
+[IN LOGIC] backend/app.py:901 -> Match: '/api/docking/induced-fit'
+  Line: @app.route("/api/docking/induced-fit", methods=["POST"])
+
+[IN LOGIC] backend/app.py:933 -> Match: '/api/covalent/build-adduct'
+  Line: @app.route("/api/covalent/build-adduct", methods=["POST"])
+
+[IN LOGIC] backend/config.py:156 -> Match: 'deepseek/deepseek-v4-flash-0731'
+  Line: OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "deepseek/deepseek-v4-flash-0731")
+
+[IN LOGIC] backend/routes/session_routes.py:10 -> Match: '/api/sessions'
+  Line: session_bp = Blueprint('sessions', __name__, url_prefix='/api/sessions')
+
+[IN LOGIC] backend/routes/session_routes.py:13 -> Match: '/list'
+  Line: @session_bp.route('/list', methods=['GET'])
+
+[IN LOGIC] backend/routes/session_routes.py:88 -> Match: '/recent'
+  Line: @session_bp.route('/recent', methods=['GET'])
+
+[IN LOGIC] backend/services/adme.py:63 -> Match: '[#6]1:[#6]:[#6]:[#6]2:[#6]:[#6]:[#6]:[#6]:[#6]:12'
+  Line: "smarts": "[#6]1:[#6]:[#6]:[#6]2:[#6]:[#6]:[#6]:[#6]:[#6]:12", # Polyaromatic planar ring
+
+[IN LOGIC] backend/services/adme.py:96 -> Match: 'C(=O)-C=C-C(=O)'
+  Line: "smarts": "C(=O)-C=C-C(=O)",
+
+[IN LOGIC] backend/services/adme.py:101 -> Match: 'c1cc(O)c(CN)cc1'
+  Line: "smarts": "c1cc(O)c(CN)cc1",
+
+[IN LOGIC] backend/services/adme.py:120 -> Match: '[#6](c1ccccc1)(c2ccccc2)'
+  Line: p_diphenyl = Chem.MolFromSmarts("[#6](c1ccccc1)(c2ccccc2)")
+
+[IN LOGIC] backend/services/adme.py:125 -> Match: 'c1ccccc1-C1CCNCC1'
+  Line: p_aryl_pip = Chem.MolFromSmarts("c1ccccc1-C1CCNCC1")
+
+[IN LOGIC] backend/services/adme.py:126 -> Match: 'N1CCC(CC1)'
+  Line: p_pip_ring = Chem.MolFromSmarts("N1CCC(CC1)")
+
+[IN LOGIC] backend/services/adme.py:318 -> Match: 'g/mol'
+  Line: "molecular_weight": {"value": mw, "unit": "g/mol", "description": "Molecular Weight", "source": f"RDKit v{rdkit.__version__}"},
+
+[IN LOGIC] backend/services/bioactivity.py:111 -> Match: 'kcal/mol'
+  Line: "score_unit": "kcal/mol",
+
+[IN LOGIC] backend/services/biophysical_prep.py:171 -> Match: '\nEND\n'
+  Line: fixer = PDBFixer(pdbfile=io.StringIO("\n".join(protein_lines) + "\nEND\n"))
+
+[IN LOGIC] backend/services/biophysical_prep.py:180 -> Match: 'OpenMM/PDBFixer'
+  Line: return cls._process_protonated_pdb(fixed_pdb.splitlines(), method="OpenMM/PDBFixer", water_lines=structural_water_lines, metal_lines=metal_lines)
+
+[IN LOGIC] backend/services/covalent.py:85 -> Match: '[C:1]#[N:2]'
+  Line: "smarts": "[C:1]#[N:2]",
+
+[IN LOGIC] backend/services/covalent.py:99 -> Match: '[C:1]1[O:2][C:3]1'
+  Line: "smarts": "[C:1]1[O:2][C:3]1",
+
+[IN LOGIC] backend/services/covalent.py:684 -> Match: '\nTER\n'
+  Line: "\nTER\n" +
+
+[IN LOGIC] backend/services/covalent.py:688 -> Match: '\nEND\n'
+  Line: "\nEND\n"
+
+[IN LOGIC] backend/services/docking.py:217 -> Match: '\nEND\n'
+  Line: co_ligand_pdb = "\n".join(co_ligand_lines) + "\nEND\n"
+
+[IN LOGIC] backend/services/docking.py:341 -> Match: '\nEND\n'
+  Line: cleaned_pdb = "\n".join(cleaned_pdb_lines) + "\nEND\n"
+
+[IN LOGIC] backend/services/docking.py:342 -> Match: '\nTER\nEND\n'
+  Line: pdbqt_text = "\n".join(protein_lines) + "\nTER\nEND\n"
+
+[IN LOGIC] backend/services/docking.py:356 -> Match: '\nEND\n'
+  Line: cleaned_pdb = "\n".join(cleaned_pdb_lines) + "\nEND\n"
+
+[IN LOGIC] backend/services/docking.py:357 -> Match: '\nTER\nEND\n'
+  Line: pdbqt_text = "\n".join(pdbqt_lines) + "\nTER\nEND\n"
+
+[IN LOGIC] backend/services/docking.py:625 -> Match: '\nEND\n'
+  Line: pdb_block = "\n".join(pdb_lines) + "\nEND\n"
+
+[IN LOGIC] backend/services/docking.py:647 -> Match: 'InChI='
+  Line: if trimmed.startswith("InChI="):
+
+[IN LOGIC] backend/services/docking.py:718 -> Match: 'srETKDGv3'
+  Line: conformer_desc = f"RDKit Macrocycle Distance Geometry ({macro_res.get('sampling_engine', 'srETKDGv3')}, max ring size {max(macro_sizes)})"
+
+[IN LOGIC] backend/services/docking.py:719 -> Match: 'MMFF94'
+  Line: minimization_desc = f"{macro_res.get('force_field', 'MMFF94')} global energy minimum conformer ({macro_res.get('global_min_energy_kcal')} kcal/mol)"
+
+[IN LOGIC] backend/services/docking.py:743 -> Match: 'InChI='
+  Line: detected_fmt = "InChI" if trimmed.startswith("InChI=") else ("MOL2" if "@<TRIPOS>" in input_data else ("SDF/MOL" if is_sdf else ("PDB" if ("ATOM" in input_data or "HETATM" in input_data) else "SMILES")))
+
+[IN LOGIC] backend/services/docking.py:743 -> Match: 'SDF/MOL'
+  Line: detected_fmt = "InChI" if trimmed.startswith("InChI=") else ("MOL2" if "@<TRIPOS>" in input_data else ("SDF/MOL" if is_sdf else ("PDB" if ("ATOM" in input_data or "HETATM" in input_data) else "SMILES")))
+
+[IN LOGIC] backend/services/docking.py:969 -> Match: '\nEND\n'
+  Line: pdb_block = "\n".join(pdb_lines) + "\nEND\n"
+
+[IN LOGIC] backend/services/docking.py:1437 -> Match: '4-[4-'
+  Line: and not s.startswith("4-[(") and not s.startswith("4-[4-")
+
+[IN LOGIC] backend/services/hardware_profiler.py:57 -> Match: 'HARDWARE\DESCRIPTION\System\CentralProcessor\0'
+  Line: key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\CentralProcessor\0")
+
+[IN LOGIC] backend/services/hardware_profiler.py:66 -> Match: '/proc/cpuinfo'
+  Line: with open("/proc/cpuinfo", "r", encoding="utf-8", errors="ignore") as f:
+
+[IN LOGIC] backend/services/induced_fit.py:175 -> Match: '\nEND\n'
+  Line: "pdb_block": "\n".join(perturbed_lines) + "\nEND\n",
+
+[IN LOGIC] backend/services/interaction_diagram.py:32 -> Match: '#090a0f'
+  Line: f'<rect width="100%" height="100%" fill="#090a0f" rx="8"/>'
+
+[IN LOGIC] backend/services/interaction_diagram.py:33 -> Match: '#94a3b8'
+  Line: f'<text x="50%" y="50%" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">'
+
+[IN LOGIC] backend/services/interaction_diagram.py:98 -> Match: '#facc15'
+  Line: "color": "#facc15",          # Gold / Yellow
+
+[IN LOGIC] backend/services/interaction_diagram.py:104 -> Match: '#ca8a04'
+  Line: "badge_border": "#ca8a04"
+
+[IN LOGIC] backend/services/interaction_diagram.py:108 -> Match: '#ec4899'
+  Line: "color": "#ec4899",          # Magenta / Deep Pink
+
+[IN LOGIC] backend/services/interaction_diagram.py:111 -> Match: '#380a24'
+  Line: "pill_bg": "#380a24",
+
+[IN LOGIC] backend/services/interaction_diagram.py:112 -> Match: '#db2777'
+  Line: "pill_border": "#db2777",
+
+[IN LOGIC] backend/services/interaction_diagram.py:113 -> Match: '#f472b6'
+  Line: "pill_text": "#f472b6",
+
+[IN LOGIC] backend/services/interaction_diagram.py:114 -> Match: '#db2777'
+  Line: "badge_border": "#db2777"
+
+[IN LOGIC] backend/services/interaction_diagram.py:118 -> Match: '#10b981'
+  Line: "color": "#10b981",          # Emerald / Forest Green
+
+[IN LOGIC] backend/services/interaction_diagram.py:121 -> Match: '#062c1d'
+  Line: "pill_bg": "#062c1d",
+
+[IN LOGIC] backend/services/interaction_diagram.py:122 -> Match: '#059669'
+  Line: "pill_border": "#059669",
+
+[IN LOGIC] backend/services/interaction_diagram.py:123 -> Match: '#6ee7b7'
+  Line: "pill_text": "#6ee7b7",
+
+[IN LOGIC] backend/services/interaction_diagram.py:124 -> Match: '#059669'
+  Line: "badge_border": "#059669"
+
+[IN LOGIC] backend/services/interaction_diagram.py:128 -> Match: '#f97316'
+  Line: "color": "#f97316",          # Warm Amber / Orange
+
+[IN LOGIC] backend/services/interaction_diagram.py:131 -> Match: '#381604'
+  Line: "pill_bg": "#381604",
+
+[IN LOGIC] backend/services/interaction_diagram.py:132 -> Match: '#ea580c'
+  Line: "pill_border": "#ea580c",
+
+[IN LOGIC] backend/services/interaction_diagram.py:133 -> Match: '#fdba74'
+  Line: "pill_text": "#fdba74",
+
+[IN LOGIC] backend/services/interaction_diagram.py:134 -> Match: '#ea580c'
+  Line: "badge_border": "#ea580c"
+
+[IN LOGIC] backend/services/interaction_diagram.py:138 -> Match: '#a855f7'
+  Line: "color": "#a855f7",          # Violet / Purple
+
+[IN LOGIC] backend/services/interaction_diagram.py:141 -> Match: '#2a0845'
+  Line: "pill_bg": "#2a0845",
+
+[IN LOGIC] backend/services/interaction_diagram.py:142 -> Match: '#9333ea'
+  Line: "pill_border": "#9333ea",
+
+[IN LOGIC] backend/services/interaction_diagram.py:143 -> Match: '#d8b4fe'
+  Line: "pill_text": "#d8b4fe",
+
+[IN LOGIC] backend/services/interaction_diagram.py:144 -> Match: '#9333ea'
+  Line: "badge_border": "#9333ea"
+
+[IN LOGIC] backend/services/interaction_diagram.py:148 -> Match: '#94a3b8'
+  Line: "color": "#94a3b8",          # Neutral Cool Slate
+
+[IN LOGIC] backend/services/interaction_diagram.py:151 -> Match: '#1e293b'
+  Line: "pill_bg": "#1e293b",
+
+[IN LOGIC] backend/services/interaction_diagram.py:152 -> Match: '#64748b'
+  Line: "pill_border": "#64748b",
+
+[IN LOGIC] backend/services/interaction_diagram.py:153 -> Match: '#cbd5e1'
+  Line: "pill_text": "#cbd5e1",
+
+[IN LOGIC] backend/services/interaction_diagram.py:154 -> Match: '#64748b'
+  Line: "badge_border": "#64748b"
+
+[IN LOGIC] backend/services/interaction_diagram.py:237 -> Match: '#090a0f'
+  Line: f'<rect width="100%" height="100%" fill="#090a0f" rx="8"/>'
+
+[IN LOGIC] backend/services/interaction_diagram.py:238 -> Match: '#94a3b8'
+  Line: f'<text x="50%" y="50%" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">'
+
+[IN LOGIC] backend/services/interaction_diagram.py:491 -> Match: 'stroke='
+  Line: f'stroke="{cstyle["color"]}" stroke-width="{cstyle["line_width"]}" '
+
+[IN LOGIC] backend/services/interaction_diagram.py:492 -> Match: 'stroke-dasharray='
+  Line: f'stroke-dasharray="{cstyle["line_dash"]}" opacity="0.9">'
+
+[IN LOGIC] backend/services/interaction_diagram.py:508 -> Match: 'fill='
+  Line: f'fill="{cstyle["pill_bg"]}" stroke="{cstyle["pill_border"]}" stroke-width="1"/>\n'
+
+[IN LOGIC] backend/services/interaction_diagram.py:510 -> Match: 'font-family='
+  Line: f'font-family="system-ui, monospace" font-size="8.5" font-weight="bold" text-anchor="middle">{dist_str}</text>\n'
+
+[IN LOGIC] backend/services/interaction_diagram.py:549 -> Match: 'fill='
+  Line: f'fill="{primary_style["pill_bg"]}" stroke="{primary_style["badge_border"]}" stroke-width="1.4"/>\n'
+
+[IN LOGIC] backend/services/interaction_diagram.py:552 -> Match: 'font-family='
+  Line: f'font-family="system-ui, -apple-system, sans-serif" font-size="9.5" font-weight="bold" text-anchor="{text_anchor}">{res_label}</text>\n'
+
+[IN LOGIC] backend/services/interaction_diagram.py:562 -> Match: 'fill='
+  Line: f'fill="var(--bd-legend-bg, #121319)" stroke="var(--bd-legend-border, #22242e)" stroke-width="1"/>'
+
+[IN LOGIC] backend/services/interaction_diagram.py:563 -> Match: '#facc15'
+  Line: f'<line x1="8" y1="0" x2="22" y2="0" stroke="#facc15" stroke-width="2" stroke-dasharray="4,3"/>'
+
+[IN LOGIC] backend/services/interaction_diagram.py:564 -> Match: '#cbd5e1'
+  Line: f'<text x="26" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9"><title>Hydrogen Bond</title>H-Bond</text>'
+
+[IN LOGIC] backend/services/interaction_diagram.py:565 -> Match: '#ec4899'
+  Line: f'<line x1="82" y1="0" x2="96" y2="0" stroke="#ec4899" stroke-width="2" stroke-dasharray="4,3"/>'
+
+[IN LOGIC] backend/services/interaction_diagram.py:566 -> Match: '#cbd5e1'
+  Line: f'<text x="100" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9">Salt Bridge</text>'
+
+[IN LOGIC] backend/services/interaction_diagram.py:567 -> Match: '#10b981'
+  Line: f'<line x1="168" y1="0" x2="182" y2="0" stroke="#10b981" stroke-width="2" stroke-dasharray="4,3"/>'
+
+[IN LOGIC] backend/services/interaction_diagram.py:568 -> Match: '#cbd5e1'
+  Line: f'<text x="186" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9">π-π Stack</text>'
+
+[IN LOGIC] backend/services/interaction_diagram.py:569 -> Match: '#f97316'
+  Line: f'<line x1="250" y1="0" x2="264" y2="0" stroke="#f97316" stroke-width="1.8" stroke-dasharray="4,3"/>'
+
+[IN LOGIC] backend/services/interaction_diagram.py:570 -> Match: '#cbd5e1'
+  Line: f'<text x="268" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9">π-Cation</text>'
+
+[IN LOGIC] backend/services/interaction_diagram.py:571 -> Match: '#a855f7'
+  Line: f'<line x1="324" y1="0" x2="338" y2="0" stroke="#a855f7" stroke-width="1.8" stroke-dasharray="4,3"/>'
+
+[IN LOGIC] backend/services/interaction_diagram.py:572 -> Match: '#cbd5e1'
+  Line: f'<text x="342" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9">Halogen</text>'
+
+[IN LOGIC] backend/services/interaction_diagram.py:573 -> Match: '#94a3b8'
+  Line: f'<line x1="398" y1="0" x2="412" y2="0" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="2,3"/>'
+
+[IN LOGIC] backend/services/interaction_diagram.py:574 -> Match: '#cbd5e1'
+  Line: f'<text x="416" y="3.5" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="9">Hydrophobic (Slate)</text>'
+
+[IN LOGIC] backend/services/interaction_diagram.py:654 -> Match: 'stroke:#000000'
+  Line: molecule_paths = molecule_paths.replace('stroke:#000000', 'stroke:var(--bd-bond, #e2e8f0)')
+
+[IN LOGIC] backend/services/interaction_diagram.py:660 -> Match: 'bindora-2d-interaction-svg'
+  Line: f'<svg class="bindora-svg-root" id="bindora-2d-interaction-svg" '
+
+[IN LOGIC] backend/services/interaction_diagram.py:661 -> Match: 'xmlns='
+  Line: f'xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+
+[IN LOGIC] backend/services/interaction_diagram.py:662 -> Match: 'viewBox='
+  Line: f'viewBox="0 0 {width} {height}" width="100%" height="100%" '
+
+[IN LOGIC] backend/services/interaction_diagram.py:663 -> Match: 'style='
+  Line: f'style="background-color: var(--bd-bg, #090a0f); border-radius: 8px; display: block; overflow: hidden;">\n'
+
+[IN LOGIC] backend/services/macrocycle.py:120 -> Match: 'srETKDGv3'
+  Line: engine_name = "srETKDGv3"
+
+[IN LOGIC] backend/services/macrocycle.py:122 -> Match: 'srETKDGv3'
+  Line: if hasattr(AllChem, "srETKDGv3"):
+
+[IN LOGIC] backend/services/macrocycle.py:136 -> Match: 'useMacrocycle14config'
+  Line: if hasattr(params, "useMacrocycle14config"):
+
+[IN LOGIC] backend/services/macrocycle.py:166 -> Match: 'MMFF94'
+  Line: ff_type = "MMFF94"
+
+[IN LOGIC] backend/services/md_export.py:52 -> Match: '\nEND\n'
+  Line: rec_pdb_clean = "\n".join(clean_rec_lines) + "\nEND\n"
+
+[IN LOGIC] backend/services/md_export.py:61 -> Match: '\nEND\n'
+  Line: lig_pdb_clean = "\n".join(lig_lines) + "\nEND\n"
+
+[IN LOGIC] backend/services/md_export.py:102 -> Match: '\nTER\n'
+  Line: complex_pdb_text = "\n".join(clean_rec_lines) + "\nTER\n" + "\n".join(lig_lines) + "\nEND\n"
+
+[IN LOGIC] backend/services/md_export.py:102 -> Match: '\nEND\n'
+  Line: complex_pdb_text = "\n".join(clean_rec_lines) + "\nTER\n" + "\n".join(lig_lines) + "\nEND\n"
+
+[IN LOGIC] backend/services/pdbbind_validation.py:129 -> Match: 'FX-221A'
+  Line: "ligand_name": "FX-221A",
+
+[IN LOGIC] backend/services/refinement.py:126 -> Match: '\nEND\n'
+  Line: clean_block = "\n".join(pdb_lines) + "\nEND\n"
+
+[IN LOGIC] backend/services/refinement.py:740 -> Match: '\nEND\n'
+  Line: pdb_io = io.StringIO("\n".join(protein_lines) + "\nEND\n")
+
+
+--- 3. NUMERIC HARDCODED DEFAULTS & THRESHOLDS (48 findings) ---
+[IN LOGIC] backend/app.py:312 -> seed ('seed = 42')
+  Source/Label: Bindora heuristic (uncalibrated default seed)
+  Line: seed = 42
+
+[IN LOGIC] backend/app.py:314 -> seed ('seed = 42')
+  Source/Label: Bindora heuristic (uncalibrated default seed)
+  Line: seed = 42  # Standard default seed for research reproducibility
+
+[IN LOGIC] backend/services/adme.py:139 -> mw_threshold ('mw > 700')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: is_macrocycle = mw > 700 and (mol.GetRingInfo().NumRings() >= 2 or rotb > 12)
+
+[IN LOGIC] backend/services/adme.py:139 -> rotb_threshold ('rotb > 12')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: is_macrocycle = mw > 700 and (mol.GetRingInfo().NumRings() >= 2 or rotb > 12)
+
+[COMMENT/DESCRIPTION] backend/services/adme.py:144 -> logp_threshold ('LogP > 2.8')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: # Rule 1: High MW (> 400 Da) + Lipophilic (LogP > 2.8) + Basic Nitrogen / Diphenyl motif
+
+[IN LOGIC] backend/services/adme.py:151 -> mw_threshold ('mw > 400.0')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: elif mw > 400.0 and logp > 2.8 and (has_basic_n or len(motifs) >= 2):
+
+[IN LOGIC] backend/services/adme.py:151 -> logp_threshold ('logp > 2.8')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: elif mw > 400.0 and logp > 2.8 and (has_basic_n or len(motifs) >= 2):
+
+[IN LOGIC] backend/services/adme.py:154 -> mw_threshold ('mw > 350.0')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: elif len(motifs) >= 2 and mw > 350.0 and logp > 2.5:
+
+[IN LOGIC] backend/services/adme.py:154 -> logp_threshold ('logp > 2.5')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: elif len(motifs) >= 2 and mw > 350.0 and logp > 2.5:
+
+[IN LOGIC] backend/services/adme.py:195 -> mw_threshold ('mw > 500')
+  Source/Label: Lipinski et al. 1997, Adv. Drug Deliv. Rev. 23:3-25
+  Line: if mw > 500:
+
+[IN LOGIC] backend/services/adme.py:196 -> mw_threshold ('MW > 500')
+  Source/Label: Lipinski et al. 1997, Adv. Drug Deliv. Rev. 23:3-25
+  Line: lipinski_violations.append(f"MW > 500 Da ({mw})")
+
+[IN LOGIC] backend/services/adme.py:197 -> logp_threshold ('logp > 5.0')
+  Source/Label: Lipinski et al. 1997, Adv. Drug Deliv. Rev. 23:3-25
+  Line: if logp > 5.0:
+
+[IN LOGIC] backend/services/adme.py:198 -> logp_threshold ('LogP > 5.0')
+  Source/Label: Lipinski et al. 1997, Adv. Drug Deliv. Rev. 23:3-25
+  Line: lipinski_violations.append(f"LogP > 5.0 ({logp})")
+
+[IN LOGIC] backend/services/adme.py:208 -> rotb_threshold ('rotb > 10')
+  Source/Label: Veber et al. 2002, J. Med. Chem. 45:2615-2623
+  Line: if rotb > 10:
+
+[IN LOGIC] backend/services/adme.py:210 -> tpsa_threshold ('tpsa > 140.0')
+  Source/Label: Veber et al. 2002, J. Med. Chem. 45:2615-2623
+  Line: if tpsa > 140.0:
+
+[IN LOGIC] backend/services/adme.py:211 -> tpsa_threshold ('TPSA > 140')
+  Source/Label: Veber et al. 2002, J. Med. Chem. 45:2615-2623
+  Line: veber_violations.append(f"TPSA > 140 Å² ({tpsa})")
+
+[IN LOGIC] backend/services/adme.py:216 -> mw_threshold ('mw <= 480')
+  Source/Label: Ghose et al. 1999, J. Comb. Chem. 1:55-68
+  Line: if not (160 <= mw <= 480):
+
+[IN LOGIC] backend/services/adme.py:218 -> logp_threshold ('logp <= 5.6')
+  Source/Label: Ghose et al. 1999, J. Comb. Chem. 1:55-68
+  Line: if not (-0.4 <= logp <= 5.6):
+
+[IN LOGIC] backend/services/adme.py:251 -> sa_score_threshold ('sa_score < 3.0')
+  Source/Label: Ertl & Schuffenhauer 2009, J. Cheminform. 1:8
+  Line: if sa_score < 3.0:
+
+[IN LOGIC] backend/services/adme.py:253 -> sa_score_threshold ('sa_score <= 6.0')
+  Source/Label: Ertl & Schuffenhauer 2009, J. Cheminform. 1:8
+  Line: elif sa_score <= 6.0:
+
+[IN LOGIC] backend/services/adme.py:261 -> logp_threshold ('logp > 3.5')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: if logp > 3.5:
+
+[IN LOGIC] backend/services/adme.py:264 -> logp_threshold ('logp >= 1.5')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: elif logp >= 1.5:
+
+[IN LOGIC] backend/services/bioactivity.py:62 -> affinity_cutoff ('-6.0')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: is_weak = affinity_kcal > -6.0
+
+[IN LOGIC] backend/services/bioactivity.py:63 -> affinity_cutoff ('-9.0')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: if affinity_kcal <= -9.0:
+
+[IN LOGIC] backend/services/bioactivity.py:66 -> affinity_cutoff ('-7.0')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: elif affinity_kcal <= -7.0:
+
+[IN LOGIC] backend/services/bioactivity.py:69 -> affinity_cutoff ('-6.0')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: elif affinity_kcal <= -6.0:
+
+[IN LOGIC] backend/services/bioactivity.py:76 -> affinity_cutoff ('-6.0')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: "Predicted docking score falls above the -6.0 kcal/mol threshold. Such weak interactions typically reflect "
+
+[IN LOGIC] backend/services/consensus.py:92 -> affinity_cutoff ('-7.0')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: s_est = max(0.0, min(1.0, 0.5 - (v_aff or -7.0) / 20.0))
+
+[COMMENT/DESCRIPTION] backend/services/consensus.py:168 -> affinity_cutoff ('-6.0')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: # 3. Sub-threshold Affinity Gate (Vina > -6.0 kcal/mol or MM-GBSA > -10.0 kcal/mol)
+
+[COMMENT/DESCRIPTION] backend/services/consensus.py:178 -> affinity_cutoff ('-6.0')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: # Absolute thermodynamic gating: scores weaker than -6.0 kcal/mol indicate non-specific adhesion
+
+[IN LOGIC] backend/services/consensus.py:180 -> affinity_cutoff ('-6.0')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: is_sub_threshold = (v_val > -6.0) or (m_val is not None and m_val > -10.0)
+
+[IN LOGIC] backend/services/consensus.py:191 -> affinity_cutoff ('-6.0')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: conf_desc = f"Predicted binding energy ({v_val:.2f} kcal/mol) falls above the -6.0 kcal/mol threshold; indicates weak or non-specific surface adhesion."
+
+[IN LOGIC] backend/services/covalent.py:53 -> affinity_cutoff ('-4.0')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: "default_energy_bonus_kcal": -4.0
+
+[IN LOGIC] backend/services/covalent.py:80 -> affinity_cutoff ('-4.2')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: "default_energy_bonus_kcal": -4.2
+
+[IN LOGIC] backend/services/docking.py:715 -> random_seed ('random_seed=42')
+  Source/Label: Bindora heuristic (uncalibrated default seed)
+  Line: mol, num_confs=5, energy_window=15.0, rmsd_threshold=0.5, random_seed=42
+
+[IN LOGIC] backend/services/docking.py:715 -> energy_window ('energy_window=15.0')
+  Source/Label: Bindora heuristic (uncalibrated conformational window)
+  Line: mol, num_confs=5, energy_window=15.0, rmsd_threshold=0.5, random_seed=42
+
+[IN LOGIC] backend/services/docking.py:715 -> rmsd_threshold ('rmsd_threshold=0.5')
+  Source/Label: Bindora heuristic (uncalibrated RMSD clustering)
+  Line: mol, num_confs=5, energy_window=15.0, rmsd_threshold=0.5, random_seed=42
+
+[IN LOGIC] backend/services/macrocycle.py:265 -> energy_window ('energy_window=12.0')
+  Source/Label: Bindora heuristic (uncalibrated conformational window)
+  Line: energy_window=12.0,
+
+[IN LOGIC] backend/services/macrocycle.py:266 -> rmsd_threshold ('rmsd_threshold=0.75')
+  Source/Label: Bindora heuristic (uncalibrated RMSD clustering)
+  Line: rmsd_threshold=0.75
+
+[IN LOGIC] backend/services/pdbbind_validation.py:43 -> affinity_cutoff ('-9.3')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: "typical_vina_kcal": -9.3,
+
+[IN LOGIC] backend/services/pdbbind_validation.py:69 -> affinity_cutoff ('-8.9')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: "typical_vina_kcal": -8.9,
+
+[IN LOGIC] backend/services/pdbbind_validation.py:82 -> affinity_cutoff ('-9.6')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: "typical_vina_kcal": -9.6,
+
+[IN LOGIC] backend/services/pdbbind_validation.py:118 -> affinity_cutoff ('-9.75')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: "exp_delta_g_kcal": -9.75,
+
+[IN LOGIC] backend/services/pdbbind_validation.py:121 -> affinity_cutoff ('-8.5')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: "typical_vina_kcal": -8.5,
+
+[IN LOGIC] backend/services/pdbbind_validation.py:122 -> affinity_cutoff ('-9.4')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: "typical_mmgbsa_kcal": -9.4,
+
+[IN LOGIC] backend/services/pdbbind_validation.py:134 -> affinity_cutoff ('-9.7')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: "typical_vina_kcal": -9.7,
+
+[IN LOGIC] backend/services/refinement.py:324 -> affinity_cutoff ('-5.0')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: Rewards coordinating heteroatoms (O, N, S) at 1.8-2.6 A with -5.0 to -8.0 kcal/mol.
+
+[IN LOGIC] backend/utils/sascorer.py:101 -> affinity_cutoff ('-4.0')
+  Source/Label: Bindora heuristic (uncalibrated)
+  Line: min_val = -4.0
+

@@ -1,0 +1,166 @@
+{
+  "Full_B3DB": {
+    "count": 7782,
+    "decoupled": {
+      "TP": 3009,
+      "FP": 486,
+      "TN": 2354,
+      "FN": 1933,
+      "Sensitivity": 0.6089,
+      "Sensitivity_95CI": [
+        0.5952,
+        0.6224
+      ],
+      "Specificity": 0.8289,
+      "Specificity_95CI": [
+        0.8146,
+        0.8423
+      ],
+      "Balanced_Accuracy": 0.7189,
+      "MCC": 0.4237
+    },
+    "coupled": {
+      "TP": 2543,
+      "FP": 437,
+      "TN": 2403,
+      "FN": 2399,
+      "Sensitivity": 0.5146,
+      "Sensitivity_95CI": [
+        0.5006,
+        0.5285
+      ],
+      "Specificity": 0.8461,
+      "Specificity_95CI": [
+        0.8324,
+        0.8589
+      ],
+      "Balanced_Accuracy": 0.6803,
+      "MCC": 0.3572
+    },
+    "extra_false_negatives": 466,
+    "fp_reduction": 49
+  },
+  "Group_A_Only_Numerical_logBB": {
+    "count": 1042,
+    "decoupled": {
+      "TP": 579,
+      "FP": 32,
+      "TN": 94,
+      "FN": 337,
+      "Sensitivity": 0.6321,
+      "Sensitivity_95CI": [
+        0.6004,
+        0.6627
+      ],
+      "Specificity": 0.746,
+      "Specificity_95CI": [
+        0.6635,
+        0.814
+      ],
+      "Balanced_Accuracy": 0.6891,
+      "MCC": 0.2503
+    },
+    "coupled": {
+      "TP": 469,
+      "FP": 31,
+      "TN": 95,
+      "FN": 447,
+      "Sensitivity": 0.512,
+      "Sensitivity_95CI": [
+        0.4797,
+        0.5443
+      ],
+      "Specificity": 0.754,
+      "Specificity_95CI": [
+        0.672,
+        0.8209
+      ],
+      "Balanced_Accuracy": 0.633,
+      "MCC": 0.1736
+    },
+    "extra_false_negatives": 110,
+    "fp_reduction": 1
+  },
+  "Non_Threshold_Groups_A_and_C": {
+    "count": 4112,
+    "decoupled": {
+      "TP": 1447,
+      "FP": 303,
+      "TN": 1357,
+      "FN": 1005,
+      "Sensitivity": 0.5901,
+      "Sensitivity_95CI": [
+        0.5705,
+        0.6094
+      ],
+      "Specificity": 0.8175,
+      "Specificity_95CI": [
+        0.7982,
+        0.8353
+      ],
+      "Balanced_Accuracy": 0.7038,
+      "MCC": 0.4045
+    },
+    "coupled": {
+      "TP": 1228,
+      "FP": 275,
+      "TN": 1385,
+      "FN": 1224,
+      "Sensitivity": 0.5008,
+      "Sensitivity_95CI": [
+        0.481,
+        0.5206
+      ],
+      "Specificity": 0.8343,
+      "Specificity_95CI": [
+        0.8157,
+        0.8514
+      ],
+      "Balanced_Accuracy": 0.6676,
+      "MCC": 0.3415
+    },
+    "extra_false_negatives": 219,
+    "fp_reduction": 28
+  },
+  "Excluding_Uncertain_Group_D": {
+    "count": 7731,
+    "decoupled": {
+      "TP": 3006,
+      "FP": 463,
+      "TN": 2330,
+      "FN": 1932,
+      "Sensitivity": 0.6087,
+      "Sensitivity_95CI": [
+        0.5951,
+        0.6223
+      ],
+      "Specificity": 0.8342,
+      "Specificity_95CI": [
+        0.82,
+        0.8476
+      ],
+      "Balanced_Accuracy": 0.7215,
+      "MCC": 0.4278
+    },
+    "coupled": {
+      "TP": 2540,
+      "FP": 415,
+      "TN": 2378,
+      "FN": 2398,
+      "Sensitivity": 0.5144,
+      "Sensitivity_95CI": [
+        0.5004,
+        0.5283
+      ],
+      "Specificity": 0.8514,
+      "Specificity_95CI": [
+        0.8377,
+        0.8641
+      ],
+      "Balanced_Accuracy": 0.6829,
+      "MCC": 0.3616
+    },
+    "extra_false_negatives": 466,
+    "fp_reduction": 48
+  }
+}

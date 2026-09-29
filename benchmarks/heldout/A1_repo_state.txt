@@ -1,0 +1,11 @@
+=== GIT COMMIT HEAD ===
+56e87e81a64320c31e4ee0511cb41980eb331cdc
+
+=== GIT TAG ===
+baseline-2026-09-29
+
+=== GIT STATUS ===
+?? benchmarks/heldout/stepA_scan_backend.py
+
+=== BASELINE COMMIT STATS ===
+
