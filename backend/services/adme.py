@@ -463,6 +463,12 @@ class ADMEProfiler:
                     "model": "BOILED-Egg (Daina & Zoete 2016) with orthogonal P-gp efflux assessment",
                     "citation": "Daina & Zoete, ChemMedChem 2016, 11, 1117-1121; Didziapetris et al., J. Drug Target. 2003, 11, 391-406"
                 },
+                "bbb_permeant": {
+                    "status": bbb_status,
+                    "passive_bbb": passive_bbb,
+                    "pgp_efflux_risk": pgp_efflux_risk,
+                    "is_permeant": passive_bbb
+                },
                 "p_glycoprotein": pgp_data,
                 "plasma_protein_binding": {
                     "tier": ppb_tier,

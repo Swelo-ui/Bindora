@@ -14,6 +14,17 @@ waitress_datas, waitress_binaries, waitress_hidden = collect_all('waitress')
 webview_datas, webview_binaries, webview_hidden = collect_all('webview')
 psutil_datas, psutil_binaries, psutil_hidden = collect_all('psutil')
 
+# Collect machine learning and utility packages
+try:
+    sklearn_datas, sklearn_binaries, sklearn_hidden = collect_all('sklearn')
+except Exception:
+    sklearn_datas, sklearn_binaries, sklearn_hidden = [], [], []
+
+try:
+    joblib_datas, joblib_binaries, joblib_hidden = collect_all('joblib')
+except Exception:
+    joblib_datas, joblib_binaries, joblib_hidden = [], [], []
+
 # Collect OpenMM package and runtime DLL/plugin libraries
 try:
     openmm_datas, openmm_binaries, openmm_hidden = collect_all('openmm')
@@ -36,11 +47,12 @@ datas = [
     ('bin/vina.exe', 'bin'),
     ('backend/utils/fpscores.pkl.gz', 'backend/utils'),
     ('backend/services/boiled_egg_coords.json', 'backend/services'),
+    ('backend/models', 'backend/models'),
     ('data/benchmarks', 'data/benchmarks'),
 ]
 
-datas += rdkit_datas + meeko_datas + gemmi_datas + openmm_datas + openmm_extra_datas + waitress_datas + webview_datas + psutil_datas
-binaries = rdkit_binaries + meeko_binaries + gemmi_binaries + openmm_binaries + waitress_binaries + webview_binaries + psutil_binaries
+datas += rdkit_datas + meeko_datas + gemmi_datas + openmm_datas + openmm_extra_datas + waitress_datas + webview_datas + psutil_datas + sklearn_datas + joblib_datas
+binaries = rdkit_binaries + meeko_binaries + gemmi_binaries + openmm_binaries + waitress_binaries + webview_binaries + psutil_binaries + sklearn_binaries + joblib_binaries
 
 hiddenimports = [
     'waitress',
@@ -70,7 +82,7 @@ hiddenimports = [
     'backend.services.pdbbind_validation',
     'backend.services.refinement',
     'backend.services.hardware_profiler',
-] + rdkit_hidden + meeko_hidden + gemmi_hidden + openmm_hidden + waitress_hidden + webview_hidden + psutil_hidden
+] + rdkit_hidden + meeko_hidden + gemmi_hidden + openmm_hidden + waitress_hidden + webview_hidden + psutil_hidden + sklearn_hidden + joblib_hidden
 
 a = Analysis(
     ['desktop_launcher.py'],
