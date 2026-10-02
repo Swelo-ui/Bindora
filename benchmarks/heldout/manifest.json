@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-02T01:36:34.347383+00:00",
+  "generated_at": "2026-10-02T02:46:53.476436+00:00",
   "repo_root": "H:\\AnuDock",
   "python_version": "3.13.1 (tags/v3.13.1:0671451, Dec  3 2024, 19:06:28) [MSC v.1942 64 bit (AMD64)]",
   "stages": [
@@ -32,14 +32,14 @@
         {
           "filename": "E2_pgp_results.csv",
           "path": "benchmarks\\heldout\\results\\E2_pgp_results.csv",
-          "size_bytes": 17811,
-          "sha256": "6662f1908e1e81f308dd0035717d0b6e498d26139014b1013c40c4edc51a25cc"
+          "size_bytes": 20151,
+          "sha256": "d6301d8b4150aeeaf6af0193bed34fc300af297423cd16d856826dc663405da8"
         },
         {
           "filename": "E2_pgp_summary.json",
           "path": "benchmarks\\heldout\\results\\E2_pgp_summary.json",
-          "size_bytes": 5839,
-          "sha256": "44591beccf607c127144c6e73f55e0b8612954b305c5600a559e18a62493de00"
+          "size_bytes": 3093,
+          "sha256": "f7776f57456c13b285d750efc163ea263df839aa25dc9ff3f35a6562b2a3585e"
         }
       ]
     },
@@ -53,13 +53,13 @@
           "filename": "E3_bbb_results.csv",
           "path": "benchmarks\\heldout\\results\\E3_bbb_results.csv",
           "size_bytes": 692950,
-          "sha256": "3f3f003ed55a73985b15893b271b5942e96e184fddf02f6330a6ee870c4dd43c"
+          "sha256": "7b64106d404040ec856fdc756891d8e9b0c9606144ab2be78b3499ef1911bdc6"
         },
         {
           "filename": "E3_bbb_summary.json",
           "path": "benchmarks\\heldout\\results\\E3_bbb_summary.json",
-          "size_bytes": 3819,
-          "sha256": "f8bfd3da8eaabd03cb48a61741327e09114349efbb91ecbd65a4df4108aa5bf0"
+          "size_bytes": 3825,
+          "sha256": "16aafc6286bf8f368de2a34b7e6085f52f8d4ce6f92fc9739f8c4c1cf1e4bfae"
         }
       ]
     }

@@ -30,50 +30,50 @@
       "mcc": 0.4237
     },
     "Tier 2: Legacy Coupled (Passive BBB AND NOT P-gp substrate)": {
-      "true_positives": 2543,
-      "false_negatives": 2399,
-      "true_negatives": 2403,
-      "false_positives": 437,
-      "sensitivity": 0.5146,
+      "true_positives": 1115,
+      "false_negatives": 3827,
+      "true_negatives": 2646,
+      "false_positives": 194,
+      "sensitivity": 0.2256,
       "sensitivity_95_ci": [
-        0.5006,
-        0.5285
+        0.2142,
+        0.2375
       ],
-      "specificity": 0.8461,
+      "specificity": 0.9317,
       "specificity_95_ci": [
-        0.8324,
-        0.8589
+        0.9218,
+        0.9404
       ],
-      "accuracy": 0.6356,
+      "accuracy": 0.4833,
       "accuracy_95_ci": [
-        0.6248,
-        0.6462
+        0.4722,
+        0.4944
       ],
-      "balanced_accuracy": 0.6804,
-      "mcc": 0.3572
+      "balanced_accuracy": 0.5786,
+      "mcc": 0.2025
     },
     "Tier 3: Efflux-Penalized Substrates (MW >= 400 gate)": {
-      "true_positives": 2728,
-      "false_negatives": 2214,
-      "true_negatives": 2391,
-      "false_positives": 449,
-      "sensitivity": 0.552,
+      "true_positives": 2628,
+      "false_negatives": 2314,
+      "true_negatives": 2412,
+      "false_positives": 428,
+      "sensitivity": 0.5318,
       "sensitivity_95_ci": [
-        0.5381,
-        0.5658
+        0.5178,
+        0.5457
       ],
-      "specificity": 0.8419,
+      "specificity": 0.8493,
       "specificity_95_ci": [
-        0.828,
-        0.8549
+        0.8357,
+        0.862
       ],
-      "accuracy": 0.6578,
+      "accuracy": 0.6476,
       "accuracy_95_ci": [
-        0.6472,
-        0.6683
+        0.637,
+        0.6582
       ],
-      "balanced_accuracy": 0.6969,
-      "mcc": 0.3858
+      "balanced_accuracy": 0.6905,
+      "mcc": 0.3757
     },
     "Tier 4: Strict Multi-parameter (BOILED-Egg + TPSA<=90 + MW<=450)": {
       "true_positives": 2899,
@@ -124,34 +124,34 @@
       "mcc": 0.2503
     },
     "Tier 2 (Group A)": {
-      "true_positives": 469,
-      "false_negatives": 447,
-      "true_negatives": 95,
-      "false_positives": 31,
-      "sensitivity": 0.512,
+      "true_positives": 277,
+      "false_negatives": 639,
+      "true_negatives": 110,
+      "false_positives": 16,
+      "sensitivity": 0.3024,
       "sensitivity_95_ci": [
-        0.4797,
-        0.5443
+        0.2735,
+        0.3329
       ],
-      "specificity": 0.754,
+      "specificity": 0.873,
       "specificity_95_ci": [
-        0.672,
-        0.8209
+        0.8037,
+        0.9203
       ],
-      "accuracy": 0.5413,
+      "accuracy": 0.3714,
       "accuracy_95_ci": [
-        0.5109,
-        0.5713
+        0.3426,
+        0.4012
       ],
-      "balanced_accuracy": 0.633,
-      "mcc": 0.1736
+      "balanced_accuracy": 0.5877,
+      "mcc": 0.1272
     }
   },
   "decoupling_impact_delta": {
-    "true_positives_gained_by_decoupling": 466,
-    "false_positives_added_by_decoupling": 49,
-    "sensitivity_delta": 0.0943,
-    "specificity_delta": -0.0172,
-    "mcc_delta": 0.0665
+    "true_positives_gained_by_decoupling": 1894,
+    "false_positives_added_by_decoupling": 292,
+    "sensitivity_delta": 0.3833,
+    "specificity_delta": -0.1028,
+    "mcc_delta": 0.2212
   }
 }
