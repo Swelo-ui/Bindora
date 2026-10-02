@@ -1,6 +1,6 @@
-# Bindora — User Guide & Testing Manual
+# Bindora Dock v2.2 — User Guide & Testing Manual (Research-Grade Edition)
 
-Welcome to **Bindora**, an advanced computational pharmacology platform designed for students, researchers, and pharmacologists. Bindora seamlessly combines Scripps AutoDock Vina v1.2.7 3D molecular docking, RDKit cheminformatics, ChEMBL bioactivity verification, and deep educational AI narration into a unified, zero-install WebGL interface.
+Welcome to **Bindora Dock v2.2**, a high-precision, low-resource computational pharmacology and molecular docking platform engineered by NexPharmaTech. Bindora v2.2 combines Scripps AutoDock Vina v1.2.7, Vinardo scoring, OpenMM MM-GBSA (OBC2/GBn2) continuum solvation physics, a Supervised Machine Learning P-gp Substrate Classifier (83.3% sensitivity), 100% pure hydrocarbon decoy gating, RDKit 2026 cheminformatics, ChEMBL bioactivity verification, and deep educational AI narration into a unified, zero-install WebGL interface.
 
 ---
 

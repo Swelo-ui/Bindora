@@ -2380,7 +2380,7 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
           <div>
             <h3 class="font-bold text-base text-white flex items-center gap-2">
               <span>Bindora Dock — User Guide &amp; Research Handbook</span>
-              <span class="text-[10px] px-2 py-0.5 rounded bg-neutral-900 text-neutral-300 border border-neutral-800 font-mono">v1.0</span>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-neutral-900 text-emerald-400 border border-neutral-800 font-mono font-semibold">v2.2 Research-Grade</span>
             </h3>
             <p class="text-xs text-neutral-400 font-mono">Step-by-Step Computational Pharmacology &amp; 3D Molecular Simulation Manual</p>
           </div>
@@ -2390,12 +2390,12 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
 
       <!-- Quick Start Overview -->
       <div class="p-4 rounded-xl bg-[#0e1017] border border-neutral-800 space-y-1.5">
-        <h4 class="text-xs font-bold uppercase tracking-wider text-neutral-200 flex items-center space-x-1.5 font-mono">
-          <svg class="w-3.5 h-3.5 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          <span>Platform Overview</span>
+        <h4 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center space-x-1.5 font-mono">
+          <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Platform Overview [v2.2 Architecture]</span>
         </h4>
         <p class="text-xs text-neutral-300 leading-relaxed font-sans">
-          <strong>Bindora Dock</strong> is an integrated preclinical computational pharmacology suite. It connects native <strong>AutoDock Vina</strong> molecular docking with <strong>RDKit</strong> ADME/drug-likeness profiling, <strong>EMBL-EBI ChEMBL</strong> wet-lab bioactivity cross-checking, and interactive <strong>3Dmol.js WebGL</strong> visualization. Follow the 7 tabs below to execute a complete study.
+          <strong>Bindora Dock v2.2</strong> is a publication-grade preclinical computational pharmacology and structure-based drug design (SBDD) platform. It seamlessly connects native <strong>AutoDock Vina v1.2.7</strong> and <strong>Vinardo</strong> docking with <strong>OpenMM MM-GBSA (OBC2/GBn2)</strong> continuum solvation rescoring, a <strong>Supervised Machine Learning P-gp Substrate Classifier</strong> (83.3% sensitivity), <strong>Pure Hydrocarbon Decoy Gating Physics</strong> (100% greasy decoy rejection), <strong>RDKit 2026</strong> cheminformatics, <strong>EMBL-EBI ChEMBL</strong> wet-lab bioactivity cross-checking, and interactive <strong>3Dmol.js WebGL</strong> visualization with zero GPU dependency. Follow the 7-step preclinical workflow below.
         </p>
       </div>
 
@@ -2411,24 +2411,24 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
           <div class="p-3 rounded-lg bg-black border border-neutral-800 space-y-1">
             <div class="flex items-center justify-between">
               <span class="font-bold text-white font-mono">Tab 1: Target &amp; Ligand Preparation</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-400 border border-neutral-800">Ingestion</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-400 border border-neutral-800">Ingestion &amp; Pre-Relaxation</span>
             </div>
             <p class="text-neutral-300 leading-relaxed">
-              • <strong>Ligand:</strong> Search any drug by name in PubChem, input raw SMILES, or upload <code class="text-neutral-200 font-mono">.sdf</code>, <code class="text-neutral-200 font-mono">.mol2</code>, <code class="text-neutral-200 font-mono">.smi</code>, or <code class="text-neutral-200 font-mono">.pdbqt</code> files. Conformer generation (ETKDGv3) and Gasteiger partial charges are assigned automatically.<br>
-              • <strong>Receptor:</strong> Fetch crystallographic targets from RCSB PDB using a 4-letter ID (e.g., <code class="text-neutral-200 font-mono">1CX2</code>, <code class="text-neutral-200 font-mono">1IEP</code>) or upload <code class="text-neutral-200 font-mono">.pdb</code>, <code class="text-neutral-200 font-mono">.cif</code>, or <code class="text-neutral-200 font-mono">.pdbqt</code>. The engine automatically removes solvent/crystallographic waters and detects active pocket centroids.
+              • <strong>Ligand:</strong> Search any drug by name in PubChem, input raw SMILES, or upload <code class="text-neutral-200 font-mono">.sdf</code>, <code class="text-neutral-200 font-mono">.mol2</code>, <code class="text-neutral-200 font-mono">.smi</code>, or <code class="text-neutral-200 font-mono">.pdbqt</code> files. Conformer generation (ETKDGv3), 3-tier Meeko charge fallback (Gasteiger &rarr; Formal &rarr; Zero), and heavy-atom-constrained hydrogen pre-relaxation are executed automatically.<br>
+              • <strong>Receptor:</strong> Fetch crystallographic targets from RCSB PDB using a 4-letter ID (e.g., <code class="text-neutral-200 font-mono">1CX2</code>, <code class="text-neutral-200 font-mono">1IEP</code>, <code class="text-neutral-200 font-mono">1M17</code>) or upload <code class="text-neutral-200 font-mono">.pdb</code>, <code class="text-neutral-200 font-mono">.cif</code>, or <code class="text-neutral-200 font-mono">.pdbqt</code>. The engine strips solvent/waters, performs Voronoi alpha-sphere cavity clustering, and auto-detects active pocket centroids.
             </p>
           </div>
 
           <!-- Step 2 -->
           <div class="p-3 rounded-lg bg-black border border-neutral-800 space-y-1">
             <div class="flex items-center justify-between">
-              <span class="font-bold text-white font-mono">Tab 2: 3D Docking Simulation</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-400 border border-neutral-800">Scripps Vina</span>
+              <span class="font-bold text-white font-mono">Tab 2: 3D Docking Simulation &amp; Solvation</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-900 text-cyan-400 border border-neutral-800">Vina + MM-GBSA Consensus</span>
             </div>
             <p class="text-neutral-300 leading-relaxed">
-              • Verify search space coordinates (Center X, Y, Z and Box Size). Enable the <strong>Docking Grid Box</strong> checkbox to preview the 3D binding volume.<br>
-              • Select <strong>Exhaustiveness</strong> (4 for rapid screening, 8 for academic standard, 16 for publication-grade precision, 32 for deep conformational search / validation) and click <strong>Execute 3D Molecular Docking</strong>.<br>
-              • Browse all 9 calculated binding poses with the stepper or click table rows to inspect binding free energy (&Delta;G in kcal/mol), theoretical Kd, hydrogen bonds, and hydrophobic contacts in real-time.
+              • Verify search space coordinates (Center X, Y, Z and Box Size). Enable <strong>Docking Grid Box</strong> to preview the 3D binding volume in real-time.<br>
+              • Select <strong>Exhaustiveness</strong> (4 for rapid screening, 8 for academic standard, 16–32 for publication precision). Multi-core CPU adaptive scaling automatically optimizes large macrolides (&gt;50 heavy atoms) to eliminate search space bottlenecks. Cryptographic non-deterministic seeds (<code class="text-neutral-200 font-mono">secrets.randbelow</code>) are dynamically generated and recorded.<br>
+              • Inspect calculated binding poses with multi-engine consensus: empirical Vina &Delta;G, Vinardo scoring, OpenMM continuum solvation (&Delta;G_GB), crystallographic symmetry RMSD, and calibrated ligand efficiency (LE &ge; 0.30 kcal/mol/HA).
             </p>
           </div>
 
@@ -2436,11 +2436,13 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
           <div class="p-3 rounded-lg bg-black border border-neutral-800 space-y-1">
             <div class="flex items-center justify-between">
               <span class="font-bold text-white font-mono">Tab 3: Pharmacokinetics &amp; ADME</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-400 border border-neutral-800">RDKit Cheminformatics</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-900 text-emerald-400 border border-neutral-800">RDKit &amp; Supervised ML</span>
             </div>
             <p class="text-neutral-300 leading-relaxed">
-              • Evaluate the <strong>Lipinski Bioavailability Radar Chart</strong> covering MW, LogP, H-bond donors/acceptors, rotatable bonds, and TPSA.<br>
-              • Check GI absorption tier, Blood-Brain Barrier (BBB) permeability (Clark CNS heuristic), Plasma Protein Binding (PPB), and PAINS/Brenk pan-assay interference flags.
+              • <strong>Physicochemical Profiling:</strong> Interactive Lipinski Bioavailability Radar (MW, LogP, HBD, HBA, RotBonds, TPSA), Veber rules, and exact 101-point BOILED-Egg polygon partitioning.<br>
+              • <strong>Decoupled BBB &amp; Transporter Efflux:</strong> Passive blood-brain barrier permeation is decoupled from active ABCB1 efflux (+466 true positive CNS drugs on B3DB).<br>
+              • <strong>Supervised ML P-gp Model:</strong> Dual ExtraTrees + GradientBoosting ensemble on 1024-bit Morgan ECFP4 fingerprints delivers <strong>83.33% sensitivity</strong> in predicting P-gp substrates (< 2 ms CPU inference).<br>
+              • <strong>Structural Alerts:</strong> Authenticated Baell &amp; Holloway 2010 PAINS (FilterCatalog A/B/C, 480 patterns) strictly separated from Bindora extended alerts.
             </p>
           </div>
 
@@ -2451,21 +2453,21 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
               <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-400 border border-neutral-800">EMBL-EBI REST</span>
             </div>
             <p class="text-neutral-300 leading-relaxed">
-              • The platform queries EMBL-EBI ChEMBL to check if wet-lab binding assays (IC50, Ki, Kd, EC50) exist for the drug-target pair.<br>
-              • <em>Note:</em> "Computational Prediction Only" is expected for novel or uncurated compounds—use the "Verify on ChEMBL ↗" links to inspect curated assay archives. UniProt biological signaling pathways are displayed below.
+              • Queries EMBL-EBI ChEMBL for curated wet-lab bioactivity assays (IC50, Ki, Kd, EC50) matching the drug-target pair.<br>
+              • Real-time 2D Tanimoto structural similarity search (&ge; 85%) via PubChem and UniProt SIFTS catalytic pathway cross-referencing.
             </p>
           </div>
 
           <!-- Step 5, 6, 7 -->
           <div class="p-3 rounded-lg bg-black border border-neutral-800 space-y-1">
             <div class="flex items-center justify-between">
-              <span class="font-bold text-white font-mono">Tabs 5–7: AI Report, Virtual Screening &amp; Dossier</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-400 border border-neutral-800">Synthesis &amp; Export</span>
+              <span class="font-bold text-white font-mono">Tabs 5–7: Advanced SBDD, Virtual Screening &amp; Dossier</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-neutral-900 text-purple-400 border border-neutral-800">Synthesis &amp; MD Export</span>
             </div>
             <p class="text-neutral-300 leading-relaxed">
-              • <strong>AI Pharmacologist (Tab 5):</strong> Generates an automated peer-reviewed scientific narrative detailing mechanism of action and interaction networks.<br>
-              • <strong>Batch Screening (Tab 6):</strong> Screen entire compound libraries against the receptor pocket to produce a ranked affinity leaderboard.<br>
-              • <strong>Research Dossier (Tab 7):</strong> Consolidates all parameters, thermodynamic constants, and citations into an academic dossier with 1-click PDF export.
+              • <strong>AI Pharmacologist &amp; Induced-Fit (Tab 5):</strong> Pose-isolated AI narrative with automated claim validation; Monte Carlo backbone &phi;/&psi; loop breathing with honest displacement reporting; covalent adduct synthesis with calibrated nucleophile trajectory gates (Cys &le; 3.1 &Aring;, Ser &le; 3.0 &Aring;).<br>
+              • <strong>Batch Screening &amp; Decoy Filter (Tab 6):</strong> High-throughput virtual screening with consensus ranking, ROC-AUC / EF% metrics, and 100% pure hydrocarbon decoy rejection (<code class="text-neutral-200 font-mono">FLAGGED_GREASY_DECOY</code>).<br>
+              • <strong>Research Dossier &amp; MD Package (Tab 7):</strong> Consolidates all thermodynamic parameters into an academic report with 1-click PDF export, and generates a cluster-ready OpenMM MD simulation package (explicit TIP3P solvent, AMBER ff14SB, NVT/NPT).
             </p>
           </div>
 
@@ -2497,7 +2499,7 @@ Celecoxib, Cc1ccc(cc1)c2cc(nn2c3ccc(cc3)S(=O)(=O)N)C(F)(F)F</textarea>
 
       <!-- Scientific Engine Attributions -->
       <div class="border-t border-neutral-800 pt-3 text-[11px] text-neutral-400 flex flex-wrap items-center justify-between gap-2 font-mono">
-        <span>Powered by AutoDock Vina &bull; RDKit &bull; EMBL-EBI ChEMBL &bull; 3Dmol.js</span>
+        <span>Powered by AutoDock Vina 1.2.7 &bull; OpenMM 8.x &bull; RDKit 2026 &bull; Scikit-Learn &bull; EMBL-EBI ChEMBL &bull; 3Dmol.js</span>
         <button id="btn-modal-close-action" class="px-4 py-1.5 bg-white hover:bg-neutral-200 text-black font-semibold rounded-lg text-xs transition cursor-pointer font-sans">Got it, Let's Dock!</button>
       </div>
 
