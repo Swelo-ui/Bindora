@@ -1,0 +1,66 @@
+cid,name,inchikey,smiles,family,expected_pains,predicted_pains,pains_alerts_count,pains_alerts,extended_alerts_count,extended_alerts,outcome
+1273210,5-Benzylidenerhodanine,OONWCXLYKDWKOU-VURMDHGXSA-N,C1=CC=C(C=C1)C=C2C(=O)NC(=S)S2,ene_rhod_A,TRUE,TRUE,1,ene_rhod_A(235),1,Rhodanine / thiazolidinedione core (promiscuous covalent/metal-binding alert),TP
+1273211,4-Dimethylaminobenzylidenerhodanine,JJRVRELEASDUMY-JXMROGBWSA-N,CN(C)C1=CC=C(C=C1)C=C2C(=O)NC(=S)S2,ene_rhod_A,TRUE,TRUE,2,anil_di_alk_B(251); ene_rhod_A(235),1,Rhodanine / thiazolidinedione core (promiscuous covalent/metal-binding alert),TP
+1380234,5-(4-Chlorobenzylidene)rhodanine,HIWUQEXWRIIIKB-YVMONPNESA-N,C1=CC(=CC=C1C=C2C(=O)NC(=S)S2)Cl,ene_rhod_A,TRUE,TRUE,1,ene_rhod_A(235),1,Rhodanine / thiazolidinedione core (promiscuous covalent/metal-binding alert),TP
+1549120,Epalrestat,CHNUOJQWGUIOLD-NFZZJPOKSA-N,CC(=CC1=CC=CC=C1)C=C2C(=O)N(C(=S)S2)CC(=O)O,ene_rhod_A,TRUE,TRUE,1,ene_rhod_A(235),1,Rhodanine / thiazolidinedione core (promiscuous covalent/metal-binding alert),TP
+1201546,Rhodanine,KIWUVOGUEXMXSV-UHFFFAOYSA-N,C1C(=O)NC(=S)S1,rhodanine,TRUE,TRUE,1,rhod_sat_A(33),1,Rhodanine / thiazolidinedione core (promiscuous covalent/metal-binding alert),TP
+1057,Pyrogallol,WQGWDDDVZFFDIG-UHFFFAOYSA-N,C1=CC(=C(C(=C1)O)O)O,catechol_A,TRUE,TRUE,1,catechol_A(92),0,None,TP
+289,Catechol,YCIMNLLNPGFGHC-UHFFFAOYSA-N,C1=CC=C(C(=C1)O)O,catechol_A,TRUE,TRUE,1,catechol_A(92),0,None,TP
+370,Gallic Acid,LNTHITQWFMADLM-UHFFFAOYSA-N,C1=C(C=C(C(=C1O)O)O)C(=O)O,catechol_A,TRUE,TRUE,1,catechol_A(92),0,None,TP
+681,Dopamine,VYFYYTLLBUKUHU-UHFFFAOYSA-N,C1=CC(=C(C=C1CCN)O)O,catechol_A,TRUE,TRUE,1,catechol_A(92),0,None,TP
+5816,Epinephrine,UCTWMZQNUQWSLP-VIFPVBQESA-N,CNCC(C1=CC(=C(C=C1)O)O)O,catechol_A,TRUE,TRUE,1,catechol_A(92),0,None,TP
+8530,"1,4-Naphthoquinone",FRASJONUBLZVQX-UHFFFAOYSA-N,C1=CC=C2C(=O)C=CC(=O)C2=C1,quinone_A,TRUE,TRUE,1,quinone_A(370),1,Linear ene-dione / bis-enone Michael acceptor (reactive electrophile alert),TP
+4055,Menadione,MJVAVZPDRWSRRC-UHFFFAOYSA-N,CC1=CC(=O)C2=CC=CC=C2C1=O,quinone_A,TRUE,TRUE,1,quinone_A(370),1,Linear ene-dione / bis-enone Michael acceptor (reactive electrophile alert),TP
+3806,Juglone,KQPYUDDGWXQXHS-UHFFFAOYSA-N,C1=CC2=C(C(=O)C=CC2=O)C(=C1)O,quinone_A,TRUE,TRUE,1,quinone_A(370),1,Linear ene-dione / bis-enone Michael acceptor (reactive electrophile alert),TP
+10205,Plumbagin,VCMMXZQDRFWYSE-UHFFFAOYSA-N,CC1=CC(=O)C2=C(C1=O)C=CC=C2O,quinone_A,TRUE,TRUE,2,quinone_A(370); ene_one_D(1),1,Linear ene-dione / bis-enone Michael acceptor (reactive electrophile alert),TP
+4650,Quinone,AZQWKYJCGOJGHM-UHFFFAOYSA-N,C1=CC(=O)C=CC1=O,quinone_A,TRUE,TRUE,1,quinone_A(370),2,"Linear ene-dione / bis-enone Michael acceptor (reactive electrophile alert); 1,4-Benzoquinone (redox-cycling quinone / electrophilic Michael acceptor alert)",TP
+135401296,Salicylaldehyde phenylhydrazone,SERARPRVBWDEBA-GXDHUFHOSA-N,C1=CC=C(C=C1)NN=CC2=CC=CC=C2O,hzone_phenol_A,TRUE,TRUE,1,hzone_phenol_A(479),0,None,TP
+135423926,Salicylaldehyde Thiosemicarbazone,OHNSRYBTSVDDKA-BJMVGYQFSA-N,C1=CC=C(C(=C1)C=NNC(=S)N)O,hzone_phenol_A,TRUE,TRUE,1,hzone_phenol_A(479),0,None,TP
+241129,5-Benzylidenebarbituric acid,CMWDWOZYVQQAMI-UHFFFAOYSA-N,C1=CC=C(C=C1)C=C2C(=O)NC(=O)NC2=O,keto_barbiturate_A,TRUE,TRUE,1,ene_six_het_A(483),0,None,TP
+727420,5-Cinnamylidenebarbituric acid,CRQHPZFBGAKYRX-QPJJXVBHSA-N,C1=CC=C(C=C1)C=CC=C2C(=O)NC(=O)NC2=O,keto_barbiturate_A,TRUE,TRUE,1,ene_six_het_A(483),0,None,TP
+2102,Alpha-Cyano-4-Hydroxycinnamic Acid,AFVLVVWMAFSXCK-UHFFFAOYSA-N,C1=CC(=CC=C1C=C(C#N)C(=O)O)O,ene_cyano_A,TRUE,FALSE,0,None,0,None,FN
+2052,Tyrphostin 23,VTJXFTPMFYAJJU-UHFFFAOYSA-N,C1=CC(=C(C=C1C=C(C#N)C#N)O)O,ene_cyano_A,TRUE,TRUE,2,catechol_A(92); ene_cyano_A(19),0,None,TP
+5328779,AG-490,TUCIOBMMDDOEMM-RIYZIHGNSA-N,C1=CC=C(C=C1)CNC(=O)C(=CC2=CC(=C(C=C2)O)O)C#N,ene_cyano_A,TRUE,TRUE,1,catechol_A(92),0,None,TP
+7479,4-(Dimethylamino)Benzaldehyde,BGNGWHSBYQYVRX-UHFFFAOYSA-N,CN(C)C1=CC=C(C=C1)C=O,anil_di_alk_B,TRUE,FALSE,0,None,0,None,FN
+11057,Crystal Violet,ZXJXZNDDNMQXFV-UHFFFAOYSA-M,CN(C)C1=CC=C(C=C1)C(=C2C=CC(=[N+](C)C)C=C2)C3=CC=C(C=C3)N(C)C.[Cl-],anil_di_alk_A,TRUE,TRUE,1,anil_di_alk_B(251),0,None,TP
+23673835,C.I. Acid Orange 52,STZCRXQWRGQSJD-UHFFFAOYSA-M,CN(C)C1=CC=C(C=C1)N=NC2=CC=C(C=C2)S(=O)(=O)[O-].[Na+],azo_A,TRUE,TRUE,2,anil_di_alk_A(478); azo_A(324),0,None,TP
+13297,1-(Phenylazo)-2-naphthol,MRQIXHXHHPWVIL-UHFFFAOYSA-N,C1=CC=C(C=C1)N=NC2=C(C=CC3=CC=CC=C32)O,azo_A,TRUE,TRUE,1,azo_A(324),0,None,TP
+4756,Phenazopyridine,QPFYXYFORQJZEC-UHFFFAOYSA-N,C1=CC=C(C=C1)N=NC2=C(N=C(C=C2)N)N,azo_A,TRUE,TRUE,1,azo_A(324),0,None,TP
+969516,Curcumin,VFLDPWHFBUODDF-FCXRPNKRSA-N,COC1=C(C=CC(=C1)C=CC(=O)CC(=O)C=CC2=CC(=C(C=C2)O)OC)O,curcuminoid,TRUE,FALSE,0,None,1,"Curcuminoid / 1,7-diarylheptanoid conjugated bis-enone (pan-assay colloidal aggregator alert; inspired by Baell & Walters 2014)",FN
+5469424,Demethoxycurcumin,HJTVQHVGMGKONQ-LUZURFALSA-N,COC1=C(C=CC(=C1)C=CC(=O)CC(=O)C=CC2=CC=C(C=C2)O)O,curcuminoid,TRUE,FALSE,0,None,1,"Curcuminoid / 1,7-diarylheptanoid conjugated bis-enone (pan-assay colloidal aggregator alert; inspired by Baell & Walters 2014)",FN
+5315472,Bisdemethoxycurcumin,PREBVFJICNPEKM-YDWXAUTNSA-N,C1=CC(=CC=C1C=CC(=O)CC(=O)C=CC2=CC=C(C=C2)O)O,curcuminoid,TRUE,FALSE,0,None,1,"Curcuminoid / 1,7-diarylheptanoid conjugated bis-enone (pan-assay colloidal aggregator alert; inspired by Baell & Walters 2014)",FN
+637760,Chalcone,DQFBYFPFKXHELB-VAWYXSNFSA-N,C1=CC=C(C=C1)C=CC(=O)C2=CC=CC=C2,mono_enone,FALSE,FALSE,0,None,0,None,TN
+5273472,trans-Cinnamamide,APEJMQOBVMLION-VOTSOKGWSA-N,C1=CC=C(C=C1)C=CC(=O)N,cinnamic_amide,FALSE,FALSE,0,None,0,None,TN
+8433,Dibenzoylmethane,NZZIMKJIVMHWJC-UHFFFAOYSA-N,C1=CC=C(C=C1)C(=O)CC(=O)C2=CC=CC=C2,1_3_diketone,FALSE,FALSE,0,None,0,None,TN
+445858,Ferulic Acid,KSEBMYQBYZTDHS-HWKANZROSA-N,COC1=C(C=CC(=C1)C=CC(=O)O)O,cinnamic_acid,FALSE,FALSE,0,None,0,None,TN
+1548943,Capsaicin,YKPUWZUDDOIDPM-SOFGYWHQSA-N,CC(C)C=CCCCCC(=O)NCC1=CC(=C(C=C1)O)OC,vanilloid,FALSE,FALSE,0,None,0,None,TN
+1983,Acetaminophen,RZVAJINKPMORJF-UHFFFAOYSA-N,CC(=O)NC1=CC=C(C=C1)O,phenol_approved_drug,FALSE,FALSE,0,None,0,None,TN
+338,Salicylic Acid,YGSDEFSMJLZEOE-UHFFFAOYSA-N,C1=CC=C(C(=C1)C(=O)O)O,phenol_approved_drug,FALSE,FALSE,0,None,0,None,TN
+2244,Aspirin,BSYNRYMUTXBXSQ-UHFFFAOYSA-N,CC(=O)OC1=CC=CC=C1C(=O)O,ester_nsaid,FALSE,FALSE,0,None,0,None,TN
+3672,"Ibuprofen, (+-)-",HEFNNWSXXWATRW-UHFFFAOYSA-N,CC(C)CC1=CC=C(C=C1)C(C)C(=O)O,propionic_nsaid,FALSE,FALSE,0,None,0,None,TN
+156391,Naproxen,CMWTZPSULFXXJA-VIFPVBQESA-N,CC(C1=CC2=C(C=C1)C=C(C=C2)OC)C(=O)O,naphthalene_nsaid,FALSE,FALSE,0,None,0,None,TN
+33613,Amoxicillin,LSQZJLSUYDQPKJ-NJBDSQKTSA-N,CC1(C(N2C(S1)C(C2=O)NC(=O)C(C3=CC=C(C=C3)O)N)C(=O)O)C,phenolic_beta_lactam,FALSE,FALSE,0,None,0,None,TN
+2764,Ciprofloxacin,MYSWGUAQZAJSOK-UHFFFAOYSA-N,C1CC1N2C=C(C(=O)C3=CC(=C(C=C32)N4CCNCC4)F)C(=O)O,fluoroquinolone,FALSE,FALSE,0,None,0,None,TN
+4091,Metformin,XZWYZXLIPXDOLR-UHFFFAOYSA-N,CN(C)C(=N)N=C(N)N,biguanide,FALSE,FALSE,0,None,0,None,TN
+89594,Nicotine,SNICXCGAKADSCV-JTQLQIEISA-N,CN1CCCC1C2=CN=CC=C2,alkaloid,FALSE,FALSE,0,None,0,None,TN
+2519,Caffeine,RYYVLZVUVIJVGH-UHFFFAOYSA-N,CN1C=NC2=C1C(=O)N(C(=O)N2C)C,xanthine,FALSE,FALSE,0,None,0,None,TN
+4946,Propranolol,AQHHHDLHHXJYJD-UHFFFAOYSA-N,CC(C)NCC(COC1=CC=CC2=CC=CC=C21)O,beta_blocker,FALSE,FALSE,0,None,0,None,TN
+2249,Atenolol,METKIMKYRPQLGS-UHFFFAOYSA-N,CC(C)NCC(COC1=CC=C(C=C1)CC(=O)N)O,beta_blocker,FALSE,FALSE,0,None,0,None,TN
+4594,Omeprazole,SUBDBMMJDZJVOS-UHFFFAOYSA-N,CC1=CN=C(C(=C1OC)C)CS(=O)C2=NC3=C(N2)C=C(C=C3)OC,sulfinyl_benzimidazole,FALSE,FALSE,0,None,0,None,TN
+60823,Atorvastatin,XUKUURHRXDUEBC-KAYWLYCHSA-N,CC(C)C1=C(C(=C(N1CCC(CC(CC(=O)O)O)O)C2=CC=C(C=C2)F)C3=CC=CC=C3)C(=O)NC4=CC=CC=C4,pyrrole_statin,FALSE,FALSE,0,None,0,None,TN
+3961,Losartan,PSIFNNKUMBGKDQ-UHFFFAOYSA-N,CCCCC1=NC(=C(N1CC2=CC=C(C=C2)C3=CC=CC=C3C4=NNN=N4)CO)Cl,biphenyl_tetrazole,FALSE,FALSE,0,None,0,None,TN
+54678486,Warfarin,PJVWKTKQMONHTI-UHFFFAOYSA-N,CC(=O)CC(C1=CC=CC=C1)C2=C(C3=CC=CC=C3OC2=O)O,coumarin_anticoagulant,FALSE,FALSE,0,None,0,None,TN
+3016,Diazepam,AAOVKJBEBIDNHE-UHFFFAOYSA-N,CN1C(=O)CN=C(C2=C1C=CC(=C2)Cl)C3=CC=CC=C3,benzodiazepine,FALSE,FALSE,0,None,0,None,TN
+5288826,Morphine,BQJCRHHNABKAKU-KBQPJGBKSA-N,CN1CCC23C4C1CC5=C2C(=C(C=C5)O)OC3C(C=C4)O,opioid_phenol,FALSE,FALSE,0,None,0,None,TN
+5904,Penicillin G,JGSARLDLIJGVTE-MBNYWOFBSA-N,CC1(C(N2C(S1)C(C2=O)NC(=O)CC3=CC=CC=C3)C(=O)O)C,beta_lactam,FALSE,FALSE,0,None,0,None,TN
+5291,Imatinib,KTUFNOKKBVMGRW-UHFFFAOYSA-N,CC1=C(C=C(C=C1)NC(=O)C2=CC=C(C=C2)CN3CCN(CC3)C)NC4=NC=CC(=N4)C5=CN=CC=C5,kinase_inhibitor,FALSE,FALSE,0,None,0,None,TN
+123631,Gefitinib,XGALLCVXEZPNRQ-UHFFFAOYSA-N,COC1=C(C=C2C(=C1)N=CN=C2NC3=CC(=C(C=C3)F)Cl)OCCCN4CCOCC4,kinase_inhibitor,FALSE,FALSE,0,None,0,None,TN
+176870,Erlotinib,AAKJLRGGTJKAMG-UHFFFAOYSA-N,COCCOC1=C(C=C2C(=C1)C(=NC=N2)NC3=CC=CC(=C3)C#C)OCCOC,kinase_inhibitor,FALSE,FALSE,0,None,0,None,TN
+3062316,Dasatinib,ZBNZXTGUTAYRHI-UHFFFAOYSA-N,CC1=C(C(=CC=C1)Cl)NC(=O)C2=CN=C(S2)NC3=CC(=NC(=N3)C)N4CCN(CC4)CCO,kinase_inhibitor,FALSE,FALSE,0,None,0,None,TN
+135398744,Sildenafil,BNRNXUUZRGQAQC-UHFFFAOYSA-N,CCCC1=NN(C2=C1N=C(NC2=O)C3=C(C=CC(=C3)S(=O)(=O)N4CCN(CC4)C)OCC)C,pde5_inhibitor,FALSE,FALSE,0,None,0,None,TN
+5329,Sulfamethoxazole,JLKIGFTWXXRPMT-UHFFFAOYSA-N,CC1=CC(=NO1)NS(=O)(=O)C2=CC=C(C=C2)N,sulfonamide,FALSE,FALSE,0,None,0,None,TN
+5578,Trimethoprim,IEDVJHCEMCRBQM-UHFFFAOYSA-N,COC1=CC(=CC(=C1OC)OC)CC2=CN=C(N=C2N)N,diaminopyrimidine,FALSE,FALSE,0,None,0,None,TN
+2083,Salbutamol,NDAUXUAQIAJITI-UHFFFAOYSA-N,CC(C)(C)NCC(C1=CC(=C(C=C1)O)CO)O,phenolic_agonist,FALSE,FALSE,0,None,0,None,TN
+3955,Loperamide,RDOIQAHITMMDAJ-UHFFFAOYSA-N,CN(C)C(=O)C(CCN1CCC(CC1)(C2=CC=C(C=C2)Cl)O)(C3=CC=CC=C3)C4=CC=CC=C4,diphenylmethyl_piperidine,FALSE,FALSE,0,None,0,None,TN
+3559,Haloperidol,LNEPOXFFQSENCJ-UHFFFAOYSA-N,C1CN(CCC1(C2=CC=C(C=C2)Cl)O)CCCC(=O)C3=CC=C(C=C3)F,butyrophenone,FALSE,FALSE,0,None,0,None,TN
+10935,Maleimide,PEEHTFAAVSWFBL-UHFFFAOYSA-N,C1=CC(=O)NC1=O,covalent_electrophile,FALSE,FALSE,0,None,2,Maleimide core (covalent thiol-reactive electrophile / Michael acceptor warhead alert); Linear ene-dione / bis-enone Michael acceptor (reactive electrophile alert),TN

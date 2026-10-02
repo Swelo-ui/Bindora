@@ -1,0 +1,29 @@
+{
+  "test_receptor": "1M17 (EGFR Kinase)",
+  "total_evaluated": 9,
+  "genuine_actives_count": 4,
+  "actives_passed_count": 2,
+  "active_pass_rate": 0.5,
+  "active_pass_95_ci": [
+    0.15,
+    0.85
+  ],
+  "decoys_count": 5,
+  "decoys_flagged_count": 4,
+  "decoy_detection_rate": 0.8,
+  "decoy_detection_95_ci": [
+    0.3755,
+    0.9638
+  ],
+  "incorrect_cases": [
+    {
+      "name": "Pyrene (aromatic grease)",
+      "cid": "31423",
+      "category": "Greasy Decoy (Aromatic Grease)",
+      "expected": "FLAGGED",
+      "verdict": "PASS",
+      "decoy_filter_flag": "PASS",
+      "polar_contacts": 0
+    }
+  ]
+}

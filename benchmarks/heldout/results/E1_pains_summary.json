@@ -1,0 +1,216 @@
+{
+  "total_compounds": 65,
+  "true_positives": 25,
+  "false_negatives": 5,
+  "true_negatives": 35,
+  "false_positives": 0,
+  "sensitivity_tpr": 0.8333,
+  "sensitivity_95_ci": [
+    0.6644,
+    0.9266
+  ],
+  "false_positive_rate": 0.0,
+  "fpr_95_ci": [
+    0.0,
+    0.0989
+  ],
+  "family_breakdown": {
+    "ene_rhod_A": {
+      "total": 4,
+      "detected": 4
+    },
+    "rhodanine": {
+      "total": 1,
+      "detected": 1
+    },
+    "catechol_A": {
+      "total": 5,
+      "detected": 5
+    },
+    "quinone_A": {
+      "total": 5,
+      "detected": 5
+    },
+    "hzone_phenol_A": {
+      "total": 2,
+      "detected": 2
+    },
+    "keto_barbiturate_A": {
+      "total": 2,
+      "detected": 2
+    },
+    "ene_cyano_A": {
+      "total": 3,
+      "detected": 2
+    },
+    "anil_di_alk_B": {
+      "total": 1,
+      "detected": 0
+    },
+    "anil_di_alk_A": {
+      "total": 1,
+      "detected": 1
+    },
+    "azo_A": {
+      "total": 3,
+      "detected": 3
+    },
+    "curcuminoid": {
+      "total": 3,
+      "detected": 0
+    },
+    "mono_enone": {
+      "total": 1,
+      "detected": 0
+    },
+    "cinnamic_amide": {
+      "total": 1,
+      "detected": 0
+    },
+    "1_3_diketone": {
+      "total": 1,
+      "detected": 0
+    },
+    "cinnamic_acid": {
+      "total": 1,
+      "detected": 0
+    },
+    "vanilloid": {
+      "total": 1,
+      "detected": 0
+    },
+    "phenol_approved_drug": {
+      "total": 2,
+      "detected": 0
+    },
+    "ester_nsaid": {
+      "total": 1,
+      "detected": 0
+    },
+    "propionic_nsaid": {
+      "total": 1,
+      "detected": 0
+    },
+    "naphthalene_nsaid": {
+      "total": 1,
+      "detected": 0
+    },
+    "phenolic_beta_lactam": {
+      "total": 1,
+      "detected": 0
+    },
+    "fluoroquinolone": {
+      "total": 1,
+      "detected": 0
+    },
+    "biguanide": {
+      "total": 1,
+      "detected": 0
+    },
+    "alkaloid": {
+      "total": 1,
+      "detected": 0
+    },
+    "xanthine": {
+      "total": 1,
+      "detected": 0
+    },
+    "beta_blocker": {
+      "total": 2,
+      "detected": 0
+    },
+    "sulfinyl_benzimidazole": {
+      "total": 1,
+      "detected": 0
+    },
+    "pyrrole_statin": {
+      "total": 1,
+      "detected": 0
+    },
+    "biphenyl_tetrazole": {
+      "total": 1,
+      "detected": 0
+    },
+    "coumarin_anticoagulant": {
+      "total": 1,
+      "detected": 0
+    },
+    "benzodiazepine": {
+      "total": 1,
+      "detected": 0
+    },
+    "opioid_phenol": {
+      "total": 1,
+      "detected": 0
+    },
+    "beta_lactam": {
+      "total": 1,
+      "detected": 0
+    },
+    "kinase_inhibitor": {
+      "total": 4,
+      "detected": 0
+    },
+    "pde5_inhibitor": {
+      "total": 1,
+      "detected": 0
+    },
+    "sulfonamide": {
+      "total": 1,
+      "detected": 0
+    },
+    "diaminopyrimidine": {
+      "total": 1,
+      "detected": 0
+    },
+    "phenolic_agonist": {
+      "total": 1,
+      "detected": 0
+    },
+    "diphenylmethyl_piperidine": {
+      "total": 1,
+      "detected": 0
+    },
+    "butyrophenone": {
+      "total": 1,
+      "detected": 0
+    },
+    "covalent_electrophile": {
+      "total": 1,
+      "detected": 0
+    }
+  },
+  "false_negative_cases": [
+    {
+      "name": "Alpha-Cyano-4-Hydroxycinnamic Acid",
+      "cid": "2102",
+      "family": "ene_cyano_A",
+      "inchikey": "AFVLVVWMAFSXCK-UHFFFAOYSA-N"
+    },
+    {
+      "name": "4-(Dimethylamino)Benzaldehyde",
+      "cid": "7479",
+      "family": "anil_di_alk_B",
+      "inchikey": "BGNGWHSBYQYVRX-UHFFFAOYSA-N"
+    },
+    {
+      "name": "Curcumin",
+      "cid": "969516",
+      "family": "curcuminoid",
+      "inchikey": "VFLDPWHFBUODDF-FCXRPNKRSA-N"
+    },
+    {
+      "name": "Demethoxycurcumin",
+      "cid": "5469424",
+      "family": "curcuminoid",
+      "inchikey": "HJTVQHVGMGKONQ-LUZURFALSA-N"
+    },
+    {
+      "name": "Bisdemethoxycurcumin",
+      "cid": "5315472",
+      "family": "curcuminoid",
+      "inchikey": "PREBVFJICNPEKM-YDWXAUTNSA-N"
+    }
+  ],
+  "false_positive_cases": []
+}

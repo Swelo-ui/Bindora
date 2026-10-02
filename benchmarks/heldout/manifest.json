@@ -1,63 +1,67 @@
 {
-  "benchmark_audit_metadata": {
-    "title": "Bindora Dock Independent Scientific Validation Audit",
-    "audit_type": "Observation and Read-Only Empirical Held-Out Benchmarking",
-    "timestamp_utc": "2026-09-29T07:31:14.559468+00:00",
-    "random_seed": 42
-  },
-  "environment": {
-    "python_version": "3.13.1 (tags/v3.13.1:0671451, Dec  3 2024, 19:06:28) [MSC v.1942 64 bit (AMD64)]",
-    "os_platform": "win32",
-    "packages": {
-      "rdkit": "2026.03.6",
-      "meeko": "0.8.0",
-      "numpy": "2.5.3",
-      "scipy": "1.18.1",
-      "scikit-learn": "1.9.1"
+  "generated_at": "2026-10-02T01:36:34.347383+00:00",
+  "repo_root": "H:\\AnuDock",
+  "python_version": "3.13.1 (tags/v3.13.1:0671451, Dec  3 2024, 19:06:28) [MSC v.1942 64 bit (AMD64)]",
+  "stages": [
+    {
+      "stage_id": "E1",
+      "stage_name": "PAINS Benchmark (Baell & Holloway 2010, 65 compounds)",
+      "script": "e1_pains_benchmark.py",
+      "status": "SUCCESS",
+      "output_files": [
+        {
+          "filename": "E1_pains_results.csv",
+          "path": "benchmarks\\heldout\\results\\E1_pains_results.csv",
+          "size_bytes": 10245,
+          "sha256": "ccea3943ae5cd901f0893885ba2864c7514cbf95eddf53ac2d1afe8fd567dca2"
+        },
+        {
+          "filename": "E1_pains_summary.json",
+          "path": "benchmarks\\heldout\\results\\E1_pains_summary.json",
+          "size_bytes": 4173,
+          "sha256": "693d8728a7df3a7867f3415f7a1771a85a6b201396f5ce5d6bdb4b23d86c3aac"
+        }
+      ]
     },
-    "binaries": {
-      "vina_path": "bin/vina.exe",
-      "vina_sha256": "e0c4b2715e0c1a74f6e92d0f3be0328ac97542eafbc111e6b1efad897a73cce5"
+    {
+      "stage_id": "E2",
+      "stage_name": "P-gp Substrate Benchmark (Wang 2011, 66 held-out compounds)",
+      "script": "e2_pgp_benchmark.py",
+      "status": "SUCCESS",
+      "output_files": [
+        {
+          "filename": "E2_pgp_results.csv",
+          "path": "benchmarks\\heldout\\results\\E2_pgp_results.csv",
+          "size_bytes": 17811,
+          "sha256": "6662f1908e1e81f308dd0035717d0b6e498d26139014b1013c40c4edc51a25cc"
+        },
+        {
+          "filename": "E2_pgp_summary.json",
+          "path": "benchmarks\\heldout\\results\\E2_pgp_summary.json",
+          "size_bytes": 5839,
+          "sha256": "44591beccf607c127144c6e73f55e0b8612954b305c5600a559e18a62493de00"
+        }
+      ]
+    },
+    {
+      "stage_id": "E3",
+      "stage_name": "BBB Permeability Benchmark (B3DB, 7782 compounds)",
+      "script": "e3_bbb_benchmark.py",
+      "status": "SUCCESS",
+      "output_files": [
+        {
+          "filename": "E3_bbb_results.csv",
+          "path": "benchmarks\\heldout\\results\\E3_bbb_results.csv",
+          "size_bytes": 692950,
+          "sha256": "3f3f003ed55a73985b15893b271b5942e96e184fddf02f6330a6ee870c4dd43c"
+        },
+        {
+          "filename": "E3_bbb_summary.json",
+          "path": "benchmarks\\heldout\\results\\E3_bbb_summary.json",
+          "size_bytes": 3819,
+          "sha256": "f8bfd3da8eaabd03cb48a61741327e09114349efbb91ecbd65a4df4108aa5bf0"
+        }
+      ]
     }
-  },
-  "frozen_datasets": {
-    "frozen_hashes_file": "benchmarks/heldout/FROZEN_HASHES.txt",
-    "frozen_hashes_sha256": "7f9b69e51789f37a94da8da2a83ec355eeade22d2909aee00568b09a3a0a16ce",
-    "datasets": {
-      "dev_set": {
-        "path": "benchmarks/heldout/dev_set.csv",
-        "sha256": "3fce1b013eb3770a54cd51d9208dbf2f85ae7d99a87563bb2b6e0beec1e5bc58",
-        "count": 42
-      },
-      "pgp_train": {
-        "path": "benchmarks/heldout/train.csv",
-        "sha256": "3d7ad170299233164a551d33a5e6ecda43420dee97fd2f35c43c0e291904cc8d",
-        "count": 975
-      },
-      "pgp_test": {
-        "path": "benchmarks/heldout/test.csv",
-        "sha256": "ed85c4c64124f9c02435de70d5506d38d689c91699cb000b11a98cbfc68a396f",
-        "count": 244
-      },
-      "bbb_test": {
-        "path": "benchmarks/heldout/bbb_test.csv",
-        "sha256": "579a470255319d5203ec7dd5e97adf607507f3302c69f40f74d25dc5b0037c78",
-        "count": 7782
-      },
-      "pains_dataset": {
-        "path": "benchmarks/heldout/pains_dataset.csv",
-        "sha256": "fdb7da68f7f187b5edb65761ec0ef8754d8e0a078568493fe8ec3c33ba6e6e47",
-        "count": 67
-      }
-    }
-  },
-  "results_artifacts": {
-    "macrocycle_eval_csv": "benchmarks/heldout/results/macrocycle_eval.csv",
-    "pains_benchmark_csv": "benchmarks/heldout/results/pains_benchmark.csv",
-    "pains_metrics_summary": "benchmarks/heldout/results/pains_metrics_summary.json",
-    "pgp_benchmark_csv": "benchmarks/heldout/results/pgp_benchmark.csv",
-    "pgp_metrics_summary": "benchmarks/heldout/results/pgp_metrics_summary.json",
-    "bbb_benchmark_csv": "benchmarks/heldout/results/bbb_benchmark.csv",
-    "bbb_metrics_summary": "benchmarks/heldout/results/bbb_metrics_summary.json"
-  }
+  ]
 }

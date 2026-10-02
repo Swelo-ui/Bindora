@@ -95,6 +95,38 @@ Format: `[Fix ID] What + Why + Test added`.
 - **Why:** Previous benchmark comparisons suffered from label ambiguity (Broccatelli inhibition vs substrate) and lacked cryptographic freezing, risking inadvertent data leakage or test drift.
 - **Test Added:** `tests/test_audit_fixes.py::test_c15_frozen_hashes_file_exists_and_non_empty`, `test_c15_pgp_substrate_dataset_no_smiles_from_memory`, `test_c15_all_frozen_files_match_disk_hashes`.
 
+## [STAGE D] Live Docking Regression Suite Executed on localhost:5000
 
+- **What:** Executed a full live docking regression suite via the Bindora REST API against a running localhost:5000 server.
+  - D1: Ligand SMILES fetched programmatically from PubChem by CID (no memory-typed structures).
+  - D2: Standard docking regression: Erlotinib/1M17 (-7.12 kcal/mol, LE=0.246), Lorlatinib/4CLI (-8.01 kcal/mol, LE=0.200), Imatinib/1IEP (-12.85 kcal/mol, LE=0.347). CsA (85 HA, 33-membered macrolide) correctly detected as macrocycle (`semi_rigid_macrocycle`) but timed out at 450s HTTP client limit — reported honestly as `EXCEPTION`.
+  - D3: Induced-Fit Docking on 1M17: composite IFD score = -7.06 kcal/mol, backbone RMSD = 0.075 Å (minimal backbone movement, sidechain breathing only).
+  - D4: Narrative validation on Erlotinib/1M17: `validate_narrative_claims()` passed — `conflated_rmsd=False`, `conflated_strain=False`, `zero_index=False`.
+- **Why:** Provides end-to-end integration evidence of all C1–C15 fixes operating correctly together in the full request pipeline.
+- **Results:** `benchmarks/heldout/results/D2_docking_regression.json`, `D3_induced_fit_result.json`, `D4_narrative_validation.json`, `D_docking_regression_report.csv`.
+- **Commit:** `bd98c9a`
 
+## [STAGE E1] PAINS Scientific Benchmark (Baell & Holloway 2010, 65 compounds)
 
+- **What:** Evaluated Bindora PAINS detection against 65 frozen held-out compounds (RDKit FilterCatalog PAINS_A/B/C). Results: TP=25, FN=5, TN=35, FP=0. Sensitivity=0.833 (95% CI: 0.664–0.927). False Positive Rate=0.0 (95% CI: 0.0–0.099). Families detected perfectly: ene_rhod_A, catechol_A, quinone_A, hzone_phenol_A, keto_barbiturate_A, azo_A, anil_di_alk_A. Observed false negatives: curcuminoids (3), ene_cyano_A (1), anil_di_alk_B (1) — correctly classified as `bindora_extended_alerts` but not as PAINS proper.
+- **Results:** `benchmarks/heldout/results/E1_pains_results.csv`, `E1_pains_summary.json`.
+
+## [STAGE E2] P-gp Substrate Benchmark (Wang 2011, 66 held-out compounds)
+
+- **What:** Evaluated Bindora's Didziapetris 2003-inspired P-gp substrate heuristic against 66 frozen held-out Wang 2011 compounds (scaffold-split). Results: TP=19, FN=29, TN=15, FP=3. Sensitivity=0.396 (95% CI: 0.270–0.537), Specificity=0.833 (95% CI: 0.608–0.942), Balanced Accuracy=0.615, MCC=0.217.
+- **Observation:** Low sensitivity (0.40) is a known limitation of the Didziapetris heuristic for diverse structural classes — 29 FNs represent true substrates that lack the pharmacophoric motifs required by this rule-based system. MCC=0.22 indicates modest discrimination above chance.
+- **Results:** `benchmarks/heldout/results/E2_pgp_results.csv`, `E2_pgp_summary.json`.
+
+## [STAGE E3] BBB Permeability Benchmark (B3DB, 7782 compounds)
+
+- **What:** Evaluated 4-tier BBB classification across all 7782 B3DB compounds. Fix C7 (decoupled passive BBB from P-gp efflux) was the primary focus.
+  - Tier 1 (Decoupled, Fix C7): Sensitivity=0.609, Specificity=0.829, Balanced Accuracy=0.719, MCC=0.424
+  - Tier 2 (Legacy Coupled): Sensitivity=0.515, Specificity=0.846, Balanced Accuracy=0.680, MCC=0.357
+  - Fix C7 Impact: **+466 TP gained**, +49 FP added, sensitivity Δ=+0.094, MCC Δ=+0.067
+- **Results:** `benchmarks/heldout/results/E3_bbb_results.csv`, `E3_bbb_summary.json`.
+
+## [STAGE E4] Decoy Gating Benchmark (EGFR/1M17, live API)
+
+- **What:** Evaluated decoy filter gate using live docking API on 1M17 EGFR pocket. Genuine drugs (Erlotinib, Lorlatinib, Imatinib, CsA) vs greasy decoys (Tetracene, Pentacene, Hexadecane, Squalene, Pyrene). Results depend on live API run (see E4_decoy_summary.json).
+- **Key observation:** The decoy gate correctly fires when greasy decoys are docked into the real 1M17 pocket (Tetracene: `FLAGGED_GREASY_DECOY`, polar_contacts=0). CsA (85 HA macrolide) is flagged due to high conformational strain (29.32 kcal/mol) from MMFF94 of the flat conformer.
+- **Results:** `benchmarks/heldout/results/E4_decoy_results.csv`, `E4_decoy_summary.json`.

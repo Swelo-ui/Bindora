@@ -1,0 +1,197 @@
+{
+  "dataset": "Wang et al. 2011 P-gp Substrate Dataset (Held-out Test Split, Bemis-Murcko Scaffold)",
+  "citation": "Wang et al., J. Chem. Inf. Model. 2011, 51, 6, 1447-1456",
+  "model_attribution": "Didziapetris et al., J. Drug Target. 2003 (Bindora heuristic implementation)",
+  "total_compounds": 66,
+  "true_substrates": 48,
+  "true_non_substrates": 18,
+  "confusion_matrix": {
+    "true_positives": 19,
+    "false_negatives": 29,
+    "true_negatives": 15,
+    "false_positives": 3
+  },
+  "metrics": {
+    "sensitivity": 0.3958,
+    "sensitivity_95_ci": [
+      0.2702,
+      0.5369
+    ],
+    "specificity": 0.8333,
+    "specificity_95_ci": [
+      0.6078,
+      0.9416
+    ],
+    "accuracy": 0.5152,
+    "accuracy_95_ci": [
+      0.3971,
+      0.6315
+    ],
+    "balanced_accuracy": 0.6146,
+    "matthews_correlation_coefficient": 0.2165
+  },
+  "false_negative_cases": [
+    {
+      "compound_id": "WANG2011_013",
+      "inchikey": "PHVGLTMQBUFIQQ-UHFFFAOYSA-N",
+      "motifs": "Diphenylmethyl / bis-aryl lipophilic core; Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_236",
+      "inchikey": "KRMDCWKBEZIMAB-UHFFFAOYSA-N",
+      "motifs": "Diphenylmethyl / bis-aryl lipophilic core; Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_099",
+      "inchikey": "KJHKTHWMRKYKJE-SUGCFTRWSA-N",
+      "motifs": "None"
+    },
+    {
+      "compound_id": "WANG2011_030",
+      "inchikey": "IEDVJHCEMCRBQM-UHFFFAOYSA-N",
+      "motifs": "None"
+    },
+    {
+      "compound_id": "WANG2011_109",
+      "inchikey": "UCFGDBYHRUNTLO-QHCPKHFHSA-N",
+      "motifs": "Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_046",
+      "inchikey": "UIEATEWHFDRYRU-XMMPIXPASA-N",
+      "motifs": "Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_249",
+      "inchikey": "XBJBPGROQZJDOJ-UHFFFAOYSA-N",
+      "motifs": "Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_291",
+      "inchikey": "OGJPXUAPXNRGGI-UHFFFAOYSA-N",
+      "motifs": "Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_228",
+      "inchikey": "FELGMEQIXOGIFQ-CYBMUJFWSA-N",
+      "motifs": "None"
+    },
+    {
+      "compound_id": "WANG2011_002",
+      "inchikey": "USFPINLPPFWTJW-UHFFFAOYSA-N",
+      "motifs": "None"
+    },
+    {
+      "compound_id": "WANG2011_081",
+      "inchikey": "MCMMCRYPQBNCPH-WMIMKTLMSA-N",
+      "motifs": "None"
+    },
+    {
+      "compound_id": "WANG2011_064",
+      "inchikey": "AQHHHDLHHXJYJD-CQSZACIVSA-N",
+      "motifs": "Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_124",
+      "inchikey": "GNJCUHZOSOYIEC-GAROZEBRSA-N",
+      "motifs": "4-Arylpiperidine basic pharmacophore; Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_229",
+      "inchikey": "RIOQSEWOXXDEQQ-UHFFFAOYSA-N",
+      "motifs": "None"
+    },
+    {
+      "compound_id": "WANG2011_213",
+      "inchikey": "VNFPBHJOKIVQEB-UHFFFAOYSA-N",
+      "motifs": "Diphenylmethyl / bis-aryl lipophilic core"
+    },
+    {
+      "compound_id": "WANG2011_058",
+      "inchikey": "NWIBSHFKIJFRCO-HFTGTNRMSA-N",
+      "motifs": "Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_067",
+      "inchikey": "HESCAJZNRMSMJG-KKQRBIROSA-N",
+      "motifs": "None"
+    },
+    {
+      "compound_id": "WANG2011_296",
+      "inchikey": "PVHUJELLJLJGLN-MRXNPFEDSA-N",
+      "motifs": "Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_055",
+      "inchikey": "RZTAMFZIAATZDJ-HNNXBMFYSA-N",
+      "motifs": "Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_008",
+      "inchikey": "HYIMSNHJOBLJNT-UHFFFAOYSA-N",
+      "motifs": "Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_010",
+      "inchikey": "USSIQXCVUWKGNF-KRWDZBQOSA-N",
+      "motifs": "Diphenylmethyl / bis-aryl lipophilic core; Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_027",
+      "inchikey": "WHTVZRBIWZFKQO-CQSZACIVSA-N",
+      "motifs": "Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_219",
+      "inchikey": "PUFQVTATUTYEAL-UHFFFAOYSA-N",
+      "motifs": "Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_222",
+      "inchikey": "PCZOHLXUXFIOCF-BXMDZJJMSA-N",
+      "motifs": "None"
+    },
+    {
+      "compound_id": "WANG2011_032",
+      "inchikey": "AAOVKJBEBIDNHE-UHFFFAOYSA-N",
+      "motifs": "Diphenylmethyl / bis-aryl lipophilic core"
+    },
+    {
+      "compound_id": "WANG2011_240",
+      "inchikey": "XSCGXQMFQXDFCW-UHFFFAOYSA-N",
+      "motifs": "Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_248",
+      "inchikey": "ZPEIMTDSQAKGNT-UHFFFAOYSA-N",
+      "motifs": "Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_070",
+      "inchikey": "JCCNYMKQOSZNPW-UHFFFAOYSA-N",
+      "motifs": "Piperidine basic heterocycle"
+    },
+    {
+      "compound_id": "WANG2011_007",
+      "inchikey": "XUFQPHANEAPEMJ-UHFFFAOYSA-N",
+      "motifs": "None"
+    }
+  ],
+  "false_positive_cases": [
+    {
+      "compound_id": "WANG2011_136",
+      "inchikey": "ZBNARPCCDMHDDV-HVMBLDELSA-N",
+      "motifs": "High molecular weight macrocycle / peptide scaffold"
+    },
+    {
+      "compound_id": "WANG2011_330",
+      "inchikey": "WYVFDWPBTOGGCO-GPNSQPQESA-N",
+      "motifs": "Basic aliphatic nitrogen center"
+    },
+    {
+      "compound_id": "WANG2011_194",
+      "inchikey": "MVFWNSZYCDCFKX-UHFFFAOYSA-N",
+      "motifs": "Basic aliphatic nitrogen center"
+    }
+  ]
+}
