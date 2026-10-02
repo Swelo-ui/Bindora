@@ -1,9 +1,9 @@
 ; Inno Setup Script for Bindora Dock Standalone Desktop Installer
-; Version: 2.0
+; Version: 2.2.0
 ; Prepared for: Himanshu Sharma (NexPharmaTech)
 
 #define MyAppName "Bindora Dock"
-#define MyAppVersion "2.0"
+#define MyAppVersion "2.2.0"
 #define MyAppPublisher "NexPharmaTech"
 #define MyAppURL "https://github.com/Swelo-ui/Bindora"
 #define MyAppExeName "bindora_launcher.exe"
