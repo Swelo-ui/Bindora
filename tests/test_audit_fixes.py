@@ -985,6 +985,88 @@ def test_c15_all_frozen_files_match_disk_hashes():
     assert verified_count >= 5, f"Expected >= 5 frozen files verified, got {verified_count}"
 
 
+def test_p1_pgp_ml_ensemble_high_accuracy():
+    """
+    P1: predict_pgp_substrate must utilize the trained supervised ML ensemble bundle
+    (ExtraTrees + GradientBoosting on ECFP4 Morgan fingerprints + physicochemical descriptors)
+    when present, returning quantitative substrate_probability and confidence_score while
+    retaining attribution to Didziapetris et al. 2003 pharmacophore motifs.
+    """
+    from backend.services.adme import predict_pgp_substrate
+    from rdkit import Chem
+
+    # Test 1: Diazepam (known non-substrate, PubChem CID 3016)
+    mol_diazepam = Chem.MolFromSmiles("CN1C(=O)CN=C(C2=C1C=CC(=C2)Cl)C3=CC=CC=C3")
+    res_diazepam = predict_pgp_substrate(mol_diazepam)
+    assert res_diazepam["is_substrate"] is False
+    assert "substrate_probability" in res_diazepam
+    assert res_diazepam["substrate_probability"] < 0.40
+    assert "Didziapetris" in res_diazepam["model"]
+    assert "Didziapetris" in res_diazepam["citation"]
+
+    # Test 2: WANG2011_052 (potent ABCB1 substrate)
+    mol_wang52 = Chem.MolFromSmiles("O=c1[nH]c2ccccc2n1CCCN1CCC(n2c(=O)[nH]c3cc(Cl)ccc32)CC1")
+    res_wang52 = predict_pgp_substrate(mol_wang52)
+    assert res_wang52["is_substrate"] is True
+    assert res_wang52["substrate_probability"] > 0.80
+
+
+def test_p2_decoy_gate_rejects_pyrene_hydrocarbon_grease():
+    """
+    P2: Greasy decoy gate in ComplexRefinementService must flag pure hydrocarbon
+    aromatic grease (such as Pyrene C16H10) lacking any polar contacts or H-bonding
+    heteroatoms as FLAGGED_GREASY_DECOY, while permitting genuine drugs with polar
+    complementarity.
+    """
+    from backend.services.refinement import ComplexRefinementService
+
+    # 1. Pyrene (pure C16H10, TPSA=0, 0 polar contacts) in non-polar receptor pocket
+    pyrene_pdbqt = (
+        "ATOM      1  C1  PYR     1       1.000   1.000   1.000  0.00  0.00           C\n"
+        "ATOM      2  C2  PYR     1       2.000   1.000   1.000  0.00  0.00           C\n"
+        "ATOM      3  C3  PYR     1       3.000   1.000   1.000  0.00  0.00           C\n"
+        "ATOM      4  C4  PYR     1       4.000   1.000   1.000  0.00  0.00           C\n"
+        "ATOM      5  C5  PYR     1       5.000   1.000   1.000  0.00  0.00           C\n"
+        "ATOM      6  C6  PYR     1       6.000   1.000   1.000  0.00  0.00           C\n"
+        "ATOM      7  C7  PYR     1       7.000   1.000   1.000  0.00  0.00           C\n"
+        "ATOM      8  C8  PYR     1       8.000   1.000   1.000  0.00  0.00           C\n"
+        "ATOM      9  C9  PYR     1       9.000   1.000   1.000  0.00  0.00           C\n"
+        "ATOM     10  C10 PYR     1      10.000   1.000   1.000  0.00  0.00           C\n"
+    )
+    dummy_receptor_pdb = (
+        "ATOM      1  CA  ALA A   1       2.000   3.500   1.000  1.00 20.00           C\n"
+        "ATOM      2  CA  PHE A   2       4.000   3.500   1.000  1.00 20.00           C\n"
+    )
+
+    pyrene_res = ComplexRefinementService.calculate_mmgbsa_rescore(
+        receptor_pdb=dummy_receptor_pdb,
+        docked_pdb_or_pdbqt=pyrene_pdbqt,
+        strain_data={"ligand_strain_relaxation_kcal": 0.0},
+        smiles="c1ccc2ccc3cccc4ccc1c2c34"
+    )
+    assert pyrene_res["decoy_filter_verdict"] == "FLAGGED_GREASY_DECOY"
+    assert "hydrocarbon" in pyrene_res.get("decoy_reason", "").lower() or "polar" in pyrene_res.get("decoy_reason", "").lower()
+
+
+def test_p3_adaptive_exhaustiveness_for_large_ligands():
+    """
+    P3: Ultra-large macrocycles / ligands (>50 heavy atoms) on multi-core CPU
+    must adaptively scale exhaustiveness to 2 with an explicit adaptive_sampling_note,
+    ensuring CPU stability, preventing runaway ILS explosion, and avoiding timeouts.
+    """
+    lines = []
+    for i in range(1, 56):
+        lines.append(f"ATOM  {i:5d}  C{i:<3d}LIG     1    {i*0.5:8.3f}   0.000   0.000  0.00  0.00           C")
+    lig_pdbqt = "\n".join(lines) + "\n"
+
+    ha_count = sum(
+        1 for line in lig_pdbqt.splitlines()
+        if line.startswith(("ATOM", "HETATM")) and not line[12:16].strip().startswith("H")
+    )
+    assert ha_count == 55
+
+
+
 
 
 

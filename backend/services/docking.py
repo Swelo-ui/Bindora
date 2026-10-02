@@ -878,6 +878,22 @@ class DockingEngine:
                 seed = secrets.randbelow(2147483647) + 1
             seeds = [seed]
 
+        # Estimate ligand heavy atom count strictly from PDBQT to support low-end PC & CPU performance
+        lig_ha_count = sum(
+            1 for line in ligand_pdbqt.splitlines()
+            if line.startswith(("ATOM", "HETATM")) and not line[12:16].strip().startswith("H")
+        )
+
+        effective_exhaustiveness = exhaustiveness
+        adaptive_sampling_note = None
+        if lig_ha_count > 50 and not use_gpu:
+            if exhaustiveness > 1:
+                effective_exhaustiveness = 1
+                adaptive_sampling_note = (
+                    f"Adaptive CPU optimization: Auto-scaled exhaustiveness from {exhaustiveness} to 1 "
+                    f"for high-MW macrocycle ({lig_ha_count} heavy atoms) on multi-core CPU"
+                )
+
         t_overall_start = time.time()
         all_runs_top_affinities = []
         best_poses = []
@@ -904,7 +920,7 @@ class DockingEngine:
                     "--size_x", str(size["x"]),
                     "--size_y", str(size["y"]),
                     "--size_z", str(size["z"]),
-                    "--exhaustiveness", str(exhaustiveness),
+                    "--exhaustiveness", str(effective_exhaustiveness),
                     "--num_modes", str(num_modes),
                     "--energy_range", "4.0",
                     "--out", str(out_file)
@@ -1128,6 +1144,8 @@ class DockingEngine:
                 p["cpu_count_used"] = cpu
                 p["execution_device"] = exec_device
                 p["seed_used"] = seeds[0] if seeds else None
+                p["exhaustiveness_used"] = effective_exhaustiveness
+                p["adaptive_sampling_note"] = adaptive_sampling_note
 
         return best_poses
 

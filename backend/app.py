@@ -476,6 +476,8 @@ def run_docking():
             "poses": poses,
             "top_pose": best_pose,
             "seed_used": best_pose.get("seed_used"),
+            "exhaustiveness_used": best_pose.get("exhaustiveness_used", exhaustiveness),
+            "adaptive_sampling": best_pose.get("adaptive_sampling_note"),
             "thermodynamics": thermo,
             "interactions": contacts,
             "replicate_stats": replicate_stats,

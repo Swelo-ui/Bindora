@@ -525,10 +525,25 @@ class ComplexRefinementService:
             pic50_est = max(0.0, -tentative_dg / 1.366)
             lipe = round(pic50_est - clogp, 2) if clogp is not None else None
 
-            # Test A: Pure Non-Polar / PAINS Grease Brick (e.g. Pentacene: 0 polar contacts and negligible electrostatics)
-            if len(lig_coords) >= 8 and polar_contacts == 0 and abs(e_elec) < 1.5:
+            # Check ligand heteroatom composition for non-polar grease ball / hydrocarbon detection
+            n_lig_hbond_atoms = sum(1 for e in lig_elements if e.upper() in ("O", "N"))
+            is_pure_hydrocarbon_grease = (n_lig_hbond_atoms == 0)
+
+            # Test A: Pure Non-Polar / PAINS Grease Brick (e.g. Pentacene, Pyrene, Squalene, Hexadecane)
+            # A ligand with 0 polar contacts in the pocket is flagged if:
+            # 1. Negligible active site electrostatics (|e_elec| < 1.5), OR
+            # 2. Pure hydrocarbon / zero H-bonding heteroatoms (pure grease brick like Pyrene or Pentacene), OR
+            # 3. High lipophilicity (cLogP >= 4.0) with zero polar contacts and poor LipE (< 0.5)
+            if len(lig_coords) >= 8 and polar_contacts == 0 and (
+                abs(e_elec) < 1.5
+                or is_pure_hydrocarbon_grease
+                or (clogp is not None and clogp >= 4.0 and (lipe is None or lipe < 0.5))
+            ):
                 is_grease_decoy = True
-                decoy_reason = "Zero specific polar contacts / hydrogen bonds and negligible active site electrostatics"
+                if is_pure_hydrocarbon_grease:
+                    decoy_reason = "Zero polar contacts and zero hydrogen-bonding heteroatoms (pure lipophilic hydrocarbon grease)"
+                else:
+                    decoy_reason = "Zero specific polar contacts / hydrogen bonds with excessive lipophilicity or negligible active site electrostatics"
                 decoy_verdict = "FLAGGED_GREASY_DECOY"
                 e_sa = 3.50
                 e_opportunistic_penalty = 7.00

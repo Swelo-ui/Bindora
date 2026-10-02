@@ -114,14 +114,34 @@ _BINDORA_EXTENDED_ALERTS = [
     }
 ]
 
+# Machine Learning Model bundle loader for P-gp active efflux prediction
+_PGP_MODEL_FILE = Path(__file__).resolve().parent.parent / "models" / "pgp_substrate_model.joblib"
+_pgp_ml_bundle = None
+_pgp_morgan_gen = None
+
+def _get_pgp_ml_bundle():
+    global _pgp_ml_bundle, _pgp_morgan_gen
+    if _pgp_ml_bundle is None:
+        if _PGP_MODEL_FILE.exists():
+            try:
+                import joblib
+                from rdkit.Chem import rdFingerprintGenerator
+                _pgp_ml_bundle = joblib.load(_PGP_MODEL_FILE)
+                _pgp_morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=1024)
+            except Exception:
+                _pgp_ml_bundle = False
+        else:
+            _pgp_ml_bundle = False
+    return _pgp_ml_bundle if _pgp_ml_bundle is not False else None
+
 def predict_pgp_substrate(mol: Chem.Mol) -> Dict[str, Any]:
     """
     Predict P-glycoprotein (P-gp / ABCB1 / MDR1) active efflux substrate propensity.
-    Attribution: Bindora heuristic, inspired by Didziapetris et al., J. Drug Target. 2003, 11, 391-406.
+    Primary: Supervised ML ensemble (ExtraTrees + GradientBoosting on Morgan ECFP4 fingerprints
+    and physicochemical descriptors, trained on Wang et al. 2011 Bemis-Murcko training set).
+    Fallback / Motifs: Bindora heuristic, inspired by Didziapetris et al., J. Drug Target. 2003, 11, 391-406.
     P-gp is a major efflux transporter at the blood-brain barrier that actively pumps substrates out
     of brain capillary endothelial cells, restricting central nervous system (CNS) exposure.
-    Note: Broccatelli et al. 2011 investigated P-gp inhibition; substrate efflux rules derive
-    from Didziapetris et al. 2003 physicochemical rules.
     """
     mw = Descriptors.MolWt(mol)
     logp = Descriptors.MolLogP(mol)
@@ -153,7 +173,47 @@ def predict_pgp_substrate(mol: Chem.Mol) -> Dict[str, Any]:
     if is_macrocycle:
         motifs.append("High molecular weight macrocycle / peptide scaffold")
 
-    # Didziapetris-inspired Classification Gating:
+    # Evaluate ML ensemble model if available (Wang et al. 2011 trained model)
+    bundle = _get_pgp_ml_bundle()
+    if bundle and _pgp_morgan_gen is not None:
+        try:
+            import numpy as np
+            fp = np.array(_pgp_morgan_gen.GetFingerprint(mol), dtype=np.float32)
+            desc = np.array([
+                mw / 500.0,
+                logp / 5.0,
+                Descriptors.TPSA(mol) / 140.0,
+                Descriptors.NumHDonors(mol) / 5.0,
+                Descriptors.NumHAcceptors(mol) / 10.0,
+                float(rotb) / 10.0,
+                Descriptors.FractionCSP3(mol),
+                Descriptors.NumAromaticRings(mol) / 5.0
+            ], dtype=np.float32)
+            feat = np.concatenate([fp, desc]).reshape(1, -1)
+            clf = bundle["model"]
+            prob = float(clf.predict_proba(feat)[0, 1])
+            thresh = float(bundle.get("optimal_threshold", 0.45))
+            is_substrate = bool(prob >= thresh)
+            confidence = round(float(abs(prob - 0.5) * 2), 3)
+
+            reason = (
+                f"ML ensemble predicted substrate probability {prob:.3f} (threshold {thresh:.2f}, confidence {confidence:.2f}). "
+                f"Identified motifs: {', '.join(motifs) if motifs else 'None'}."
+            )
+            return {
+                "is_substrate": is_substrate,
+                "status": "Substrate (PGP+)" if is_substrate else "Non-substrate (PGP-)",
+                "substrate_probability": round(prob, 4),
+                "confidence_score": confidence,
+                "motifs_identified": motifs,
+                "reason": reason,
+                "model": "Bindora ML Ensemble, inspired by Didziapetris et al. 2003",
+                "citation": "Trained on Wang et al. 2011 ABCB1/P-gp benchmark; motifs inspired by Didziapetris et al., J. Drug Target. 2003, 11, 391-406"
+            }
+        except Exception:
+            pass  # Fallback to Didziapetris heuristic below
+
+    # Didziapetris-inspired Classification Gating (Deterministic Heuristic Fallback):
     # Rule 1: High MW (> 400 Da) + Lipophilic (LogP > 2.8) + Basic Nitrogen / Diphenyl motif
     is_substrate = False
     reason = "Does not satisfy P-gp pharmacophoric criteria (MW, LogP, basic nitrogen, or bulky hydrophobic anchor)."
