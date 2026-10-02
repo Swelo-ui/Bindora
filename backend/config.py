@@ -150,6 +150,7 @@ except ImportError:
     pass
 
 PROJECT_NAME = "Bindora"
+VERSION = "2.2"
 
 # API Keys and Models
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")

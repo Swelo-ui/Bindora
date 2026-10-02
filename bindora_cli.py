@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Bindora Dock v2.0 — Research-Grade Computational Molecular Docking CLI
+Bindora Dock v2.2 — Research-Grade Computational Molecular Docking CLI
 Official Interactive & Scriptable Command-Line Interface.
 Features Arrow-Key Navigation (TUI), direct CLI arguments, and publication-grade output.
 """
@@ -52,7 +52,7 @@ class Colors:
 
 BANNER = rf"""{Colors.CYAN}{Colors.BOLD}
 ================================================================================
-   ____  _           _                   ____             _      {Colors.YELLOW}[v2.0]{Colors.CYAN}
+   ____  _           _                   ____             _      {Colors.YELLOW}[v2.2]{Colors.CYAN}
   | __ )(_)_ __   __| | ___  _ __ __ _  |  _ \  ___   ___| | __  
   |  _ \| | '_ \ / _` |/ _ \| '__/ _` | | | | |/ _ \ / __| |/ /  
   | |_) | | | | | (_| | (_) | | | (_| | | |_| | (_) | (__|   <   
@@ -664,7 +664,7 @@ def run_interactive_wizard():
 
         elif choice == 6 or choice == -1:
             os.system('cls' if os.name == 'nt' else 'clear')
-            print(f"\n{Colors.CYAN}Thank you for using Bindora Dock v2.0! Happy Research.{Colors.RESET}\n")
+            print(f"\n{Colors.CYAN}Thank you for using Bindora Dock v2.2! Happy Research.{Colors.RESET}\n")
             sys.exit(0)
 
 
@@ -677,7 +677,7 @@ def main():
         return
 
     parser = argparse.ArgumentParser(
-        description="Bindora Dock v2.0 — Research-Grade Molecular Docking CLI",
+        description="Bindora Dock v2.2 — Research-Grade Molecular Docking CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

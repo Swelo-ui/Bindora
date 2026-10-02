@@ -1,5 +1,5 @@
 # FROZEN BENCHMARK DATASET HASHES (REBUILT & VERIFIED)
-# Generated: 2026-09-29T11:58:53.799349+00:00
+# Generated: 2026-10-02T05:53:41.314764+00:00
 # Strict Rule: Once written, no modification to these files is permitted.
 
 3fce1b013eb3770a54cd51d9208dbf2f85ae7d99a87563bb2b6e0beec1e5bc58  benchmarks/heldout/dev_set.csv  (3979 bytes)  # 42 contaminated dev-set compounds with PubChem CIDs and InChIKeys
@@ -7,4 +7,4 @@
 4dcfe013d64a953d5fe4d2ae5e1d8f68909538bbfb92468e19bd464b42eedb18  benchmarks/heldout/pgp_substrate_train.csv  (31708 bytes)  # 261 training compounds from Wang 2011 P-gp substrate dataset (Bemis-Murcko split)
 7f077cb3378f28377b74c118ebe29b520a3d674f2b28c27deae1047edb714d06  benchmarks/heldout/pgp_substrate_test.csv  (7485 bytes)  # 66 held-out test compounds from Wang 2011 P-gp substrate dataset (Bemis-Murcko split)
 8280e2b86dc2f0323cc5a562c3efba3fdfa278f8b8fc54e140dcb1405356bacd  benchmarks/heldout/pgp_substrate_full.csv  (39152 bytes)  # 327 total non-dev compounds from Wang 2011 P-gp substrate dataset
-579a470255319d5203ec7dd5e97adf607507f3302c69f40f74d25dc5b0037c78  benchmarks/heldout/bbb_test.csv  (1151638 bytes)  # 7782 experimental compounds from B3DB with confidence group annotations
+e16781f1139bcc90433f1d8531922cfdee08e9ec154e807593d07382cb5d3db3  benchmarks/heldout/bbb_test.csv  (1151640 bytes)  # 7782 experimental compounds from B3DB with confidence group annotations

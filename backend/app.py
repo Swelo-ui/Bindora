@@ -620,6 +620,7 @@ def get_reproducibility_versions():
     import rdkit
     import datetime
     return jsonify({
+        "bindora_dock": "v2.2 (Research-Grade)",
         "autodock_vina": "AutoDock Vina 1.2.5 (Scripps CCSB)",
         "rdkit": rdkit.__version__,
         "gemmi": gemmi.__version__,

@@ -140,7 +140,7 @@ def main():
     app_url = f"http://127.0.0.1:{port}"
     if is_ready:
         window = webview.create_window(
-            title="Bindora Dock — Molecular Docking & PK/PD Suite",
+            title="Bindora Dock v2.2 — Molecular Docking & PK/PD Suite",
             url=app_url,
             width=1440,
             height=900,
