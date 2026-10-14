@@ -239,6 +239,72 @@ class BindoraApp {
       downloadPngBtn.addEventListener("click", () => this.viewer && this.viewer.downloadScreenshot());
     }
 
+    const paperModeBtn = document.getElementById("btn-toggle-paper-mode");
+    if (paperModeBtn) {
+      paperModeBtn.addEventListener("click", () => {
+        if (this.viewer) {
+          const isPaper = this.viewer.togglePaperMode();
+          this.showToast(isPaper ? "Manuscript Paper Mode (Crisp White Canvas)" : "Obsidian Dark Canvas Mode", "info");
+        }
+      });
+    }
+
+    const exportPymolHandler = async () => {
+      if (!this.state.docking || !this.state.docking.top_pose) {
+        this.showToast("Please run a docking calculation first.", "warning");
+        return;
+      }
+      try {
+        this.showToast("Generating publication-grade PyMOL package...", "info");
+        const currentPose = this.state.docking.poses ? (this.state.docking.poses[this.state.currentPoseIdx] || this.state.docking.top_pose) : this.state.docking.top_pose;
+        const pdbId = (this.state.receptor && this.state.receptor.pdb_id) || "TARGET";
+        const ligandName = (this.state.ligand && (this.state.ligand.name || this.state.ligand.canonical_smiles)) || "LIGAND";
+        const mode = currentPose.mode || (this.state.currentPoseIdx + 1);
+
+        const payload = {
+          receptor_pdb: (this.state.receptor && this.state.receptor.cleaned_pdb) || (this.state.docking && this.state.docking.receptor_pdb) || "",
+          docked_pose_pdbqt: currentPose.pdbqt_content || "",
+          interactions: currentPose.interactions || (this.state.docking && this.state.docking.interactions) || {},
+          pdb_id: pdbId,
+          ligand_name: ligandName,
+          mode: mode,
+          affinity_kcal: currentPose.affinity_kcal,
+          smiles: (this.state.ligand && (this.state.ligand.canonical_smiles || this.state.ligand.smiles)) || ""
+        };
+
+        const res = await fetch("/api/docking/export-pymol-bundle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to generate PyMOL bundle");
+        }
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `bindora_${pdbId}_mode_${mode}_pymol_package.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        this.showToast(`PyMOL publication package (.pml + structures) ready for Mode ${mode}!`, "success");
+      } catch (err) {
+        this.showToast(`PyMOL export notice: ${err.message}`, "error");
+      }
+    };
+
+    const exportPymolBtn = document.getElementById("btn-export-pymol");
+    if (exportPymolBtn) exportPymolBtn.addEventListener("click", exportPymolHandler);
+
+    const exportPymolTopBtn = document.getElementById("btn-export-pymol-top");
+    if (exportPymolTopBtn) exportPymolTopBtn.addEventListener("click", exportPymolHandler);
+
     const exportMdBtn = document.getElementById("btn-export-openmm-md");
     if (exportMdBtn) {
       exportMdBtn.addEventListener("click", async () => {
@@ -269,6 +335,81 @@ class BindoraApp {
           }
         } catch (err) {
           this.showToast(`Export failed: ${err.message}`, "error");
+        }
+      });
+    }
+
+    const exportCsvBtn = document.getElementById("btn-export-poses-csv");
+    if (exportCsvBtn) {
+      exportCsvBtn.addEventListener("click", () => {
+        if (!this.state.docking || !this.state.docking.poses || this.state.docking.poses.length === 0) {
+          this.showToast("No calculated poses available to export.", "warning");
+          return;
+        }
+        try {
+          const poses = this.state.docking.poses;
+          const pdbId = this.state.receptor?.pdb_id || "TARGET";
+          let csv = "Rank,Mode,Vina_DeltaG_kcal_mol,MMGBSA_DeltaG_kcal_mol,RMSD_lb_A,RMSD_ub_A,Ligand_Strain_kcal_mol,Confidence\n";
+          poses.forEach((p, i) => {
+            csv += `${i + 1},${p.mode || i + 1},${p.affinity_kcal ?? ""},${p.mmgbsa_delta_g_kcal ?? ""},${p.rmsd_lb ?? 0},${p.rmsd_ub ?? 0},${p.ligand_strain_kcal ?? ""},"${p.consensus_confidence || ""}"\n`;
+          });
+          const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `bindora_${pdbId}_calculated_poses.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          this.showToast(`Exported ${poses.length} poses to CSV spreadsheet!`, "success");
+        } catch (e) {
+          this.showToast(`CSV export notice: ${e.message}`, "error");
+        }
+      });
+    }
+
+    // Download & Copy Academic Methods Markdown
+    const downloadMethodsBtn = document.getElementById("btn-download-methods-md");
+    if (downloadMethodsBtn) {
+      downloadMethodsBtn.addEventListener("click", () => {
+        const md = this.state.docking?.methods_markdown || this.state.docking?.top_pose?.methods_markdown;
+        if (!md) {
+          this.showToast("No methods report available. Run a docking calculation first.", "warning");
+          return;
+        }
+        try {
+          const pdbId = this.state.receptor?.pdb_id || this.state.docking?.pdb_id || "TARGET";
+          const ligName = this.state.ligand?.name || this.state.docking?.ligand_id || "LIG";
+          const blob = new Blob([md], { type: "text/markdown;charset=utf-8;" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `bindora_${pdbId}_${ligName}_methods_section.md`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          this.showToast("Academic Methods (.md) report downloaded!", "success");
+        } catch (e) {
+          this.showToast(`Download notice: ${e.message}`, "error");
+        }
+      });
+    }
+
+    const copyMethodsBtn = document.getElementById("btn-copy-methods-md");
+    if (copyMethodsBtn) {
+      copyMethodsBtn.addEventListener("click", async () => {
+        const md = this.state.docking?.methods_markdown || this.state.docking?.top_pose?.methods_markdown;
+        if (!md) {
+          this.showToast("No methods report available. Run a docking calculation first.", "warning");
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(md);
+          this.showToast("Academic Materials & Methods markdown copied to clipboard!", "success");
+        } catch (e) {
+          this.showToast("Failed to copy methods markdown to clipboard", "error");
         }
       });
     }
@@ -2741,26 +2882,36 @@ class BindoraApp {
 
     // Header values
     const elAffinity = document.getElementById("dock-affinity-score");
-    if (elAffinity) elAffinity.textContent = `${currentPose.affinity_kcal} kcal/mol`;
+    if (elAffinity) elAffinity.textContent = `${currentPose.affinity_kcal != null ? currentPose.affinity_kcal.toFixed(2) : currentPose.affinity_kcal} kcal/mol`;
 
     const elKd = document.getElementById("dock-kd-score");
     if (elKd) {
-      const rt = 0.5924847;
-      const aff = parseFloat(currentPose.affinity_kcal) || 0;
-      const kdMolar = Math.exp(aff / rt);
-      const kdNm = kdMolar * 1e9;
-      const kdDisplay = kdNm < 1000 ? `${kdNm.toFixed(2)} nM` : kdNm < 1e6 ? `${(kdNm / 1e3).toFixed(2)} µM` : `${(kdNm / 1e6).toFixed(2)} mM`;
-      elKd.textContent = kdDisplay;
+      if (currentPose.estimated_ki_nM != null) {
+        const ki = parseFloat(currentPose.estimated_ki_nM);
+        elKd.textContent = ki < 1000 ? `${ki.toFixed(1)} nM` : ki < 1e6 ? `${(ki / 1e3).toFixed(2)} µM` : `${(ki / 1e6).toFixed(2)} mM`;
+      } else {
+        const rt = 0.5924847;
+        const aff = parseFloat(currentPose.affinity_kcal) || 0;
+        const kdMolar = Math.exp(aff / rt);
+        const kdNm = kdMolar * 1e9;
+        const kdDisplay = kdNm < 1000 ? `${kdNm.toFixed(2)} nM` : kdNm < 1e6 ? `${(kdNm / 1e3).toFixed(2)} µM` : `${(kdNm / 1e6).toFixed(2)} mM`;
+        elKd.textContent = kdDisplay;
+      }
     }
 
     const elLE = document.getElementById("dock-le-score");
     if (elLE) {
-      const ha = this.state.ligand?.heavy_atom_count || this.state.ligand?.adme?.physicochemical?.heavy_atoms?.value || 0;
-      if (ha > 0) {
-        const aff = parseFloat(currentPose.affinity_kcal) || 0;
-        elLE.textContent = (-aff / ha).toFixed(3);
+      if (currentPose.ligand_efficiency != null) {
+        const le = parseFloat(currentPose.ligand_efficiency);
+        elLE.textContent = !isNaN(le) ? le.toFixed(3) : currentPose.ligand_efficiency;
       } else {
-        elLE.textContent = `${thermodynamics.ligand_efficiency?.value || "—"}`;
+        const ha = this.state.ligand?.heavy_atom_count || this.state.ligand?.adme?.physicochemical?.heavy_atoms?.value || 0;
+        if (ha > 0) {
+          const aff = parseFloat(currentPose.affinity_kcal) || 0;
+          elLE.textContent = (-aff / ha).toFixed(3);
+        } else {
+          elLE.textContent = `${thermodynamics.ligand_efficiency?.value || "—"}`;
+        }
       }
     }
 
@@ -2771,6 +2922,46 @@ class BindoraApp {
     const statusStrip = document.getElementById("dock-physics-status-strip");
     if (statusStrip) {
       statusStrip.classList.remove("hidden");
+
+      // PoseBusters Validation Badge
+      const elPosebusters = document.getElementById("dock-posebusters-badge");
+      if (elPosebusters) {
+        const pb = currentPose.posebusters_validation || this.state.docking?.posebusters_validation;
+        if (pb) {
+          const isValid = pb.posebusters_valid !== false && (pb.steric_clash_count === 0 || pb.steric_clash_count == null);
+          if (isValid) {
+            elPosebusters.className = "px-2 py-0.5 rounded font-bold text-[10.5px] border bg-emerald-950 text-emerald-300 border-emerald-800";
+            elPosebusters.textContent = "PASS (0 Clashes)";
+            elPosebusters.title = `PoseBusters: Valid physical geometry (Min contact dist: ${pb.min_receptor_ligand_dist_A || '≥2.0'} Å)`;
+          } else {
+            elPosebusters.className = "px-2 py-0.5 rounded font-bold text-[10.5px] border bg-rose-950 text-rose-300 border-rose-800";
+            elPosebusters.textContent = `WARN (${pb.steric_clash_count || 1} Clashes)`;
+            elPosebusters.title = `PoseBusters: Steric clash overlap detected (Min dist: ${pb.min_receptor_ligand_dist_A || '<2.0'} Å)`;
+          }
+        } else {
+          elPosebusters.className = "px-2 py-0.5 rounded font-bold text-[10.5px] border bg-emerald-950 text-emerald-300 border-emerald-800";
+          elPosebusters.textContent = "PASS (0 Clashes)";
+        }
+      }
+
+      // Symmetry-Corrected Heavy-Atom RMSD Badge
+      const elSymRmsd = document.getElementById("dock-sym-rmsd-badge");
+      if (elSymRmsd) {
+        const symRmsd = currentPose.symmetry_rmsd_A != null ? currentPose.symmetry_rmsd_A : this.state.docking?.symmetry_rmsd_A;
+        if (symRmsd != null && !isNaN(parseFloat(symRmsd))) {
+          const val = parseFloat(symRmsd);
+          const isSubAngstrom = val <= 1.0;
+          const isPassing = val <= 2.0;
+          elSymRmsd.className = isPassing ? "text-emerald-400 font-bold text-[11px]" : "text-amber-400 font-bold text-[11px]";
+          elSymRmsd.textContent = `${val.toFixed(3)} Å${isSubAngstrom ? ' (Sub-Å)' : ''}`;
+          elSymRmsd.title = `Graph-isomorphism symmetry-corrected heavy-atom RMSD to crystal reference: ${val.toFixed(3)} Å`;
+        } else {
+          elSymRmsd.textContent = "— (Prospective)";
+          elSymRmsd.className = "text-neutral-500 font-mono text-[11px]";
+          elSymRmsd.title = "No crystallographic reference ligand available for retrospective RMSD comparison.";
+        }
+      }
+
       const elCons = document.getElementById("dock-consensus-badge");
       if (elCons) {
         const cRank = currentPose.consensus_rank || currentPose.mode || 1;
@@ -2904,10 +3095,17 @@ class BindoraApp {
     const resContainer = document.getElementById("dock-interacting-residues");
     if (resContainer) {
       const resList = interactions.interacting_residues || [];
-      if (resList.length > 0) {
-        resContainer.innerHTML = resList.map(r => `
-          <span class="inline-block px-2 py-0.5 rounded text-xs bg-cyan-50 dark:bg-slate-800 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-slate-700 font-mono">${r}</span>
-        `).join("");
+      const pbPolar = (currentPose.posebusters_validation || this.state.docking?.posebusters_validation)?.polar_hbond_residues || [];
+      const combined = Array.from(new Set([...pbPolar, ...resList]));
+      if (combined.length > 0) {
+        resContainer.innerHTML = combined.map(r => {
+          const isPolar = pbPolar.includes(r);
+          return `
+            <span class="inline-block px-2 py-0.5 rounded text-xs ${isPolar ? 'bg-amber-950/70 text-amber-300 border-amber-800 font-semibold' : 'bg-cyan-50 dark:bg-slate-800 text-cyan-800 dark:text-cyan-300 border-cyan-200 dark:border-slate-700'} border font-mono" title="${isPolar ? 'Polar / H-Bond Pocket Contact' : 'Active Pocket Contact'}">
+              ${isPolar ? '★ ' : ''}${r}
+            </span>
+          `;
+        }).join("");
       } else {
         resContainer.innerHTML = `<span class="text-xs text-slate-500 italic">No specific residues within contact threshold</span>`;
       }
@@ -2928,6 +3126,19 @@ class BindoraApp {
     // Binding Energy Landscape Chart Rendering
     if (window.DockingCharts && poses.length > 0) {
       DockingCharts.renderEnergyLandscape("chart-energy-landscape", poses);
+    }
+
+    // Update footer selected pose badge
+    const poseBadge = document.getElementById("pose-selected-badge");
+    if (poseBadge) {
+      if (poses.length > 0) {
+        const topP = poses[this.state.currentPoseIdx || 0] || poses[0];
+        const pNum = (this.state.currentPoseIdx || 0) + 1;
+        const affStr = topP.affinity_kcal != null ? `${topP.affinity_kcal.toFixed(1)} kcal/mol` : "—";
+        poseBadge.textContent = `Selected: Pose #${pNum} (M${topP.mode || pNum}: ${affStr})`;
+      } else {
+        poseBadge.textContent = "No Pose";
+      }
     }
   }
 
@@ -2974,6 +3185,14 @@ class BindoraApp {
     }
 
     this.updateDockingScoresUI();
+
+    // Update footer selected pose badge
+    const poseBadge = document.getElementById("pose-selected-badge");
+    if (poseBadge) {
+      const pNum = idx + 1;
+      const affStr = pose.affinity_kcal != null ? `${pose.affinity_kcal.toFixed(1)} kcal/mol` : "—";
+      poseBadge.textContent = `Selected: Pose #${pNum} (M${pose.mode || pNum}: ${affStr})`;
+    }
     this.updateDossierView();
   }
 
@@ -4160,7 +4379,7 @@ class BindoraApp {
     let currentSec = 5;
     const svgSectionHtml = contacts.diagram_svg ? `
       <!-- SECTION: 2D PROTEIN-LIGAND INTERACTION SCHEMATIC -->
-      <div class="dossier-card p-5 rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white/70 dark:bg-[#0a0c10] space-y-3 page-break-inside-avoid shadow-sm backdrop-blur-sm">
+      <div class="dossier-card p-5 rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white/70 dark:bg-[#0a0c10] space-y-3 shadow-sm backdrop-blur-sm">
         <div class="flex items-center justify-between border-b border-slate-100 dark:border-neutral-800/70 pb-3">
           <span class="font-bold text-slate-800 dark:text-neutral-200 uppercase tracking-wider text-xs flex items-center space-x-2 font-sans">
             <svg class="w-4 h-4 text-cyan-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
@@ -4461,7 +4680,7 @@ class BindoraApp {
       </div>
 
       <!-- SECTION 4: INTERMOLECULAR INTERACTION RESIDUE PROFILING -->
-      <div class="dossier-card p-5 rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white/70 dark:bg-[#0a0c10] space-y-4 page-break-inside-avoid shadow-sm backdrop-blur-sm">
+      <div class="dossier-card p-5 rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white/70 dark:bg-[#0a0c10] space-y-4 shadow-sm backdrop-blur-sm">
         <div class="flex items-center justify-between border-b border-slate-100 dark:border-neutral-800/70 pb-3">
           <span class="font-bold text-slate-800 dark:text-neutral-200 uppercase tracking-wider text-xs flex items-center space-x-2 font-sans">
             <svg class="w-4 h-4 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
@@ -4758,7 +4977,7 @@ class BindoraApp {
 
       <!-- SECTION: AI-GENERATED MECHANISTIC HYPOTHESIS -->
       ${this.state.narrative ? `
-        <div class="dossier-card p-5 rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white/70 dark:bg-[#0a0c10] space-y-3 page-break-inside-avoid shadow-sm backdrop-blur-sm">
+        <div class="dossier-card p-5 rounded-xl border border-slate-200/80 dark:border-neutral-800/80 bg-white/70 dark:bg-[#0a0c10] space-y-3 shadow-sm backdrop-blur-sm">
           <div class="flex items-center justify-between border-b border-slate-100 dark:border-neutral-800/70 pb-3">
             <span class="font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider text-xs flex items-center space-x-2 font-sans">
               <svg class="w-4 h-4 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>
