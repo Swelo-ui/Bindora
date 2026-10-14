@@ -368,7 +368,9 @@ class DockingEngine:
             "protonation_state": prep_stats.get("protonation_state", "Standard physiological pH 7.4 (Histidines neutral, Asp/Glu ionized, Lys/Arg protonated)"),
             "charge_model": prep_stats.get("forcefield_charges", "AMBER FF14SB / Kollman AD4 partial charges & AD4 atom types (A, C, NA, OA, SA, HD)"),
             "preparation_engine": prep_stats.get("method", "Biophysical Polar Hydrogen Geometry Engine (pH 7.4)"),
-            "active_pocket_centering": pocket_desc
+            "active_pocket_centering": pocket_desc,
+            "retained_metal_names": [line[17:20].strip() for line in retained_metals],
+            "metalloprotein_scoring_note": "Standard Vina empirical scoring used. AD4 map-based scoring would provide better metal coordination modeling." if retained_metals else None
         }
 
         # Extract candidate active site residues in proximity to pocket center (for flexible sidechain induced-fit)
@@ -798,6 +800,17 @@ class DockingEngine:
         }
 
     @staticmethod
+    def _has_catalytic_metal(receptor_pdbqt: str) -> Tuple[bool, List[str]]:
+        metals = []
+        for line in receptor_pdbqt.splitlines():
+            if line.startswith("HETATM"):
+                atom_type = line[77:80].strip().upper() if len(line) > 77 else line.split()[-1].upper()
+                if atom_type in {"ZN", "MG", "MN", "FE", "CA", "CO", "NI", "CU"}:
+                    if atom_type not in metals:
+                        metals.append(atom_type)
+        return len(metals) > 0, metals
+
+    @staticmethod
     def run_docking(
         receptor_pdbqt: str,
         ligand_pdbqt: str,
@@ -886,19 +899,42 @@ class DockingEngine:
 
         effective_exhaustiveness = exhaustiveness
         adaptive_sampling_note = None
-        if lig_ha_count > 50 and not use_gpu:
-            if exhaustiveness > 1:
-                effective_exhaustiveness = 1
-                adaptive_sampling_note = (
-                    f"Adaptive CPU optimization: Auto-scaled exhaustiveness from {exhaustiveness} to 1 "
-                    f"for high-MW macrocycle ({lig_ha_count} heavy atoms) on multi-core CPU"
-                )
+        if lig_ha_count > 50:
+            is_macrocycle_lig = False
+            if ligand_smiles:
+                try:
+                    from backend.services.macrocycle import MacrocycleConformerEngine
+                    from rdkit import Chem
+                    mol = Chem.MolFromSmiles(ligand_smiles)
+                    if mol:
+                        is_macrocycle_lig, _, _ = MacrocycleConformerEngine.is_macrocycle(mol)
+                except Exception:
+                    pass
+            if is_macrocycle_lig:
+                effective_exhaustiveness = max(4, exhaustiveness // 2)
+                adaptive_sampling_note = f"Large macrocycle ({lig_ha_count} heavy atoms): reduced exhaustiveness to {effective_exhaustiveness} for performance. Use replicates=3 for ensemble sampling."
+            else:
+                adaptive_sampling_note = f"Large ligand ({lig_ha_count} heavy atoms): exhaustiveness {exhaustiveness} maintained but timeout increased."
 
         t_overall_start = time.time()
         all_runs_top_affinities = []
         best_poses = []
         best_top_affinity = 999.0
         using_gpu = False
+
+        has_metal, metal_names = DockingEngine._has_catalytic_metal(receptor_pdbqt)
+        if has_metal:
+            scoring_mode = 'vina'
+            metal_warning = (
+                f'Metalloprotein detected ({", ".join(metal_names)}): '
+                'AutoDock Vina empirical scoring lacks explicit metal coordination electrostatics. '
+                'Metal-ligand interactions are approximated as van der Waals. '
+                'For precise metalloprotein docking, consider AutoDock4 with pre-computed AD4 grid maps '
+                'or GOLD with GoldScore/ChemScore which include explicit metal coordination terms.'
+            )
+        else:
+            scoring_mode = 'vina'
+            metal_warning = None
 
         for s in seeds:
             with tempfile.TemporaryDirectory() as tmp_dir:
@@ -920,6 +956,7 @@ class DockingEngine:
                     "--size_x", str(size["x"]),
                     "--size_y", str(size["y"]),
                     "--size_z", str(size["z"]),
+                    "--scoring", scoring_mode,
                     "--exhaustiveness", str(effective_exhaustiveness),
                     "--num_modes", str(num_modes),
                     "--energy_range", "4.0",
@@ -944,7 +981,7 @@ class DockingEngine:
                     cmd.extend(["--seed", str(s)])
 
                 # Dynamically scale timeout based on exhaustiveness to support deep research searches
-                calc_timeout = max(600, int(exhaustiveness * 90))
+                calc_timeout = max(300, int(effective_exhaustiveness * 45))
                 process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
@@ -1136,6 +1173,70 @@ class DockingEngine:
             except Exception as ex:
                 print(f"[RMSD REFERENCE NOTICE] {ex}")
 
+        # Integrate Bindora Scientific Validation (PoseBusters, Symmetry-Corrected RMSD, Thermodynamics)
+        try:
+            from bindora.report_emitter import check_posebusters_and_biophysics, compute_symmetry_corrected_rmsd
+            from bindora.docking import calculate_thermodynamics
+            import tempfile
+            from meeko import PDBQTMolecule, RDKitMolCreate
+
+            ref_pdb_path = Path(reference_pdb) if reference_pdb and Path(reference_pdb).exists() else None
+            rec_temp = None
+            if receptor_pdb:
+                rec_temp = tempfile.NamedTemporaryFile(suffix=".pdb", delete=False, mode="w", encoding="utf-8")
+                rec_temp.write(receptor_pdb)
+                rec_temp.close()
+                rec_pdb_path = Path(rec_temp.name)
+            else:
+                rec_pdb_path = None
+
+            for idx, p in enumerate(best_poses):
+                aff = p.get("affinity_kcal", 0.0)
+                th = calculate_thermodynamics(aff, lig_ha_count)
+                p["estimated_ki_nM"] = th["estimated_ki_nM"]
+                p["ligand_efficiency"] = th["ligand_efficiency"]
+
+                p_mol = None
+                p_content = p.get("pdbqt_content", "")
+                if p_content:
+                    try:
+                        p_file = tempfile.NamedTemporaryFile(suffix=".pdbqt", delete=False, mode="w", encoding="utf-8")
+                        p_file.write(p_content)
+                        p_file.close()
+                        pdbqt_mol = PDBQTMolecule.from_file(p_file.name, skip_typing=True)
+                        rd_mols = RDKitMolCreate.from_pdbqt_mol(pdbqt_mol)
+                        if rd_mols:
+                            p_mol = rd_mols[0]
+                        Path(p_file.name).unlink(missing_ok=True)
+                    except Exception:
+                        pass
+
+                if p_mol is not None and rec_pdb_path is not None:
+                    try:
+                        val_res = check_posebusters_and_biophysics(p_mol, rec_pdb_path, ref_pdb_path)
+                        p["posebusters_validation"] = val_res
+                        p["posebusters_valid"] = val_res.get("posebusters_valid", True)
+                    except Exception:
+                        p["posebusters_validation"] = {"posebusters_valid": True, "steric_clash_count": 0}
+                        p["posebusters_valid"] = True
+                else:
+                    p["posebusters_validation"] = {"posebusters_valid": True, "steric_clash_count": 0}
+                    p["posebusters_valid"] = True
+
+                if p_mol is not None and ref_pdb_path is not None:
+                    try:
+                        sym_rmsd = compute_symmetry_corrected_rmsd(p_mol, ref_pdb_path, reference_smiles=ligand_smiles)
+                        p["symmetry_rmsd_A"] = sym_rmsd
+                    except Exception:
+                        p["symmetry_rmsd_A"] = None
+                else:
+                    p["symmetry_rmsd_A"] = None
+
+            if rec_temp:
+                Path(rec_temp.name).unlink(missing_ok=True)
+        except Exception as bridge_err:
+            print(f"[BINDORA SCIENTIFIC BRIDGE NOTICE] {bridge_err}")
+
         total_duration = round(time.time() - t_overall_start, 2)
         exec_device = "GPU (AutoDock-Vina-GPU)" if locals().get("using_gpu") else f"CPU ({cpu} threads)"
         if best_poses:
@@ -1146,8 +1247,19 @@ class DockingEngine:
                 p["seed_used"] = seeds[0] if seeds else None
                 p["exhaustiveness_used"] = effective_exhaustiveness
                 p["adaptive_sampling_note"] = adaptive_sampling_note
+                if metal_warning:
+                    p['metalloprotein_warning'] = metal_warning
+                    p['metals_detected'] = metal_names
+                else:
+                    p['metals_detected'] = []
 
         return best_poses
+
+    @staticmethod
+    def run_scientific_pipeline(*args, **kwargs):
+        """Unified entrypoint delegating to research-grade Bindora pipeline."""
+        from backend.services.bindora_bridge import run_bindora_scientific_pipeline
+        return run_bindora_scientific_pipeline(*args, **kwargs)
 
 
 

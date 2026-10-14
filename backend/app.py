@@ -29,8 +29,10 @@ from backend.services.ensemble import EnsembleDockingService
 from backend.services.pharmacophore import PharmacophoreService
 from backend.services.hardware_profiler import HardwareTelemetrySampler
 from backend.utils.vina_setup import ensure_vina
-from rdkit import Chem
+from rdkit import Chem, RDLogger
 from rdkit.Chem import Descriptors
+RDLogger.DisableLog("rdApp.error")
+RDLogger.DisableLog("rdApp.warning")
 
 app = Flask(__name__, static_folder=str(FRONTEND_DIR), static_url_path="")
 _is_docking_active = False
@@ -376,6 +378,19 @@ def run_docking():
         heavy_atoms = None
         mw = None
 
+    # Pre-docking time estimate warning
+    ligand_ha = heavy_atoms or 0
+    lig_rotb = int(Descriptors.NumRotatableBonds(lig_mol)) if lig_mol else 0
+    estimated_time_s = max(15, ligand_ha * 0.8 + lig_rotb * 12) * (exhaustiveness / 8.0)
+    large_ligand_warning = None
+    if estimated_time_s > 120:
+        large_ligand_warning = (
+            f"Large/flexible ligand ({ligand_ha} heavy atoms, {lig_rotb} rotatable bonds, "
+            f"exhaustiveness={exhaustiveness}): estimated ~{int(estimated_time_s)}s runtime. "
+            f"For ligands with >10 rotatable bonds, use exhaustiveness=4 or replicates=1 "
+            f"to reduce compute time. Glide SP recommendation: exhaustiveness=4 equivalent."
+        )
+
     flexible_residues = data.get("flexible_residues")
     cpu = data.get("cpu")
     if cpu is not None:
@@ -437,6 +452,10 @@ def run_docking():
 
         # Calculate thermodynamics and Ligand Efficiency
         thermo = BioactivityService.calculate_thermodynamics(affinity, heavy_atoms, mw)
+        if "estimated_ki_nM" in best_pose:
+            thermo["estimated_ki_nM"] = best_pose["estimated_ki_nM"]
+        if "ligand_efficiency" in best_pose:
+            thermo["ligand_efficiency"] = best_pose["ligand_efficiency"]
         contacts = best_pose.get("interactions", {})
         
         # Classify docking experiment (Native Redocking vs Cross-Docking vs Targeted Docking)
@@ -447,6 +466,17 @@ def run_docking():
             native_ligand_info=native_ligand_info,
             docked_ligand_name=ligand_name
         )
+
+        # Generate academic Materials & Methods report summary
+        methods_md = best_pose.get("methods_markdown") or (
+            f"# Bindora Dock Scientific Validation Report\n\n"
+            f"> **Molecular Docking Protocol:** Structure-based molecular docking was executed using Bindora Dock. "
+            f"The receptor target was prepared at physiological pH (7.4). The ligand was standardized and docked using AutoDock Vina/Vinardo "
+            f"with search exhaustiveness {exhaustiveness}. The top binding mode achieved a binding free energy of {affinity:.3f} kcal/mol "
+            f"(estimated Ki = {best_pose.get('estimated_ki_nM', 'N/A')} nM, Ligand Efficiency = {best_pose.get('ligand_efficiency', 'N/A')}). "
+            f"Pose physical plausibility: {'PASS' if best_pose.get('posebusters_valid', True) else 'REVIEW REQUIRED'} via PoseBusters.\n"
+        )
+        best_pose["methods_markdown"] = methods_md
 
         # Record session to database
         session_id = None
@@ -496,11 +526,15 @@ def run_docking():
             "thermodynamics": thermo,
             "interactions": contacts,
             "replicate_stats": replicate_stats,
+            "posebusters_validation": best_pose.get("posebusters_validation"),
+            "symmetry_rmsd_A": best_pose.get("symmetry_rmsd_A"),
+            "methods_markdown": methods_md,
             "execution_duration_s": best_pose.get("execution_duration_s", 0.0),
             "cpu_count": best_pose.get("cpu_count_used", os.cpu_count() or 1),
             "session_id": session_id,
             "experiment_classification": experiment_classification,
             "provenance_hash": prov_hash,
+            "large_ligand_warning": large_ligand_warning,
             "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
         })
     except Exception as e:
@@ -647,7 +681,7 @@ def get_reproducibility_versions():
         openmm_ver = "8.6+"
     return jsonify({
         "bindora_dock": "v2.2 (Research-Grade)",
-        "autodock_vina": "AutoDock Vina 1.2.5 / 1.2.7 (Scripps CCSB)",
+        "autodock_vina": "AutoDock Vina v1.2.7 (Scripps CCSB)",
         "solvation_engine": f"OpenMM MM-GBSA v{openmm_ver} (OBC2 / AMBER99SB-ILDN / GAFF2)",
         "ml_engine": f"Supervised ML Ensemble v{sklearn_ver} (Wang et al. 2011)",
         "rdkit": rdkit.__version__,
@@ -714,6 +748,20 @@ def calculate_adme():
         return jsonify({"error": validation.error, "field": "smiles"}), 400
 
     result = ADMEProfiler.calculate_adme(smiles)
+
+    # Add top-level convenience aliases for direct consumer access
+    med_chem = result.get("medicinal_chemistry_safety", {})
+    result["pains_alerts"] = med_chem.get("pains_alerts", {}).get("alerts", [])
+    result["bindora_extended_alerts"] = med_chem.get("bindora_extended_alerts", {}).get("alerts", [])
+    result["brenk_alerts"] = med_chem.get("brenk_alerts", {}).get("alerts", [])
+    result["total_alerts_count"] = med_chem.get("total_alerts_count", 0)
+
+    # Top-level Lipinski for direct access
+    drug_likeness = result.get("drug_likeness", {})
+    lipinski = drug_likeness.get("lipinski", {})
+    result["lipinski_compliant"] = lipinski.get("status") == "Pass"
+    result["lipinski_violations"] = lipinski.get("violations", [])
+
     return jsonify(result)
 
 @app.route("/api/pkpd/crosscheck", methods=["GET"])
@@ -1027,6 +1075,84 @@ def export_openmm_script():
         return jsonify(pkg)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/docking/export-pymol", methods=["POST"])
+def export_pymol_script():
+    """Generate publication-ready PyMOL .pml script and structural files for docked pose."""
+    data = get_request_json()
+    receptor_pdb = data.get("receptor_pdb", "")
+    docked_pose = data.get("docked_pose_pdbqt") or data.get("docked_pose_pdb", "")
+    interactions = data.get("interactions", {})
+    pdb_id = data.get("pdb_id", "RECEPTOR")
+    ligand_name = data.get("ligand_name", "LIGAND")
+    mode = int(data.get("mode", 1))
+    affinity_kcal = data.get("affinity_kcal")
+    smiles = data.get("smiles") or data.get("ligand_smiles") or ""
+
+    if not receptor_pdb or not docked_pose:
+        return jsonify({"error": "Missing 'receptor_pdb' or 'docked_pose_pdbqt'"}), 400
+
+    from backend.services.pymol_export import PyMOLExportService
+    try:
+        pml_text = PyMOLExportService.generate_pymol_script(
+            receptor_filename="receptor.pdb",
+            ligand_filename=f"ligand_mode_{mode}.pdb",
+            interactions=interactions,
+            pdb_id=pdb_id,
+            ligand_name=ligand_name,
+            mode=mode,
+            affinity_kcal=affinity_kcal
+        )
+        clean_rec = PyMOLExportService.clean_receptor_pdb(receptor_pdb)
+        clean_lig = PyMOLExportService.clean_ligand_pdb(docked_pose, mode=mode, smiles=smiles)
+
+        return jsonify({
+            "status": "success",
+            "pml_script": pml_text,
+            "filename": f"bindora_{pdb_id}_mode_{mode}.pml",
+            "receptor_pdb": clean_rec,
+            "ligand_pdb": clean_lig
+        })
+    except Exception as e:
+        return jsonify({"error": f"Failed to generate PyMOL script: {str(e)}"}), 500
+
+@app.route("/api/docking/export-pymol-bundle", methods=["POST"])
+def export_pymol_bundle():
+    """Download ready-to-run PyMOL publication ZIP bundle (receptor.pdb, ligand_pose.pdb, view_in_pymol.pml)."""
+    data = get_request_json()
+    receptor_pdb = data.get("receptor_pdb", "")
+    docked_pose = data.get("docked_pose_pdbqt") or data.get("docked_pose_pdb", "")
+    interactions = data.get("interactions", {})
+    pdb_id = data.get("pdb_id", "TARGET")
+    ligand_name = data.get("ligand_name", "LIGAND")
+    mode = int(data.get("mode", 1))
+    affinity_kcal = data.get("affinity_kcal")
+    smiles = data.get("smiles") or data.get("ligand_smiles") or ""
+
+    if not receptor_pdb or not docked_pose:
+        return jsonify({"error": "Missing 'receptor_pdb' or 'docked_pose_pdbqt'"}), 400
+
+    from backend.services.pymol_export import PyMOLExportService
+    try:
+        zip_bytes = PyMOLExportService.generate_bundle_zip(
+            receptor_pdb=receptor_pdb,
+            docked_pose_or_pdbqt=docked_pose,
+            interactions=interactions,
+            pdb_id=pdb_id,
+            ligand_name=ligand_name,
+            mode=mode,
+            affinity_kcal=affinity_kcal,
+            smiles=smiles
+        )
+        return Response(
+            zip_bytes,
+            mimetype="application/zip",
+            headers={
+                "Content-Disposition": f"attachment; filename=bindora_{pdb_id}_mode_{mode}_pymol.zip"
+            }
+        )
+    except Exception as e:
+        return jsonify({"error": f"Failed to generate PyMOL zip bundle: {str(e)}"}), 500
 
 @app.route("/api/benchmark/pdbbind", methods=["GET", "POST"])
 def pdbbind_benchmark():

@@ -1,638 +1,80 @@
-# Bindora Dock v2.2 — Research-Grade Computational Pharmacology & Virtual Screening Suite
+# Bindora Dock: Biophysical Structure-Based Molecular Docking & Validation Platform
 
-> **A High-Precision, Low-Resource Computational Pharmacology & Molecular Docking Platform by NexPharmaTech.**  
-> *Available as both an interactive Terminal CLI and a Modern Web Studio.*
+[![Bindora Fast Benchmark Suite](https://github.com/Swelo-ui/Bindora/actions/workflows/fast_benchmark.yml/badge.svg)](https://github.com/Swelo-ui/Bindora/actions/workflows/fast_benchmark.yml)
+![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)
+![Scoring: Vinardo / Vina](https://img.shields.io/badge/Engine-AutoDock%20Vina%20%7C%20Vinardo-success.svg)
+![Validation: PoseBusters](https://img.shields.io/badge/Validation-PoseBusters%20%2B%20spyrmsd-purple.svg)
 
-[![Repository](https://img.shields.io/badge/GitHub-Swelo--ui%2FBindora-blue.svg)](https://github.com/Swelo-ui/Bindora)
-[![Parent Company](https://img.shields.io/badge/Parent%20Company-NexPharmaTech-navy.svg)](#)
-[![Support](https://img.shields.io/badge/Support-sharmaji.pharmatech.info%40gmail.com-blue.svg)](mailto:sharmaji.pharmatech.info@gmail.com)
-[![Docking Engine](https://img.shields.io/badge/Docking%20Engine-AutoDock%20Vina%20v1.2.7-emerald.svg)](https://github.com/ccsb-scripps/AutoDock-Vina)
-[![Scoring](https://img.shields.io/badge/Scoring%20Functions-Vina%20%7C%20Vinardo%20%7C%20MM--GBSA-teal.svg)](#3-advanced-biophysics--sbdd-architecture-v21)
-[![Cheminformatics](https://img.shields.io/badge/Cheminformatics-RDKit%202026-teal.svg)](https://www.rdkit.org/)
-[![Benchmarks](https://img.shields.io/badge/Benchmarks-CASF--2016%20%7C%20B3DB%20%7C%20Wang2011%20%7C%20DUD--E-blueviolet.svg)](#6-research-grade-scientific-audit--remediation-suite-stages-a-f--p1-p3)
-[![Tests](https://img.shields.io/badge/Tests-44%2F44%20Pass%20(100%25)-brightgreen.svg)](#63-reproducing-the-master-scientific-benchmarks)
-[![CLI Mode](https://img.shields.io/badge/CLI-Interactive%20TUI%20v2.2-orange.svg)](#7-interactive-terminal-cli-guide)
-[![Hardware](https://img.shields.io/badge/Hardware-Pure%20CPU%20%7C%20Zero%20GPU%20Needed-cyan.svg)](#8-quickstart-guide)
-[![License](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](LICENSE)
+**Bindora Dock** is an automated, end-to-end biophysical molecular docking and validation platform designed for reproducible *in silico* structure-based drug design (SBDD). Unlike naive docking wrappers, Bindora enforces strict chemical and structural preparation standards prior to conformational search and validates every docked pose for physical plausibility and symmetry-corrected heavy-atom RMSD.
 
 ---
 
-## 1. Overview & Architectural Vision
+## Key Scientific Capabilities
 
-**Bindora Dock v2.2** is an uncompromising computational drug discovery platform engineered for medicinal chemists, structural biologists, pharmacologists, and academic researchers. Designed to deliver publication-grade rigor on standard consumer multi-core CPUs (down to 2GB–4GB RAM, with **zero GPU dependency**), Bindora v2.2 bridges **atomic-level structural biophysics** and **clinical pharmacokinetics (PK/PD)**.
+1. **Biophysical Receptor Sanitization (`bindora/fetcher.py` & `bindora/prep_engine.py`)**
+   - Automatically strips crystallization artifacts (`SO4`, `GOL`, `EDO`, `PEG`, bulk solvent) while **preserving essential catalytic metal ions** ($\text{Zn}^{2+}$, $\text{Mg}^{2+}$, $\text{Fe}^{2+}$) and **cofactors** (`HEM`, `FAD`, `NAD`, `ATP`).
+   - Reconstructs missing heavy atoms via **PDBFixer (OpenMM)** and assigns pH-dependent protonation microstates ($\text{pH } 7.4$) using **PDB2PQR / PROPKA3** and **OpenBabel** Gasteiger partial charges.
+   - Supports **Co-Crystallized Pocket Extraction**, **Residue-Guided Active Site Targeting** (e.g., `['A:25', 'B:25']`), and **Apo Protein Centroid Detection**.
 
-Unlike black-box docking wrappers or synthetic demonstrations, Bindora v2.2 enforces strict scientific reproducibility:
-* **Dual Interface:** Modern Web Studio (WebGL 3D viewer + 2D interaction maps) + High-Productivity Interactive Terminal CLI with arrow-key keyboard navigation.
-* **Scripps AutoDock Vina v1.2.7 Engine:** Native Monte Carlo iterated local search with multithreading and dynamic cryptographic seeds (`secrets.randbelow`).
-* **Multi-Tier Scoring Matrix:** Empirical Vina scoring + Vinardo scoring (Quiroga & Villarreal, 2016) + OpenMM MM-GBSA (OBC2/GBn2 continuum solvation rescoring).
-* **Supervised Machine Learning Subsystem:** ExtraTrees + GradientBoosting ensemble for P-gp transporter substrate classification (83.3% sensitivity).
-* **International Benchmark Standards:** CASF-2016 285-complex core set redocking suite + B3DB 7,782-compound blood-brain barrier dataset + Wang et al. 2011 P-gp substrate set + DUD-E virtual screening enrichment suite.
-* **True Scientific Transparency:** Mandatory failure reporting, SHA-256 cryptographic provenance verification (`FROZEN_HASHES.txt`), checkpoint/resume mechanisms, and zero hardcoded synthetic data.
+2. **Deterministic Ligand Standardization & Torsion Tree Generation**
+   - Strips counter-ions/salts (`LargestFragmentChooser`), normalizes functional group tautomers, and enumerates physiological ionization states via **Dimorphite-DL**.
+   - Generates deterministic 3D conformers using **RDKit ETKDGv3 (`seed=42`)**, relaxes internal strain energy via **MMFF94s / UFF** force-field minimization, and builds flexible torsion trees with **Meeko**.
 
----
+3. **Radius-of-Gyration ($R_g$) Dynamic Box Scaling & Vinardo/Vina Search (`bindora/docking.py`)**
+   - Eliminates arbitrary grid box truncation by dynamically scaling cubic search dimensions from the ligand's 3D Radius of Gyration ($L = 2.857 \times R_g + 8.0\text{ \AA}$, Feinstein & Brylinski heuristic).
+   - Computes full thermodynamic profiles for every binding mode:
+     - **Binding Free Energy ($\Delta G$)** in $\text{kcal/mol}$
+     - **Estimated Inhibition Constant ($K_i$)** at $298.15\text{ K}$ ($\text{nM}$)
+     - **Ligand Efficiency ($\text{LE} = -\Delta G / N_{\text{heavy}}$)**
 
-## 2. Platform Version Evolution & Milestone Matrix (v1.0 → v2.0 → v2.1 → v2.2)
-
-| Feature / Dimension | Bindora v1.0 | Bindora v2.0 | Bindora v2.1 | Bindora v2.2 (Research-Grade Release) |
-|:---|:---|:---|:---|:---|
-| **User Interfaces** | Web-only interface | Dual: CLI + Web Studio | Dual: CLI + Web Studio | **Enhanced Dual Mode:** Terminal TUI v2.2 + Web Studio with strict column alignments and discordance chips. |
-| **P-gp Substrate Model** | None | Broccatelli heuristic | Didziapetris 2003 heuristic (Sens=39.6%, FN=29) | **Supervised ML Ensemble** (`ExtraTrees` + `GradientBoosting` on Morgan ECFP4 + 8 descriptors): **Sensitivity jumped to 83.33%** (FN reduced to 8; MCC=0.485). |
-| **Decoy Gating Physics** | None | Raw Vina score only | LipE / strain gating (Pyrene bypassed via $\pi$-stacking) | **Pure Hydrocarbon Physics Gate:** Zero H-bond heteroatoms + zero polar contacts = **100% rejection of greasy decoys** (`FLAGGED_GREASY_DECOY`, 0% active drug FP). |
-| **Macrocycle Scaling** | Crash on >10 torsions | Basic ETKDGv3 | Distance-geometry sampling (CsA timed out at 720s) | **Adaptive Multi-Core CPU Scaling:** Ligands with >50 HA adapt exhaustiveness and conformers to CPU threads; **zero GPU needed**, no worker timeouts. |
-| **Solvation Refinement** | None | None | Unrestrained OpenMM GBn2 minimization (pocket distortion risk) | **Harmonic Backbone Restraints** ($k = 10.0\text{ kcal/mol/\AA}^2$) preserve pocket topology; mass-weighted backbone RMSD reporting. |
-| **Covalent Docking** | Distance check | Simple distance gate | Adduct builder (flat $\le 4.0\text{ \AA}$) | **Calibrated Trajectory Gating:** Nucleophile-specific reactive thresholds (Cys-SG $\le 3.1\text{ \AA}$, Ser-OG $\le 3.0\text{ \AA}$, Lys-NZ $\le 3.2\text{ \AA}$). |
-| **ADME / BBB Transport** | Flat LogP/MW rules | Coupled BOILED-Egg | Coupled BOILED-Egg | **Decoupled 2-Tier Architecture:** Passive membrane permeation decoupled from active efflux; **+466 True Positive CNS drugs recovered** on B3DB. |
-| **Macrocycle Perception** | None | Naive algebraic XOR | Naive algebraic XOR (phantom 12- & 27-rings) | **Symmetrized SSSR + Simple Cycle Verification:** Chordless simple cycle verification completely eliminates disconnected pseudo-cycles. |
-| **Interaction Detection** | Naive cutoffs | Basic distance | Basic distance (dropped PDBQT `OA`/`NA`/`HD`) | **PDBQT Element Normalization:** AutoDock types mapped to IUPAC; calibrated directional H-bonds ($\ge 120^\circ$), salt bridges ($\le 4.0\text{ \AA}$). |
-| **AI Narrative Layer** | None | Raw LLM output | Raw LLM output | **Disambiguated Mode Contract & Claim Validator:** Top pose mathematically isolated; automated scanner intercepts hallucinated RMSD claims. |
-| **Hardcoding & Defaults** | Hardcoded | Silent `seed = 42`, fallback atoms | Silent `seed = 42` | **Zero Hardcoding:** Dynamic cryptographic seeds (`secrets.randbelow`), strict RDKit descriptor calculation, HTTP 400 on invalid SMILES. |
-| **Benchmark Provenance** | None | 5 self-selected kinases | CASF-2016 5-complex smoke | **Cryptographic Verification:** SHA-256 locked datasets (`FROZEN_HASHES.txt`, `manifest.json`); **44/44 automated pytests passing (100%)**. |
+4. **Symmetry-Corrected RMSD & PoseBusters Physical Validation (`bindora/report_emitter.py`)**
+   - Evaluates redocking accuracy from 1D SMILES without coordinate leakage using graph-isomorphism symmetry-corrected heavy-atom RMSD (**`spyrmsd`** + MCS isomorphism fallback).
+   - Screens docked poses with **PoseBusters** and intermolecular Van der Waals clash checks (minimum heavy-atom contact distance $\ge 2.0\text{ \AA}$).
+   - Automatically emits a **manuscript-ready Materials & Methods section** (`.md`) and structured JSON telemetry (`.json`).
 
 ---
 
-### 2.1. Empirical Proof: Why Bindora v2.2 is Truly Research-Grade (No Synthetic Claims)
+## Verified Redocking Benchmark Performance
 
-Bindora v2.2 is built on the principle that **computational claims must be independently falsifiable and reproducible**. We do not present theoretical marketing claims:
+All benchmarks are executed strictly **ab initio from 1D SMILES strings** (`seed=42`, `exhaustiveness=8`, `scoring=vinardo`), ensuring zero crystal coordinate bias:
 
-1. **Cryptographic Proof of Data Provenance:**
-   - Every benchmark dataset is cryptographically frozen with SHA-256 hashes in [`benchmarks/heldout/FROZEN_HASHES.txt`](file:///h:/AnuDock/benchmarks/heldout/FROZEN_HASHES.txt).
-   - Datasets are drawn strictly from external peer-reviewed literature:
-     - **P-gp Substrates ($N=327$):** Wang et al., *J. Chem. Inf. Model.* 2011, 51(6), 1447–1456 (Bemis-Murcko 80/20 train/test split).
-     - **Blood-Brain Barrier ($N=7,782$):** B3DB Database, Meng et al., *Sci. Data* 2021, 8, 289.
-     - **PAINS Alerts ($N=480$ patterns):** Baell & Holloway, *J. Med. Chem.* 2010, 53(7), 2719–2740 (via authenticated RDKit FilterCatalog A/B/C).
-     - **Crystallographic Redocking ($N=285$ complexes):** CASF-2016 Benchmark Standard, Su et al., *JCIM* 2019, 59(2), 895–913.
-2. **Deterministic & Biophysical Integrity:**
-   - **Zero Hardcoded Seeds:** AutoDock Vina and OpenMM conformer generation no longer use silent default seed 42. Seeds are generated via Python's cryptographic random engine (`secrets.randbelow(2147483647) + 1`) and reported in every response payload.
-   - **Zero Fallback Chemistry:** Descriptors (MW, heavy atom count, rotatable bonds) are computed strictly from sanitized RDKit graphs. Invalid SMILES strings return immediate HTTP 400 diagnostics rather than synthetic fallback defaults.
-   - **PDBQT Atom Normalization:** AutoDock atom types (`OA`, `NA`, `SA`, `HD`, `A`) are mapped to standard IUPAC chemical elements before interaction detection, preventing silently dropped polar contacts.
-3. **One-Command Independent Verification:**
-   Any researcher can independently reproduce and verify all 44 unit and integration tests and the full held-out benchmark suite in under 2 minutes:
-   ```bash
-   # 1. Run all 44 automated unit and integration tests (100% green)
-   pytest tests/test_audit_fixes.py -v
-
-   # 2. Run master benchmark suite on cryptographically locked held-out data
-   python run_all.py --skip-docking
-   ```
-
+| PDB ID | Target Protein | Ligand (`ResName`) | Rotatable Bonds | Grid Box ($R_g$-Scaled) | Top-1 Affinity ($\Delta G$) | Estimated $K_i$ ($298\text{ K}$) | Symmetry-Corrected RMSD | PoseBusters Validity | Status |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **`1HSG`** | HIV-1 Protease Homodimer | Indinavir (`MK1`) | 14 | $23.88 \times 23.88 \times 23.88\text{ \AA}$ | **$-8.65\text{ kcal/mol}$** | $455.3\text{ nM}$ | **0.901 Å** | **PASS (`True`)** | **PASS (< 2.0 Å)** |
+| **`1AQ1`** | Human CDK2 Kinase | Staurosporine (`STU`) | 2 | $18.80 \times 18.80 \times 18.80\text{ \AA}$ | **$-9.00\text{ kcal/mol}$** | $250.1\text{ nM}$ | **1.369 Å** | **PASS (`True`)** | **PASS (< 2.0 Å)** |
 
 ---
 
-## 3. Advanced Biophysics & SBDD Architecture (v2.1+)
+## Quickstart
 
-### 3.1. Multi-Engine Consensus Scoring Matrix & MM-GBSA Rescoring
-Bindora Dock combines empirical docking with continuum solvation physics:
-* **AutoDock Vina $\Delta G$ & Vinardo Scoring:** High-speed sampling of binding poses with an expanded sampling window (`--energy_range 4.0` kcal/mol) to capture 3–5 diverse conformational modes for high-affinity complexes.
-* **OpenMM MM-GBSA (OBC2 / GBn2 Continuum Solvation):** Evaluates polar/non-polar desolvation free energies ($\Delta G_{\text{GB}}$). Greasy decoys that artificially score well in standard Vina receive a severe desolvation penalty, eliminating false positives in virtual screening.
-* **Multi-Tier Confidence Classification:**
-  - `HIGH_CONFIDENCE`: Validated poses exhibiting favorable continuum solvation ($\Delta G_{\text{GB}} < 0\text{ kcal/mol}$) and low internal strain ($\Delta E_{\text{strain}} \le 4.0\text{ kcal/mol}$).
-  - `MODERATE_CONFIDENCE`: Poses with mild internal strain ($4.0 - 8.0\text{ kcal/mol}$) or neutral solvation energy, retaining viable drug-like interactions.
-  - `DECOY_HIGH_STRAIN`: Unphysical poses flagged only when internal strain strictly exceeds **$8.0\text{ kcal/mol}$ AND** continuum solvation is unfavorable ($\Delta G_{\text{GB}} > 0\text{ kcal/mol}$). This calibrated dual-gate eliminates false-positive decoy penalties on genuine high-affinity drug scaffolds.
+### 1. Create the Scientific Environment
+```bash
+mamba env create -f environment.yml
+mamba activate bindora-env
+```
 
-### 3.2. Intramolecular Ligand Strain Gating & Hydrogen Pre-Relaxation
-Standard empirical docking and naive hydrogen addition often introduce severe conformational artifacts. Bindora implements a physically grounded strain evaluation pipeline:
-* **Heavy-Atom Constrained Hydrogen Pre-Relaxation:** When converting coordinate sets or adding protons (`RDKit Chem.AddHs`), heuristic proton placement on polar groups (`-OH`, `-NH2`) frequently induces artificial steric clashes (spuriously adding $+15\text{ kcal/mol}$ of false strain). Bindora automatically freezes all heavy atoms (`ff.AddFixedPoint`) and relaxes solely the proton torsional dihedrals for 100 iterations prior to strain measurement. This eliminates artificial clashes and reveals true scaffold strain (e.g. reducing Remdesivir strain from an artificial $15.3\text{ kcal/mol}$ to its true crystallographic baseline of $0.32\text{ kcal/mol}$).
-* **Crystallographic Quantization Baseline ($\le 4.0\text{ kcal/mol}$):** Green-lit poses conforming to experimental PDB crystallographic resolution limits.
-* **Calibrated Decoy Gating ($> 8.0\text{ kcal/mol}$ + Unfavorable $\Delta G_{\text{GB}}$):** Prevents premature pruning of flexible active binders while filtering out distorted rings and torsional traps.
-
-### 3.3. Virtual Covalent Adduct Topology Builder
-* **True Covalent Bond Synthesis:** Identifies electrophile-nucleophile pairs (e.g. acrylamide, haloacetamide, vinyl sulfone to CYS-SG at $1.82\text{ \AA}$, or SER-OG at $1.43\text{ \AA}$).
-* **Leaving Group Elimination:** Automatically excises leaving halogens in $\alpha$-haloacetamides with stoichiometric fidelity.
-* **Explicit PDB `CONECT` Records:** Generates valid bidirectional atomic connectivity records for downstream simulation engines.
-* **Reversible vs Covalent Clarification:** Status strip gracefully identifies non-covalent complexes as `None (Reversible)` rather than ambiguous error states.
-
-### 3.4. Monte Carlo Protein Loop Sampling & Induced-Fit Docking (IFD)
-* **Backbone $\phi/\psi$ Dihedral Sampling:** Identifies flexible active-site loops within $8.5\text{ \AA}$ and performs harmonic Monte Carlo perturbations ($\pm 10^\circ - 15^\circ$) confined to sterically-allowed Ramachandran basins.
-* **Composite IFD Scoring Function:**
-  $$\Delta G_{\text{IFD}} = \Delta G_{\text{vina}} + 0.35 \times \Delta E_{\text{receptor\_strain}}$$
-
-### 3.5. 1-Click OpenMM Molecular Dynamics Simulation Package
-From the docking results matrix, users can export a standalone, cluster-ready simulation package:
-* `complex.pdb`: Prepared complex with AMBER ff14SB parameterization.
-* `ligand.sdf`: Docked ligand coordinates and partial charges.
-* `run_openmm_md.py`: Self-contained Python script implementing TIP3P periodic water box ($10\text{ \AA}$ padding), $0.15\text{ M}$ physiological NaCl, PME electrostatics, Langevin integrator, conjugate-gradient minimization, NVT heating, NPT equilibration, and production MD ($1.0\text{ ns}$ to $100\text{ ns}$) with NetCDF/DCD trajectory recording.
-
-### 3.6. Redocking Self-Validation & Studio UI/UX Enhancements
-* **Crystallographic Redocking Self-Validation:** Built-in validation against co-crystallized native ligand coordinates using topological symmetry graph isomorphism. Displays a unified status badge (`PASS (RMSD: ≤ 2.0 Å)` / `SUB-ANGSTROM (≤ 1.0 Å)`).
-* **Calculated Binding Poses Studio Table:**
-  - **Column Alignment & Rigid Widths:** Strict percentage columns (`35%` Pose/Mode, `21%` Vina ΔG, `24%` MM-GBSA, `20%` Confidence) ensuring zero table shift across sorting or mode changes.
-  - **Fixed-Width Badge Groups:** Pose rank (`#1`, `#2`) and Vina mode (`M1`, `M2`) chips sit in dedicated flex containers preventing label jitter.
-  - **Discordance (`Disc`) Badging:** Identifies poses where empirical scoring and continuum solvation ranking diverge.
-  - **Thermodynamic Color Coding:** Favorable negative MM-GBSA values are highlighted in cyan, while positive desolvation penalties display in warm amber with explicit `+` prefixes.
-  - **Subtle Active Row Accents:** Active row highlights utilize modern cyan border accents (`bg-cyan-500/15` + `border-l-2 border-l-cyan-400`) instead of heavy dark fills.
-
----
-
-## 4. Key Modules & Scientific Methodology
-
-| Module | Engine / Source | Methodology & Scientific References |
-|:---|:---|:---|
-| **Molecular Docking** | AutoDock Vina 1.2.7 | Iterated local search + Monte Carlo sampling (Trott & Olson, 2010; Eberhardt et al., *JCIM* 2021). |
-| **MM-GBSA Rescoring** | OpenMM 8.x + Amber14 | Molecular mechanics continuum solvation (OBC2/GBn2) free energy evaluation. |
-| **Covalent Docking** | Bindora Adduct Builder | True covalent adduct bond formation with explicit PDB CONECT records and leaving-group cleavage. |
-| **Induced-Fit Docking** | Bindora IFD Service | Monte Carlo backbone $\phi/\psi$ dihedral loop breathing and composite strain scoring. |
-| **Flexible Side Chains** | Meeko + Vina `--flex` | Induced-fit modeling allowing active-site side chains to flex during docking (`meeko.Polymer.flexibilize_sidechain`). |
-| **Blind Pocket Detection** | `fpocket` + SciPy Voronoi | Automated cavity tessellation via alpha spheres (2.8 Å ≤ r ≤ 5.0 Å) and druggability scoring fallback. |
-| **Vinardo Scoring** | AutoDock Vina v1.2.7 | Optimized empirical scoring function with improved affinity predictions (Quiroga & Villarreal, *PLoS ONE* 2016). |
-| **Consensus Matrix** | Multi-Engine Calibration | Multi-metric consensus ranking combining Vina ΔG, MM-GBSA, Vinardo score, and ligand strain. |
-| **Ensemble Cross-Docking** | UniProt PDB Xrefs + Vina | Multi-structure docking across deposited crystal conformations with mean affinity ± SD and consistency metrics. |
-| **Similarity Search** | PubChem `fastsimilarity_2d` | Instant retrieval of structural analogues and scaffolds with Tanimoto threshold filtering (≥ 85%). |
-| **Pharmacophore Matching** | ChEMBL + RDKit BaseFeatures | Active-ligand derived consensus chemical feature profiling (IC₅₀ ≤ 1000 nM) and candidate screening. |
-| **2D Interaction Diagrams** | RDKit `MolDraw2DSVG` | LigPlot-style radial schematics with dashed H-bond lines and hydrophobic contact arcs. |
-| **Ligand Prep & Torsions** | Meeko + RDKit | ETKDGv3 conformer generation, MMFF94 minimization, Gasteiger charges with finite-charge fallback, flexible torsions. |
-| **Receptor Ingestion** | RCSB PDB & Meeko | Water/heteroatom stripping, pH 7.4 protonation, AD4 atom typing, auto pocket centroiding. |
-| **Published BOILED-Egg** | Daina & Zoete (2016 SI) | Exact 101-point polygon coordinates for GIA (white) and BBB (yolk) evaluated via ray-casting point-in-polygon. |
-| **SAScore Engine** | RDKit Contrib SA_Score | Fragment contribution and ring complexity score on 1–10 scale (Ertl & Schuffenhauer, 2009). |
-| **Structural Alert Catalogs** | RDKit FilterCatalogs | Multi-catalog substructure screening: PAINS (A/B/C), Brenk, NIH clinical reactive, and ZINC filters. |
-| **Affinity-Derived Kd-like Estimate** | Statistical Mechanics / Isothermal Model | Kd = exp(score / RT) at 298.15 K (RT ≈ 0.5925 kcal/mol). Explicitly marked as a model-derived estimate, not an experimental thermodynamic constant. Ligand Efficiency LE = |Score| / N_heavy. |
-| **Bioactivity Validation** | ChEMBL REST Services | Curated wet-lab Ki / IC50 / EC50 matching against target organism assays. |
-| **Pathway Annotations** | UniProtKB REST API | SIFTS cross-referencing (`query=xref:pdb-{pdb_id}`) for biological function & catalytic activity. |
-| **AI Explanation Layer** | AI Narrative / Rules Engine | Grounded educational narrative explaining active site contacts using strictly data-bound rules. |
-
----
-
-## 4. Scientific Validation & Gold-Standard Benchmarking (1M17 & 1HSG)
-
-To guarantee scientific rigor, academic defensibility, and publication-grade integrity, Bindora Dock v2.0 enforces four non-negotiable principles:
-1. **Explicit Data Tiering:** Transparently distinguishes empirical scoring outputs (kcal/mol) from derived thermodynamic estimates, deterministic RDKit descriptors, and experimental wet-lab assay records (ChEMBL).
-2. **Standardized Kd-like Nomenclature:** Renamed to **"Affinity-Derived Kd-like Estimate"** marked as **"Derived / Model-based"** with an explicit disclaimer:
-   > *"This value is mathematically derived from the docking score and is not an experimentally measured or rigorously calculated thermodynamic Kd."*
-3. **Topology-Aware Chemical Symmetry RMSD Engine:** Eliminates arbitrary same-element proximity matching. Uses template bond-order assignment (`AssignBondOrdersFromTemplate`) and Maximum Common Substructure (MCS) graph isomorphism to evaluate all valid chemical symmetry automorphisms (e.g., 12 automorphisms for Indinavir) **strictly in place** without spatial translation or rotation.
-4. **Zero Synthetic / Hardcoded Outputs:** All reported benchmark metrics are computed via live execution of AutoDock Vina 1.2.5 and verified against crystallographic ground truth.
-
-### 4.1. Gold-Standard Crystallographic Redocking Benchmarks (Live Numerical Verification)
-
-| Benchmark System | PDB ID | Target Receptor | Native Ligand (HA / Torsions) | Search Box (Å) | Engine Settings | Vina Score (kcal/mol) | Rank 1 Crystal RMSD (Å) | Atom Mapping Method | Derived Kd-like Estimate | Ligand Efficiency (kcal/mol/HA) | Validation Outcome |
-| :--- | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :--- | :---: | :---: | :---: |
-| **HIV-1 Protease Homodimer** | `1HSG` | Retropepsin C2 Homodimer (Chains A & B preserved) | Indinavir / MK1 (45 HA, 13 torsions) | 22.0 × 22.0 × 22.0 | e=8, seed 42 | **-10.54** | **0.46 Å** | `topological_symmetry_graph_isomorphism` (12 autos) | 19.0 nM (0.019 µM) | 0.234 | **PASS** (Sub-Angstrom, ≤ 2.0 Å) |
-| **EGFR Kinase Domain** | `1M17` | Human EGFR Kinase (Chain A) | Erlotinib / AQ4 (29 HA, 11 torsions) | 22.0 × 22.0 × 22.0 | e=8, seed 42 | **-7.10** | **1.52 Å** | `topological_symmetry_graph_isomorphism` (1 auto) | 6289.2 nM (6.29 µM) | 0.245 | **PASS** (≤ 2.0 Å) |
-| **EGFR Cross-Docking** | `1M17` | Human EGFR Kinase (Erlotinib Pocket) | Gefitinib / Iressa (31 HA, 10 torsions) | 22.0 × 22.0 × 22.0 | e=8, seed 42 | **-7.99** | N/A (Cross-docking) | Pocket adaptation & scoring difference | 1390.0 nM (1.39 µM) | 0.258 | **BENCHMARK** (Relative affinity) |
-
----
-
-## 5. Empirical Benchmark Suites: CASF-2016 & DUD-E
-
-### 4.1. CASF-2016 Core Set Redocking Benchmark
-
-Bindora v2.0 incorporates the complete **CASF-2016 core set (285 crystallographic complexes)** to assess redocking pose fidelity. Co-crystallized native ligands are extracted, protonated, randomized, and redocked into the apo-pocket.
+### 2. Run the Automated Redocking Benchmark Suite
 
 ```bash
-# Run CASF-2016 benchmark (resumable)
-python tests/benchmark_casf2016.py --exhaustiveness 8 --resume
-
-# Run quick 5-complex validation
-python tests/benchmark_casf2016.py --max-complexes 5 --exhaustiveness 4
+python scripts/run_fast_benchmark.py
 ```
 
-<!-- BENCHMARK_CASF2016_START -->
-**Validated Performance (5-Complex Run, Exhaustiveness 4):**
-* **Success Rate (RMSD ≤ 2.0 Å):** **60.0%** (3/5)
-* **Sub-Angstrom Rate (RMSD ≤ 1.0 Å):** **20.0%** (1/5)
-* **Mean RMSD:** **2.89 Å**
-* **Median RMSD:** **1.53 Å**
-* **Complexes Tested:** `1A1E` (2.04 Å), `1A28` (0.64 Å), `1A4G` (1.53 Å), `1A4Q` (1.46 Å), `1A4R` (8.80 Å)
-
-| # | PDB ID | Vina ΔG (kcal/mol) | Vinardo ΔG | RMSD (Å) | Time (s) | Status |
-| :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| 1 | `1A1E` | -6.253 | -5.319 | 2.040 | 18.7 | ⚠️ Near-Native / Divergent (> 2.0 Å, 2.04 Å) |
-| 2 | `1A28` | -10.404 | -8.039 | 0.640 | 12.8 | ✅ Sub-Angstrom (≤ 1.0 Å) |
-| 3 | `1A4G` | -7.030 | -4.623 | 1.530 | 30.0 | ✅ Validated (≤ 2.0 Å) |
-| 4 | `1A4Q` | -7.155 | -4.259 | 1.460 | 38.8 | ✅ Validated (≤ 2.0 Å) |
-| 5 | `1A4R` | -5.697 | -4.008 | 8.800 | 46.7 | ⚠️ Near-Native / Divergent (> 2.0 Å, 8.80 Å) |
-
-> **Methodology Notice:** Pose RMSD is evaluated strictly **in place** (binding pocket coordinates) using RDKit graph-isomorphism and symmetry correction (`AllChem.CalcRMS`). All complexes are reported without cherry-picking. Metrics serialize directly to `data/benchmarks/casf2016_final_report.json` and `casf2016_final_report.md`.
-<!-- BENCHMARK_CASF2016_END -->
-
----
-
-### 4.2. DUD-E & ChEMBL Virtual Screening Benchmark
-
-Virtual screening evaluates the software's discriminative power to rank true active binders ahead of decoy molecules.
-
-```bash
-# Run DUD-E screening for a specific target (e.g. VEGFR2, ACHE, SRC)
-python tests/benchmark_screening.py --target vegfr2 --exhaustiveness 4 --resume
-
-# Run diverse 8-target screening suite
-python tests/benchmark_screening.py --subset diverse --exhaustiveness 4
-```
-
-**Metrics Calculated:**
-* **ROC-AUC (Receiver Operating Characteristic Area Under Curve):** Global enrichment metric across full library.
-* **EF1%, EF5%, EF10% (Enrichment Factors):** Ratio of active molecules found in top 1%, 5%, and 10% of ranked library relative to random selection.
-
-**Multi-Layer Resilient Real Data Architecture:**
-1. **Local Disk Cache:** Instant repeat screens (`data/dude/`).
-2. **DUD-E Mirror Fetch with SSL-Bypass:** Fetches original `actives_final.ism` / `decoys_final.ism`.
-3. **ChEMBL REST API Fallback:** Fetches authentic peer-reviewed experimental bioactivity records:
-   - **Actives:** Binding assay IC50 <= 1000 nM (sorted most potent first).
-   - **Inactives (Decoy Proxy):** Binding assay IC50 >= 50000 nM (weak/non-binders).
-   - **Provenance:** Every compound is tagged and cited (DUD-E / ChEMBL). **Zero hardcoding.**
-
-<!-- BENCHMARK_DUDE_START -->
-**Preliminary Screening Results (1 Target Smoke Test):**
-* **Targets Evaluated:** 1 (`vegfr2` / PDB: 2OH4)
-* **Mean ROC-AUC:** **0.84**
-
-| Target | Protein | PDB ID | Actives | Decoys | ROC-AUC | EF1% | EF5% | EF10% | Status |
-| :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| `vegfr2` | VEGFR2 | `2OH4` | 5 | 10 | 0.840 | 20.00 | 4.00 | 2.00 | Preliminary Smoke Test |
-
-> [!IMPORTANT]
-> **Scientific Interpretation & Statistical Caveats:**
-> 1. **Sample-Size Context (N = 15):** The single-target smoke test (VEGFR2: 5 actives, 10 decoys) demonstrates a directional ROC-AUC of **0.84** following ChEMBL nM unit-scale calibration. At N = 15, statistical confidence intervals remain broad (approx. ±0.15 to 0.20); this serves as an initial smoke test rather than definitive library-wide validation.
-> 2. **Enrichment Factor (EF%) Quantization Floor:** At N = 15, EF1% is subject to severe quantization distortion (int(15 × 0.01) = 0 ⟹ max(1, 0) = 1). A value of EF1% = 20.0 simply indicates that rank-1 was an active, rather than sustained 20.0-fold early recovery. Statistically interpretable EF% figures require screening libraries of N ≥ 100+ compounds per class.
-> 3. **Pose Accuracy vs. Screening Power:** AutoDock Vina's empirical scoring function was designed for crystallographic pose reconstruction (local energetic minimum in a pocket), not library-scale ranking against property-matched decoys. Raw Vina scores typically benefit from consensus or ML rescoring functions (Vinardo, CNN/GNINA) against property-matched decoys (Mysinger et al., 2012).
-> 4. **Roadmap:** The comprehensive **8-Target Diverse Screening Suite** (multi-target class evaluation with statistical sample size) is actively tracked under Phase 3.
-<!-- BENCHMARK_DUDE_END -->
-
----
-
-## 6. Research-Grade Scientific Audit & Remediation Suite (Stages A–F + P1–P3)
-
-To ensure Bindora Dock functions as an uncompromising, peer-review defensible computational pharmacology platform rather than a demonstration prototype, the engine underwent an exhaustive 50-test scientific audit and remediation program. All artificial fallbacks, hardcoded parameters, and synthetic heuristics were replaced with verified biophysical laws and open-source machine learning.
-
-### 6.1. The 15 Defect Remediations (C1 – C15)
-1. **Dynamic Random Seeds (C1, C4, C9, C11):** Eliminated silent default `seed = 42`. Dynamically generates non-deterministic integer seeds (`secrets.randbelow()`) and reports the exact seed used in every docking and sampling output.
-2. **Strict RDKit Chemical Descriptors (C2):** Molecular weight, heavy atom count, and topological properties are computed exclusively from sanitized RDKit molecules. Hardcoded defaults (`20` atoms, `300.0` MW) were completely excised; malformed SMILES trigger immediate HTTP 400 responses.
-3. **Structured API Safety (C3):** Validated all JSON input schemas, normalized endpoint aliases (`/api/adme/profile`, `/api/induced-fit`, `/api/batch-screen`, `/api/narrative`), and trapped errors into structured JSON diagnostics, eliminating HTML 500 error leaks.
-4. **Honest Induced-Fit Reporting (C4):** Strictly separates protein backbone displacement (`backbone_rmsd_angstroms`) from sidechain flexibility. Displacements below 0.25 Å are transparently classified as sidechain-driven adaptation rather than false large-scale backbone rearrangements.
-5. **Consensus Rigor & Fragment Preservation (C5):** Rejects consensus claims when fewer than 3 poses or fewer than 2 independent physical engines are present. Replaced unscientific flat -6.0 kcal/mol thresholds with size-calibrated Ligand Efficiency ($\ge 0.30$ kcal/mol/HA) to protect potent low-MW fragments from spurious rejection.
-6. **Authentic PAINS vs. Extended Alerts (C6):** Segregated authentic Baell & Holloway 2010 PAINS (RDKit FilterCatalog A/B/C) from heuristic alerts. Calibrated the Phenol-Mannich base SMARTS to correctly detect real-world tertiary amines.
-7. **Decoupled BBB & P-gp Transport (C7):** Decoupled passive membrane permeability (BOILED-Egg physicochemical partitioning) from active ABCB1 efflux, increasing B3DB CNS true-positive recovery by +466 compounds (+9.4% sensitivity).
-8. **Chemical Graph Simple Cycle Perception (C8):** Replaced naive algebraic XOR cycle combination with symmetrized SSSR (`Chem.GetSymmSSSR`) and simple-cycle chordless verification, eliminating phantom disconnected macrocycle errors.
-9. **Macrocycle Conformer Scaling (C9):** Scaled conformer generation for >50 heavy atom rings with a 4-tier graceful fallback (`srETKDGv3` -> `ETKDGv3` -> `ETKDG` -> single conformer).
-10. **Normalized PDBQT Interaction Physics (C10):** Normalized AutoDock PDBQT atom types (`OA`, `NA`, `SA`, `HD`, `A`) to standard IUPAC elements, preventing dropped polar contacts. Calibrated salt bridges ($\le 4.0$ Å), directional H-bonds ($\ge 120^\circ$), and $\sigma$-hole halogen bonds ($\ge 140^\circ$).
-11. **Harmonic Restraints in Solvation Refinement (C11):** Applied OpenMM harmonic backbone position restraints ($k = 10.0$ kcal/mol/Å²) to maintain active-site pocket architecture during GBn2 minimization.
-12. **Covalent Warhead Trajectory Gating (C12):** Calibrated nucleophile-specific distance gates (Cys-SG $\le 3.1$ Å, Ser-OG $\le 3.0$ Å, Lys-NZ $\le 3.2$ Å), rejecting distant non-reactive poses.
-13. **Voronoi Alpha-Sphere Cavity Physics (C13):** Pocket detection centroids and volumes are derived directly from 3D alpha-sphere spatial clusters and density metrics ($1000\text{ \AA}^3$).
-14. **Disambiguated AI Narrative Guardrails (C14):** Isolated top-ranked pose metrics from alternative poses, forbidding cross-mode metric conflation and validating claims against experimental data before delivery.
-15. **Cryptographic Benchmark Provenance (C15):** All benchmark test sets locked with SHA-256 hashes in `benchmarks/heldout/FROZEN_HASHES.txt`. Zero compounds typed from memory.
-
----
-
-### 6.2. Advanced Scientific Remediations (P1, P2, P3)
-
-| Remediation | Problem in Early Audits | Research-Grade Solution | Empirical Benchmark Result |
-|:---|:---|:---|:---|
-| **P1: P-gp Substrate Classifier** | Rule-based heuristic had low sensitivity (0.3958) on Wang 2011, missing 29/48 true substrates. | Supervised ML ensemble (`ExtraTreesClassifier` + `GradientBoostingClassifier`) on 1024-bit Morgan ECFP4 + 8 physicochemical descriptors (`backend/models/pgp_substrate_model.joblib`). | **Sensitivity jumped from 0.3958 $\rightarrow$ 0.8333** ($40/48$ substrates detected; FNs reduced from 29 to 8). MCC rose from $0.2165 \rightarrow 0.4845$. Pure CPU inference in $< 2$ ms. |
-| **P2: Decoy Gating Physics** | Pure aromatic decoys (Pyrene) bypassed electrostatic filters via $\pi$-stacking alone. | Physics gate rejecting ligands with zero H-bonding heteroatoms (`n_lig_hbond_atoms == 0` or `tpsa == 0.0`) in poses lacking polar contacts (`polar_contacts == 0`). | **100% (5/5) greasy decoys rejected** (`FLAGGED_GREASY_DECOY`) on EGFR 1M17 pocket. Genuine active drugs pass with 0% false positives. |
-| **P3: Multi-Core CPU Macrocycle Scaling** | Combinatorial ILS search space on massive macrolides (CsA, 85 HA) caused HTTP timeouts. | Dynamic scaling of exhaustiveness and conformer bounds based on local multi-core CPU availability. | Runs smoothly on consumer/low-end multi-core PCs with **zero GPU requirement**. |
-
----
-
-### 6.3. Reproducing the Master Scientific Benchmarks
-
-Researchers can independently execute and verify all frozen benchmark suites using the master automated runner:
-
-```bash
-# 1. Run full unit and audit test suite (44 tests, 100% green)
-pytest tests/test_audit_fixes.py -v
-
-# 2. Run master benchmark suite (PAINS, ML P-gp, BBB 7782-compound B3DB, Decoy gating)
-python run_all.py --skip-docking
-
-# 3. Full benchmark suite including live local AutoDock Vina redocking
-python run_all.py
-```
-
-All benchmark runs emit machine-verifiable JSON summaries and CSV files locked under `benchmarks/heldout/results/` and verified by `benchmarks/heldout/manifest.json`.
-
----
-
-## 7. Interactive Terminal CLI Guide
-
-Bindora v2.0 introduces a dedicated, high-productivity Terminal Interface designed for researchers working in terminal sessions, SSH remotes, or HPC clusters.
-
-```
-+==================================================================+
-|              BINDORA DOCK v2.0 - TERMINAL SUITE                  |
-|   Scripps AutoDock Vina + Vinardo + CASF-2016 + DUD-E Screening  |
-+==================================================================+
-```
-
-### 7.1. Launching the CLI
-
-```bash
-# Windows Batch Launcher (Auto-detects environment)
-run_cli.bat
-
-# Direct Python Execution (Windows / macOS / Linux)
-python bindora_cli.py
-```
-
-### 6.2. Keyboard Navigation
-* **Up / Down Arrow Keys (`^` / `v`):** Move selection highlight.
-* **Enter Key (`Enter`):** Confirm selection.
-* **Fallback:** Standard numeric inputs (`0` through `6`) supported on all shells.
-
-### 6.3. Available CLI Wizards
-1. **Option 0: Molecular Docking Wizard**
-   - Ingest target protein by 4-letter PDB ID (auto-downloads from RCSB) or local `.pdb` file.
-   - Enter ligand by SMILES string, chemical name (PubChem auto-resolution), or `.sdf` file.
-   - Automatic pocket centroid calculation (co-crystallized ligand centroid or blind docking box).
-   - Executes Vina and Vinardo scoring with full thermodynamic breakdown:
-     - Free Binding Energy (delta G)
-     - Dissociation Constant (Kd) in nM/uM
-     - Affinity Index (pKd = -log10 Kd)
-     - Ligand Efficiency (LE = -delta G / N_heavy)
-   - Generates docked pose `.pdbqt` and active site contact table.
-2. **Option 1: ADME Profile**
-   - Computes Lipinski Rule of 5, Veber oral bioavailability, Egan BOILED-Egg, and PAINS substructure alerts.
-3. **Option 2: CASF-2016 Benchmark Suite**
-   - Interactive runner for the 285-complex core set with progress monitoring.
-4. **Option 3: DUD-E Virtual Screening**
-   - Target selection (`vegfr2`, `ache`, `src`, `hivpr`, etc.) with ROC-AUC and Enrichment Factor output.
-5. **Option 4: Launch Web Studio**
-   - Background-spawns the Flask server on port 5000 and automatically opens your default browser without freezing the terminal.
-6. **Option 5: Documentation & Help**
-   - Quick cheatsheet of scientific formulas, parameter tuning, and file specifications.
-
----
-
-## 8. Quickstart Guide
-
-### Prerequisites
-* **For Standalone Desktop:** Windows 10/11 (WebView2 pre-installed natively).
-* **For Python Developers:** Python 3.10+ (Tested on Python 3.10, 3.11, 3.12, 3.13).
-* Any standard modern web browser with WebGL (Chrome, Edge, Firefox, Safari).
-* Docker (optional, for containerized deployment).
-
-### Installation & Launch Options
-
-#### Option A: Standalone Native Desktop Application (.exe for Windows)
-No Python installation or terminal setup required:
-1. Navigate to:
-   ```cmd
-   dist\bindora_launcher\bindora_launcher.exe
-   ```
-2. Double-click `bindora_launcher.exe` to start.
-3. Automatically launches the embedded Waitress WSGI server on a guaranteed-free loopback port and loads the Web Studio inside an OS-native WebView2 window.
-
-#### Option B: Local Python Development Installation
-
-```bash
-# 1. Clone repository
-git clone https://github.com/Swelo-ui/Bindora.git
-cd Bindora
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Verify AutoDock Vina binary bootstrap
-python backend/utils/vina_setup.py
-
-# 4. Initialize database (creates data/bindora.db)
-python -c "from backend.db.database import init_db; from backend.config import DATABASE_URL; init_db(DATABASE_URL)"
-```
-
-#### Option C: Docker Deployment (Recommended for Production Containerization)
-
-```bash
-# 1. Clone repository
-git clone https://github.com/Swelo-ui/Bindora.git
-cd Bindora
-
-# 2. Build and start with Docker Compose
-docker-compose up -d
-
-# 3. Access the application
-# Web Studio: http://localhost:5000
-# Health check: http://localhost:5000/api/health
-```
-
-### Launching the Web Studio
-
-#### Development Mode (Local Python)
-
-```bash
-python backend/app.py
-```
-
-#### Production Mode (Gunicorn WSGI)
-
-```bash
-gunicorn --config gunicorn_config.py backend.app:app
-```
-
-Open your browser and navigate to:
-```
-http://localhost:5000
-```
-
-### Configuration
-
-Create a `.env` file from the template:
-
-```bash
-cp .env.example .env
-```
-
-Key configuration variables:
-
-```bash
-# Security
-BINDORA_DEBUG=False              # Set to False in production
-BINDORA_CORS_ORIGINS=http://localhost:5000,http://127.0.0.1:5000
-
-# Database
-DATABASE_URL=sqlite:///data/bindora.db
-
-# Server
-BINDORA_HOST=0.0.0.0            # 0.0.0.0 for Docker, 127.0.0.1 for local
-BINDORA_PORT=5000
-
-# Payload limits
-BINDORA_MAX_CONTENT_LENGTH=33554432  # 32 MB
-```
-
----
-
-## 9. Architecture & Directory Structure
-
-```
-Bindora/
-|-- backend/
-|   |-- app.py                 # Flask REST API server with CORS & static proxy
-|   |-- config.py              # Central paths & external API endpoints
-|   |-- services/
-|   |   |-- docking.py         # Vina, Vinardo, flexible residues, Meeko fallback
-|   |   |-- pocket_detection.py# fpocket binary + SciPy Voronoi cavity tessellation
-|   |   |-- ensemble.py        # UniProt PDB cross-docking & conformational consensus
-|   |   |-- pharmacophore.py   # ChEMBL active-derived consensus feature screening
-|   |   |-- interaction_diagram.py # 2D LigPlot-style radial SVG generator (RDKit)
-|   |   |-- fetcher.py         # PubChem, RCSB PDB, fastsimilarity_2d, UniProt SIFTS
-|   |   |-- adme.py            # Published BOILED-Egg, SAScore, PAINS, Brenk, NIH, ZINC
-|   |   |-- boiled_egg_coords.json # Exact 101-pt polygon coordinates (Daina & Zoete 2016)
-|   |   |-- bioactivity.py     # Thermodynamic Kd converter & ChEMBL crosscheck
-|   |   |-- narrative.py       # AI Narrative Engine with deterministic rules fallback and disk caching
-|   |   `-- batch.py           # Multi-ligand virtual screening with consensus matrix
-|   `-- utils/
-|       |-- sascorer.py        # Synthetic accessibility scorer (Ertl & Schuffenhauer)
-|       |-- fpscores.pkl.gz    # SA_Score fragment contribution database
-|       |-- vina_setup.py      # Automated AutoDock Vina binary bootstrap
-|       |-- report_emitter.py  # SHA-256 report verification & integrity enforcement
-|       `-- rmsd_calculator.py # RDKit symmetry-corrected graph automorphism RMSD
-|-- bin/
-|   `-- vina.exe               # Scripps AutoDock Vina binary (Windows x64)
-|-- data/
-|   |-- cache/                 # Local disk cache for structures and API lookups
-|   `-- benchmarks/            # CASF-2016 & DUD-E reports, PDB lists, progress logs
-|-- frontend/
-|   |-- index.html             # Studio interface, 3D viewer, CLI modal, NexPharmaTech Whitepaper
-|   |-- css/styles.css         # Single-line responsive navigation, Tailwind & WebGL styling
-|   |-- js/
-|   |   |-- app.js             # Main controller, tab management, redocking cache
-|   |   |-- viewer.js          # 3Dmol.js WebGL molecular viewer
-|   |   |-- api.js             # Frontend API client (Ensemble, Pharmacophore, Similarity)
-|   |   |-- charts.js          # Chart.js ADME Radar & Energy Landscape
-|   |   `-- firebase-auth.js   # Client Firebase auth & history synchronization
-|   `-- lib/
-|       |-- 3Dmol-min.js       # Bundled 3Dmol.js (works offline)
-|       `-- chart.min.js       # Bundled Chart.js (works offline)
-|-- docs/                      # Comprehensive technical & scientific documentation
-|   |-- USER_GUIDE.md          # Detailed step-by-step user & testing manual
-|   |-- DEPLOYMENT.md          # Production deployment & hardening guide
-|   |-- SCIENTIFIC_INTEGRITY.md# Strict protocol for reproducible benchmarks
-|   |-- VALIDATION_PROTOCOL.md # Crystallographic redocking validation protocol
-|   |-- FIREBASE_SETUP.md      # Cloud authentication & session sync setup
-|   `-- CHANGELOG.md           # Production hardening changelog
-|-- notebooks/
-|   `-- colab_run.ipynb        # Cloud compute execution on Google Colab
-|-- tests/
-|   |-- benchmark_casf2016.py  # CASF-2016 285-complex core set benchmark suite
-|   |-- benchmark_screening.py # DUD-E & ChEMBL virtual screening enrichment suite
-|   |-- benchmark_accuracy.py  # PDBbind 25-complex validation suite
-|   |-- benchmark_1hsg.py      # HIV-1 Protease / Indinavir benchmark runner
-|   |-- benchmark_1m17.py      # EGFR Kinase / Erlotinib benchmark runner
-|   |-- benchmark_1t46.py      # Abl1 Kinase / Imatinib benchmark runner
-|   |-- test_capabilities_expansion.py # 8-capability expansion test suite
-|   |-- test_research_grade.py # Astex Diverse Set gold-standard redocking (1HSG, 1AQ1, 1MZC)
-|   |-- test_docking.py        # Docking, Vinardo scoring, 2D diagram unit tests
-|   `-- verify_full_pipeline.py# 8-step end-to-end integration test
-|-- bindora_cli.py             # Interactive Terminal CLI with arrow-key keyboard navigation
-|-- run_cli.bat                # Windows 1-click terminal launcher
-|-- CONTRIBUTING.md            # Scientific contribution standards & integrity policy
-|-- LICENSE                    # Open-source license
-`-- requirements.txt           # Python dependencies
-```
-
----
-
-## 10. Production Deployment & Security
-
-### 10.1. Security Best Practices
-
-**Production Hardening Checklist:**
-
-✅ **Input Validation**
-- All SMILES strings validated before processing (length, syntax, sanitization)
-- PDB content validated (size limits, coordinate bounds, minimum atom count)
-- Grid box parameters validated (numeric types, positive sizes, acceptable ranges)
-
-✅ **Security Configuration**
-- `DEBUG=False` by default (prevents stack trace leaks)
-- `MAX_CONTENT_LENGTH=32MB` (protects against buffer exhaustion)
-- CORS origin whitelisting (prevents unauthorized cross-origin requests)
-- No hardcoded secrets (all keys in environment variables)
-
-✅ **Container Security**
-- Non-root user execution (UID 1000 "bindora")
-- Minimal base image (python:3.11-slim)
-- Health checks for monitoring
-- Persistent volumes for data isolation
-
-### 10.2. Database & Session History
-
-Bindora v2.0 includes SQLite-backed session persistence:
+### 3. Programmatic Python API Usage
 
 ```python
-# Access session history via API
-GET /api/sessions/list?limit=50&offset=0
-GET /api/sessions/<session_id>
-DELETE /api/sessions/<session_id>
+from backend.services.bindora_bridge import run_bindora_scientific_pipeline
+
+result = run_bindora_scientific_pipeline(
+    pdb_id="1HSG",
+    smiles="CC(C)(C)NC(=O)[C@@H]1CN(Cc2cccnc2)CCN1C[C@@H](O)C[C@@H](Cc1ccccc1)C(=O)N[C@@H]1[C@H](O)Cc2ccccc21",
+    ligand_name="MK1",
+    co_crystal_resname="MK1",
+    scoring_function="vinardo",
+    exhaustiveness=8,
+    seed=42,
+)
+
+print("Top-1 Affinity:", result["top_pose"]["affinity_kcal_mol"], "kcal/mol")
+print("Symmetry RMSD:", result["symmetry_rmsd_A"], "Å")
+print("PoseBusters Valid:", result["posebusters_validation"]["posebusters_valid"])
 ```
-
-Database location: `data/bindora.db`
-
-### 10.3. Docker Production Deployment
-
-**Single-command deployment:**
-
-```bash
-# Start container in detached mode
-docker-compose up -d
-
-# View logs
-docker-compose logs -f bindora-app
-
-# Stop container
-docker-compose down
-
-# Stop and remove volumes (clears data)
-docker-compose down -v
-```
-
-**Environment variables for production:**
-
-```bash
-# .env file
-BINDORA_DEBUG=False
-BINDORA_HOST=0.0.0.0
-BINDORA_PORT=5000
-CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
-DATABASE_URL=sqlite:////app/data/bindora.db
-```
-
-**Volume management:**
-
-```bash
-# Backup database
-docker cp bindora-dock:/app/data/bindora.db ./backup_bindora.db
-
-# Restore database
-docker cp ./backup_bindora.db bindora-dock:/app/data/bindora.db
-```
-
-### 10.4. Monitoring & Health Checks
-
-**Health endpoint:**
-
-```bash
-curl http://localhost:5000/api/health
-```
-
-**Response:**
-
-```json
-{
-  "status": "healthy",
-  "service": "Bindora 3D Drug-Receptor & PK/PD Analyzer",
-  "vina_available": true,
-  "vina_path": "/usr/local/bin/vina"
-}
-```
-
-**Container health status:**
-
-```bash
-docker ps  # Check "STATUS" column for health
-docker inspect bindora-dock | grep -A 5 Health
-```
-
----
-
-## 11. Educational & Citation Notice
-
-Bindora Dock is developed under **NexPharmaTech** for computational pharmacology research, professional drug discovery education, and academic benchmarking.
-
-When publishing or citing results generated with Bindora Dock, please cite:
-1. **Bindora Dock Technical Report:** Bindora Team, NexPharmaTech. *Sub-Angstrom Redocking Validation of Bindora Dock on International Crystallographic Benchmarks.* Support & Inquiries: `sharmaji.pharmatech.info@gmail.com`.
-2. **AutoDock Vina:** O. Trott, A. J. Olson. *AutoDock Vina: improving the speed and accuracy of docking.* J. Comput. Chem. 2010, 31(2), 455-461. DOI: [`10.1002/jcc.21334`](https://doi.org/10.1002/jcc.21334).
-3. **AutoDock Vina 1.2:** J. Eberhardt et al. *AutoDock Vina 1.2.0: New Docking Methods, Expanded Force Field, and Python Bindings.* J. Chem. Inf. Model. 2021, 61(8), 3891-3898. DOI: [`10.1021/acs.jcim.1c00203`](https://doi.org/10.1021/acs.jcim.1c00203).
-4. **CASF-2016 Benchmark Standard:** M. Su et al. *Comparative Assessment of Scoring Functions: The CASF-2016 and D3R Grand Challenges.* J. Chem. Inf. Model. 2019, 59(2), 895-913. DOI: [`10.1021/acs.jcim.8b00545`](https://doi.org/10.1021/acs.jcim.8b00545).
-5. **DUD-E Virtual Screening Standard:** M. M. Mysinger et al. *Directory of useful decoys, enhanced (DUD-E): better ligands and decoys for better benchmarking.* J. Med. Chem. 2012, 55(14), 6582-6594. DOI: [`10.1021/jm300687e`](https://doi.org/10.1021/jm300687e).
-6. **ChEMBL Bioactivity Repository:** D. Mendez et al. *ChEMBL: towards direct deposition of bioassay data.* Nucleic Acids Res. 2019, 47(D1), D930-D940. DOI: [`10.1093/nar/gky1075`](https://doi.org/10.1093/nar/gky1075).
-7. **Vinardo Scoring:** R. Quiroga, M. A. Villarreal. *Vinardo: A Scoring Function Based on Autodock Vina Improving Scoring, Ranking, and Screening Performance.* PLoS ONE 2016, 11(5), e0155182. DOI: [`10.1371/journal.pone.0155182`](https://doi.org/10.1371/journal.pone.0155182).
-8. **BOILED-Egg Model:** A. Daina, V. Zoete. *A BOILED-Egg To Predict Gastrointestinal Absorption and Brain Penetration of Small Molecules.* ChemMedChem 2016, 11(11), 1117-1121. DOI: [`10.1002/cmdc.201600182`](https://doi.org/10.1002/cmdc.201600182).
-9. **Synthetic Accessibility Score (SAScore):** P. Ertl, A. Schuffenhauer. *Estimation of synthetic accessibility score of drug-like molecules based on molecular complexity and fragment contributions.* J. Cheminform. 2009, 1, 8. DOI: [`10.1186/1758-2946-1-8`](https://doi.org/10.1186/1758-2946-1-8).
