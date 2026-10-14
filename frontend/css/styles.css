@@ -2124,3 +2124,53 @@ html.light #modal-hardware-diagnostics #btn-close-hardware-modal-footer {
   background-color: #0f172a !important;
   color: #ffffff !important;
 }
+
+/* ==========================================================================
+   Docking Dashboard UI/UX Typography & Alignment Enhancements
+   ========================================================================== */
+
+/* Numeric Tabular Alignment for Docking Pose Table */
+#pose-table-rows td {
+  font-feature-settings: "tnum" 1, "cv02" 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Residue Chips Container: Compact, Scrollable & Clean */
+#dock-interacting-residues {
+  max-height: 120px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+#dock-interacting-residues::-webkit-scrollbar {
+  width: 4px;
+}
+
+#dock-interacting-residues::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#dock-interacting-residues::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+}
+
+/* Metrics Cards Typography Polish */
+#tab-docking .tabular-numbers {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Prevent unwanted line-breaking on scientific symbols */
+.no-break-unit {
+  white-space: nowrap;
+  display: inline-block;
+}
+
+/* 2D Interaction Diagram Container Polish */
+#dock-interaction-diagram-container svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}

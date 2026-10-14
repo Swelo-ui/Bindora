@@ -2952,12 +2952,12 @@ class BindoraApp {
           const val = parseFloat(symRmsd);
           const isSubAngstrom = val <= 1.0;
           const isPassing = val <= 2.0;
-          elSymRmsd.className = isPassing ? "text-emerald-400 font-bold text-[11px]" : "text-amber-400 font-bold text-[11px]";
-          elSymRmsd.textContent = `${val.toFixed(3)} Å${isSubAngstrom ? ' (Sub-Å)' : ''}`;
-          elSymRmsd.title = `Graph-isomorphism symmetry-corrected heavy-atom RMSD to crystal reference: ${val.toFixed(3)} Å`;
+          elSymRmsd.className = isPassing ? "text-emerald-400 font-bold text-[10.5px] truncate" : "text-amber-400 font-bold text-[10.5px] truncate";
+          elSymRmsd.textContent = `${val.toFixed(2)} Å${isSubAngstrom ? ' (Sub-Å)' : ''}`;
+          elSymRmsd.title = `Graph-isomorphism symmetry-corrected heavy-atom RMSD: ${val.toFixed(3)} Å`;
         } else {
-          elSymRmsd.textContent = "— (Prospective)";
-          elSymRmsd.className = "text-neutral-500 font-mono text-[11px]";
+          elSymRmsd.textContent = "Prospective";
+          elSymRmsd.className = "text-neutral-400 font-mono text-[10.5px] truncate";
           elSymRmsd.title = "No crystallographic reference ligand available for retrospective RMSD comparison.";
         }
       }
@@ -2971,20 +2971,22 @@ class BindoraApp {
         const cClass = cConf === "HIGH_CONFIDENCE"
           ? "bg-emerald-950 text-emerald-300 border-emerald-800"
           : (isDecoy ? "bg-rose-950 text-rose-300 border-rose-800" : "bg-amber-950 text-amber-300 border-amber-800");
-        elCons.className = `px-2 py-0.5 rounded font-bold text-[11px] border ${cClass}`;
-        elCons.textContent = `Rank #${cRank} (${cLabel})`;
+        elCons.className = `px-1.5 py-0.5 rounded font-bold text-[10px] border truncate ${cClass}`;
+        elCons.textContent = `#${cRank} (${cLabel})`;
+        elCons.title = `Consensus Rank #${cRank} (${cConf})`;
       }
       const elGbsa = document.getElementById("dock-mmgbsa-score");
       if (elGbsa) {
         const gVal = currentPose.mmgbsa_delta_g_kcal;
-        elGbsa.textContent = gVal != null ? `${gVal.toFixed(2)} kcal/mol` : "—";
+        elGbsa.textContent = gVal != null ? `${gVal.toFixed(1)} kcal/mol` : "—";
+        elGbsa.className = "text-cyan-300 font-bold text-[10.5px] truncate";
       }
       const elStr = document.getElementById("dock-strain-score");
       if (elStr) {
         const sVal = currentPose.ligand_strain_kcal;
         if (sVal != null) {
-          elStr.textContent = `${sVal.toFixed(2)} kcal/mol`;
-          elStr.className = sVal <= 4.0 ? "text-emerald-400 font-bold" : (sVal <= 6.0 ? "text-amber-400 font-bold" : "text-rose-400 font-bold");
+          elStr.textContent = `${sVal.toFixed(1)} kcal/mol`;
+          elStr.className = sVal <= 4.0 ? "text-emerald-400 font-bold text-[10.5px] truncate" : (sVal <= 6.0 ? "text-amber-400 font-bold text-[10.5px] truncate" : "text-rose-400 font-bold text-[10.5px] truncate");
         } else {
           elStr.textContent = "—";
         }
@@ -2998,21 +3000,21 @@ class BindoraApp {
 
         if (cov && cov.is_covalent_candidate) {
           if (topP && (score >= 0.20 || topP.distance_angstroms <= 6.0)) {
-            elCov.textContent = `${topP.nucleophile_residue} (${topP.distance_angstroms} Å • ${warheadName.split('/')[0].trim()})`;
-            elCov.className = "text-purple-300 font-bold text-[11px]";
+            elCov.textContent = `${topP.nucleophile_residue} (${topP.distance_angstroms} Å)`;
+            elCov.className = "text-purple-300 font-bold text-[10px] truncate";
             elCov.title = `Covalent pairing candidate: ${topP.nucleophile_residue} with ${warheadName} (Distance: ${topP.distance_angstroms} Å, Feasibility: ${(score * 100).toFixed(0)}%)`;
           } else if (topP) {
-            elCov.textContent = `${topP.nucleophile_residue} (${topP.distance_angstroms} Å • Distant)`;
-            elCov.className = "text-purple-300/80 font-medium text-[11px]";
+            elCov.textContent = `${topP.nucleophile_residue}`;
+            elCov.className = "text-purple-300/80 font-medium text-[10px] truncate";
             elCov.title = `Warhead detected (${warheadName}), but nucleophile is distant (${topP.distance_angstroms} Å)`;
           } else {
-            elCov.textContent = `${warheadName.split('/')[0].trim()} (Active Warhead)`;
-            elCov.className = "text-purple-300 font-medium text-[11px]";
+            elCov.textContent = `Warhead`;
+            elCov.className = "text-purple-300 font-medium text-[10px] truncate";
             elCov.title = `Electrophilic warhead detected (${warheadName})`;
           }
         } else {
-          elCov.textContent = "None (Reversible)";
-          elCov.className = "text-neutral-400 font-medium text-[11px]";
+          elCov.textContent = "Reversible";
+          elCov.className = "text-neutral-300 font-medium text-[10.5px] truncate";
           elCov.title = "No electrophilic warhead detected in ligand; standard non-covalent reversible inhibitor";
         }
       }
@@ -3067,23 +3069,23 @@ class BindoraApp {
 
         return `
         <tr class="cursor-pointer transition-colors duration-150 select-none ${isSelected ? 'bg-cyan-500/15 text-white font-semibold border-l-2 border-l-cyan-400' : 'hover:bg-neutral-800/40 text-neutral-300'}" onclick="window.bindoraApp ? window.bindoraApp.selectPose(${idx}) : window.app.selectPose(${idx})">
-          <td class="py-2.5 pl-3 pr-1 whitespace-nowrap font-mono">
-            <div class="flex items-center space-x-1.5">
-              <span class="font-bold text-slate-100 text-xs w-5 text-left shrink-0">#${consensusRank}</span>
-              <span class="text-neutral-400 text-[10px] font-mono w-6 text-left shrink-0">M${p.mode}</span>
+          <td class="py-2 pl-3 pr-1 whitespace-nowrap font-mono">
+            <div class="flex items-center space-x-1.5 min-w-0">
+              <span class="font-bold text-slate-100 text-xs shrink-0">#${consensusRank}</span>
+              <span class="text-neutral-400 text-[10px] font-mono shrink-0">M${p.mode}</span>
               <div class="flex items-center space-x-1 shrink-0">
                 ${confBadge}
                 ${covBadge}
               </div>
             </div>
           </td>
-          <td class="py-2.5 px-2 font-mono text-right text-slate-100 font-semibold whitespace-nowrap text-xs">
+          <td class="py-2 px-2 font-mono text-right text-slate-100 font-semibold whitespace-nowrap text-xs tabular-nums">
             ${p.affinity_kcal != null ? p.affinity_kcal.toFixed(1) : '—'}
           </td>
-          <td class="py-2.5 px-2 font-mono text-right whitespace-nowrap text-xs">
+          <td class="py-2 px-2 font-mono text-right whitespace-nowrap text-xs tabular-nums">
             ${mmgbsaHtml}
           </td>
-          <td class="py-2.5 pl-1 pr-3 font-mono text-right text-slate-400 whitespace-nowrap text-xs">
+          <td class="py-2 pl-1 pr-3 font-mono text-right text-slate-400 whitespace-nowrap text-xs tabular-nums">
             ${p.rmsd_lb != null ? p.rmsd_lb.toFixed(1) : '0.0'}
           </td>
         </tr>
@@ -3091,23 +3093,63 @@ class BindoraApp {
       }).join("");
     }
 
-    // Interacting Residues Chips
+    // Interacting Residues Chips (Deduplicated, Canonicalized, Polar Highlighted)
     const resContainer = document.getElementById("dock-interacting-residues");
     if (resContainer) {
       const resList = interactions.interacting_residues || [];
       const pbPolar = (currentPose.posebusters_validation || this.state.docking?.posebusters_validation)?.polar_hbond_residues || [];
-      const combined = Array.from(new Set([...pbPolar, ...resList]));
-      if (combined.length > 0) {
-        resContainer.innerHTML = combined.map(r => {
-          const isPolar = pbPolar.includes(r);
+
+      // Helper to extract a normalized key: e.g. "ASP381_A" -> "ASP381A", "ASP 381:A" -> "ASP381A"
+      const parseRes = (r) => {
+        if (!r) return null;
+        const str = String(r).trim().toUpperCase();
+        const m = str.match(/^([A-Z]{3})\s*(\d+)[\s:_]*([A-Z0-9]?)$/);
+        if (m) {
+          return {
+            key: `${m[1]}${m[2]}${m[3] || ''}`,
+            display: `${m[1]} ${m[2]}${m[3] ? ':' + m[3] : ''}`,
+            resName: m[1],
+            resNum: parseInt(m[2], 10),
+            chain: m[3] || ''
+          };
+        }
+        return { key: str.replace(/[\s:_]/g, ''), display: str, resName: str, resNum: 0, chain: '' };
+      };
+
+      const polarKeySet = new Set();
+      pbPolar.forEach(pr => {
+        const p = parseRes(pr);
+        if (p) polarKeySet.add(p.key);
+      });
+
+      const uniqueMap = new Map();
+      [...pbPolar, ...resList].forEach(raw => {
+        const item = parseRes(raw);
+        if (!item || !item.key) return;
+        const isPolar = polarKeySet.has(item.key);
+        if (!uniqueMap.has(item.key)) {
+          uniqueMap.set(item.key, { ...item, isPolar });
+        } else if (isPolar) {
+          uniqueMap.get(item.key).isPolar = true;
+        }
+      });
+
+      const sortedResidues = Array.from(uniqueMap.values()).sort((a, b) => {
+        if (a.isPolar !== b.isPolar) return a.isPolar ? -1 : 1;
+        if (a.chain !== b.chain) return a.chain.localeCompare(b.chain);
+        return a.resNum - b.resNum;
+      });
+
+      if (sortedResidues.length > 0) {
+        resContainer.innerHTML = sortedResidues.map(r => {
           return `
-            <span class="inline-block px-2 py-0.5 rounded text-xs ${isPolar ? 'bg-amber-950/70 text-amber-300 border-amber-800 font-semibold' : 'bg-cyan-50 dark:bg-slate-800 text-cyan-800 dark:text-cyan-300 border-cyan-200 dark:border-slate-700'} border font-mono" title="${isPolar ? 'Polar / H-Bond Pocket Contact' : 'Active Pocket Contact'}">
-              ${isPolar ? '★ ' : ''}${r}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono transition-all duration-150 ${r.isPolar ? 'bg-amber-950/80 text-amber-300 border border-amber-700/80 font-bold shadow-sm' : 'bg-[#0e1017] text-neutral-300 border border-neutral-800 font-medium hover:border-neutral-700 hover:text-white'}" title="${r.isPolar ? 'Polar H-Bond Pocket Coordinate' : 'Active Pocket Contact'}">
+              ${r.isPolar ? '<svg class="w-2.5 h-2.5 text-amber-400 shrink-0 inline mr-1 fill-current" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' : ''}<span>${r.display}</span>
             </span>
           `;
         }).join("");
       } else {
-        resContainer.innerHTML = `<span class="text-xs text-slate-500 italic">No specific residues within contact threshold</span>`;
+        resContainer.innerHTML = `<span class="text-xs text-neutral-500 italic font-mono">No specific residues within contact threshold</span>`;
       }
     }
 

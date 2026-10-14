@@ -1209,54 +1209,54 @@
     <section id="tab-docking" class="tab-pane hidden space-y-6">
       
       <!-- Top Metrics Strip -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div class="bg-[#08090d] p-4 rounded-xl border border-neutral-800">
-          <span class="text-[10px] font-mono uppercase tracking-widest text-neutral-500 block font-semibold" title="Empirical scoring function output from AutoDock Vina, approximating binding affinity">Vina Docking Score</span>
-          <span id="dock-affinity-score" class="text-3xl font-bold text-white font-mono mt-1 block tracking-tight">— kcal/mol</span>
-          <span class="text-[10px] text-neutral-500 font-mono">AutoDock Vina empirical score</span>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div class="bg-[#08090d] p-4 rounded-xl border border-neutral-800 flex flex-col justify-between shadow-sm min-w-0">
+          <span class="text-[10px] font-mono uppercase tracking-wider text-neutral-400 block font-semibold truncate" title="Empirical scoring function output from AutoDock Vina, approximating binding affinity">Vina Docking Score</span>
+          <span id="dock-affinity-score" class="text-2xl sm:text-3xl font-bold text-white font-mono my-1 block tracking-tight truncate">— kcal/mol</span>
+          <span class="text-[10px] text-neutral-500 font-mono truncate">AutoDock Vina empirical score</span>
         </div>
-        <div class="bg-[#08090d] p-4 rounded-xl border border-neutral-800" title="This value is mathematically derived from the docking score and is not an experimentally measured or rigorously calculated thermodynamic Kd.">
-          <span class="text-[10px] font-mono uppercase tracking-widest text-neutral-500 block font-semibold">Affinity-Derived Kd-like Estimate</span>
-          <span id="dock-kd-score" class="text-3xl font-bold text-emerald-400 font-mono mt-1 block tracking-tight">— nM</span>
-          <span class="text-[10px] text-amber-400/90 font-medium font-mono">Derived / Model-based • exp(score/RT)</span>
+        <div class="bg-[#08090d] p-4 rounded-xl border border-neutral-800 flex flex-col justify-between shadow-sm min-w-0" title="This value is mathematically derived from the docking score: Kd = exp(ΔG/RT). Model-based estimate.">
+          <span class="text-[10px] font-mono uppercase tracking-wider text-neutral-400 block font-semibold truncate">Estimated Kd / Ki</span>
+          <span id="dock-kd-score" class="text-2xl sm:text-3xl font-bold text-emerald-400 font-mono my-1 block tracking-tight truncate">— nM</span>
+          <span class="text-[10px] text-amber-400/90 font-medium font-mono truncate">Theoretical • exp(ΔG/RT)</span>
         </div>
-        <div class="bg-[#08090d] p-4 rounded-xl border border-neutral-800">
-          <span class="text-[10px] font-mono uppercase tracking-widest text-neutral-500 block font-semibold" title="Normalized heavy atom binding affinity: |Score| / Heavy Atom Count">Ligand Efficiency (LE)</span>
-          <span id="dock-le-score" class="text-3xl font-bold text-white font-mono mt-1 block tracking-tight">—</span>
-          <span class="text-[10px] text-neutral-500 font-mono">|Score| / heavy atoms (≥0.3 ideal)</span>
+        <div class="bg-[#08090d] p-4 rounded-xl border border-neutral-800 flex flex-col justify-between shadow-sm min-w-0">
+          <span class="text-[10px] font-mono uppercase tracking-wider text-neutral-400 block font-semibold truncate" title="Normalized heavy atom binding affinity: |Score| / Heavy Atom Count">Ligand Efficiency (LE)</span>
+          <span id="dock-le-score" class="text-2xl sm:text-3xl font-bold text-white font-mono my-1 block tracking-tight truncate">—</span>
+          <span class="text-[10px] text-neutral-500 font-mono truncate">|Score| / heavy atoms (≥0.3 ideal)</span>
         </div>
-        <div class="bg-[#08090d] p-4 rounded-xl border border-neutral-800">
-          <span class="text-[10px] font-mono uppercase tracking-widest text-neutral-500 block font-semibold">Hydrogen Bonds</span>
-          <span id="dock-hbonds-count" class="text-3xl font-bold text-white font-mono mt-1 block tracking-tight">—</span>
-          <span class="text-[10px] text-neutral-500 font-mono">&le; 3.5 Å donor-acceptor contacts</span>
+        <div class="bg-[#08090d] p-4 rounded-xl border border-neutral-800 flex flex-col justify-between shadow-sm min-w-0">
+          <span class="text-[10px] font-mono uppercase tracking-wider text-neutral-400 block font-semibold truncate">Hydrogen Bonds</span>
+          <span id="dock-hbonds-count" class="text-2xl sm:text-3xl font-bold text-white font-mono my-1 block tracking-tight truncate">—</span>
+          <span class="text-[10px] text-neutral-500 font-mono truncate">≤ 3.5 Å donor–acceptor contacts</span>
         </div>
       </div>
       
       <!-- Phase 1 & Phase 2 Physics & Consensus Status Strip -->
-      <div id="dock-physics-status-strip" class="hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs font-mono">
-        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between" title="PoseBusters Physical Plausibility & Steric Clash Validation">
-          <span class="text-neutral-400">PoseBusters:</span>
-          <span id="dock-posebusters-badge" class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold text-[10.5px]">PASS (0 Clashes)</span>
+      <div id="dock-physics-status-strip" class="hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs font-mono">
+        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between min-w-0 gap-1.5" title="PoseBusters Physical Plausibility & Steric Clash Validation">
+          <span class="text-neutral-400 text-[11px] truncate shrink-0">PoseBusters:</span>
+          <span id="dock-posebusters-badge" class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold text-[10px] truncate shrink-0">PASS (0 Clashes)</span>
         </div>
-        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between" title="Graph-Isomorphism Symmetry-Corrected Heavy-Atom RMSD">
-          <span class="text-neutral-400">Sym-RMSD:</span>
-          <span id="dock-sym-rmsd-badge" class="text-emerald-400 font-bold text-[11px]">—</span>
+        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between min-w-0 gap-1.5" title="Graph-Isomorphism Symmetry-Corrected Heavy-Atom RMSD">
+          <span class="text-neutral-400 text-[11px] truncate shrink-0">Sym-RMSD:</span>
+          <span id="dock-sym-rmsd-badge" class="text-emerald-400 font-bold text-[11px] truncate">—</span>
         </div>
-        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between">
-          <span class="text-neutral-400">Consensus:</span>
-          <span id="dock-consensus-badge" class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold text-[11px]">—</span>
+        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between min-w-0 gap-1.5">
+          <span class="text-neutral-400 text-[11px] truncate shrink-0">Consensus:</span>
+          <span id="dock-consensus-badge" class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold text-[10px] truncate shrink-0">—</span>
         </div>
-        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between">
-          <span class="text-neutral-400">MM-GBSA:</span>
-          <span id="dock-mmgbsa-score" class="text-cyan-300 font-bold">—</span>
+        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between min-w-0 gap-1.5">
+          <span class="text-neutral-400 text-[11px] truncate shrink-0">MM-GBSA:</span>
+          <span id="dock-mmgbsa-score" class="text-cyan-300 font-bold text-[11px] truncate">—</span>
         </div>
-        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between">
-          <span class="text-neutral-400">Ligand Strain:</span>
-          <span id="dock-strain-score" class="text-emerald-400 font-bold">—</span>
+        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between min-w-0 gap-1.5">
+          <span class="text-neutral-400 text-[11px] truncate shrink-0">Strain:</span>
+          <span id="dock-strain-score" class="text-emerald-400 font-bold text-[11px] truncate">—</span>
         </div>
-        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between">
-          <span class="text-neutral-400">Covalent:</span>
-          <span id="dock-covalent-badge" class="text-neutral-300 font-bold text-[11px]">None (Reversible)</span>
+        <div class="bg-[#08090d] p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between min-w-0 gap-1.5">
+          <span class="text-neutral-400 text-[11px] truncate shrink-0">Covalent:</span>
+          <span id="dock-covalent-badge" class="text-neutral-300 font-bold text-[10px] truncate">Reversible</span>
         </div>
       </div>
 
@@ -1776,7 +1776,7 @@
               </div>
               <div class="flex items-center justify-between text-[11px] pt-1 border-t border-neutral-800">
                 <span class="text-neutral-400 font-sans">3D Alignment:</span>
-                <span class="text-[10px]"><span class="text-amber-400 font-semibold">Amber: Crystal</span> &bull; <span class="text-neutral-300 font-semibold">Cyan: Redocked</span></span>
+                <span class="text-[10px]"><span class="text-amber-400 font-semibold">Amber: Crystal</span> &bull; <span class="text-cyan-400 font-semibold">Cyan: Redocked</span></span>
               </div>
               <div id="redock-badge-container" class="pt-1 text-center font-sans"></div>
             </div>
@@ -1817,10 +1817,10 @@
               <table class="w-full text-xs text-left border-collapse table-fixed">
                 <thead class="bg-[#0e1017] text-neutral-400 font-semibold border-b border-neutral-800 text-[10px] font-mono uppercase tracking-wider">
                   <tr>
-                    <th class="w-[35%] py-2 pl-3 pr-1 text-left font-mono whitespace-nowrap">Pose</th>
-                    <th class="w-[21%] py-2 px-2 text-right font-mono whitespace-nowrap" title="AutoDock Vina Empirical Free Energy (kcal/mol)">Vina ΔG</th>
-                    <th class="w-[24%] py-2 px-2 text-right font-mono whitespace-nowrap" title="MM-GBSA Physics-Based Solvation Free Energy (kcal/mol)">MM-GBSA</th>
-                    <th class="w-[20%] py-2 pl-1 pr-3 text-right font-mono whitespace-nowrap" title="RMSD relative to Vina Mode 1 (Å)">RMSD</th>
+                    <th class="w-[30%] py-2 pl-3 pr-1 text-left font-mono whitespace-nowrap">Pose</th>
+                    <th class="w-[23%] py-2 px-2 text-right font-mono whitespace-nowrap" title="AutoDock Vina Empirical Free Energy (kcal/mol)">Vina ΔG</th>
+                    <th class="w-[25%] py-2 px-2 text-right font-mono whitespace-nowrap" title="MM-GBSA Physics-Based Solvation Free Energy (kcal/mol)">MM-GBSA</th>
+                    <th class="w-[22%] py-2 pl-1 pr-3 text-right font-mono whitespace-nowrap" title="RMSD relative to Vina Mode 1 (Å)">RMSD</th>
                   </tr>
                 </thead>
                 <tbody id="pose-table-rows" class="divide-y divide-neutral-800/80 font-mono">
@@ -1852,42 +1852,42 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
                   </div>
-                  <div class="flex flex-col min-w-0">
+                  <div class="flex flex-col min-w-0 flex-1 overflow-hidden">
                     <span class="text-[11px] font-semibold text-neutral-200 group-hover:text-cyan-300 font-sans leading-tight truncate">Export PyMOL</span>
                     <span class="text-[9px] text-neutral-500 group-hover:text-neutral-400 font-mono leading-tight truncate">.pml • .sdf • .pdb</span>
                   </div>
                 </button>
 
                 <!-- OpenMM MD Export Card -->
-                <button id="btn-export-openmm-md" type="button" class="group flex items-center space-x-2.5 p-2 rounded-lg bg-[#0e1017] hover:bg-[#131722] border border-neutral-800 hover:border-emerald-500/60 transition-all duration-150 cursor-pointer text-left shadow-sm" title="Export complete OpenMM explicit solvent simulation script and parameters">
+                <button id="btn-export-openmm-md" type="button" class="group flex items-center space-x-2.5 p-2 rounded-lg bg-[#0e1017] hover:bg-[#131722] border border-neutral-800 hover:border-emerald-500/60 transition-all duration-150 cursor-pointer text-left shadow-sm min-w-0" title="Export complete OpenMM explicit solvent simulation script and parameters">
                   <div class="w-7 h-7 rounded-md bg-emerald-950/50 border border-emerald-800/60 flex items-center justify-center shrink-0 text-emerald-400 group-hover:scale-105 group-hover:border-emerald-400 transition-all">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                     </svg>
                   </div>
-                  <div class="flex flex-col min-w-0">
+                  <div class="flex flex-col min-w-0 flex-1 overflow-hidden">
                     <span class="text-[11px] font-semibold text-neutral-200 group-hover:text-emerald-300 font-sans leading-tight truncate">OpenMM MD</span>
                     <span class="text-[9px] text-neutral-500 group-hover:text-neutral-400 font-mono leading-tight truncate">Solvent Bundle .py</span>
                   </div>
                 </button>
 
                 <!-- Download Methods Report (.md) -->
-                <button id="btn-download-methods-md" type="button" class="group flex items-center space-x-2.5 p-2 rounded-lg bg-[#0e1017] hover:bg-[#131722] border border-neutral-800 hover:border-purple-500/60 transition-all duration-150 cursor-pointer text-left shadow-sm" title="Download copy-pasteable Academic Materials &amp; Methods markdown file">
+                <button id="btn-download-methods-md" type="button" class="group flex items-center space-x-2.5 p-2 rounded-lg bg-[#0e1017] hover:bg-[#131722] border border-neutral-800 hover:border-purple-500/60 transition-all duration-150 cursor-pointer text-left shadow-sm min-w-0" title="Download copy-pasteable Academic Materials &amp; Methods markdown file">
                   <div class="w-7 h-7 rounded-md bg-purple-950/50 border border-purple-800/60 flex items-center justify-center shrink-0 text-purple-400 group-hover:scale-105 group-hover:border-purple-400 transition-all">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                   </div>
-                  <div class="flex flex-col min-w-0">
+                  <div class="flex flex-col min-w-0 flex-1 overflow-hidden">
                     <span class="text-[11px] font-semibold text-neutral-200 group-hover:text-purple-300 font-sans leading-tight truncate">Methods .md</span>
                     <span class="text-[9px] text-neutral-500 group-hover:text-neutral-400 font-mono leading-tight truncate">Download Section</span>
                   </div>
                 </button>
 
                 <!-- Copy Methods Report -->
-                <button id="btn-copy-methods-md" type="button" class="group flex items-center space-x-2.5 p-2 rounded-lg bg-[#0e1017] hover:bg-[#131722] border border-neutral-800 hover:border-sky-500/60 transition-all duration-150 cursor-pointer text-left shadow-sm" title="Copy Academic Materials &amp; Methods markdown to clipboard">
+                <button id="btn-copy-methods-md" type="button" class="group flex items-center space-x-2.5 p-2 rounded-lg bg-[#0e1017] hover:bg-[#131722] border border-neutral-800 hover:border-sky-500/60 transition-all duration-150 cursor-pointer text-left shadow-sm min-w-0" title="Copy Academic Materials &amp; Methods markdown to clipboard">
                   <div class="w-7 h-7 rounded-md bg-sky-950/50 border border-sky-800/60 flex items-center justify-center shrink-0 text-sky-400 group-hover:scale-105 group-hover:border-sky-400 transition-all">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
                   </div>
-                  <div class="flex flex-col min-w-0">
+                  <div class="flex flex-col min-w-0 flex-1 overflow-hidden">
                     <span class="text-[11px] font-semibold text-neutral-200 group-hover:text-sky-300 font-sans leading-tight truncate">Copy Methods</span>
                     <span class="text-[9px] text-neutral-500 group-hover:text-neutral-400 font-mono leading-tight truncate">To Clipboard</span>
                   </div>

@@ -132,7 +132,7 @@ class DockingCharts {
       this.energyChartInstance = null;
     }
 
-    const labels = poses.map(p => `Mode ${p.mode}`);
+    const labels = poses.map(p => `M${p.mode}`);
     const affinities = poses.map(p => p.affinity_kcal);
     const rmsdLb = poses.map(p => p.rmsd_lb ?? 0);
     const vinardoAffinities = poses.map(p => p.vinardo_affinity_kcal ?? null);
@@ -190,6 +190,9 @@ class DockingCharts {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: {
+          padding: { top: 6, bottom: 4, left: 2, right: 2 }
+        },
         interaction: {
           mode: "index",
           intersect: false
@@ -197,7 +200,13 @@ class DockingCharts {
         scales: {
           x: {
             grid: { color: gridColor },
-            ticks: { color: textColor, font: { size: 10 } }
+            ticks: {
+              color: textColor,
+              font: { size: 10, family: "ui-monospace, monospace", weight: "600" },
+              maxRotation: 0,
+              minRotation: 0,
+              autoSkip: false
+            }
           },
           y: {
             type: "linear",
