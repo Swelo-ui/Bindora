@@ -394,13 +394,20 @@ class InteractionEngine:
 
                 # Case 3: Geometric fallback if hydrogens were omitted or united
                 if not bonded_hs and not lig_hs:
-                    # Prevent carbonyl O ... carbonyl O repulsion!
-                    is_rec_carbonyl = ratom["atom_name"] in ("O", "OD1", "OE1", "OE2", "OD2") and ratom["res_name"] in ("ASP", "GLU", "ASN", "GLN") or ratom["atom_name"] == "O"
-                    is_lig_pure_acceptor = latom["atom_name"].startswith("O") and ("=" in latom["atom_name"] or latom["elem"] == "O")
-                    # If both are carbonyl oxygens, they CANNOT form an H-bond!
-                    if is_rec_carbonyl and is_lig_pure_acceptor:
+                    # Fix operator precedence bug and expand the fallback distance slightly
+                    is_rec_carbonyl_sidechain = (
+                        ratom["atom_name"] in ("OD1", "OE1", "OE2", "OD2") and 
+                        ratom["res_name"] in ("ASP", "GLU", "ASN", "GLN")
+                    )
+                    # Backbone carbonyl O is a VALID H-bond acceptor (kinase hinge!), NOT a repulsive center
+                    is_lig_pure_acceptor = (
+                        latom["elem"] == "O" and 
+                        latom["atom_name"].upper() not in ("N", "NH", "NH1", "NH2", "NZ", "ND1", "NE2")
+                    )
+                    # Only reject O...O if BOTH are sidechain carbonyl oxygens (true repulsion)
+                    if is_rec_carbonyl_sidechain and is_lig_pure_acceptor:
                         continue
-                    if dist <= 3.3:
+                    if dist <= 3.5:  # Slightly more permissive fallback (was 3.3)
                         is_hbond = True
                         donor_angle = 140.0
 

@@ -6,8 +6,10 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 
 import numpy as np
-from rdkit import Chem
+from rdkit import Chem, RDLogger
 from rdkit.Chem import AllChem, rdMolDescriptors
+RDLogger.DisableLog("rdApp.error")
+RDLogger.DisableLog("rdApp.warning")
 
 class ComplexRefinementService:
     """
@@ -66,7 +68,7 @@ class ComplexRefinementService:
 
         # Combine results
         result = {
-            "method": "OpenMM GBn2 Implicit Solvent & RDKit MMFF94 Physics Refinement",
+            "method": "RDKit MMFF94 Ligand Strain + OpenMM GBn2 Receptor Pocket Relaxation (Ligand-Excluded)",
             "status": "Pose Refined & Rescored",
             "ligand_strain_relaxation_kcal": strain_data.get("ligand_strain_relaxation_kcal"),
             "initial_strain_kcal": strain_data.get("initial_strain_kcal"),
@@ -79,12 +81,15 @@ class ComplexRefinementService:
             "mmgbsa_delta_g_kcal": mmgbsa_res.get("mmgbsa_delta_g_kcal"),
             "complex_relaxation_delta_kcal": openmm_res.get("complex_relaxation_delta_kcal") if openmm_res and "error" not in openmm_res else None,
             "openmm_status": openmm_res.get("status", "Not available") if openmm_res else "Skipped",
+            "openmm_ligand_included": openmm_res.get("ligand_included_in_openmm", False) if openmm_res else False,
             "backbone_restraint_applied": openmm_res.get("backbone_restraint_applied", False) if openmm_res else False,
             "backbone_restraint_k_kcal_mol_A2": openmm_res.get("backbone_restraint_k_kcal_mol_A2") if openmm_res else None,
             "backbone_rmsd_angstroms": openmm_res.get("backbone_rmsd_angstroms") if openmm_res else None,
             "method_note": (
-                "Reports true ligand intramolecular strain (E_docked - E_free) via MMFF94 force field "
-                "and physics-based MM-GBSA implicit solvent binding energy with directional metal coordination."
+                "True ligand intramolecular strain (E_docked - E_free) via RDKit MMFF94 force field. "
+                "Receptor pocket geometry relaxed via OpenMM AMBER14/GBn2 (protein only — ligand excluded due to "
+                "missing GAFF2 small-molecule parameters). MM-GBSA delta-G is an approximation using "
+                "RDKit Lennard-Jones + custom polar/apolar decomposition, not full AMBER MMPBSA."
             )
         }
 
@@ -175,13 +180,24 @@ class ComplexRefinementService:
             if not has_h:
                 try:
                     mol_h = Chem.AddHs(mol_3d, addCoords=True)
+                    # Relieve H coordinate clashes with a constrained UFF minimization
+                    # Fix all heavy atoms, only allow H atoms to move
+                    uff_h_relief = AllChem.UFFGetMoleculeForceField(mol_h)
+                    if uff_h_relief:
+                        for i, atom in enumerate(mol_h.GetAtoms()):
+                            if atom.GetAtomicNum() != 1:  # Fix all non-H atoms
+                                uff_h_relief.AddFixedPoint(i)
+                        uff_h_relief.Minimize(maxIts=150, forceTol=0.005, energyTol=1e-5)
                 except Exception:
-                    mol_h = mol_3d
+                    try:
+                        mol_h = Chem.AddHs(mol_3d, addCoords=True)  # fallback without clash relief
+                    except Exception:
+                        mol_h = mol_3d
             else:
                 mol_h = mol_3d
 
             try:
-                Chem.SanitizeMol(mol_h)
+                Chem.SanitizeMol(mol_h, sanitizeOps=Chem.SanitizeFlags.SANITIZE_ALL ^ Chem.SanitizeFlags.SANITIZE_PROPERTIES)
             except Exception:
                 try:
                     Chem.FastFindRings(mol_h)
@@ -320,20 +336,32 @@ class ComplexRefinementService:
         smiles: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Physics-based MM-GBSA (Molecular Mechanics Generalized Born Surface Area) rescoring:
-        Delta G_bind ≈ Delta E_vdW + Delta E_elec + Delta G_GB(solvation) + Delta G_SA(non-polar) +
-                       Delta E_metal_coord + Delta E_torsion + Delta E_strain.
+        Physics-Inspired MM-GBSA Approximation (not OpenMM AMBER MMPBSA):
+        This is a custom Python implementation using pairwise atom-atom interactions.
+        It is NOT the standard AMBER mmpbsa.py or OpenMM implicit solvent MM-GBSA.
 
-        Upgraded Capabilities:
-        1. Directional Metal Coordination Potential (Zn2+, Mg2+, Ca2+, Fe2+/3+, Mn2+, etc.)
-           Rewards coordinating heteroatoms (O, N, S) at 1.8-2.6 A with -5.0 to -8.0 kcal/mol.
-           Penalizes uncoordinated non-polar carbon clashes on catalytic metals (+4.0 kcal/mol).
-        2. Polar Contact & Hydrogen Bond Gate:
-           Catches flat greasy hydrocarbon / PAINS decoys lacking polar complementarity (e.g. Pentacene).
-        3. Lipophilic Efficiency (LipE):
-           Calculates LipE = pIC50_est - cLogP. Flags promiscuous lipophilic aggregators (LipE < 0.5, cLogP >= 4.5).
-        4. Torsional Entropy Penalty:
-           Penalizes conformational search entropy for flexible ligands (N_rot > 8).
+        Approximation method:
+          Delta G_approx ≈ E_vdW(LJ-12-6) + E_elec(Coulomb, eps=4r) + E_GB(Generalized Born surrogate)
+                         + E_metal_coord + torsion_entropy_penalty + E_strain
+
+        Limitations (documented for scientific reproducibility):
+          - Generalized Born term is a geometric approximation (not actual GB radius solving)
+          - No explicit water displacement entropy calculation
+          - No MM minimization of complex before energy calculation
+          - Partial charges are estimated from atom types, not RESP/AM1-BCC
+          - For research-grade results, use: AMBER mmpbsa.py + GAFF2 ligand parameterization
+            (see amber.scripps.edu/amber_mm-pbsa.html) or gmx_MMPBSA + GROMACS
+
+        Scientifically valid components:
+          1. Directional Metal Coordination Potential (Zn2+, Mg2+, Ca2+, Fe2+/3+, etc.)
+             Rewards coordinating heteroatoms (O, N, S) at 1.8–2.6 Å with −5.0 to −8.0 kcal/mol.
+             Penalizes uncoordinated non-polar carbon clashes on catalytic metals (+4.0 kcal/mol).
+          2. Polar Contact & Hydrogen Bond Gate:
+             Catches flat greasy hydrocarbon / PAINS decoys lacking polar complementarity.
+          3. Lipophilic Efficiency (LipE):
+             LipE = pIC50_est − cLogP. Flags promiscuous lipophilic aggregators (LipE < 0.5, cLogP ≥ 4.5).
+          4. Torsional Entropy Penalty:
+             Penalizes conformational search entropy for flexible ligands (N_rot > 8).
         """
         try:
             # Parse ligand atoms first, then extract receptor pocket atoms in proximity (within 10.0 A)
@@ -742,8 +770,25 @@ class ComplexRefinementService:
     @classmethod
     def _refine_openmm(cls, receptor_pdb: str, docked_pdb: str) -> Optional[Dict[str, Any]]:
         """
-        Run OpenMM GBn2 implicit solvent minimization on standard amino-acid protein atoms
+        Run OpenMM AMBER14/GBn2 implicit solvent minimization on standard amino-acid protein atoms
         with harmonic backbone position restraints (k = 10.0 kcal/mol/A^2).
+
+        Scientific Limitation (Documented):
+        The docked ligand is intentionally excluded from the OpenMM topology. This is because
+        OpenMM's AMBER14 ForceField does not carry GAFF2 / openff parameters for arbitrary small
+        molecules. Correctly including a ligand requires GAFF2 antechamber parameterization or
+        the openff-toolkit. Without correct ligand parameters, OpenMM raises template errors.
+
+        What this method provides:
+          - Receptor pocket geometry relaxation in continuous GBn2 implicit solvation
+          - Harmonic backbone restraints (10 kcal/mol/A^2 on CA/C/N/O) prevent pocket collapse
+          - Backbone RMSD as a quantitative structural quality metric for pocket plasticity
+          - Complex relaxation delta-E (receptor pocket contribution only, not full complex)
+
+        For full ligand-inclusive complex MM-GBSA, use:
+          pip install openff-toolkit openff-forcefields
+        or AMBER's mmpbsa.py with GAFF2-parameterized ligand topology.
+        All output is clearly labeled with these limitations for scientific reproducibility.
         """
         try:
             import openmm as mm
@@ -826,15 +871,19 @@ class ComplexRefinementService:
                 bb_rmsd = round(math.sqrt(sq_sum / len(bb_atom_indices)), 4)
 
             return {
-                "method": "OpenMM 8.x GBn2 Implicit Solvent — Pocket Structural Relaxation",
+                "method": "OpenMM 8.x AMBER14/GBn2 — Receptor Pocket Structural Relaxation (Ligand Excluded)",
                 "method_note": (
-                    "Receptor pocket geometry minimized in continuous GBn2 dielectric with harmonic backbone restraints. "
-                    "Reports potential energy relaxation delta and backbone RMSD."
+                    "Receptor pocket geometry minimized in GBn2 continuum solvation with harmonic backbone restraints. "
+                    "NOTE: Ligand is excluded from OpenMM system due to missing GAFF2 small-molecule parameters. "
+                    "Reported delta-E is receptor pocket contribution only. "
+                    "Full complex MM-GBSA requires openff-toolkit or AMBER antechamber GAFF2 parameterization."
                 ),
+                "ligand_included_in_openmm": False,
+                "ligand_exclusion_reason": "GAFF2/openff-toolkit not available for small molecule parameterization",
                 "initial_energy_kcal": round(e_init, 2),
                 "minimized_energy_kcal": round(e_min, 2),
                 "complex_relaxation_delta_kcal": round(delta_e, 2),
-                "status": "Minimized & Solvated",
+                "status": "Receptor-Only Minimization Complete",
                 "relaxation_steps": 150,
                 "backbone_restraint_applied": True,
                 "backbone_restraint_k_kcal_mol_A2": 10.0,
@@ -842,8 +891,9 @@ class ComplexRefinementService:
             }
         except Exception as e:
             return {
-                "method": "OpenMM 8.x GBn2 Implicit Solvent — Pocket Structural Relaxation",
+                "method": "OpenMM 8.x AMBER14/GBn2 — Receptor Pocket Structural Relaxation",
                 "status": f"OpenMM minimization notice: {e}",
+                "ligand_included_in_openmm": False,
                 "backbone_restraint_applied": False,
                 "backbone_restraint_k_kcal_mol_A2": 10.0,
                 "backbone_rmsd_angstroms": None,

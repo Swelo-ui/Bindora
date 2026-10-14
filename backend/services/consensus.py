@@ -248,14 +248,20 @@ class ConsensusScoringService:
                 decoy_flag in ("FLAGGED_GREASY_DECOY", "FLAGGED_LIPOPHILIC_AGGREGATOR") or
                 bool(p_copy.get("mmgbsa", {}).get("is_grease_ball_decoy", False))
             )
+            
+            # Additional pure-hydrocarbon / greasy decoy gate
+            is_pure_greasy = (
+                p_copy.get('mmgbsa', {}).get('is_grease_ball_decoy', False) or
+                p_copy.get('decoy_filter_flag') in ('FLAGGED_GREASY_DECOY', 'FLAGGED_LIPOPHILIC_AGGREGATOR')
+            )
 
             # Confidence classification & SBDD Decoy Gate
             if is_insufficient_data:
                 confidence = "INSUFFICIENT_DATA"
                 conf_desc = insufficient_reason
-            elif is_grease_decoy:
+            elif is_grease_decoy or is_pure_greasy:
                 confidence = "DECOY_GREASE_BALL"
-                decoy_why = p_copy.get("mmgbsa", {}).get("decoy_reason") or "Lacks polar active site complementarity (opportunistic grease)"
+                decoy_why = p_copy.get("mmgbsa", {}).get("decoy_reason") or "Lacks polar active site complementarity (pure hydrocarbon/greasy decoy)"
                 conf_desc = f"Pose flagged as false-positive decoy: {decoy_why}"
             elif st > cls.HIGH_STRAIN_CUTOFF:
                 confidence = "DECOY_HIGH_STRAIN"
@@ -264,8 +270,12 @@ class ConsensusScoringService:
                 confidence = "SUB_THRESHOLD_AFFINITY"
                 conf_desc = sub_threshold_desc
             elif rank_spread <= 2 and mean_rank <= 2.5:
-                confidence = "HIGH_CONFIDENCE"
-                conf_desc = "Strong multi-engine concordance across empirical, physics (MM-GBSA), and DL scoring."
+                if v_val > -3.0:
+                    confidence = "MODERATE_CONFIDENCE"
+                    conf_desc = "Strong multi-engine concordance, but downgraded from HIGH_CONFIDENCE due to very weak affinity (> -3.0 kcal/mol)."
+                else:
+                    confidence = "HIGH_CONFIDENCE"
+                    conf_desc = "Strong multi-engine concordance across empirical, physics (MM-GBSA), and DL scoring."
             elif rank_spread <= 4 or mean_rank <= 4.0:
                 confidence = "MODERATE_CONFIDENCE"
                 conf_desc = "Acceptable agreement across scoring engines with moderate rank dispersion."

@@ -39,7 +39,8 @@ def run_1m17_benchmark():
     print(f"Prepared Rotatable Bonds: {nat_prep['rotatable_bonds']}")
     
     # 4. Docking Execution
-    seed = 42
+    import secrets
+    seed = secrets.randbelow(2147483647) + 1
     exhaustiveness = 8
     print(f"Running Vina (exhaustiveness={exhaustiveness}, seed={seed}, num_modes=9)...")
     td0 = time.time()
@@ -90,8 +91,11 @@ def run_1m17_benchmark():
               f"Crystal RMSD = {rmsd_val:5.2f} Å ({method}, {autos} autos)")
 
     rank1 = pose_results[0]
-    is_pass = rank1["rmsd_to_cryst"] <= 2.0 or min_rmsd <= 2.0
-    status = "PASS" if is_pass else "FAIL"
+    # TOP-1 STRICT: Only Rank-1 pose determines pass/fail (prospective drug discovery criterion)
+    is_top1_pass = rank1["rmsd_to_cryst"] <= 2.0
+    # BEST-MODE: Best mode in ensemble (sampling power diagnostic)
+    is_bestmode_pass = min_rmsd <= 2.0
+    status = "TOP1_PASS" if is_top1_pass else ("SAMPLING_PASS" if is_bestmode_pass else "FAIL")
     
     result_1m17 = {
         "system": "1M17 (Human EGFR Kinase / Erlotinib AQ4)",
@@ -108,11 +112,15 @@ def run_1m17_benchmark():
         "rank_1_rmsd_angstroms": rank1["rmsd_to_cryst"],
         "rank_1_kd_like_nm": rank1["derived_kd_nm"],
         "rank_1_le": rank1["ligand_efficiency"],
+        "top1_rmsd_angstroms": rank1["rmsd_to_cryst"],
         "best_mode": best_mode,
         "best_mode_rmsd_angstroms": min_rmsd,
+        "is_top1_pass": is_top1_pass,
+        "is_bestmode_pass": is_bestmode_pass,
         "atom_mapping_method": rank1["mapping_method"],
         "automorphisms_tested": rank1["automorphisms_tested"],
         "status": status,
+        "status_criterion": "TOP-1_STRICT: Rank-1 pose must have RMSD <= 2.0 A for prospective use.",
         "docking_time_s": round(tdock, 2),
         "total_time_s": round(time.time() - t0, 2),
         "all_modes": pose_results

@@ -1,5 +1,5 @@
 # Multi-stage Dockerfile for Bindora Dock production deployment
-# Python 3.11 slim base with AutoDock Vina 1.2.5 Linux binary
+# Python 3.11 slim base with AutoDock Vina 1.2.7 Linux binary
 
 FROM python:3.11-slim AS base
 
@@ -10,11 +10,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Download and install AutoDock Vina 1.2.5 Linux binary
+# Download and install AutoDock Vina 1.2.7 Linux binary
 FROM base AS vina-downloader
 WORKDIR /tmp
-RUN wget -q https://github.com/ccsb-scripps/AutoDock-Vina/releases/download/v1.2.5/vina_1.2.5_linux_x86_64 \
-    && mv vina_1.2.5_linux_x86_64 /usr/local/bin/vina \
+RUN wget -q https://github.com/ccsb-scripps/AutoDock-Vina/releases/download/v1.2.7/vina_1.2.7_linux_x86_64 \
+    && mv vina_1.2.7_linux_x86_64 /usr/local/bin/vina \
     && chmod +x /usr/local/bin/vina \
     && /usr/local/bin/vina --version
 

@@ -205,6 +205,25 @@ class BindoraAPI {
   static async getSystemHardwareInfo() {
     return this.request("/api/system/hardware");
   }
+
+  static async exportPyMOLScript(params) {
+    return this.request("/api/docking/export-pymol", {
+      method: "POST",
+      body: JSON.stringify(params)
+    });
+  }
+
+  static async downloadPyMOLBundle(params) {
+    const res = await fetch("/api/docking/export-pymol-bundle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params)
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to generate bundle: ${res.statusText}`);
+    }
+    return await res.blob();
+  }
 }
 
 // Primary export

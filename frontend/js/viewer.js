@@ -327,6 +327,37 @@ class MolecularViewer {
       this.receptorModel.setStyle({ resn: 'TYR' }, { cartoon: { color: '#86efac', opacity: 0.85, thickness: 0.46 } });
       this.receptorModel.setStyle({ resn: 'TRP' }, { cartoon: { color: '#86efac', opacity: 0.85, thickness: 0.46 } });
 
+    } else if (style === 'publication' || style === 'molstar') {
+      // Publication-Grade (Mol* Style): Sleek marine ribbon + pocket sidechain sticks
+      this.receptorModel.setStyle({}, { cartoon: { color: '#38bdf8', opacity: 0.94, thickness: 0.52 } });
+      if (this.ligandModel) {
+        const ligandAtoms = this.ligandModel.selectedAtoms({});
+        if (ligandAtoms && ligandAtoms.length > 0) {
+          const receptorAtoms = this.receptorModel.selectedAtoms({});
+          const nearResidues = new Set();
+          const thresh2 = 5.2 * 5.2;
+          receptorAtoms.forEach(ra => {
+            for (const la of ligandAtoms) {
+              const dx = ra.x - la.x, dy = ra.y - la.y, dz = ra.z - la.z;
+              if (dx * dx + dy * dy + dz * dz <= thresh2) {
+                nearResidues.add(`${ra.chain}:${ra.resi}`);
+                break;
+              }
+            }
+          });
+          nearResidues.forEach(key => {
+            const [chain, resi] = key.split(':');
+            this.receptorModel.setStyle(
+              { chain, resi: parseInt(resi) },
+              {
+                cartoon: { color: '#0284c7', opacity: 0.96, thickness: 0.54 },
+                stick: { radius: 0.24, colorscheme: 'amino' }
+              }
+            );
+          });
+        }
+      }
+
     } else if (style === 'hidden') {
       this.receptorModel.setStyle({}, {});
     }
@@ -1123,6 +1154,15 @@ class MolecularViewer {
     } catch (e) {
       console.error('[3Dmol] Screenshot failed:', e);
     }
+  }
+
+  togglePaperMode() {
+    if (!this.viewer) return false;
+    this.isPaperMode = !this.isPaperMode;
+    const bg = this.isPaperMode ? '0xffffff' : '0x090a0f';
+    this.viewer.setBackgroundColor(bg);
+    this.viewer.render();
+    return this.isPaperMode;
   }
 
   focusResidue(chain, resNum, enable = true, resName = '') {

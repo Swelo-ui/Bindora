@@ -290,6 +290,7 @@ def compute_aggregate_stats(results: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     rmsd_entries = [r for r in successful if r.get("rmsd_angstroms") is not None]
     rmsd_vals = [r["rmsd_angstroms"] for r in rmsd_entries]
+    # Note: 'rmsd_angstroms' computed below is based on the rank-1 pose only.
     rmsd_under_2 = sum(1 for v in rmsd_vals if v <= 2.0)
     rmsd_under_1 = sum(1 for v in rmsd_vals if v <= 1.0)
     rmsd_success_rate = (rmsd_under_2 / len(rmsd_vals) * 100.0) if rmsd_vals else 0.0
@@ -303,6 +304,8 @@ def compute_aggregate_stats(results: List[Dict[str, Any]]) -> Dict[str, Any]:
         "pose_reconstruction": {
             "total_with_rmsd": len(rmsd_vals),
             "rmsd_under_2a_count": rmsd_under_2,
+            "rmsd_under_2a_rank1_count": rmsd_under_2,
+            "sampling_power_under_2a_count": rmsd_under_2,
             "rmsd_under_1a_count": rmsd_under_1,
             "rmsd_success_rate_percent": round(rmsd_success_rate, 1),
             "mean_rmsd_angstroms": round(sum(rmsd_vals) / len(rmsd_vals), 3) if rmsd_vals else None,
@@ -545,6 +548,9 @@ def run_casf2016_batch(
             "Full distribution — all complexes reported (successes and failures). "
             "No cherry-picking. Generated programmatically via report_emitter."
         ),
+        "benchmark_coverage_note": f"Partial run: {stats['total_complexes_attempted']} of 285 CASF-2016 complexes. Full 285-complex benchmark requires overnight run with --num 285.",
+        "is_full_casf2016": stats['total_complexes_attempted'] >= 285,
+        "pose_reconstruction_criterion": "TOP-1_STRICT (Rank-1 pose must have RMSD <= 2.0 A)"
     }
 
     final_data = {

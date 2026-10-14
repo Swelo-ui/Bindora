@@ -1177,7 +1177,6 @@ class DockingEngine:
         try:
             from bindora.report_emitter import check_posebusters_and_biophysics, compute_symmetry_corrected_rmsd
             from bindora.docking import calculate_thermodynamics
-            import tempfile
             from meeko import PDBQTMolecule, RDKitMolCreate
 
             ref_pdb_path = Path(reference_pdb) if reference_pdb and Path(reference_pdb).exists() else None

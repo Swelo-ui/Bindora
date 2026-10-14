@@ -360,22 +360,32 @@ html.dark table tbody tr:hover {
 }
 
 /* ==========================================================================
-   Print Styles for Research Dossier (PDF Export)
+   Print Styles for Research Dossier (PDF Export) - Research-Grade Edition
    ========================================================================== */
+.print-only {
+  display: none;
+}
+.dossier-brand-dark {
+  display: block;
+}
+.dossier-brand-light {
+  display: none;
+}
+
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm 12mm 12mm 12mm;
+    margin: 8mm 10mm 10mm 10mm;
   }
 
-  /* Force white background and dark typography across entire document */
+  /* Force clean white background and dark publication typography */
   html,
   body {
     background-color: #ffffff !important;
     background-image: none !important;
     color: #0f172a !important;
-    font-size: 11px !important;
-    line-height: 1.4 !important;
+    font-size: 10px !important;
+    line-height: 1.35 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -387,6 +397,7 @@ html.dark table tbody tr:hover {
   .lg\:hidden,
   #viewport-container,
   #btn-export-dossier,
+  #btn-export-dossier-json,
   .no-print,
   #modal-firebase-auth,
   #modal-about,
@@ -401,6 +412,16 @@ html.dark table tbody tr:hover {
     display: block !important;
   }
 
+  .dossier-brand-dark {
+    display: none !important;
+  }
+
+  .dossier-brand-light {
+    display: block !important;
+    max-height: 44px !important;
+    width: auto !important;
+  }
+
   .tab-pane:not(#tab-dossier) {
     display: none !important;
   }
@@ -413,6 +434,16 @@ html.dark table tbody tr:hover {
     max-width: 100% !important;
     box-shadow: none !important;
     background: transparent !important;
+  }
+
+  /* Outer container cleanup on paper */
+  #tab-dossier > div[class*="bg-[#08090d]"],
+  #tab-dossier > div.border-neutral-800 {
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
 
   /* Force all container backgrounds to white/light on paper */
@@ -453,12 +484,25 @@ html.dark table tbody tr:hover {
   }
 
   /* Clean subtle card shading for printed tables and parameter boxes */
-  #tab-dossier .dossier-card,
+  #tab-dossier .dossier-card {
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    border-radius: 6px !important;
+    padding: 8px 10px !important;
+    margin-bottom: 8px !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
   #tab-dossier .dossier-subbox {
     background-color: #f8fafc !important;
     border: 1px solid #cbd5e1 !important;
     color: #0f172a !important;
-    border-radius: 6px !important;
+    border-radius: 5px !important;
+    padding: 6px 8px !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   /* Reset all text colors to high-contrast print values */
@@ -481,6 +525,8 @@ html.dark table tbody tr:hover {
   #tab-dossier .text-slate-400,
   #tab-dossier .text-slate-500,
   #tab-dossier .text-slate-600,
+  #tab-dossier .text-neutral-400,
+  #tab-dossier .text-neutral-500,
   #tab-dossier [class*="dark:text-slate-"] {
     color: #475569 !important;
   }
@@ -577,13 +623,13 @@ html.dark table tbody tr:hover {
     color: #1d4ed8 !important;
   }
 
-  /* Table styling */
+  /* Table styling - Publication-Grade Compact Flow */
   #tab-dossier table {
     width: 100% !important;
     border-collapse: collapse !important;
-    font-size: 10px !important;
-    margin-top: 4px !important;
-    margin-bottom: 4px !important;
+    font-size: 9.5px !important;
+    margin-top: 3px !important;
+    margin-bottom: 3px !important;
   }
 
   #tab-dossier thead {
@@ -595,19 +641,77 @@ html.dark table tbody tr:hover {
     color: #0f172a !important;
     border: 1px solid #cbd5e1 !important;
     font-weight: 700 !important;
-    padding: 3.5px 5px !important;
-    font-size: 10px !important;
+    padding: 3px 5px !important;
+    font-size: 9px !important;
   }
 
   #tab-dossier td {
     border: 1px solid #e2e8f0 !important;
     color: #1e293b !important;
-    padding: 3.5px 5px !important;
-    font-size: 9.5px !important;
+    padding: 2.5px 5px !important;
+    font-size: 9px !important;
+    line-height: 1.25 !important;
   }
 
   #tab-dossier tr:nth-child(even) td {
     background-color: #f8fafc !important;
+  }
+
+  /* Unconstrain table wrapper overflow so pagination flows naturally */
+  #tab-dossier .overflow-x-auto {
+    overflow: visible !important;
+    border: none !important;
+  }
+
+  /* Multi-column grid preservation in print */
+  #tab-dossier .grid.md\:grid-cols-2,
+  #tab-dossier .grid.grid-cols-1.md\:grid-cols-2 {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  #tab-dossier .grid.lg\:grid-cols-6,
+  #tab-dossier .grid.grid-cols-2.sm\:grid-cols-3.lg\:grid-cols-6 {
+    display: grid !important;
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 5px !important;
+  }
+
+  #tab-dossier .grid.sm\:grid-cols-4,
+  #tab-dossier .grid.grid-cols-2.sm\:grid-cols-4 {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 5px !important;
+  }
+
+  /* Tighter vertical spacing on paper */
+  #tab-dossier .p-6,
+  #tab-dossier .p-5,
+  #tab-dossier .p-4,
+  #tab-dossier .sm\:p-8 {
+    padding: 8px 10px !important;
+  }
+
+  #tab-dossier .p-3.5,
+  #tab-dossier .p-3 {
+    padding: 5px 7px !important;
+  }
+
+  #tab-dossier .space-y-6 > * + * {
+    margin-top: 8px !important;
+  }
+
+  #tab-dossier .space-y-4 > * + * {
+    margin-top: 6px !important;
+  }
+
+  #tab-dossier .space-y-3 > * + * {
+    margin-top: 5px !important;
+  }
+
+  #tab-dossier .space-y-2 > * + * {
+    margin-top: 4px !important;
   }
 
   /* SVG interaction diagram in print */
@@ -636,14 +740,35 @@ html.dark table tbody tr:hover {
     height: auto !important;
   }
 
-  /* Page break rules */
-  .page-break-inside-avoid,
-  .dossier-card,
-  .dossier-subbox,
+  #dossier-svg-container {
+    max-height: 320px !important;
+    padding: 6px !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  #dossier-svg-container svg {
+    max-height: 300px !important;
+    max-width: 100% !important;
+    width: auto !important;
+    margin: 0 auto !important;
+  }
+
+  /* Page break rules: Natural flow without arbitrary blank section gaps */
+  #tab-dossier .dossier-subbox,
   #tab-dossier tr,
   #dossier-svg-container {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+  }
+
+  #tab-dossier h1,
+  #tab-dossier h2,
+  #tab-dossier h3,
+  #tab-dossier h4,
+  #tab-dossier .dossier-card > div:first-child {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
   }
 
   .page-break-before {

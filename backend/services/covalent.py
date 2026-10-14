@@ -331,8 +331,27 @@ class CovalentDockingService:
     ) -> Dict[str, Any]:
         """
         Evaluate covalent feasibility of a docked ligand pose against active-site nucleophiles.
-        Calculates reactive distances, attack angles, and covalent feasibility scores using
-        exact 3D conformer atom mapping and geometric fallback.
+
+        Implementation Method: POST-HOC GEOMETRIC SCREENING
+        This evaluates an ALREADY DOCKED non-covalent pose for covalent reaction geometry.
+        The warhead is NOT pre-bonded to the nucleophile before docking. This is the standard
+        approach for high-throughput virtual covalent screening (e.g., AutoDock-GPU with IFD
+        references: London et al. JCIM 2014; Bauer et al. JCIM 2019).
+
+        Limitations vs True Covalent Docking:
+          - True covalent docking (as in CovDock/Glide or AutoDock4 with covalent setup) requires:
+            1. Pre-building the covalent adduct (warhead + nucleophile bond formation)
+            2. Docking with the covalent bond tether as a constraint
+            3. Sampling remaining flexible torsions with the covalent bond fixed
+          - This post-hoc screening works well for identifying candidate poses but may
+            overestimate covalent feasibility for strained attack geometries.
+          - For CONFIRMED covalent binders, use CovDock (Schrodinger) or custom pre-adduct
+            SMILES construction followed by constrained docking.
+
+        Scientifically valid for:
+          - High-throughput screening to filter out non-reactive poses
+          - Computing reactive distance and Bürgi-Dunitz / SN2 angle metrics
+          - Estimating binding energy bonus for correctly positioned warheads
         """
         # 1. Parse ligand coordinates
         lig_atoms: List[Dict[str, Any]] = []

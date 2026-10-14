@@ -209,7 +209,7 @@ class NarrativeExplainer:
             "   - Never claim an interaction is 'experimentally validated' solely based on a computational docking score.\n"
             "5. DOCKING CLASSIFICATION:\n"
             "   - If 'experiment_classification' is present in the data, explicitly state whether the run is 'Native Redocking (Self-Validation)' or 'Cross-Docking / Benchmark Docking'.\n"
-            "   - If Cross-Docking, note that scoring differences relative to literature may arise from receptor conformational adaptation (induced fit) or scoring function differences (e.g., Vina 1.2.5 vs AutoDock 4.2).\n"
+            "   - If Cross-Docking, note that scoring differences relative to literature may arise from receptor conformational adaptation (induced fit) or scoring function differences (e.g., Vina 1.2.7 vs AutoDock 4.2).\n"
             "6. Markdown Tables: When summarizing ADME properties or molecular descriptors, use clean GitHub-flavored markdown tables with standard pipes and headers.\n"
             "7. If experimental cross-check status is 'Computational Prediction Only', state clearly that this is an in silico estimation without deposited wet-lab binding assays in ChEMBL.\n"
             "8. Structure your output into four clean sections with markdown headers:\n"

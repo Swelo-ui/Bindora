@@ -64,16 +64,30 @@ print('Top 5 poses scores:', [p.get('affinity_kcal', p.get('affinity')) for p in
 
 print('[5] Calculating crystal RMSD...')
 cryst_block = nat['pdb_block']
-docked_block = best_pose.get('pdb_block') or best_pose.get('pdbqt_content')
 
+min_rmsd = float('inf')
+for p in poses:
+    d_block = p.get('pdb_block') or p.get('pdbqt_content')
+    p_rmsd_res = calculate_rmsd(cryst_block, d_block, return_details=True)
+    p_rmsd_val = p_rmsd_res['rmsd']
+    if p_rmsd_val < min_rmsd:
+        min_rmsd = p_rmsd_val
+
+docked_block = best_pose.get('pdb_block') or best_pose.get('pdbqt_content')
 rmsd_result = calculate_rmsd(cryst_block, docked_block, return_details=True)
 rmsd_val = rmsd_result['rmsd']
 rmsd_method = rmsd_result['method']
 automorphisms = rmsd_result.get('automorphisms_tested', 1)
-print(f'Crystal RMSD: {rmsd_val:.3f} Angstroms | Method: {rmsd_method}')
+
+print(f'Crystal RMSD (Rank 1): {rmsd_val:.3f} Angstroms | Method: {rmsd_method}')
+print(f'Best-mode RMSD: {min_rmsd:.3f} Angstroms')
 print('Automorphisms tested:', automorphisms)
-is_pass = (rmsd_val <= 2.0)
-print(f'Validation PASS (<= 2.0 A): {is_pass}')
+
+# TOP-1 STRICT: Only Rank-1 pose determines pass/fail
+is_top1_pass = (rmsd_val <= 2.0)
+is_bestmode_pass = (min_rmsd <= 2.0)
+is_pass = is_top1_pass # Maintain for downstream variables, but represent STRICT logic
+print(f'Validation PASS (TOP-1 <= 2.0 A): {is_top1_pass}')
 
 print('[6] Classifying experiment...')
 native_info = dict(nat)
@@ -130,13 +144,16 @@ live_result = {
     'vina_affinity_kcal': round(float(best_score), 2),
     'vinardo_affinity_kcal': best_pose.get('vinardo_affinity_kcal'),
     'mode1_rmsd_angstroms': round(float(rmsd_val), 3),
-    'best_mode_rmsd_angstroms': round(float(rmsd_val), 3),
+    'best_mode_rmsd_angstroms': round(float(min_rmsd), 3),
+    'is_top1_pass': is_top1_pass,
+    'is_bestmode_pass': is_bestmode_pass,
     'best_mode': 1,
-    'is_validated': is_pass,
+    'is_validated': is_top1_pass,
     'badge': f'Protocol Validated (RMSD: {rmsd_val:.2f} \u00c5 \u2264 2.0 \u00c5)',
-    'status': 'Pass (Research Grade)' if is_pass else 'Fail',
+    'status': 'TOP1_PASS' if is_top1_pass else ('SAMPLING_PASS' if is_bestmode_pass else 'FAIL'),
+    'status_criterion': 'TOP-1_STRICT: Rank-1 pose must have RMSD <= 2.0 A for prospective use.',
     'energy_in_lit_range': True,
-    'rmsd_pass_threshold': is_pass,
+    'rmsd_pass_threshold': is_top1_pass,
     'rmsd_ideal_threshold': (rmsd_val <= 1.0),
     'docking_time_seconds': elapsed,
     'exhaustiveness': 32,
