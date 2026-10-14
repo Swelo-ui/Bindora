@@ -29,6 +29,7 @@ data/benchmarks/*.log
 data/benchmarks/*_progress.json
 data/dude/
 docking_*/
+benchmark_workspace/
 benchmark_*_output.json
 scratch/
 *.log

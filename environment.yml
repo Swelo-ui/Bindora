@@ -1,0 +1,24 @@
+name: bindora-env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - rdkit>=2023.09
+  - openbabel>=3.1.1
+  - pdbfixer
+  - openmm
+  - pdb2pqr
+  - propka
+  - numpy
+  - scipy
+  - requests
+  - pytest
+  - pip
+  - pip:
+      - meeko>=0.5.0
+      - vina>=1.2.5
+      - spyrmsd>=0.6.0
+      - posebusters>=0.2.7
+      - prolif>=2.0.0
+      - dimorphite-dl

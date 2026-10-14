@@ -1,0 +1,49 @@
+name: Bindora Fast Benchmark Suite
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  biophysical-redocking-validation:
+    name: Research-Grade Redocking Suite (1HSG & 1AQ1)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Bindora Repository
+        uses: actions/checkout@v4
+
+      - name: Provision Conda-Forge Scientific Stack via Micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: environment.yml
+          environment-name: bindora-env
+          cache-downloads: true
+          cache-environment: true
+
+      - name: Verify Cheminformatics & Docking Binaries
+        shell: bash -el {0}
+        run: |
+          python -c "import rdkit, meeko, spyrmsd; print('RDKit, Meeko & spyrmsd OK')"
+          obabel -V
+          which vina || python -c "import vina; print('Vina Python API OK')"
+
+      - name: Execute Deterministic Fast Benchmark Suite
+        shell: bash -el {0}
+        run: |
+          python scripts/run_fast_benchmark.py
+
+      - name: Upload Scientific Validation Reports & Docked Poses
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bindora-benchmark-validation-artifacts
+          path: |
+            benchmark_workspace/reports/*.json
+            benchmark_workspace/reports/*.md
+            benchmark_workspace/*_docked_*.sdf
+          retention-days: 30
