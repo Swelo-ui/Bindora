@@ -211,7 +211,7 @@
 
             <!-- Subtitle -->
             <p class="text-sm sm:text-base text-neutral-400 leading-relaxed max-w-xl">
-              Next-generation computational pharmacology studio. Execute native Scripps AutoDock Vina simulations, explore 3D pocket interactions, compute RDKit ADME profiles, and corroborate with ChEMBL experimental wet-lab assays.
+              Next-generation computational pharmacology studio. Dual-engine target resolution (RCSB Crystal &amp; DeepMind AlphaFold DB), native Scripps AutoDock Vina simulation, biophysical induced-fit modeling, RDKit ADME profiling, and ChEMBL experimental wet-lab validation.
             </p>
 
             <!-- Action CTAs -->
@@ -227,7 +227,7 @@
               </button>
 
               <button onclick="window.app.loadBenchmark('erlotinib_egfr'); window.app.switchTab('docking');" class="px-5 py-3 rounded-lg bg-[#0e1017] hover:bg-[#141620] text-neutral-200 hover:text-white border border-neutral-800 hover:border-neutral-700 text-sm font-medium flex items-center space-x-2 transition shadow-sm">
-                <span class="w-1.5 h-1.5 rounded-full bg-neutral-400 mr-0.5"></span>
+                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 mr-0.5"></span>
                 <span>Run 1M17 (1.52 Å)</span>
               </button>
             </div>
@@ -239,15 +239,15 @@
                 <span class="text-neutral-500 text-[10px] font-mono uppercase tracking-widest mt-0.5 block">1HSG Sub-Angstrom</span>
               </div>
               <div>
-                <span class="block text-white font-bold text-xl sm:text-2xl font-mono tracking-tight">1.52 Å</span>
-                <span class="text-neutral-500 text-[10px] font-mono uppercase tracking-widest mt-0.5 block">1M17 CASF Passed</span>
+                <span class="block text-cyan-400 font-bold text-xl sm:text-2xl font-mono tracking-tight">200M+</span>
+                <span class="text-neutral-500 text-[10px] font-mono uppercase tracking-widest mt-0.5 block">AlphaFold DB Models</span>
               </div>
               <div>
                 <span class="block text-white font-bold text-xl sm:text-2xl font-mono tracking-tight">-10.54</span>
                 <span class="text-neutral-500 text-[10px] font-mono uppercase tracking-widest mt-0.5 block">1HSG (kcal/mol)</span>
               </div>
               <div>
-                <span class="block text-white font-bold text-xl sm:text-2xl font-mono tracking-tight">100%</span>
+                <span class="block text-emerald-400 font-bold text-xl sm:text-2xl font-mono tracking-tight">100%</span>
                 <span class="text-neutral-500 text-[10px] font-mono uppercase tracking-widest mt-0.5 block">RDKit &amp; ChEMBL</span>
               </div>
             </div>
@@ -273,13 +273,13 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           
-          <!-- Feature 1: Multi-Format Ingestion -->
+          <!-- Feature 1: Dual-Source Structural Engine -->
           <div class="glass-panel p-5 rounded-xl border border-neutral-800 bg-[#08090d] hover:border-neutral-700 transition group">
-            <div class="w-10 h-10 rounded-lg bg-[#0e1017] border border-neutral-800 text-neutral-300 flex items-center justify-center mb-4 transition">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+            <div class="w-10 h-10 rounded-lg bg-[#0e1017] border border-neutral-800 text-cyan-400 flex items-center justify-center mb-4 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
             </div>
-            <h3 class="font-semibold text-sm text-white mb-1.5">Universal Structure Ingestion</h3>
-            <p class="text-xs text-neutral-400 leading-relaxed">Direct support for RCSB PDB, crystallographic mmCIF (.cif), AutoDock .pdbqt, Tripos .mol2, .sdf, and SMILES with automated Gasteiger charges and pocket detection.</p>
+            <h3 class="font-semibold text-sm text-white mb-1.5">Dual-Source Structural Engine</h3>
+            <p class="text-xs text-neutral-400 leading-relaxed">Unified target query matching experimental RCSB PDB crystals alongside 200M+ DeepMind AlphaFold DB AI models with pLDDT metrics and intelligent structural recommendation.</p>
           </div>
 
           <!-- Feature 2: Scripps AutoDock Vina -->
@@ -288,7 +288,7 @@
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
             </div>
             <h3 class="font-semibold text-sm text-white mb-1.5">Native AutoDock Vina Engine</h3>
-            <p class="text-xs text-neutral-400 leading-relaxed">Pre-compiled high-performance binary executing iterated Local Search & Monte Carlo conformational sampling for accurate binding free energy (&Delta;G) and theoretical Kd.</p>
+            <p class="text-xs text-neutral-400 leading-relaxed">Pre-compiled high-performance binary executing iterated Local Search &amp; Monte Carlo conformational sampling with adaptive multi-core parallelization for empirical &Delta;G and theoretical Kd.</p>
           </div>
 
           <!-- Feature 3: Interactive 3D WebGL Studio -->
@@ -297,10 +297,37 @@
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
             </div>
             <h3 class="font-semibold text-sm text-white mb-1.5">3Dmol WebGL Molecular Studio</h3>
-            <p class="text-xs text-neutral-400 leading-relaxed">Full hardware-accelerated 3D exploration with customizable protein ribbons, ball &amp; stick ligands, molecular surfaces, live docking grid box visualizer, and atom measurement tool (&Aring;).</p>
+            <p class="text-xs text-neutral-400 leading-relaxed">Full hardware-accelerated 3D exploration with customizable ribbons, ball &amp; stick ligands, molecular surfaces, live docking grid box visualizer, and atom measurement tool (&Aring;).</p>
           </div>
 
-          <!-- Feature 4: RDKit ADME & Drug-Likeness -->
+          <!-- Feature 4: Induced-Fit & Flexible Residues -->
+          <div class="glass-panel p-5 rounded-xl border border-neutral-800 bg-[#08090d] hover:border-neutral-700 transition group">
+            <div class="w-10 h-10 rounded-lg bg-[#0e1017] border border-neutral-800 text-emerald-400 flex items-center justify-center mb-4 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            </div>
+            <h3 class="font-semibold text-sm text-white mb-1.5">Induced-Fit &amp; Flexible Residues</h3>
+            <p class="text-xs text-neutral-400 leading-relaxed">Active-site sidechain rotamer and backbone dihedral sampling via Meeko / IFD, resolving closed-pocket steric clashes in AlphaFold models and bulky drug scaffolds.</p>
+          </div>
+
+          <!-- Feature 5: Multi-Seed Replicates & Consensus -->
+          <div class="glass-panel p-5 rounded-xl border border-neutral-800 bg-[#08090d] hover:border-neutral-700 transition group">
+            <div class="w-10 h-10 rounded-lg bg-[#0e1017] border border-neutral-800 text-amber-400 flex items-center justify-center mb-4 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
+            </div>
+            <h3 class="font-semibold text-sm text-white mb-1.5">Multi-Seed Replicate Consensus</h3>
+            <p class="text-xs text-neutral-400 leading-relaxed">Multi-run Monte Carlo replicates (3-seed clustering) eliminate stochastic search variance on rugged energy landscapes, producing stable, reproducible consensus binding poses.</p>
+          </div>
+
+          <!-- Feature 6: fpocket Cavity & Blind Druggability -->
+          <div class="glass-panel p-5 rounded-xl border border-neutral-800 bg-[#08090d] hover:border-neutral-700 transition group">
+            <div class="w-10 h-10 rounded-lg bg-[#0e1017] border border-neutral-800 text-indigo-400 flex items-center justify-center mb-4 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg>
+            </div>
+            <h3 class="font-semibold text-sm text-white mb-1.5">fpocket Blind Cavity Ranking</h3>
+            <p class="text-xs text-neutral-400 leading-relaxed">Automated Voronoi tessellation pocket detection calculating pocket volume (&Aring;&sup3;), hydro-acceptor ratios, and druggability scores for uncrystallized proteins.</p>
+          </div>
+
+          <!-- Feature 7: RDKit ADME & Drug-Likeness -->
           <div class="glass-panel p-5 rounded-xl border border-neutral-800 bg-[#08090d] hover:border-neutral-700 transition group">
             <div class="w-10 h-10 rounded-lg bg-[#0e1017] border border-neutral-800 text-neutral-300 flex items-center justify-center mb-4 transition">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
@@ -309,7 +336,7 @@
             <p class="text-xs text-neutral-400 leading-relaxed">Empirical evaluation of Lipinski Rule of 5, Veber, Ghose, BOILED-Egg gastrointestinal absorption, blood-brain barrier permeability, PAINS alerts, and CYP450 liabilities.</p>
           </div>
 
-          <!-- Feature 5: ChEMBL Experimental Cross-Check -->
+          <!-- Feature 8: ChEMBL Experimental Cross-Check -->
           <div class="glass-panel p-5 rounded-xl border border-neutral-800 bg-[#08090d] hover:border-neutral-700 transition group">
             <div class="w-10 h-10 rounded-lg bg-[#0e1017] border border-neutral-800 text-neutral-300 flex items-center justify-center mb-4 transition">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -318,13 +345,13 @@
             <p class="text-xs text-neutral-400 leading-relaxed">Automated cross-referencing against curated European Bioinformatics Institute (EMBL-EBI) experimental assay records (IC50, Ki, Kd) with clear verification status badges.</p>
           </div>
 
-          <!-- Feature 6: AI Senior Pharmacologist -->
+          <!-- Feature 9: AI Senior Pharmacologist & Academic Export -->
           <div class="glass-panel p-5 rounded-xl border border-neutral-800 bg-[#08090d] hover:border-neutral-700 transition group">
-            <div class="w-10 h-10 rounded-lg bg-[#0e1017] border border-neutral-800 text-neutral-300 flex items-center justify-center mb-4 transition">
+            <div class="w-10 h-10 rounded-lg bg-[#0e1017] border border-neutral-800 text-purple-400 flex items-center justify-center mb-4 transition">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
             </div>
-            <h3 class="font-semibold text-sm text-white mb-1.5">DeepSeek AI Research Dossier</h3>
-            <p class="text-xs text-neutral-400 leading-relaxed">Generates publication-grade computational pharmacology briefings synthesizing 3D binding interactions, thermodynamic constants, and physiological cascades.</p>
+            <h3 class="font-semibold text-sm text-white mb-1.5">DeepSeek AI Dossier &amp; Export</h3>
+            <p class="text-xs text-neutral-400 leading-relaxed">Publication-grade computational pharmacology briefings, manuscript Methods sections (.md), CSV telemetry, and 1-click OpenMM MD simulation packages.</p>
           </div>
 
         </div>
@@ -1158,17 +1185,26 @@
               <h3 class="font-semibold text-sm text-white">Receptor / Target Protein</h3>
             </div>
             <!-- Mode Switcher -->
-            <div class="flex bg-[#0e1017] p-0.5 rounded-lg border border-neutral-800 text-[11px]">
-              <button id="tab-btn-receptor-rcsb" class="px-2.5 py-1 rounded-md font-medium text-white bg-neutral-800 transition">RCSB PDB</button>
-              <button id="tab-btn-receptor-upload" class="px-2.5 py-1 rounded-md font-medium text-neutral-400 hover:text-white transition">Upload PDB/CIF/PDBQT</button>
+            <div class="flex bg-[#0e1017] p-0.5 rounded-lg border border-neutral-800 text-[11px] whitespace-nowrap">
+              <button id="tab-btn-receptor-rcsb" class="px-2.5 py-1 rounded-md font-medium text-white bg-neutral-800 transition">Target Search</button>
+              <button id="tab-btn-receptor-upload" class="px-2.5 py-1 rounded-md font-medium text-neutral-400 hover:text-white transition">Upload File</button>
               <button id="tab-btn-receptor-paste" class="px-2.5 py-1 rounded-md font-medium text-neutral-400 hover:text-white transition">Paste PDB</button>
             </div>
           </div>
 
-          <!-- Mode 1: RCSB PDB Search -->
-          <div id="mode-receptor-rcsb" class="flex space-x-2">
-            <input id="input-search-rcsb" type="text" placeholder="PDB code (e.g. 1IEP, 1CX2) or protein name..." class="flex-1 bg-[#0e1017] border border-neutral-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-neutral-600">
-            <button id="btn-search-rcsb" class="px-4 py-2 bg-white hover:bg-neutral-200 text-black rounded-lg text-xs font-semibold transition whitespace-nowrap">Search</button>
+          <!-- Mode 1: RCSB / AlphaFold DB Search -->
+          <div id="mode-receptor-rcsb" class="space-y-1.5">
+            <div class="flex space-x-2">
+              <input id="input-search-rcsb" type="text" placeholder="Search protein (e.g. Human EGFR, CDK2, BRAF) or PDB/UniProt ID..." class="flex-1 bg-[#0e1017] border border-neutral-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-neutral-600">
+              <button id="btn-search-rcsb" class="px-4 py-2 bg-white hover:bg-neutral-200 text-black rounded-lg text-xs font-semibold transition whitespace-nowrap flex items-center space-x-1.5">
+                <svg class="w-3.5 h-3.5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <span>Search</span>
+              </button>
+            </div>
+            <div class="flex items-center justify-between text-[10.5px] text-neutral-500 px-1">
+              <span>Dual-Engine: RCSB PDB (Experimental Crystals) &amp; DeepMind AlphaFold DB</span>
+              <span>Auto-linked via UniProtKB</span>
+            </div>
           </div>
 
           <!-- Mode 2: Upload PDB / CIF / PDBQT File -->
@@ -1188,9 +1224,12 @@
             <button id="btn-load-custom-pdb" class="w-full py-2 bg-white hover:bg-neutral-200 text-black rounded-lg text-xs font-semibold transition">Load &amp; Prepare PDB Structure</button>
           </div>
 
+          <!-- Unified Dual-Source Selection Container (RCSB vs AlphaFold DB) -->
+          <div id="receptor-search-picker" class="hidden space-y-3 pt-1"></div>
+
           <!-- Receptor Live Preview Card -->
           <div id="card-receptor-info" class="p-4 rounded-xl bg-[#0e1017] border border-neutral-800">
-            <p class="text-xs text-neutral-500 italic">No receptor loaded yet. Search RCSB PDB, upload a .pdb file, or paste coordinates.</p>
+            <p class="text-xs text-neutral-500 italic">No receptor loaded yet. Search by protein name or PDB/UniProt ID, upload a file, or paste coordinates.</p>
           </div>
         </div>
 

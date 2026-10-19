@@ -40,6 +40,7 @@ hw_sampler = HardwareTelemetrySampler.get_instance()
 
 # Security configuration
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
+app.json.ensure_ascii = False
 CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 # Standardized structured JSON error handlers for API endpoints
@@ -291,17 +292,68 @@ def prepare_ligand():
     except Exception as e:
         return jsonify({"error": f"Ligand preparation failed: {str(e)}"}), 400
 
+@app.route("/api/search/target", methods=["GET"])
+def search_target():
+    query = request.args.get("query", "").strip()
+    if not query:
+        return jsonify({"error": "Query parameter 'query' is required"}), 400
+    try:
+        max_rcsb = int(request.args.get("max_rcsb", 4))
+    except (ValueError, TypeError):
+        max_rcsb = 4
+
+    result = StructureFetcher.search_unified_target(query, max_rcsb_results=max_rcsb)
+    return jsonify(result)
+
+@app.route("/api/search/alphafold/<uniprot_id>", methods=["GET"])
+def get_alphafold_model(uniprot_id):
+    uniprot_id = uniprot_id.strip()
+    if not uniprot_id:
+        return jsonify({"error": "UniProt ID parameter is required"}), 400
+    result = StructureFetcher.fetch_alphafold_structure(uniprot_id)
+    if not result:
+        return jsonify({"error": f"AlphaFold model not found for '{uniprot_id}'"}), 404
+    return jsonify(result)
+
 @app.route("/api/structure/receptor", methods=["POST"])
 def prepare_receptor():
     data = get_request_json()
     pdb_content = data.get("pdb_content", "")
     pdb_id = data.get("pdb_id", "")
     target_chain = data.get("target_chain")
+    source = data.get("source", "").lower()
 
+    extra_meta = {}
     if not pdb_content and pdb_id:
-        fetched = StructureFetcher.fetch_rcsb_pdb(pdb_id)
-        if fetched:
-            pdb_content = fetched.get("pdb_content", "")
+        if source == "alphafold" or pdb_id.upper().startswith("AF-"):
+            clean_acc = pdb_id.upper().replace("AF-", "").split("-")[0]
+            fetched = StructureFetcher.fetch_alphafold_structure(clean_acc)
+            if fetched:
+                pdb_content = fetched.get("pdb_content", "")
+                extra_meta = {
+                    "source": "AlphaFold DB",
+                    "is_alphafold": True,
+                    "plddt": fetched.get("plddt"),
+                    "fraction_confident": fetched.get("fraction_confident"),
+                    "fraction_very_high": fetched.get("fraction_very_high"),
+                    "uniprot_id": fetched.get("uniprot_id"),
+                    "organism": fetched.get("organism"),
+                    "sequence_length": fetched.get("sequence_length"),
+                    "title": fetched.get("title")
+                }
+        else:
+            fetched = StructureFetcher.fetch_rcsb_pdb(pdb_id)
+            if fetched:
+                pdb_content = fetched.get("pdb_content", "")
+                extra_meta = {
+                    "source": "RCSB PDB",
+                    "is_alphafold": False,
+                    "resolution": fetched.get("resolution"),
+                    "method": fetched.get("method"),
+                    "title": fetched.get("title"),
+                    "ligand_names": fetched.get("ligand_names", []),
+                    "has_ligand": fetched.get("has_ligand", False)
+                }
 
     if not pdb_content:
         return jsonify({"error": "Receptor PDB content or valid PDB ID is required"}), 400
@@ -318,6 +370,10 @@ def prepare_receptor():
             target_chain=target_chain,
             retain_structural_waters=retain_waters
         )
+        rec_result["pdb_id"] = pdb_id or "Custom Receptor"
+        for k, v in extra_meta.items():
+            if k not in rec_result or not rec_result[k]:
+                rec_result[k] = v
         return jsonify(rec_result)
     except Exception as e:
         return jsonify({"error": f"Receptor preparation failed: {str(e)}"}), 400
@@ -451,7 +507,7 @@ def run_docking():
         replicate_stats = best_pose.get("replicate_stats")
 
         # Calculate thermodynamics and Ligand Efficiency
-        thermo = BioactivityService.calculate_thermodynamics(affinity, heavy_atoms, mw)
+        thermo = BioactivityService.calculate_thermodynamics(affinity, heavy_atoms or 0, mw or 0.0)
         if "estimated_ki_nM" in best_pose:
             thermo["estimated_ki_nM"] = best_pose["estimated_ki_nM"]
         if "ligand_efficiency" in best_pose:

@@ -52,3 +52,7 @@ build/
 dist/
 installer/Output/
 *.spec.bak
+
+# Agentic artifacts
+.agents/
+

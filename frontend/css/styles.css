@@ -980,6 +980,8 @@ html.light #btn-about:hover svg {
 /* 3. Deep-Tech Surfaces & Panels Mapping */
 html.light .glass-panel,
 html.light .bg-\[\#08090d\],
+html.light .bg-\[\#0a0c10\],
+html.light .bg-\[\#0a0c10\]\/95,
 html.light .bg-\[\#050508\] {
   background-color: #ffffff !important;
   border-color: #e2e8f0 !important;
@@ -2174,3 +2176,38 @@ html.light #modal-hardware-diagnostics #btn-close-hardware-modal-footer {
   height: auto;
   display: block;
 }
+
+/* ==========================================================================
+   Target Resolution Dual Picker (RCSB vs AlphaFold) Polish & Mode Styling
+   ========================================================================== */
+#receptor-search-picker {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+html.light #receptor-search-picker > div {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.light #picker-select-rcsb-pdb {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light #picker-select-rcsb-pdb:focus {
+  border-color: #94a3b8 !important;
+  outline: none !important;
+}
+
+html.light #btn-picker-load-af {
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
+  border-color: #0284c7 !important;
+}
+
+html.light #btn-picker-load-af:hover {
+  background-color: #0369a1 !important;
+  border-color: #0369a1 !important;
+}

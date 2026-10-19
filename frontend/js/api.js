@@ -65,6 +65,14 @@ class BindoraAPI {
     return this.request(`/api/search/rcsb?query=${encodeURIComponent(query)}`);
   }
 
+  static async searchTarget(query, maxRcsb = 4) {
+    return this.request(`/api/search/target?query=${encodeURIComponent(query)}&max_rcsb=${maxRcsb}`);
+  }
+
+  static async fetchAlphaFold(uniprotId) {
+    return this.request(`/api/search/alphafold/${encodeURIComponent(uniprotId)}`);
+  }
+
   static async prepareLigand(structure, isSdf = false) {
     return this.request("/api/structure/ligand", {
       method: "POST",
@@ -72,13 +80,14 @@ class BindoraAPI {
     });
   }
 
-  static async prepareReceptor(pdbContent = "", pdbId = "", targetChain = null) {
+  static async prepareReceptor(pdbContent = "", pdbId = "", targetChain = null, source = "rcsb") {
     return this.request("/api/structure/receptor", {
       method: "POST",
       body: JSON.stringify({
         pdb_content: pdbContent,
         pdb_id: pdbId,
-        target_chain: targetChain
+        target_chain: targetChain,
+        source: source
       })
     });
   }

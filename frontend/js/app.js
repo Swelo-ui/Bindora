@@ -1829,61 +1829,405 @@ class BindoraApp {
     }
   }
 
+  escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
   async searchRCSB(query) {
+    query = (query || "").trim();
     if (!query) return;
-    const recCard = document.getElementById("card-receptor-info");
-    if (recCard) {
-      recCard.innerHTML = `<div class="p-6 text-center text-emerald-400 font-medium animate-pulse flex flex-col items-center justify-center space-y-2">
-        <svg class="animate-spin w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-        <span class="text-xs">Querying RCSB Protein Data Bank for '${query}'...</span>
-      </div>`;
+
+    const picker = document.getElementById("receptor-search-picker");
+    if (picker) {
+      picker.classList.remove("hidden");
+      picker.innerHTML = `
+        <div class="glass-panel p-5 rounded-xl border border-neutral-800 bg-[#0a0c12] text-center space-y-2.5 shadow-lg">
+          <div class="flex items-center justify-center space-x-2 text-cyan-400 font-medium">
+            <svg class="animate-spin w-5 h-5 text-cyan-400 inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <span class="text-xs text-neutral-200">Resolving target across RCSB PDB &amp; AlphaFold DB for "${this.escapeHtml(query)}"...</span>
+          </div>
+          <p class="text-[11px] text-neutral-500 font-mono">Cross-referencing experimental X-ray crystal structures with DeepMind AI predictions</p>
+        </div>
+      `;
     }
-    this.showToast(`Searching RCSB for '${query}'...`, "info");
+
+    this.showToast(`Resolving target across RCSB & AlphaFold DB for '${query}'...`, "info");
+
     try {
-      const data = await BindoraAPI.searchRCSB(query);
-      if (data.direct && data.entry) {
-        const entry = data.entry;
-        const recPrep = await BindoraAPI.prepareReceptor(entry.pdb_content, entry.pdb_id);
-        this.state.receptor = {
-          ...entry,
-          ...recPrep
-        };
-        this.checkPharmacophoreEligibility();
-        this.state.ensembleStructures = null;
-        this.updateStudioCards();
-        this.updatePathwayInfo();
-        this.updateDossierView();
-        if (this.viewer && recPrep.cleaned_pdb) {
-          this.viewer.loadReceptor(recPrep.cleaned_pdb);
-          const emptyState = document.getElementById("viewer-empty-state");
-          if (emptyState) emptyState.classList.add("hidden");
+      const data = await BindoraAPI.searchTarget(query);
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      this.state.lastTargetSearch = data;
+      this.renderTargetResolutionPicker(data);
+
+      // If user typed a direct 4-letter PDB code (e.g. 1M17), auto-load the crystal structure
+      if (query.length === 4 && /^[a-zA-Z0-9]+$/.test(query) && data.rcsb_entries && data.rcsb_entries.length > 0) {
+        const directPdb = data.rcsb_entries[0];
+        await this.loadSelectedReceptor(directPdb.pdb_id, "rcsb", directPdb);
+        if (picker && data.alphafold) {
+          picker.classList.remove("hidden");
         }
-        this.showToast(`Loaded RCSB entry ${entry.pdb_id}: ${entry.title.substring(0, 30)}...`, "success");
-      } else if (data.results && data.results.length > 0) {
-        const first = data.results[0];
-        const recPrep = await BindoraAPI.prepareReceptor("", first.pdb_id);
-        this.state.receptor = {
-          ...first,
-          ...recPrep
-        };
-        this.checkPharmacophoreEligibility();
-        this.state.ensembleStructures = null;
-        this.updateStudioCards();
-        this.updatePathwayInfo();
-        this.updateDossierView();
-        if (this.viewer && recPrep.cleaned_pdb) {
-          this.viewer.loadReceptor(recPrep.cleaned_pdb);
-          const emptyState = document.getElementById("viewer-empty-state");
-          if (emptyState) emptyState.classList.add("hidden");
-        }
-        this.showToast(`Selected top RCSB match: ${first.pdb_id}`, "success");
       } else {
-        this.updateStudioCards();
-        this.showToast("No RCSB entries found for query", "error");
+        this.showToast(`Found structural candidates for '${data.target_name || query}'`, "success");
       }
     } catch (e) {
+      console.error("Target search failed:", e);
+      if (picker) {
+        picker.innerHTML = `
+          <div class="glass-panel p-4 rounded-xl border border-red-900/50 bg-[#120a0d] text-center space-y-1">
+            <p class="text-xs text-red-400 font-medium">Receptor search failed: ${this.escapeHtml(e.message)}</p>
+            <p class="text-[11px] text-neutral-500">Please verify connection or search with a standard gene name (e.g. EGFR, CDK2).</p>
+          </div>
+        `;
+      }
+      this.showToast(`Target search failed: ${e.message}`, "error");
+    }
+  }
+
+  renderTargetResolutionPicker(data) {
+    const picker = document.getElementById("receptor-search-picker");
+    if (!picker) return;
+
+    const rcsbList = data.rcsb_entries || [];
+    const afModel = data.alphafold || null;
+    const rec = data.recommendation || {};
+
+    if (rcsbList.length === 0 && !afModel) {
+      picker.innerHTML = `
+        <div class="glass-panel p-3.5 rounded-xl border border-slate-200 dark:border-neutral-800 bg-white dark:bg-[#0e1017] text-center space-y-1.5 shadow-sm">
+          <p class="text-xs text-amber-600 dark:text-amber-400 font-semibold">No structures found matching "${this.escapeHtml(data.query)}".</p>
+          <p class="text-[11px] text-slate-500 dark:text-neutral-500">Please verify spelling, try a common gene name (e.g. EGFR, CDK2), or enter a 4-letter PDB code.</p>
+        </div>
+      `;
+      picker.classList.remove("hidden");
+      return;
+    }
+
+    let targetTitle = data.target_name || data.query;
+    // Format all-caps titles into clean Title Case
+    if (targetTitle === targetTitle.toUpperCase() && targetTitle.length > 5) {
+      targetTitle = targetTitle.toLowerCase().replace(/(?:^|\s|\/)\w/g, match => match.toUpperCase());
+    }
+
+    const geneLabel = data.gene_name ? `<span class="px-2 py-0.5 rounded text-[10.5px] font-mono font-medium bg-slate-100 text-slate-700 border border-slate-300 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700">Gene: ${this.escapeHtml(data.gene_name)}</span>` : '';
+    const orgLabel = data.organism ? `<span class="px-2 py-0.5 rounded text-[10.5px] font-mono font-medium bg-slate-100 text-slate-600 border border-slate-200 dark:bg-[#141620] dark:text-neutral-400 dark:border-neutral-800 truncate max-w-[200px]" title="${this.escapeHtml(data.organism)}">${this.escapeHtml(data.organism)}</span>` : '';
+    const uniprotLabel = data.uniprot_id ? `<a href="https://www.uniprot.org/uniprotkb/${encodeURIComponent(data.uniprot_id)}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded text-[10.5px] font-mono font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:text-indigo-300 dark:border-indigo-800/80 dark:hover:border-indigo-600 transition flex items-center space-x-1" title="Open UniProtKB"><span>UniProt: ${this.escapeHtml(data.uniprot_id)}</span><svg class="w-2.5 h-2.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>` : '';
+
+    // Professional, minimalist recommendation banner
+    let recBannerHtml = '';
+    if (rec.reason) {
+      const isRcsb = rec.source === 'rcsb';
+      recBannerHtml = `
+        <div class="flex items-center space-x-2 text-xs py-2 px-3 rounded-lg bg-slate-50 dark:bg-[#08090d] border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300">
+          <span class="w-2 h-2 rounded-full ${isRcsb ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-cyan-500 dark:bg-cyan-400'} shrink-0"></span>
+          <span class="font-semibold text-slate-900 dark:text-neutral-200 shrink-0">Recommendation:</span>
+          <span class="text-slate-600 dark:text-neutral-400 truncate">${this.escapeHtml(rec.reason)}</span>
+        </div>
+      `;
+    }
+
+    // Left Card: RCSB Crystal
+    let rcsbCardHtml = '';
+    if (rcsbList.length > 0) {
+      const bestPdb = rcsbList[0];
+      const hasOptions = rcsbList.length > 1;
+      const optHtml = hasOptions ? `
+        <div class="space-y-1">
+          <label class="text-[10px] uppercase font-mono tracking-wider text-slate-500 dark:text-neutral-400 block font-semibold">Crystal Structure (${rcsbList.length} deposited):</label>
+          <select id="picker-select-rcsb-pdb" class="w-full bg-white dark:bg-[#08090d] border border-slate-300 dark:border-neutral-700/80 rounded px-2 py-1.5 text-xs text-slate-800 dark:text-white focus:outline-none focus:border-slate-500 dark:focus:border-neutral-500 font-mono transition">
+            ${rcsbList.map((e, idx) => `
+              <option value="${idx}">
+                ${e.pdb_id} • ${e.resolution ? e.resolution + ' Å' : 'X-Ray'} ${e.has_ligand ? '• (Ligand Bound)' : ''}
+              </option>
+            `).join('')}
+          </select>
+        </div>
+      ` : '';
+
+      rcsbCardHtml = `
+        <div class="rounded-xl border border-slate-200 dark:border-neutral-800 bg-slate-50/80 dark:bg-[#0e1017] p-3.5 flex flex-col justify-between h-full min-h-[210px] space-y-3">
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-200 dark:border-neutral-800/80">
+              <span class="text-xs font-bold text-slate-900 dark:text-neutral-200 flex items-center space-x-1.5 whitespace-nowrap">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 shrink-0"></span>
+                <span>RCSB PDB</span>
+              </span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded font-semibold whitespace-nowrap bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800">Experimental X-Ray</span>
+            </div>
+
+            ${optHtml}
+
+            <!-- Metadata Key-Value Stack (No wrapping, tabular alignment) -->
+            <div class="space-y-1.5 py-1 text-xs font-mono">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500 dark:text-neutral-400 text-[11px]">PDB ID</span>
+                <span id="picker-rcsb-id" class="text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap">${bestPdb.pdb_id}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500 dark:text-neutral-400 text-[11px]">Resolution</span>
+                <span id="picker-rcsb-res" class="text-slate-800 dark:text-white font-medium whitespace-nowrap">${bestPdb.resolution ? bestPdb.resolution + ' Å' : 'X-Ray / EM'}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500 dark:text-neutral-400 text-[11px]">Method</span>
+                <span id="picker-rcsb-method" class="text-slate-700 dark:text-neutral-300 text-[11px] truncate max-w-[130px] text-right" title="${this.escapeHtml(bestPdb.method || 'X-Ray')}">${this.escapeHtml(bestPdb.method || 'X-Ray')}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500 dark:text-neutral-400 text-[11px]">Ligand</span>
+                <span id="picker-rcsb-ligand" class="text-[11px] font-semibold whitespace-nowrap ${bestPdb.has_ligand ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-neutral-500'}">${bestPdb.has_ligand ? (bestPdb.ligand_names ? bestPdb.ligand_names.join(', ') : 'Present') : 'Apo (Unbound)'}</span>
+              </div>
+            </div>
+
+            <p class="text-[11px] text-slate-600 dark:text-neutral-400 leading-snug">
+              Best for: <strong class="text-slate-800 dark:text-neutral-200 font-medium">Induced-fit pocket docking</strong> with authentic active-site sidechain conformations.
+            </p>
+          </div>
+
+          <button id="btn-picker-load-rcsb" class="w-full py-2.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center space-x-1.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-black shadow-sm">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            <span id="picker-load-rcsb-label" class="whitespace-nowrap">Load Crystal PDB (${bestPdb.pdb_id})</span>
+          </button>
+        </div>
+      `;
+    } else {
+      rcsbCardHtml = `
+        <div class="rounded-xl border border-slate-200 dark:border-neutral-800 bg-slate-50/80 dark:bg-[#0e1017] p-3.5 flex flex-col justify-between h-full min-h-[210px] space-y-3">
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-200 dark:border-neutral-800/80">
+              <span class="text-xs font-bold text-slate-500 dark:text-neutral-400 flex items-center space-x-1.5 whitespace-nowrap">
+                <span class="w-2 h-2 rounded-full bg-slate-400 dark:bg-neutral-600 shrink-0"></span>
+                <span>RCSB PDB</span>
+              </span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded font-medium whitespace-nowrap bg-slate-100 text-slate-500 border border-slate-200 dark:bg-neutral-900 dark:text-neutral-500 dark:border-neutral-800">No Crystal Found</span>
+            </div>
+            <div class="py-4 text-xs text-slate-500 dark:text-neutral-400 leading-relaxed">
+              No experimental crystal structure currently deposited for this target in RCSB PDB.
+            </div>
+          </div>
+          <button disabled class="w-full py-2.5 bg-slate-100 dark:bg-neutral-900/60 border border-slate-200 dark:border-neutral-800/50 text-slate-400 dark:text-neutral-600 rounded-lg text-xs font-medium cursor-not-allowed">
+            Crystal PDB Unavailable
+          </button>
+        </div>
+      `;
+    }
+
+    // Right Card: AlphaFold DB
+    let afCardHtml = '';
+    if (afModel) {
+      const plddtScore = afModel.plddt || 0;
+      let plddtColor = 'text-amber-600 dark:text-amber-400';
+      let plddtBg = 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800/80';
+      if (plddtScore >= 90) {
+        plddtColor = 'text-emerald-600 dark:text-emerald-400';
+        plddtBg = 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800';
+      } else if (plddtScore >= 70) {
+        plddtColor = 'text-cyan-600 dark:text-cyan-400';
+        plddtBg = 'bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-950 dark:text-cyan-300 dark:border-cyan-800';
+      }
+
+      afCardHtml = `
+        <div class="rounded-xl border border-slate-200 dark:border-neutral-800 bg-slate-50/80 dark:bg-[#0e1017] p-3.5 flex flex-col justify-between h-full min-h-[210px] space-y-3">
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-200 dark:border-neutral-800/80">
+              <span class="text-xs font-bold text-slate-900 dark:text-neutral-200 flex items-center space-x-1.5 whitespace-nowrap">
+                <span class="w-2 h-2 rounded-full bg-cyan-500 dark:bg-cyan-400 shrink-0"></span>
+                <span>AlphaFold DB</span>
+              </span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded font-semibold whitespace-nowrap ${plddtBg} border">AI Predicted</span>
+            </div>
+
+            <!-- Metadata Key-Value Stack (No wrapping, tabular alignment) -->
+            <div class="space-y-1.5 py-1 text-xs font-mono">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500 dark:text-neutral-400 text-[11px]">Model ID</span>
+                <span class="text-cyan-600 dark:text-cyan-400 font-bold whitespace-nowrap">${this.escapeHtml(afModel.pdb_id)}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500 dark:text-neutral-400 text-[11px]">Sequence Length</span>
+                <span class="text-slate-800 dark:text-white font-medium whitespace-nowrap">${afModel.sequence_length || 0} aa <span class="text-slate-400 dark:text-neutral-500 text-[10px]">(Full)</span></span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500 dark:text-neutral-400 text-[11px]">pLDDT Score</span>
+                <span class="font-bold whitespace-nowrap ${plddtColor}">${plddtScore}/100</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500 dark:text-neutral-400 text-[11px]">Confident Coverage</span>
+                <span class="text-slate-700 dark:text-neutral-300 font-medium whitespace-nowrap">${afModel.fraction_confident || 0}% Confident</span>
+              </div>
+            </div>
+
+            <p class="text-[11px] text-slate-600 dark:text-neutral-400 leading-snug">
+              Best for: <strong class="text-slate-800 dark:text-neutral-200 font-medium">Full-length receptors</strong> or targets missing experimental crystal coordinates.
+            </p>
+          </div>
+
+          <button id="btn-picker-load-af" class="w-full py-2.5 px-3 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center space-x-1.5 bg-cyan-600 hover:bg-cyan-700 text-white dark:bg-[#121926] dark:hover:bg-[#1a2336] dark:text-cyan-300 border border-transparent dark:border-cyan-800/80 shadow-sm">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span class="whitespace-nowrap">Load AlphaFold Model (${afModel.pdb_id})</span>
+          </button>
+        </div>
+      `;
+    } else {
+      afCardHtml = `
+        <div class="rounded-xl border border-slate-200 dark:border-neutral-800 bg-slate-50/80 dark:bg-[#0e1017] p-3.5 flex flex-col justify-between h-full min-h-[210px] space-y-3">
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-200 dark:border-neutral-800/80">
+              <span class="text-xs font-bold text-slate-500 dark:text-neutral-400 flex items-center space-x-1.5 whitespace-nowrap">
+                <span class="w-2 h-2 rounded-full bg-slate-400 dark:bg-neutral-600 shrink-0"></span>
+                <span>AlphaFold DB</span>
+              </span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded font-medium whitespace-nowrap bg-slate-100 text-slate-500 border border-slate-200 dark:bg-neutral-900 dark:text-neutral-500 dark:border-neutral-800">Not Indexed</span>
+            </div>
+            <div class="py-4 text-xs text-slate-500 dark:text-neutral-400 leading-relaxed">
+              No AlphaFold DB structure indexed for this accession. Experimental crystal structures in RCSB PDB are ready for docking.
+            </div>
+          </div>
+          <button disabled class="w-full py-2.5 bg-slate-100 dark:bg-neutral-900/60 border border-slate-200 dark:border-neutral-800/50 text-slate-400 dark:text-neutral-600 rounded-lg text-xs font-medium cursor-not-allowed">
+            AlphaFold Unavailable
+          </button>
+        </div>
+      `;
+    }
+
+    picker.innerHTML = `
+      <div class="p-4 rounded-xl border border-slate-200 dark:border-neutral-800 bg-white dark:bg-[#0a0c10] space-y-3.5 shadow-md dark:shadow-xl">
+        
+        <!-- Header -->
+        <div class="flex items-start justify-between gap-3 border-b border-slate-200 dark:border-neutral-800/80 pb-2.5">
+          <div class="min-w-0 space-y-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-bold text-slate-900 dark:text-white tracking-tight">${this.escapeHtml(targetTitle)}</span>
+              ${geneLabel}
+              ${orgLabel}
+              ${uniprotLabel}
+            </div>
+            <p class="text-[11px] text-slate-500 dark:text-neutral-400">Select structural model for 3D docking:</p>
+          </div>
+          <button id="btn-close-target-picker" class="text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:text-neutral-500 dark:hover:text-white dark:hover:bg-neutral-800 p-1.5 rounded-lg transition cursor-pointer" title="Dismiss">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Recommendation Banner -->
+        ${recBannerHtml}
+
+        <!-- Dual Selection Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch">
+          ${rcsbCardHtml}
+          ${afCardHtml}
+        </div>
+
+      </div>
+    `;
+
+    picker.classList.remove("hidden");
+
+    // Close Button
+    document.getElementById("btn-close-target-picker")?.addEventListener("click", () => {
+      picker.classList.add("hidden");
+    });
+
+    // Handle RCSB Structure Dropdown Selection
+    const selectPdb = document.getElementById("picker-select-rcsb-pdb");
+    if (selectPdb) {
+      selectPdb.addEventListener("change", (e) => {
+        const idx = parseInt(e.target.value, 10);
+        const entry = rcsbList[idx];
+        if (entry) {
+          const idEl = document.getElementById("picker-rcsb-id");
+          if (idEl) idEl.textContent = entry.pdb_id;
+          const resEl = document.getElementById("picker-rcsb-res");
+          if (resEl) resEl.textContent = entry.resolution ? entry.resolution + ' Å' : 'X-Ray / EM';
+          const methodEl = document.getElementById("picker-rcsb-method");
+          if (methodEl) {
+            methodEl.textContent = entry.method || 'X-RAY DIFFRACTION';
+            methodEl.title = entry.method || 'X-RAY DIFFRACTION';
+          }
+          const ligEl = document.getElementById("picker-rcsb-ligand");
+          if (ligEl) {
+            ligEl.textContent = entry.has_ligand ? (entry.ligand_names ? entry.ligand_names.join(', ') : 'Present') : 'Apo (Unbound)';
+            ligEl.className = `text-[11px] font-semibold whitespace-nowrap ${entry.has_ligand ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-neutral-500'}`;
+          }
+          const btnLabel = document.getElementById("picker-load-rcsb-label");
+          if (btnLabel) btnLabel.textContent = `Load Crystal PDB (${entry.pdb_id})`;
+        }
+      });
+    }
+
+    // Handle Load RCSB Button
+    document.getElementById("btn-picker-load-rcsb")?.addEventListener("click", async () => {
+      let chosenPdb = rcsbList[0];
+      if (selectPdb) {
+        const idx = parseInt(selectPdb.value, 10);
+        if (rcsbList[idx]) chosenPdb = rcsbList[idx];
+      }
+      if (chosenPdb) {
+        await this.loadSelectedReceptor(chosenPdb.pdb_id, "rcsb", chosenPdb);
+      }
+    });
+
+    // Handle Load AlphaFold Button
+    document.getElementById("btn-picker-load-af")?.addEventListener("click", async () => {
+      if (afModel) {
+        await this.loadSelectedReceptor(afModel.pdb_id, "alphafold", afModel);
+      }
+    });
+  }
+
+  async loadSelectedReceptor(targetId, source, metadata) {
+    const isAf = source === "alphafold";
+    const label = isAf ? `AlphaFold model ${targetId}` : `RCSB Crystal PDB ${targetId}`;
+    this.showToast(`Loading & biophysically preparing ${label}...`, "info");
+
+    const recCard = document.getElementById("card-receptor-info");
+    if (recCard) {
+      recCard.innerHTML = `
+        <div class="p-6 text-center ${isAf ? 'text-cyan-400' : 'text-emerald-400'} font-medium animate-pulse flex flex-col items-center justify-center space-y-2">
+          <svg class="animate-spin w-6 h-6 ${isAf ? 'text-cyan-400' : 'text-emerald-400'}" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          <span class="text-xs">Preparing biophysical coordinates, adding polar H+, computing AMBER FF14SB partial charges for ${this.escapeHtml(targetId)}...</span>
+        </div>
+      `;
+    }
+
+    try {
+      const recPrep = await BindoraAPI.prepareReceptor("", targetId, null, source);
+      this.state.receptor = {
+        ...(metadata || {}),
+        ...recPrep,
+        pdb_id: targetId,
+        source: isAf ? "AlphaFold DB" : "RCSB PDB",
+        is_alphafold: isAf,
+        title: metadata?.title || recPrep.title || targetId
+      };
+
+      this.checkPharmacophoreEligibility();
+      this.state.ensembleStructures = null;
       this.updateStudioCards();
-      this.showToast(`RCSB query failed: ${e.message}`, "error");
+      this.updatePathwayInfo();
+      this.updateDossierView();
+
+      if (this.viewer && recPrep.cleaned_pdb) {
+        this.viewer.loadReceptor(recPrep.cleaned_pdb);
+        const emptyState = document.getElementById("viewer-empty-state");
+        if (emptyState) emptyState.classList.add("hidden");
+      }
+
+      // Hide search picker after successful load
+      const picker = document.getElementById("receptor-search-picker");
+      if (picker) picker.classList.add("hidden");
+
+      this.showToast(`Successfully loaded ${isAf ? 'AlphaFold model' : 'RCSB crystal'} ${targetId}!`, "success");
+    } catch (e) {
+      console.error("Receptor load error:", e);
+      this.updateStudioCards();
+      this.showToast(`Failed to load ${targetId}: ${e.message}`, "error");
     }
   }
 
@@ -2224,49 +2568,85 @@ class BindoraApp {
           `;
         } else if (detectedPockets.length > 0) {
           pocketHtml = `
-            <div class="text-xs text-slate-400 pt-2 border-t border-slate-700/60 space-y-1.5">
+            <div class="text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-200 dark:border-slate-700/60 space-y-1.5">
               <div class="flex items-center justify-between">
-                <span class="text-amber-300 font-semibold flex items-center space-x-1">
-                  <svg class="w-3.5 h-3.5 text-amber-400 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span class="text-amber-600 dark:text-amber-300 font-semibold flex items-center space-x-1">
+                  <svg class="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                   <span>Blind Pocket Selection</span>
                 </span>
-                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/60">${detectedPockets.length} candidate pockets (fpocket)</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded font-medium bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800/60">${detectedPockets.length} candidate pockets (fpocket)</span>
               </div>
-              <p class="text-[11px] text-slate-400 leading-tight">No native ligand found — select candidate pocket ranked by druggability:</p>
-              <select id="select-detected-pocket" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-xs text-slate-200">
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">No native ligand found — select candidate pocket ranked by druggability:</p>
+              <select id="select-detected-pocket" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded p-1.5 text-xs text-slate-800 dark:text-slate-200">
                 ${detectedPockets.map((p, idx) => `
                   <option value="${idx}" ${idx === (r.selected_pocket_idx || 0) ? 'selected' : ''}>
                     Pocket #${p.rank || idx + 1}: Druggability ${(p.druggability_score || 0).toFixed(2)} (Vol: ${Math.round(p.volume_a3 || 0)} Å³)
                   </option>
                 `).join('')}
               </select>
-              <div class="font-mono text-[11px] text-slate-400">
+              <div class="font-mono text-[11px] text-slate-500 dark:text-slate-400">
                 Center: (${pocket.center?.x}, ${pocket.center?.y}, ${pocket.center?.z}) | Size: (${pocket.size?.x}, ${pocket.size?.y}, ${pocket.size?.z})
               </div>
             </div>
           `;
         } else {
           pocketHtml = `
-            <div class="text-xs text-slate-400 pt-2 border-t border-slate-700/60 space-y-1">
-              <div>Binding Pocket: <span class="text-emerald-300 font-medium">${pocket.description || "Auto-detected"}</span></div>
-              <div class="font-mono text-[11px] text-slate-400">
+            <div class="text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-200 dark:border-slate-700/60 space-y-1">
+              <div>Binding Pocket: <span class="text-emerald-600 dark:text-emerald-300 font-medium">${pocket.description || "Auto-detected"}</span></div>
+              <div class="font-mono text-[11px] text-slate-500 dark:text-slate-400">
                 Center: (${pocket.center?.x}, ${pocket.center?.y}, ${pocket.center?.z}) | Size: (${pocket.size?.x}, ${pocket.size?.y}, ${pocket.size?.z})
               </div>
             </div>
           `;
         }
 
+        const isAf = r.is_alphafold || r.source === "AlphaFold DB";
+        const sourceBadge = isAf ? `
+          <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-100 text-cyan-800 border border-cyan-300 dark:bg-cyan-950 dark:text-cyan-300 dark:border-cyan-800 flex items-center space-x-1" title="AlphaFold DB AI Predicted Model">
+            <span class="w-1.5 h-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 shrink-0"></span>
+            <span>AlphaFold DB (pLDDT: ${r.plddt || 'AI'})</span>
+          </span>
+        ` : (r.source === "RCSB PDB" || (r.pdb_id && r.pdb_id.length === 4) ? `
+          <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-800 border border-slate-300 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700 flex items-center space-x-1" title="Experimental X-Ray / Cryo-EM Crystal Structure">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shrink-0"></span>
+            <span>RCSB Crystal (${r.resolution ? r.resolution + ' Å' : 'X-Ray'})</span>
+          </span>
+        ` : `
+          <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-800 border border-slate-300 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700">Custom / User File</span>
+        `);
+
         recCard.innerHTML = `
           <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-base font-bold text-emerald-400">${r.pdb_id || "Custom Receptor"}</span>
-              <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono">${r.atom_count || 0} atoms</span>
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center space-x-2">
+                <span class="text-base font-bold ${isAf ? 'text-cyan-600 dark:text-cyan-400' : 'text-emerald-600 dark:text-emerald-400'}">${this.escapeHtml(r.pdb_id || "Custom Receptor")}</span>
+                ${sourceBadge}
+              </div>
+              <div class="flex items-center space-x-1.5">
+                ${this.state.lastTargetSearch ? `
+                  <button id="btn-toggle-model-picker" class="text-[10.5px] px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-300 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-300 dark:hover:text-white dark:border-neutral-700 transition flex items-center space-x-1 cursor-pointer" title="Compare or switch between RCSB and AlphaFold models">
+                    <svg class="w-3 h-3 text-slate-500 dark:text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                    <span>Switch Model</span>
+                  </button>
+                ` : ''}
+                <span class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-300 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700 font-mono">${r.atom_count || 0} atoms</span>
+              </div>
             </div>
-            <p class="text-xs text-slate-300 font-medium">${r.title || "Macromolecular target"}</p>
+            <p class="text-xs text-slate-800 dark:text-neutral-300 font-medium">${this.escapeHtml(r.title || "Macromolecular target")}</p>
             ${pocketHtml}
             ${validationHtml}
           </div>
         `;
+
+        document.getElementById("btn-toggle-model-picker")?.addEventListener("click", () => {
+          const picker = document.getElementById("receptor-search-picker");
+          if (picker) {
+            picker.classList.toggle("hidden");
+            if (!picker.classList.contains("hidden")) {
+              picker.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
+          }
+        });
 
         const pocketSelect = document.getElementById("select-detected-pocket");
         if (pocketSelect) {

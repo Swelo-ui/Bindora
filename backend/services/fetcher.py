@@ -12,6 +12,8 @@ from backend.config import (
     RCSB_SEARCH_URL,
     CHEMBL_BASE_URL,
     UNIPROT_BASE_URL,
+    ALPHAFOLD_BASE_URL,
+    ALPHAFOLD_FILE_URL,
 )
 
 HEADERS = {
@@ -618,6 +620,18 @@ class StructureFetcher:
             return None
 
         metadata["pdb_content"] = pdb_text
+        
+        # Extract detected bound ligands from HETATM records
+        lig_set = set()
+        solvent_ions = {"HOH", "WAT", "DOD", "TIP", "NA", "CL", "MG", "ZN", "CA", "MN", "K", "FE", "SO4", "PO4", "ACT", "EDO", "DMS", "GOL", "PEG", "MPD", "BME", "TRS", "FMT"}
+        for line in pdb_text.splitlines():
+            if line.startswith("HETATM"):
+                rname = line[17:20].strip()
+                if rname and rname not in solvent_ions and len(rname) >= 2:
+                    lig_set.add(rname)
+        metadata["ligand_names"] = sorted(list(lig_set))
+        metadata["has_ligand"] = bool(lig_set)
+
         if "uniprot" not in metadata or not metadata["uniprot"]:
             metadata["uniprot"] = StructureFetcher.fetch_uniprot_by_pdb_id(pdb_id)
         return metadata
@@ -663,98 +677,79 @@ class StructureFetcher:
         return results
 
     @staticmethod
-    def fetch_uniprot_by_pdb_id(pdb_id: str) -> Optional[Dict[str, Any]]:
-        """Fetch protein functional and pathway annotations from UniProt using PDB cross-reference."""
-        pdb_id = pdb_id.strip().upper()
-        if len(pdb_id) != 4:
-            return None
-        cache_file = CACHE_DIR / f"uniprot_pdb_{pdb_id}.json"
+    def search_rcsb_by_uniprot(uniprot_acc: str, max_results: int = 4) -> List[Dict[str, Any]]:
+        """Search RCSB PDB for experimental structures matching a specific UniProt accession."""
+        uniprot_acc = uniprot_acc.strip().upper()
+        if not uniprot_acc:
+            return []
+
+        cache_file = CACHE_DIR / f"rcsb_uniprot_{uniprot_acc}.json"
         if cache_file.exists():
             try:
                 with open(cache_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    cached = json.load(f)
+                    if cached and isinstance(cached, list):
+                        return cached[:max_results]
             except Exception:
                 pass
 
-        url = f"{UNIPROT_BASE_URL}/search?query=xref:pdb-{pdb_id}&format=json&size=1"
-        data = _get_json(url)
-        if not data or "results" not in data or not data["results"]:
-            url_lower = f"{UNIPROT_BASE_URL}/search?query=xref:pdb-{pdb_id.lower()}&format=json&size=1"
-            data = _get_json(url_lower)
-
-        if not data or "results" not in data or not data["results"]:
-            return None
-
-        entry = data["results"][0]
-        accession = entry.get("primaryAccession", "")
-        gene_name = ""
-        try:
-            gene_name = entry["genes"][0]["geneName"]["value"]
-        except Exception:
-            pass
-
-        rec_name = ""
-        try:
-            rec_name = entry["proteinDescription"]["recommendedName"]["fullName"]["value"]
-        except Exception:
-            rec_name = gene_name or pdb_id
-
-        organism = entry.get("organism", {}).get("scientificName", "")
-        
-        # Extract comments
-        function_desc = ""
-        catalytic_activity = ""
-        pathway_desc = ""
-        tissue_spec = ""
-        subcellular_loc = []
-        for comment in entry.get("comments", []):
-            ctype = comment.get("commentType")
-            if ctype == "FUNCTION" and not function_desc:
-                function_desc = comment.get("texts", [{}])[0].get("value", "")
-            elif ctype == "CATALYTIC ACTIVITY" and not catalytic_activity:
-                catalytic_activity = comment.get("reaction", {}).get("name", "")
-            elif ctype == "PATHWAY" and not pathway_desc:
-                pathway_desc = comment.get("texts", [{}])[0].get("value", "")
-            elif ctype == "TISSUE SPECIFICITY" and not tissue_spec:
-                tissue_spec = comment.get("texts", [{}])[0].get("value", "")
-            elif ctype == "SUBCELLULAR LOCATION":
-                for loc in comment.get("subcellularLocations", []):
-                    subcellular_loc.append(loc.get("location", {}).get("value", ""))
-
-        result = {
-            "accession": accession,
-            "protein_name": rec_name,
-            "gene_name": gene_name,
-            "organism": organism,
-            "function": function_desc,
-            "catalytic_activity": catalytic_activity,
-            "pathway": pathway_desc,
-            "tissue_specificity": tissue_spec,
-            "subcellular_location": subcellular_loc,
-            "uniprot_url": f"https://www.uniprot.org/uniprotkb/{accession}"
+        query_payload = {
+            "query": {
+                "type": "terminal",
+                "service": "text",
+                "parameters": {
+                    "attribute": "rcsb_polymer_entity_container_identifiers.reference_sequence_identifiers.database_accession",
+                    "operator": "exact_match",
+                    "value": uniprot_acc
+                }
+            },
+            "return_type": "entry",
+            "request_options": {
+                "paginate": {
+                    "start": 0,
+                    "rows": max_results * 2
+                },
+                "sort": [
+                    {
+                        "sort_by": "rcsb_entry_info.resolution_combined",
+                        "direction": "asc"
+                    }
+                ]
+            }
         }
         try:
-            with open(cache_file, "w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2)
+            req = urllib.request.Request(
+                RCSB_SEARCH_URL,
+                data=json.dumps(query_payload).encode("utf-8"),
+                headers={"Content-Type": "application/json", "User-Agent": "Bindora/1.0"}
+            )
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                search_data = json.loads(resp.read().decode("utf-8"))
+                result_ids = [item["identifier"] for item in search_data.get("result_set", [])]
         except Exception:
-            pass
-        return result
+            result_ids = []
+
+        results = []
+        for pdb_id in result_ids:
+            meta = StructureFetcher.fetch_rcsb_pdb(pdb_id)
+            if meta:
+                summary = {k: v for k, v in meta.items() if k != "pdb_content"}
+                summary["has_ligand"] = bool(meta.get("ligand_names"))
+                results.append(summary)
+            if len(results) >= max_results:
+                break
+
+        if results:
+            try:
+                with open(cache_file, "w", encoding="utf-8") as f:
+                    json.dump(results, f, indent=2)
+            except Exception:
+                pass
+        return results
 
     @staticmethod
-    def search_uniprot(query: str) -> Optional[Dict[str, Any]]:
-        """Fetch protein functional and pathway annotations from UniProt."""
-        q_clean = query.strip()
-        if len(q_clean) == 4 and q_clean.isalnum():
-            pdb_res = StructureFetcher.fetch_uniprot_by_pdb_id(q_clean)
-            if pdb_res:
-                return pdb_res
-
-        url = f"{UNIPROT_BASE_URL}/search?query={urllib.parse.quote(query)}&format=json&size=1"
-        data = _get_json(url)
-        if not data or "results" not in data or not data["results"]:
-            return None
-
-        entry = data["results"][0]
+    def _parse_uniprot_entry(entry: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize raw UniProtKB JSON entry into Bindora standard annotation dict."""
         accession = entry.get("primaryAccession", "")
         gene_name = ""
         try:
@@ -766,11 +761,10 @@ class StructureFetcher:
         try:
             rec_name = entry["proteinDescription"]["recommendedName"]["fullName"]["value"]
         except Exception:
-            rec_name = gene_name or query
+            rec_name = gene_name or accession
 
         organism = entry.get("organism", {}).get("scientificName", "")
-        
-        # Extract comments
+
         function_desc = ""
         catalytic_activity = ""
         pathway_desc = ""
@@ -801,4 +795,286 @@ class StructureFetcher:
             "tissue_specificity": tissue_spec,
             "subcellular_location": subcellular_loc,
             "uniprot_url": f"https://www.uniprot.org/uniprotkb/{accession}"
+        }
+
+    @staticmethod
+    def fetch_uniprot_by_pdb_id(pdb_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch protein functional and pathway annotations from UniProt using PDB cross-reference."""
+        pdb_id = pdb_id.strip().upper()
+        if len(pdb_id) != 4:
+            return None
+        cache_file = CACHE_DIR / f"uniprot_pdb_{pdb_id}.json"
+        if cache_file.exists():
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+
+        url = f"{UNIPROT_BASE_URL}/search?query=xref:pdb-{pdb_id}&format=json&size=1"
+        data = _get_json(url)
+        if not data or "results" not in data or not data["results"]:
+            url_lower = f"{UNIPROT_BASE_URL}/search?query=xref:pdb-{pdb_id.lower()}&format=json&size=1"
+            data = _get_json(url_lower)
+
+        if not data or "results" not in data or not data["results"]:
+            return None
+
+        result = StructureFetcher._parse_uniprot_entry(data["results"][0])
+        try:
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2)
+        except Exception:
+            pass
+        return result
+
+    @staticmethod
+    def search_uniprot(query: str) -> Optional[Dict[str, Any]]:
+        """Fetch protein functional and pathway annotations from UniProt, prioritizing reviewed Swiss-Prot records."""
+        q_clean = query.strip()
+        if not q_clean:
+            return None
+
+        # Direct 4-character PDB code
+        if len(q_clean) == 4 and q_clean.isalnum():
+            pdb_res = StructureFetcher.fetch_uniprot_by_pdb_id(q_clean)
+            if pdb_res:
+                return pdb_res
+
+        # Direct UniProt Accession (e.g. P00533, P24941)
+        if (len(q_clean) in (6, 10)) and (q_clean[0].upper() in "OPQ" or q_clean.isalnum()):
+            direct_data = _get_json(f"{UNIPROT_BASE_URL}/{q_clean.upper()}.json", timeout=6)
+            if direct_data and "primaryAccession" in direct_data:
+                return StructureFetcher._parse_uniprot_entry(direct_data)
+
+        # Keyword Search: prioritize reviewed (Swiss-Prot) and organism if specified
+        is_human = any(w in q_clean.lower() for w in ("human", "homo", "sapiens", "hsa"))
+        stopwords = {"human", "homo", "sapiens", "protein", "receptor", "kinase", "inhibitor", "structure", "complex"}
+        tokens = [w for w in q_clean.split() if w.lower() not in stopwords]
+        core_query = " ".join(tokens) if tokens else q_clean
+
+        candidate_queries = []
+        if is_human:
+            candidate_queries.append(f"(gene:{urllib.parse.quote(core_query)} OR {urllib.parse.quote(core_query)}) AND reviewed:true AND organism_id:9606")
+            candidate_queries.append(f"({urllib.parse.quote(q_clean)}) AND reviewed:true AND organism_id:9606")
+        candidate_queries.append(f"(gene:{urllib.parse.quote(core_query)} OR {urllib.parse.quote(core_query)}) AND reviewed:true")
+        candidate_queries.append(f"({urllib.parse.quote(q_clean)}) AND reviewed:true")
+        candidate_queries.append(f"{urllib.parse.quote(q_clean)}")
+
+        data = None
+        for q_str in candidate_queries:
+            url = f"{UNIPROT_BASE_URL}/search?query={q_str}&format=json&size=5"
+            data = _get_json(url, timeout=7)
+            if data and "results" in data and data["results"]:
+                break
+
+        if not data or "results" not in data or not data["results"]:
+            return None
+
+        results = data["results"]
+        best_entry = results[0]
+        # Prefer exact gene or organism match if multiple
+        for item in results:
+            genes = [g.get("geneName", {}).get("value", "").lower() for g in item.get("genes", [])]
+            if core_query.lower() in genes:
+                best_entry = item
+                break
+
+        return StructureFetcher._parse_uniprot_entry(best_entry)
+
+    @staticmethod
+    def fetch_alphafold_structure(uniprot_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch AlphaFold predicted structure (.pdb) and confidence metrics from EBI AlphaFold Database.
+        """
+        uniprot_id = uniprot_id.strip().upper()
+        if not uniprot_id:
+            return None
+
+        clean_acc = uniprot_id.replace("AF-", "").split("-")[0]
+        cache_pdb = CACHE_DIR / f"AF-{clean_acc}_predicted.pdb"
+        cache_meta = CACHE_DIR / f"AF-{clean_acc}_meta.json"
+
+        if cache_meta.exists() and cache_pdb.exists():
+            try:
+                with open(cache_meta, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+                with open(cache_pdb, "r", encoding="utf-8") as f:
+                    pdb_text = f.read()
+                if pdb_text and len(pdb_text) > 100:
+                    meta["pdb_content"] = pdb_text
+                    return meta
+            except Exception:
+                pass
+
+        api_url = f"{ALPHAFOLD_BASE_URL}/{clean_acc}"
+        data = _get_json(api_url, timeout=12)
+        if not data or not isinstance(data, list) or len(data) == 0:
+            return None
+
+        entry = data[0]
+        pdb_url = entry.get("pdbUrl")
+        if not pdb_url:
+            return None
+
+        pdb_content = _get_text(pdb_url, timeout=20)
+        if not pdb_content or len(pdb_content) < 100:
+            return None
+
+        try:
+            cache_pdb.write_text(pdb_content, encoding="utf-8")
+        except Exception:
+            pass
+
+        meta = {
+            "pdb_id": f"AF-{clean_acc}",
+            "uniprot_id": clean_acc,
+            "title": f"AlphaFold Predicted: {entry.get('uniprotDescription', clean_acc)} ({entry.get('organismScientificName', 'Homo sapiens')})",
+            "gene": entry.get("gene", ""),
+            "organism": entry.get("organismScientificName", "Homo sapiens"),
+            "sequence_length": entry.get("sequenceEnd", 0) - entry.get("sequenceStart", 1) + 1,
+            "plddt": round(float(entry.get("globalMetricValue", 0)), 1),
+            "fraction_confident": round(float(entry.get("fractionPlddtConfident", 0)) * 100, 1),
+            "fraction_very_high": round(float(entry.get("fractionPlddtVeryHigh", 0)) * 100, 1),
+            "source": "AlphaFold DB",
+            "is_alphafold": True,
+            "pdb_url": pdb_url,
+            "pae_image_url": entry.get("paeImageUrl", ""),
+        }
+
+        try:
+            with open(cache_meta, "w", encoding="utf-8") as f:
+                json.dump(meta, f, indent=2)
+        except Exception:
+            pass
+
+        meta["pdb_content"] = pdb_content
+        return meta
+
+    @staticmethod
+    def search_unified_target(query: str, max_rcsb_results: int = 4) -> Dict[str, Any]:
+        """
+        Unified target resolver supporting:
+        1. 4-letter PDB ID (e.g. 1M17) -> Returns crystal PDB + linked AlphaFold model
+        2. UniProt Accession (e.g. P00533) -> Returns AlphaFold model + top crystal PDBs
+        3. Protein/gene name (e.g. 'Human EGFR', 'CDK2') -> Fetches both with intelligent recommendation
+        """
+        query_clean = query.strip()
+        if not query_clean:
+            return {"error": "Empty query"}
+
+        target_name = ""
+        gene_name = ""
+        organism = "Homo sapiens"
+        uniprot_acc = ""
+        rcsb_entries: List[Dict[str, Any]] = []
+        af_model: Optional[Dict[str, Any]] = None
+
+        # Case 1: 4-character PDB code
+        if len(query_clean) == 4 and query_clean.isalnum():
+            pdb_id = query_clean.upper()
+            direct_pdb = StructureFetcher.fetch_rcsb_pdb(pdb_id)
+            if direct_pdb:
+                direct_summary = {k: v for k, v in direct_pdb.items() if k != "pdb_content"}
+                direct_summary["has_ligand"] = bool(direct_pdb.get("ligand_names"))
+                rcsb_entries.append(direct_summary)
+                target_name = direct_pdb.get("title", pdb_id)
+
+                uniprot_data = StructureFetcher.fetch_uniprot_by_pdb_id(pdb_id)
+                if uniprot_data:
+                    uniprot_acc = uniprot_data.get("accession", "")
+                    gene_name = uniprot_data.get("gene_name", "")
+                    organism = uniprot_data.get("organism", organism)
+
+        # Case 2: UniProt Accession ID (e.g., P00533, P24941, Q9ULV8)
+        elif len(query_clean) in (6, 10) and (query_clean[0].upper() in "OPQ" or query_clean.isalnum()):
+            uniprot_info = StructureFetcher.search_uniprot(query_clean)
+            if uniprot_info and uniprot_info.get("accession"):
+                uniprot_acc = uniprot_info.get("accession")
+                target_name = uniprot_info.get("protein_name", "")
+                gene_name = uniprot_info.get("gene_name", "")
+                organism = uniprot_info.get("organism", organism)
+
+        # Case 3: Keyword / Protein name search
+        if not uniprot_acc:
+            uniprot_info = StructureFetcher.search_uniprot(query_clean)
+            if uniprot_info and uniprot_info.get("accession"):
+                uniprot_acc = uniprot_info.get("accession")
+                target_name = uniprot_info.get("protein_name", query_clean)
+                gene_name = uniprot_info.get("gene_name", "")
+                organism = uniprot_info.get("organism", organism)
+
+        # If we have a UniProt accession, fetch AlphaFold model
+        if uniprot_acc:
+            af_raw = StructureFetcher.fetch_alphafold_structure(uniprot_acc)
+            if af_raw:
+                af_model = {k: v for k, v in af_raw.items() if k != "pdb_content"}
+
+        # If RCSB entries not already populated, search RCSB by UniProt accession first, then keywords
+        if not rcsb_entries:
+            if uniprot_acc:
+                by_up = StructureFetcher.search_rcsb_by_uniprot(uniprot_acc, max_results=max_rcsb_results)
+                if by_up:
+                    rcsb_entries.extend(by_up)
+
+            if not rcsb_entries:
+                search_terms = [query_clean]
+                if gene_name and gene_name.lower() not in query_clean.lower():
+                    search_terms.insert(0, f"{gene_name} {organism}")
+
+                for term in search_terms:
+                    found_rcsb = StructureFetcher.search_rcsb_keywords(term, max_results=max_rcsb_results)
+                    if found_rcsb:
+                        for item in found_rcsb:
+                            item["has_ligand"] = bool(item.get("ligand_names"))
+                            rcsb_entries.append(item)
+                        break
+
+        best_rcsb = None
+        for entry in rcsb_entries:
+            res = entry.get("resolution")
+            if res and float(res) <= 2.8 and entry.get("has_ligand"):
+                best_rcsb = entry
+                break
+        if not best_rcsb and rcsb_entries:
+            best_rcsb = rcsb_entries[0]
+
+        if best_rcsb and best_rcsb.get("has_ligand") and best_rcsb.get("resolution") and float(best_rcsb.get("resolution")) <= 2.8:
+            recommendation = {
+                "source": "rcsb",
+                "recommended_id": best_rcsb.get("pdb_id"),
+                "badge": "Recommended for Pocket Docking",
+                "reason": f"High-resolution ({best_rcsb.get('resolution')} Å) co-crystal with bound active pocket."
+            }
+        elif af_model and af_model.get("plddt", 0) >= 70:
+            recommendation = {
+                "source": "alphafold",
+                "recommended_id": af_model.get("pdb_id"),
+                "badge": "Recommended (Full Length)",
+                "reason": f"Complete full-length predicted chain ({af_model.get('sequence_length')} aa, pLDDT: {af_model.get('plddt')}) with zero missing loops."
+            }
+        elif best_rcsb:
+            recommendation = {
+                "source": "rcsb",
+                "recommended_id": best_rcsb.get("pdb_id"),
+                "badge": "Experimental Structure",
+                "reason": f"Experimental crystal structure ({best_rcsb.get('resolution') or 'X-ray'} Å)."
+            }
+        else:
+            recommendation = {
+                "source": "none",
+                "recommended_id": "",
+                "badge": "",
+                "reason": "No high-confidence structure found."
+            }
+
+        return {
+            "query": query_clean,
+            "target_name": target_name or query_clean,
+            "gene_name": gene_name,
+            "organism": organism,
+            "uniprot_id": uniprot_acc,
+            "alphafold": af_model,
+            "rcsb_entries": rcsb_entries[:max_rcsb_results],
+            "recommendation": recommendation
         }
