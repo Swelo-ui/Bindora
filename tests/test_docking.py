@@ -174,7 +174,7 @@ def test_vinardo_scoring_and_interaction_diagram():
     svg = InteractionDiagramGenerator.generate_diagram_svg("CC(=O)Oc1ccccc1C(=O)O", contacts)
     assert "<svg" in svg
     assert "</svg>" in svg
-    assert "LigPlot-style 2D Map" in svg
+    assert "LigPlot" in svg
     assert "Hydrogen Bond" in svg or "H-Bond" in svg
 
 

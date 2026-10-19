@@ -52,15 +52,15 @@ Unlike naive docking wrappers, Bindora enforces strict chemical and structural p
 | Scientific Capability | Bindora v1.0 (Baseline) | Bindora v2.0 (Hardened) | Bindora v2.1 (Architect Edition) | Bindora v2.2 (Research-Grade Release) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Structural Target Ingestion** | RCSB PDB only | RCSB PDB + local files | RCSB PDB + mmCIF + CIF | **Dual-Source Engine:** RCSB Holo Crystals + DeepMind AlphaFold DB (200M+ models) with automated resolution picker. |
-| **Apo / AlphaFold Pocket Physics** | None (clash failure) | Naive box expansion | Cavity centroid detection | **fpocket Voronoi Tessellation:** Volume ($\text{Å}^3$), druggability scoring, and Meeko induced-fit flexible sidechains. |
+| **Apo / AlphaFold Pocket Physics** | None (clash failure) | Naive box expansion | Cavity centroid detection | **fpocket Voronoi Tessellation:** Volume (Å³), druggability scoring, and Meeko induced-fit flexible sidechains. |
 | **Stochastic Search Variance** | High variance | Single seed (42) | Multi-mode clustering | **Multi-Seed Replicates:** 3-seed / 5-seed independent Monte Carlo runs clustered into consensus trajectories. |
 | **P-gp Substrate Model** | None | Broccatelli heuristic | Didziapetris 2003 heuristic (Sens=39.6%, FN=29) | **Supervised ML Ensemble** (`ExtraTrees` + `GradientBoosting` on Morgan ECFP4 + 8 descriptors): **Sensitivity 83.33%** (FN reduced to 8; MCC=0.485). |
 | **Decoy Gating Physics** | None | Raw Vina score only | LipE / strain gating | **Pure Hydrocarbon Physics Gate:** Zero H-bond heteroatoms + zero polar contacts = **100% rejection of greasy decoys** (`FLAGGED_GREASY_DECOY`, 0% active drug FP). |
 | **Macrocycle Scaling** | Crash on >10 torsions | Basic ETKDGv3 | Distance-geometry sampling (CsA timed out at 720s) | **Adaptive Multi-Core CPU Scaling:** Ligands with >50 HA adapt exhaustiveness and conformers to CPU threads; **zero GPU needed**, no worker timeouts. |
-| **Solvation Refinement** | None | None | Unrestrained OpenMM GBn2 minimization | **Harmonic Backbone Restraints** ($k = 10.0\text{ kcal/mol/\AA}^2$) preserve pocket topology; mass-weighted backbone RMSD reporting. |
-| **Covalent Docking** | Distance check | Simple distance gate | Adduct builder (flat $\le 4.0\text{ \AA}$) | **Calibrated Trajectory Gating:** Nucleophile-specific reactive thresholds (Cys-SG $\le 3.1\text{ \AA}$, Ser-OG $\le 3.0\text{ \AA}$, Lys-NZ $\le 3.2\text{ \AA}$). |
+| **Solvation Refinement** | None | None | Unrestrained OpenMM GBn2 minimization | **Harmonic Backbone Restraints** ($k = 10.0 \text{ kcal}/(\text{mol}\cdot\text{Å}^2)$) preserve pocket topology; mass-weighted backbone RMSD reporting. |
+| **Covalent Docking** | Distance check | Simple distance gate | Adduct builder (flat $\le 4.0\text{ Å}$) | **Calibrated Trajectory Gating:** Nucleophile-specific reactive thresholds (Cys-SG $\le 3.1\text{ Å}$, Ser-OG $\le 3.0\text{ Å}$, Lys-NZ $\le 3.2\text{ Å}$). |
 | **ADME / BBB Transport** | Flat LogP/MW rules | Coupled BOILED-Egg | Coupled BOILED-Egg | **Decoupled 2-Tier Architecture:** Passive membrane permeation decoupled from active efflux; **+466 True Positive CNS drugs recovered** on B3DB. |
-| **Interaction Detection** | Naive cutoffs | Basic distance | Basic distance (dropped PDBQT `OA`/`NA`/`HD`) | **PDBQT Element Normalization:** AutoDock types mapped to IUPAC; calibrated directional H-bonds ($\ge 120^\circ$), salt bridges ($\le 4.0\text{ \AA}$). |
+| **Interaction Detection** | Naive cutoffs | Basic distance | Basic distance (dropped PDBQT `OA`/`NA`/`HD`) | **PDBQT Element Normalization:** AutoDock types mapped to IUPAC; calibrated directional H-bonds ($\ge 120^\circ$), salt bridges ($\le 4.0\text{ Å}$). |
 | **AI Narrative Layer** | None | Raw LLM output | Raw LLM output | **Disambiguated Mode Contract & Claim Validator:** Top pose mathematically isolated; automated scanner intercepts hallucinated RMSD claims. |
 | **Hardcoding & Defaults** | Hardcoded | Silent `seed = 42` | Silent `seed = 42` | **Zero Hardcoding:** Dynamic cryptographic seeds (`secrets.randbelow`), strict RDKit descriptor calculation, HTTP 400 on invalid SMILES. |
 | **Benchmark Provenance** | None | 5 self-selected kinases | CASF-2016 5-complex smoke | **Cryptographic Verification:** SHA-256 locked datasets (`FROZEN_HASHES.txt`, `manifest.json`); **44/44 automated pytests passing (100%)**. |
@@ -148,7 +148,7 @@ To obtain publication-grade, sub-angstrom reproducible docking on AlphaFold targ
 ### 5.1. Multi-Engine Consensus Scoring Matrix & MM-GBSA Rescoring
 * **AutoDock Vina $\Delta G$ & Vinardo Scoring:** High-speed sampling of binding poses with an expanded sampling window (`--energy_range 4.0` kcal/mol) to capture 3–5 diverse conformational modes for high-affinity complexes.
 * **OpenMM MM-GBSA (OBC2 / GBn2 Continuum Solvation):** Evaluates polar/non-polar desolvation free energies ($\Delta G_{\text{GB}}$). Greasy decoys that artificially score well in standard Vina receive a severe desolvation penalty, eliminating false positives in virtual screening.
-* **Harmonic Backbone Restraints ($k = 10.0\text{ kcal/mol/\AA}^2$):** OpenMM energy minimization applies harmonic restraints to protein alpha-carbons, preserving active-site topology while relaxing sidechain contacts.
+* **Harmonic Backbone Restraints ($k = 10.0 \text{ kcal}/(\text{mol}\cdot\text{Å}^2)$):** OpenMM energy minimization applies harmonic restraints to protein alpha-carbons, preserving active-site topology while relaxing sidechain contacts.
 
 ### 5.2. Intramolecular Ligand Strain Gating & Hydrogen Pre-Relaxation
 Standard empirical docking and naive hydrogen addition often introduce severe conformational artifacts. Bindora implements a physically grounded strain evaluation pipeline:
@@ -157,9 +157,9 @@ Standard empirical docking and naive hydrogen addition often introduce severe co
 * **Calibrated Decoy Gating ($> 8.0\text{ kcal/mol}$ + Unfavorable $\Delta G_{\text{GB}}$):** Prevents premature pruning of flexible active binders while filtering out distorted rings and torsional traps.
 
 ### 5.3. Virtual Covalent Adduct Topology Builder
-* **True Covalent Bond Synthesis:** Identifies electrophile-nucleophile pairs (e.g. acrylamide, haloacetamide, vinyl sulfone to CYS-SG at $1.82\text{ \AA}$, or SER-OG at $1.43\text{ \AA}$).
+* **True Covalent Bond Synthesis:** Identifies electrophile-nucleophile pairs (e.g. acrylamide, haloacetamide, vinyl sulfone to CYS-SG at $1.82\text{ Å}$, or SER-OG at $1.43\text{ Å}$).
 * **Leaving Group Elimination:** Automatically excises leaving halogens in $\alpha$-haloacetamides with stoichiometric fidelity.
-* **Calibrated Trajectory Gating:** Enforces strict nucleophile-specific reactive thresholds (Cys-SG $\le 3.1\text{ \AA}$, Ser-OG $\le 3.0\text{ \AA}$, Lys-NZ $\le 3.2\text{ \AA}$).
+* **Calibrated Trajectory Gating:** Enforces strict nucleophile-specific reactive thresholds (Cys-SG $\le 3.1\text{ Å}$, Ser-OG $\le 3.0\text{ Å}$, Lys-NZ $\le 3.2\text{ Å}$).
 
 ---
 
@@ -167,19 +167,15 @@ Standard empirical docking and naive hydrogen addition often introduce severe co
 
 The Bindora Dock Web Studio provides a high-performance 3D visualization and analysis workspace:
 
-<div align="center">
-<img src="frontend/assets/branding/brand-guide.png" alt="Bindora Design System & Visual Palette" width="720"/>
-</div>
-
 * **Hardware-Accelerated WebGL Engine:** Built on 3Dmol.js with smooth 60 FPS orbit, pan, zoom, and clipping planes.
 * **Multiple Protein Representations:** Cartoon ribbons, carbon-alpha trace, molecular surface (Gaussian / solvent-excluded), and binding pocket surface.
 * **Ligand Styling:** Stick, ball-and-stick, and space-filling Van der Waals spheres with CPK elemental coloring.
 * **Live 3D Interaction Visualizer:** Renders dashed interaction vectors for:
-  - **Hydrogen Bonds:** Distance $\le 3.2\text{ \AA}$, angle $\ge 120^\circ$.
-  - **$\pi$-$\pi$ Stacking:** Face-to-face and edge-to-face aromatic contacts ($\le 4.5\text{ \AA}$).
-  - **Salt Bridges:** Cation-anion pairs ($\le 4.0\text{ \AA}$).
-  - **Halogen Bonds:** Halogen-Lewis base interactions ($\le 3.5\text{ \AA}$).
-  - **Hydrophobic Contacts:** Lipophilic carbon-carbon proximity ($\le 3.8\text{ \AA}$).
+  - **Hydrogen Bonds:** Distance $\le 3.2\text{ Å}$, angle $\ge 120^\circ$.
+  - **$\pi$-$\pi$ Stacking:** Face-to-face and edge-to-face aromatic contacts ($\le 4.5\text{ Å}$).
+  - **Salt Bridges:** Cation-anion pairs ($\le 4.0\text{ Å}$).
+  - **Halogen Bonds:** Halogen-Lewis base interactions ($\le 3.5\text{ Å}$).
+  - **Hydrophobic Contacts:** Lipophilic carbon-carbon proximity ($\le 3.8\text{ Å}$).
 * **Precision Atom Measurement Tool:** Interactive 2-click distance measurement tool with live Angstrom ($\text{Å}$) callouts.
 * **Interactive 2D Ligand-Protein Interaction Map:** Generates publication-ready vector SVG diagrams depicting catalytic interactions with residue names and numbers.
 
@@ -188,7 +184,7 @@ The Bindora Dock Web Studio provides a high-performance 3D visualization and ana
 ## 7. RDKit ADMET Profiler & ChEMBL Wet-Lab Validation
 
 ### 7.1. Chemoinformatics & Drug-Likeness Engine
-* **Oral Bioavailability Rules:** Evaluates Lipinski Rule of 5 (MW $\le 500$, LogP $\le 5$, HBD $\le 5$, HBA $\le 10$), Veber rules (RotBonds $\le 10$, TPSA $\le 140\text{ \AA}^2$), Ghose, Egan, and Muegge filters.
+* **Oral Bioavailability Rules:** Evaluates Lipinski Rule of 5 (MW $\le 500$, LogP $\le 5$, HBD $\le 5$, HBA $\le 10$), Veber rules (RotBonds $\le 10$, TPSA $\le 140\text{ Å}^2$), Ghose, Egan, and Muegge filters.
 * **BOILED-Egg Model (Daina & Zoete, 2016):** Evaluates gastrointestinal absorption (white) and blood-brain barrier permeability (yolk) using exact 101-point polygonal ray-casting coordinates.
 * **Structural Alerts:** Scans molecules against authenticated RDKit `FilterCatalog` rule sets:
   - Pan-Assay Interference Compounds (PAINS A, B, and C).
@@ -230,12 +226,12 @@ All benchmark complexes are executed **ab initio strictly from 1D SMILES strings
 
 | PDB ID | Target Protein | Native Ligand (`ResName`) | Rotatable Bonds | Grid Box ($R_g$-Scaled) | Top-1 Affinity ($\Delta G$) | Symmetry-Corrected RMSD | PoseBusters Validity | Status |
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **`1HSG`** | HIV-1 Protease Homodimer | Indinavir (`MK1`) | 14 | $23.88 \times 23.88 \times 23.88\text{ \AA}$ | **$-10.54\text{ kcal/mol}$** | **0.46 Å** | **PASS (`True`)** | **GOLD STANDARD (< 1.0 Å)** |
-| **`1AQ1`** | Human CDK2 Kinase | Staurosporine (`STU`) | 2 | $18.80 \times 18.80 \times 18.80\text{ \AA}$ | **$-12.99\text{ kcal/mol}$** | **0.19 Å** | **PASS (`True`)** | **NEAR ZERO (< 0.5 Å)** |
-| **`1M17`** | Human EGFR Kinase | Erlotinib (`AQ4`) | 8 | $20.00 \times 20.00 \times 20.00\text{ \AA}$ | **$-7.10\text{ kcal/mol}$** | **1.52 Å** | **PASS (`True`)** | **CASF-2016 PASS (< 2.0 Å)** |
-| **`1IEP`** | BCR-ABL Tyrosine Kinase | Imatinib (`STI`) | 7 | $22.00 \times 22.00 \times 22.00\text{ \AA}$ | **$-11.61\text{ kcal/mol}$** | **0.80 Å** | **PASS (`True`)** | **SUB-ANGSTROM (< 1.0 Å)** |
-| **`1CX2`** | Cyclooxygenase-2 (COX-2) | SC-558 / Aspirin | 4 | $20.00 \times 20.00 \times 20.00\text{ \AA}$ | **$-10.76\text{ kcal/mol}$** | **0.76 Å** | **PASS (`True`)** | **SUB-ANGSTROM (< 1.0 Å)** |
-| **`7BV2`** | SARS-CoV-2 RdRp Polymerase | Remdesivir (`F86`) | 11 | $24.00 \times 24.00 \times 24.00\text{ \AA}$ | **$-9.40\text{ kcal/mol}$** | **1.22 Å** | **PASS (`True`)** | **VALIDATED (< 2.0 Å)** |
+| **`1HSG`** | HIV-1 Protease Homodimer | Indinavir (`MK1`) | 14 | 23.88 × 23.88 × 23.88 Å | **-10.54 kcal/mol** | **0.46 Å** | **PASS (`True`)** | **GOLD STANDARD (< 1.0 Å)** |
+| **`1AQ1`** | Human CDK2 Kinase | Staurosporine (`STU`) | 2 | 18.80 × 18.80 × 18.80 Å | **-12.99 kcal/mol** | **0.19 Å** | **PASS (`True`)** | **NEAR ZERO (< 0.5 Å)** |
+| **`1M17`** | Human EGFR Kinase | Erlotinib (`AQ4`) | 8 | 20.00 × 20.00 × 20.00 Å | **-7.10 kcal/mol** | **1.52 Å** | **PASS (`True`)** | **CASF-2016 PASS (< 2.0 Å)** |
+| **`1IEP`** | BCR-ABL Tyrosine Kinase | Imatinib (`STI`) | 7 | 22.00 × 22.00 × 22.00 Å | **-11.61 kcal/mol** | **0.80 Å** | **PASS (`True`)** | **SUB-ANGSTROM (< 1.0 Å)** |
+| **`1CX2`** | Cyclooxygenase-2 (COX-2) | SC-558 / Aspirin | 4 | 20.00 × 20.00 × 20.00 Å | **-10.76 kcal/mol** | **0.76 Å** | **PASS (`True`)** | **SUB-ANGSTROM (< 1.0 Å)** |
+| **`7BV2`** | SARS-CoV-2 RdRp Polymerase | Remdesivir (`F86`) | 11 | 24.00 × 24.00 × 24.00 Å | **-9.40 kcal/mol** | **1.22 Å** | **PASS (`True`)** | **VALIDATED (< 2.0 Å)** |
 
 ### 9.2. CASF-2016 Core Set Redocking Benchmark
 
@@ -249,8 +245,8 @@ python tests/benchmark_casf2016.py --exhaustiveness 8 --resume
 python tests/benchmark_casf2016.py --max-complexes 5 --exhaustiveness 4
 ```
 
-* **Success Rate (RMSD $\le 2.0\text{ \AA}$):** **60.0%** (5-complex smoke set) / **76.8%** (full core set with exhaustiveness 16).
-* **Sub-Angstrom Rate (RMSD $\le 1.0\text{ \AA}$):** **20.0%** smoke / **38.4%** full core set.
+* **Success Rate (RMSD ≤ 2.0 Å):** **60.0%** (5-complex smoke set) / **76.8%** (full core set with exhaustiveness 16).
+* **Sub-Angstrom Rate (RMSD ≤ 1.0 Å):** **20.0%** smoke / **38.4%** full core set.
 * **Top Complexes:** `1A28` (0.64 Å), `1A4Q` (1.46 Å), `1A4G` (1.53 Å).
 
 ---

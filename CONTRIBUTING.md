@@ -1,91 +1,112 @@
 # Contributing to Bindora Dock
 
-Thank you for your interest in contributing to Bindora Dock.
-This document explains how to reproduce benchmarks, add new targets, and run CI checks.
+Thank you for your interest in contributing to **Bindora Dock**, an open-source, research-grade biophysical molecular docking, induced-fit modeling, and computational pharmacology platform developed under **NexPharmaTech**.
+
+Whether you are fixing a bug, contributing new crystallographic benchmark complexes, enhancing scoring physics, expanding chemoinformatics rules, or improving the 3D WebGL studio, these guidelines ensure scientific rigor, reproducibility, and high software quality.
 
 ---
 
 ## 1. Scientific Integrity Policy
 
-All benchmark output is governed by [`docs/SCIENTIFIC_INTEGRITY.md`](docs/SCIENTIFIC_INTEGRITY.md):
+Bindora Dock is designed for publication-level computational pharmacology. All benchmark and analytical data must adhere to strict scientific integrity standards:
 
-- **Never write benchmark JSON by hand.** All output must go through
-  `backend/utils/report_emitter.py` (SHA-256 provenance, atomic writes).
-- **Never cherry-pick results.** Every benchmark script reports ALL complexes
-  (successes and failures together). Do not add filter logic that hides failures.
-- **Always include the DUD-E analogue-bias caveat.** `emit_screening_report()`
-  raises `ScientificIntegrityError` if the caveat is missing.
-- **Provenance hash.** The `sha256_sig` field is computed over the result payload.
-  Editing results by hand breaks the hash.
+1. **Zero Synthetic / Cherry-Picked Data:**
+   - Every reported affinity metric ($\Delta G$), estimated $K_i$, and RMSD must be computed through live execution of AutoDock Vina / Vinardo or biophysical engines.
+   - Hand-authored, fabricated, or cherry-picked benchmark JSON/Markdown outputs are strictly prohibited.
+   - All benchmark scripts report **all** complexes evaluated (both successes and failures) without filtering.
+
+2. **Ab Initio 1D SMILES Conformation Generation:**
+   - Docking simulations and redocking benchmarks must generate initial 3D conformers purely from 1D SMILES strings (`RDKit ETKDGv3` / `Meeko`).
+   - Coordinate leakage from holo crystal ligands into the search starting point is forbidden.
+
+3. **Topology-Aware Chemical Symmetry RMSD:**
+   - Conformational fidelity must be evaluated using graph-isomorphic automorphism search (`spyrmsd`) and template bond-order assignment (`AssignBondOrdersFromTemplate`).
+   - Symmetry RMSD must be computed strictly in place within the binding pocket coordinate frame without unconstrained rigid-body alignment.
+
+4. **Cryptographic Provenance:**
+   - Benchmark outputs must be serialized through `backend/utils/report_emitter.py` or `bindora/report_emitter.py`, producing atomic records with hardware metadata and SHA-256 digital signatures.
+   - Modifying benchmark output files invalidates the checksum signature.
+
+5. **Mandatory DUD-E Analogue-Bias Caveat:**
+   - Virtual screening evaluations against the DUD-E dataset must display the standard analogue-bias caveat. `emit_screening_report()` enforces this requirement programmatically.
 
 ---
 
 ## 2. Environment Setup
 
+### Option A: Conda / Mamba Environment (Recommended for Scientific Workflows)
+
+We provide a streamlined `environment.yml` anchored to `conda-forge`:
+
 ```bash
-# Python 3.10+ required (tested on 3.11, 3.13)
+# Clone the repository
+git clone https://github.com/Swelo-ui/Bindora.git
+cd Bindora
+
+# Create environment via micromamba or conda
+micromamba env create -f environment.yml
+micromamba activate bindora-env
+```
+
+### Option B: Python Virtual Environment (Standard Pip)
+
+Ensure Python 3.10+ (tested on Python 3.11, 3.12, and 3.13) is installed:
+
+```bash
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# Linux / macOS:
+source .venv/bin/activate
+
+pip install --upgrade pip
 pip install -r requirements.txt
-
-# AutoDock Vina binary
-# Windows: already at bin/vina.exe
-# Linux/macOS:
-# wget -O bin/vina https://github.com/ccsb-scripps/AutoDock-Vina/releases/download/v1.2.7/vina_1.2.7_linux_x86_64
-# chmod +x bin/vina
 ```
+
+### AutoDock Vina Binary Setup
+
+- **Windows:** The official 64-bit binary is pre-bundled in `bin/vina.exe`.
+- **Linux / macOS:** Download the official Scripps binary:
+  ```bash
+  mkdir -p bin
+  curl -L -o bin/vina https://github.com/ccsb-scripps/AutoDock-Vina/releases/download/v1.2.5/vina_1.2.5_linux_x86_64
+  chmod +x bin/vina
+  export PATH="$PWD/bin:$PATH"
+  ```
 
 ---
 
-## 3. Reproducing the Existing Benchmarks
+## 3. Reproducing the Benchmark Suites
 
-Fast check (5 complexes, ~10 min):
-
-```bash
-python tests/benchmark_accuracy.py --fast --exhaustiveness 8 \
-  --output-json data/benchmarks/my_run.json \
-  --output-md   data/benchmarks/my_run.md
-```
-
-Full run (25 complexes, ~2-4 hours):
+### 3.1. Fast Benchmark Suite (CI Validation)
+The deterministic fast benchmark suite evaluates HIV-1 Protease (`1HSG`) and Human CDK2 Kinase (`1AQ1`) ab initio from 1D SMILES, reporting symmetry-corrected RMSD, PoseBusters biophysical checks, and free energy estimates:
 
 ```bash
-python tests/benchmark_accuracy.py --exhaustiveness 8 \
-  --output-json data/benchmarks/full_run.json
+python scripts/run_fast_benchmark.py
 ```
 
----
-
-## 4. Running the CASF-2016 Batch Runner
-
-CASF-2016 (285 complexes) is the field-standard benchmark. The runner is resumable:
+### 3.2. Extended Multi-Family Suite
+Runs a 4-family validation suite covering Aspartyl Protease (`1HSG`), Ser/Thr Kinase (`1AQ1`), Nuclear Receptor (`3ERT`), and $\text{Zn}^{2+}$ Metalloenzyme (`1BCD`):
 
 ```bash
-# Smoke test (10 complexes, ~15 min)
-python tests/benchmark_casf2016.py --num 10 --exhaustiveness 4
-
-# Full overnight run
-python tests/benchmark_casf2016.py --exhaustiveness 8
-
-# Resume after interruption
-python tests/benchmark_casf2016.py --resume --exhaustiveness 8
-
-# Use pre-downloaded PDBbind structures (faster)
-python tests/benchmark_casf2016.py --pdb-dir path/to/structures/ --resume
+python scripts/run_fast_benchmark.py --extended
 ```
 
-Outputs: `data/benchmarks/casf2016_final_report.{json,md}`, `casf2016_errors.log`
+### 3.3. CASF-2016 Core Set Benchmark (285 Complexes)
+The internationally recognized CASF-2016 benchmark evaluates redocking success rate across 285 diverse crystallographic targets:
 
-Reference: Su M. et al. J. Chem. Inf. Model. 2019, 59(2), 895-913.
-DOI: 10.1021/acs.jcim.8b00545
+```bash
+# Smoke test (5 complexes)
+python tests/benchmark_casf2016.py --max-complexes 5 --exhaustiveness 4
 
----
+# Full benchmark run (resumable)
+python tests/benchmark_casf2016.py --exhaustiveness 8 --resume
+```
 
-## 5. Running the DUD-E Screening Runner
+Outputs are automatically saved to `data/benchmarks/casf2016_final_report.json` and `casf2016_final_report.md`.
 
-DUD-E tests virtual-screening enrichment (ROC-AUC, EF1%, EF5%, EF10%).
-SMILES are fetched on-demand from dude.docking.org and cached locally.
-
-> **Mandatory caveat:** DUD-E results always report the analogue-bias disclaimer.
-> `emit_screening_report()` raises `ScientificIntegrityError` if it is missing.
+### 3.4. DUD-E Virtual Screening Enrichment
+Evaluates enrichment factors (EF1%, EF5%, EF10%) and receiver operating characteristic curves (ROC-AUC):
 
 ```bash
 # Diverse 8-target subset
@@ -93,71 +114,75 @@ python tests/benchmark_screening.py --subset diverse --exhaustiveness 4
 
 # Single target smoke test
 python tests/benchmark_screening.py --target ache --exhaustiveness 4
-
-# Quick test with limited compounds
-python tests/benchmark_screening.py --target ache --max-actives 20 --max-decoys 100
-
-# Resume interrupted run
-python tests/benchmark_screening.py --subset diverse --resume
 ```
-
-Reference: Mysinger MM et al. J. Med. Chem. 2012, 55(14), 6582-6594.
-DOI: 10.1021/jm300687e
 
 ---
 
-## 6. Running CI Locally
+## 4. Running Tests & Quality Assurance
 
-The GitHub Actions CI runs on every push to `main`. To replicate locally:
+Before submitting a Pull Request, verify that all automated unit and integration tests pass:
 
 ```bash
-# Fast benchmark (same as CI)
-python tests/benchmark_accuracy.py --fast --exhaustiveness 4 \
-  --output-json data/benchmarks/ci_result.json
+# Run core scientific integrity tests
+python -m pytest tests/test_scientific_integrity.py -v
 
-# Core unit tests
+# Run docking and ADME test suites
 python -m pytest tests/test_docking.py tests/test_adme.py -v
-```
 
-The CI passes when at least 3 of 5 fast-benchmark complexes succeed.
+# Run full test suite
+python -m pytest tests/ -v
+```
 
 ---
 
-## 7. Adding a New Benchmark Complex
+## 5. Contributing Code & Guidelines
 
-Add an entry to `BENCHMARK_COMPLEXES` in `tests/benchmark_accuracy.py`:
+### 5.1. Pull Request Checklist
+When submitting a Pull Request:
+- [ ] **Tests Pass:** All tests pass with zero errors (`pytest tests/`).
+- [ ] **Fast Benchmark Pass:** Fast benchmark finishes with status PASS for all targets (`python scripts/run_fast_benchmark.py`).
+- [ ] **Type Annotations:** Public service functions and classes include Python type annotations (`typing`).
+- [ ] **Deterministic Seeds:** Do not hardcode silent fixed seeds in production services. Use `secrets.randbelow()` for production runs or explicit parameters for reproducible benchmarks.
+- [ ] **Clean Markdown:** Ensure all Ångström symbols in documentation use standard UTF-8 characters (`Å`, `Å²`, `Å³`) rather than raw LaTeX `\AA` to ensure flawless rendering across GitHub and Web browsers.
+- [ ] **Preserve Comments:** Keep scientific rationale, physical units, and methodology citations documented in source code.
 
+### 5.2. Adding a New Benchmark Target
+To add a new benchmark target to `scripts/run_fast_benchmark.py` or `tests/benchmark_accuracy.py`:
 ```python
 {
     "pdb_id": "XXXX",
-    "target_name": "...",
-    "target_class": "Kinase",
-    "drug_name": "...",
     "ligand_resname": "LIG",
-    "smiles": "...",
-    "exp_affinity_type": "IC50",
-    "exp_value_nm": 10.5,
-    "exp_delta_g_kcal": -9.8,
-    # Optional literature comparison fields:
-    "literature_vina_rmsd": 1.2,
-    "literature_r": 0.60,
-    "literature_rmse": 1.8,
-    "literature_ref": "DOI:10.xxxx/...",
+    "family": "Kinase",
+    "name": "Target Full Name",
+    "smiles": "Canonical_1D_SMILES_String",
+    "target_chain": "A",
+    "rmsd_threshold": 2.0,
 }
 ```
+Verify the benchmark script executes and passes before committing.
 
-Run the benchmark and verify the new complex appears in the full output table (not hidden).
-Then open a PR -- CI will run automatically.
-
----
-
-## 8. Reporting Issues
-
-- **Docking failures on specific PDB IDs:** Open an issue with the PDB ID,
-  the error from `casf2016_errors.log`, and your system details.
-- **Wrong RMSD / energetics:** Include the JSON checkpoint and commit hash.
-- **Security:** Do not open public issues for security vulnerabilities.
+### 5.3. Web Studio & Frontend Contributions
+- The frontend uses vanilla HTML5, CSS3 with modern glassmorphism design tokens, and WebGL via `3Dmol.js`.
+- Ensure all UI changes are responsive, support both Dark and Light color schemes seamlessly, and do not introduce unstyled image assets or broken layout paddings.
 
 ---
 
-*Bindora Dock - research-grade molecular docking, openly benchmarked.*
+## 6. Reporting Issues & Vulnerabilities
+
+### Bug Reports
+- Open a GitHub Issue specifying:
+  - Operating system and Python version.
+  - PDB ID or ligand SMILES string causing the error.
+  - Full traceback or log output from `logs/` or console.
+  - Expected versus observed behavior.
+
+### Security Disclosures
+- For responsible security disclosures (e.g. arbitrary code execution, server vulnerabilities), please contact the engineering team directly at **`sharmaji.pharmatech.info@gmail.com`** instead of filing a public issue.
+
+---
+
+## 7. License
+
+By contributing to Bindora Dock, you agree that your contributions are licensed under the **Apache License, Version 2.0**. See the [LICENSE](LICENSE) file for terms and conditions.
+
+*Bindora Dock — Research-grade molecular docking and computational pharmacology, openly benchmarked.*

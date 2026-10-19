@@ -157,9 +157,9 @@ class InteractionEngine:
             "halogen_bond_sigma_hole": {
                 "max_distance_angstroms": 3.8,
                 "distance_max_angstroms": 3.8,
-                "min_c_x_acceptor_angle_deg": 140.0,
+                "min_c_x_acceptor_angle_deg": 130.0,
                 "classical_halogens": ["Cl", "Br", "I"],
-                "mechanism": "Directional electrophilic sigma-hole along C-X bond axis (theta >= 140 deg)"
+                "mechanism": "Directional electrophilic sigma-hole along C-X bond axis (theta >= 130 deg)"
             },
             "fluorine_polar_contact": {
                 "max_distance_angstroms": 3.5,
@@ -861,7 +861,7 @@ class InteractionEngine:
                             })
                     else:
                         # Classical σ-hole halogen bond (Cl, Br, I)
-                        if angle >= 140.0:
+                        if angle >= 130.0:
                             res_id = f"{ratom['res_name']} {ratom['res_num']}:{ratom['chain']}"
                             halogens.append({
                                 "type": "Halogen Bond",
