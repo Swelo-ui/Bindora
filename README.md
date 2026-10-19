@@ -1,6 +1,13 @@
 <div align="center">
 
-<img src="frontend/assets/branding/logo-dark-banner.png" alt="Bindora Dock v2.2 Logo Banner" width="820"/>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="frontend/assets/branding/logo-header-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="frontend/assets/branding/logo-header-light.png">
+  <img src="frontend/assets/branding/logo-header-dark.png" alt="Bindora Dock - Molecular Docking Simplified" width="560">
+</picture>
+
+<br/>
+<br/>
 
 # Bindora Dock v2.2: Research-Grade Biophysical Molecular Docking & Computational Pharmacology Platform
 
