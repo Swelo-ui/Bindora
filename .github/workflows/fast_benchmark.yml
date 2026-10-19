@@ -31,16 +31,16 @@ jobs:
       - name: Verify Cheminformatics & Docking Binaries
         shell: bash -el {0}
         run: |
-          python -c "import rdkit, meeko, spyrmsd; print('RDKit, Meeko & spyrmsd OK')"
+          python -c "import rdkit, gemmi, meeko, spyrmsd; print('RDKit, Gemmi, Meeko & spyrmsd OK')"
           obabel -V
-          if ! which vina > /dev/null 2>&1; then
+          if ! command -v vina > /dev/null 2>&1; then
             echo "Vina CLI binary not detected in PATH, downloading official Linux x86_64 binary..."
             mkdir -p bin
             curl -L -o bin/vina https://github.com/ccsb-scripps/AutoDock-Vina/releases/download/v1.2.5/vina_1.2.5_linux_x86_64
             chmod +x bin/vina
             echo "$PWD/bin" >> $GITHUB_PATH
           fi
-          which vina || python -c "import vina; print('Vina Python API OK')"
+          command -v vina || which vina || python -c "import vina; print('Vina Python API OK')"
 
       - name: Execute Deterministic Fast Benchmark Suite
         shell: bash -el {0}

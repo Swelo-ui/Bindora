@@ -6,6 +6,7 @@ dependencies:
   - rdkit>=2023.09
   - openbabel>=3.1.1
   - vina>=1.2.5
+  - gemmi>=0.6.5
   - pdbfixer
   - openmm
   - pdb2pqr
@@ -17,6 +18,7 @@ dependencies:
   - pytest
   - pip
   - pip:
+      - gemmi>=0.6.5
       - meeko>=0.5.0
       - spyrmsd>=0.6.0
       - posebusters>=0.2.7
